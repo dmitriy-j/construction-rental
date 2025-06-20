@@ -16,7 +16,7 @@ return new class extends Migration
             $table->timestamps();
             $table->string('email')->unique();
             $table->string('password');
-            $table->string('legal_name');
+            $table->string('name');
             $table->boolean('has_vat')->default(false);
             $table->string('inn');
             $table->string('ogrn');

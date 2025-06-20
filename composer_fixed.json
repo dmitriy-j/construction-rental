@@ -1,0 +1,48 @@
+[repositories.packagist.org.type] composer
+[repositories.packagist.org.url] https://repo.packagist.org
+[process-timeout] 300
+[use-include-path] false
+[allow-plugins.pestphp/pest-plugin] true
+[use-parent-dir] prompt
+[preferred-install] dist
+[audit.abandoned] fail
+[notify-on-install] true
+[github-protocols] [https, ssh]
+[gitlab-protocol] 
+[vendor-dir] vendor (C:\OSPanel\domains\construction-rental/vendor)
+[bin-dir] {$vendor-dir}/bin (C:\OSPanel\domains\construction-rental/vendor/bin)
+[cache-dir] c:\ospanel\modules\php\PHP_8.1\..\..\..\userdata\composer\cache
+[data-dir] c:\ospanel\modules\php\PHP_8.1\..\..\..\userdata\composer
+[cache-files-dir] {$cache-dir}/files (c:\ospanel\modules\php\PHP_8.1\..\..\..\userdata\composer\cache/files)
+[cache-repo-dir] {$cache-dir}/repo (c:\ospanel\modules\php\PHP_8.1\..\..\..\userdata\composer\cache/repo)
+[cache-vcs-dir] {$cache-dir}/vcs (c:\ospanel\modules\php\PHP_8.1\..\..\..\userdata\composer\cache/vcs)
+[cache-ttl] 15552000
+[cache-files-ttl] 15552000
+[cache-files-maxsize] 300MiB (314572800)
+[cache-read-only] false
+[bin-compat] auto
+[discard-changes] false
+[autoloader-suffix] 
+[sort-packages] true
+[optimize-autoloader] true
+[classmap-authoritative] false
+[apcu-autoloader] false
+[prepend-autoloader] true
+[github-domains] [github.com]
+[bitbucket-expose-hostname] true
+[disable-tls] false
+[secure-http] true
+[cafile] c:\ospanel\modules\php\PHP_8.1\..\..\..\userdata\config\cacert.pem
+[capath] 
+[github-expose-hostname] true
+[gitlab-domains] [gitlab.com]
+[store-auths] prompt
+[archive-format] tar
+[archive-dir] .
+[htaccess-protect] true
+[use-github-api] true
+[lock] true
+[platform-check] php-only
+[bump-after-update] false
+[allow-missing-requirements] false
+[home] c:\ospanel\modules\php\PHP_8.1\..\..\..\userdata\composer

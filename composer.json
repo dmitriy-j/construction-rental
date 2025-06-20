@@ -7,12 +7,10 @@
     "require": {
         "php": "^8.1",
         "guzzlehttp/guzzle": "^7.2",
-<<<<<<< HEAD
         "laravel/breeze": "*",
-=======
->>>>>>> 522435ced67efae9f01033fffb11dc8d6477f2ef
         "laravel/framework": "^10.0",
         "laravel/sanctum": "^3.2",
+        "laravel/scout": "^10.15",
         "laravel/tinker": "^2.8",
         "laravel/ui": "^4.6"
     },

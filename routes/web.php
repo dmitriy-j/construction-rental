@@ -34,3 +34,19 @@ require __DIR__.'/auth.php';
 Auth::routes();
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+// Регистрация юрлиц
+Route::get('/register/company', [CompanyRegistrationController::class, 'create'])->name('register.company');
+Route::post('/register/company', [CompanyRegistrationController::class, 'store']);
+
+// Новости
+Route::get('/news', [NewsController::class, 'index'])->name('news.index');
+Route::get('/news/{news}', [NewsController::class, 'show'])->name('news.show');
+
+// Поиск
+Route::get('/search', [SearchController::class, 'index'])->name('search');
+
+// Статические страницы
+Route::get('/about', [PageController::class, 'about'])->name('about');
+Route::get('/contacts', [PageController::class, 'contacts'])->name('contacts');
+Route::get('/cooperation', [PageController::class, 'cooperation'])->name('cooperation');
+Route::get('/vacancies', [PageController::class, 'vacancies'])->name('vacancies');
