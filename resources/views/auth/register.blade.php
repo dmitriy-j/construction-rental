@@ -1,77 +1,90 @@
 @extends('layouts.app')
-
+@section('title', 'Регистрация юридического лица')
 @section('content')
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">{{ __('Register') }}</div>
+<div class="max-w-3xl mx-auto bg-white shadow rounded-lg p-6">
+    <form method="POST" action="{{ route('register.company') }}">
+        @csrf
 
-                <div class="card-body">
-                    <form method="POST" action="{{ route('register') }}">
-                        @csrf
-
-                        <div class="row mb-3">
-                            <label for="name" class="col-md-4 col-form-label text-md-end">{{ __('Name') }}</label>
-
-                            <div class="col-md-6">
-                                <input id="name" type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name') }}" required autocomplete="name" autofocus>
-
-                                @error('name')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <label for="email" class="col-md-4 col-form-label text-md-end">{{ __('Email Address') }}</label>
-
-                            <div class="col-md-6">
-                                <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="email">
-
-                                @error('email')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <label for="password" class="col-md-4 col-form-label text-md-end">{{ __('Password') }}</label>
-
-                            <div class="col-md-6">
-                                <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="new-password">
-
-                                @error('password')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="row mb-3">
-                            <label for="password-confirm" class="col-md-4 col-form-label text-md-end">{{ __('Confirm Password') }}</label>
-
-                            <div class="col-md-6">
-                                <input id="password-confirm" type="password" class="form-control" name="password_confirmation" required autocomplete="new-password">
-                            </div>
-                        </div>
-
-                        <div class="row mb-0">
-                            <div class="col-md-6 offset-md-4">
-                                <button type="submit" class="btn btn-primary">
-                                    {{ __('Register') }}
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label>Название компании</label>
+                <input type="text" name="company_name" class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label>Email</label>
+                <input type="email" name="email" class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label>ИНН (10 цифр)</label>
+                <input type="text" name="inn" class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label>КПП (9 цифр)</label>
+                <input type="text" name="kpp" class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label>ОГРН (13 цифр)</label>
+                <input type="text" name="ogrn" class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label>БИК банка</label>
+                <input type="text" name="bik" class="w-full border rounded px-3 py-2">
             </div>
         </div>
-    </div>
+
+        <div class="mb-4">
+            <label class="flex items-center">
+                <input type="checkbox" id="same-address" class="mr-2">
+                Юридический адрес совпадает с фактическим
+            </label>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label>Юридический адрес</label>
+                <input type="text" name="legal_address" class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label>Фактический адрес</label>
+                <input type="text" id="actual-address" name="actual_address"
+                       class="w-full border rounded px-3 py-2">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label>Телефон</label>
+                <input type="text" name="phone" class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label>Директор</label>
+                <input type="text" name="director" class="w-full border rounded px-3 py-2">
+            </div>
+        </div>
+
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+            Зарегистрироваться
+        </button>
+    </form>
 </div>
+
+@push('scripts')
+<script>
+    document.getElementById('same-address').addEventListener('change', function () {
+        const actualAddress = document.getElementById('actual-address');
+        actualAddress.disabled = this.checked;
+
+        if (this.checked) {
+            actualAddress.value = document.querySelector("[name='legal_address']").value;
+        }
+    });
+
+    // Валидация телефона
+    document.querySelector("[name='phone']").addEventListener('input', function () {
+        let value = this.value.replace(/\D/g, '');
+        if (value.length > 11) value = value.slice(0, 11);
+        this.value = '+7' + value.slice(1);
+    });
+</script>
+@endpush
 @endsection
