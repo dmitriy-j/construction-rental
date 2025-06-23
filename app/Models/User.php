@@ -2,48 +2,59 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
+use App\Mail\CompanyRegisteredMail;
+use Illuminate\Support\Facades\Mail;
+use App\Models\Company;
 
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
         'email',
         'password',
+        'role',
+        'type',
+        'company_id',
     ];
 
-
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
 
-    public function company() {
-    return $this->belongsTo(Company::class);
+    // Методы проверки типа пользователя и ролей
+    public function isStaff(): bool
+    {
+        return $this->type === 'staff';
+    }
+
+    public function isCustomer(): bool
+    {
+        return $this->type === 'customer';
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->isStaff() && $this->role === 'admin';
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return $this->isStaff() && $this->role === $role;
+    }
+
+    public function hasAnyRole(array $roles): bool
+    {
+        return $this->isStaff() && in_array($this->role, $roles);
     }
 }

@@ -11,4 +11,7 @@
             </div>
         </div>
     </div>
+<<<<<<< HEAD
 @endsection
+=======
+</div>

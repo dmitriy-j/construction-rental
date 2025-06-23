@@ -17,10 +17,10 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->enum('role', ['tenant', 'landlord', 'admin'])->default('tenant');
+            $table->enum('type', ['customer', 'staff'])->default('customer');
+            $table->string('role')->nullable();
             $table->rememberToken();
             $table->timestamps();
-
         });
     }
 
