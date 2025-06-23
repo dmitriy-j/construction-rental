@@ -7,6 +7,10 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
+use App\Mail\CompanyRegisteredMail;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class CompanyRegistrationController extends Controller
 {
@@ -17,57 +21,57 @@ class CompanyRegistrationController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'name' => ['required', 'string', 'max:255'],
-            'vat' => ['boolean'],
-            'inn' => ['required', 'string', 'digits:10'],
-            'kpp' => ['nullable', 'string', 'digits:9'],
-            'ogrn' => ['required', 'string', 'digits:13'], // ОГРН 13 цифр, ОГРНИП 15
-            'okpo' => ['nullable', 'string', 'digits:8'],
-            'legal_address' => ['required', 'string', 'max:255'],
-            'actual_address' => ['required_unless:same_address,1', 'string', 'max:255'],
-            'same_address' => ['boolean'],
-            'bank_name' => ['required', 'string', 'max:255'],
-            'bank_account' => ['required', 'string', 'digits:20'],
-            'bik' => ['required', 'string', 'digits:9'],
-            'correspondent_account' => ['required', 'string', 'digits:20'],
-            'director' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'regex:/^\+7\d{10}$/'],
-            'manager' => ['nullable', 'string', 'max:255'],
+        $validated = $request->validate([
+            'email' => 'required|email|unique:companies,email|unique:users,email',
+            'password' => ['required', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
+            'company_name' => 'required',
+            'inn' => 'required|digits:12',
+            'ogrn' => 'required|digits:13',
+            'legal_address' => 'required',
+            'bank_name' => 'required',
+            'bank_account' => 'required|digits:20',
+            'bik' => 'required|digits:9',
+            'correspondent_account' => 'required|digits:20',
+            'director' => 'required',
+            'phone' => 'required',
         ]);
 
-        // Создаем компанию
+        // Создание компании
         $company = Company::create([
-            'name' => $request->company_name,
-            'vat' => $request->vat ?? false,
-            'inn' => $request->inn,
-            'kpp' => $request->kpp,
-            'ogrn' => $request->ogrn,
-            'okpo' => $request->okpo,
-            'legal_address' => $request->legal_address,
-            'actual_address' => $request->same_address ? $request->legal_address : $request->actual_address,
-            'bank_name' => $request->bank_name,
-            'bank_account' => $request->bank_account,
-            'bik' => $request->bik,
-            'correspondent_account' => $request->correspondent_account,
-            'director' => $request->director,
-            'phone' => $request->phone,
-            'manager' => $request->manager,
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'name' => $validated['company_name'],
+            'inn' => $validated['inn'],
+            'ogrn' => $validated['ogrn'],
+            'legal_address' => $validated['legal_address'],
+            'bank_name' => $validated['bank_name'],
+            'bank_account' => $validated['bank_account'],
+            'bik' => $validated['bik'],
+            'correspondent_account' => $validated['correspondent_account'],
+            'director' => $validated['director'],
+            'phone' => $validated['phone'],
         ]);
 
-        // Создаем пользователя
+        // Создание пользователя
         $user = User::create([
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'name' => $validated['company_name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
             'company_id' => $company->id,
-            'role' => 'tenant', // По умолчанию арендатор
+            'role' => 'tenant',
         ]);
 
-        // Авторизуем пользователя
-        auth()->login($user);
+        // Отправка email через очередь с обработкой исключений
+        try {
+            Mail::to($user->email)->queue(
+                new CompanyRegisteredMail($company, $user)
+            );
+        } catch (\Exception $e) {
+            Log::error('Ошибка отправки email: ' . $e->getMessage());
+            // Не прерываем процесс, только логируем ошибку
+        }
 
+        Auth::login($user);
         return redirect()->route('tenant.dashboard');
     }
 }

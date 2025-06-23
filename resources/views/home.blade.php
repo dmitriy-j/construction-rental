@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-blade
+@vite(['resources/css/app.css', 'resources/js/app.js'])
 @extends('layouts.app')
 
 @section('content')
@@ -32,4 +31,4 @@ blade
     </div>
 </div>
 @endsection
->>>>>>> 522435ced67efae9f01033fffb11dc8d6477f2ef
+

@@ -4,17 +4,49 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Scout\Searchable;
+
 
 class News extends Model
 {
-    use Searchable;
+    use HasFactory, Searchable, SoftDeletes;
 
-    public function toSearchableArray()
+
+     public function searchableAs()
     {
-        return [
-            'title' => $this->title,
-            'content' => $this->content,
-        ];
+        return 'news_index';
+    }
+    protected $fillable = [
+        'title', 'slug', 'excerpt', 'content',
+        'publish_date', 'is_published', 'author_id'
+    ];
+
+    protected $casts = [
+        'publish_date' => 'date',
+        'is_published' => 'boolean'
+    ];
+
+     protected static function booted()
+    {
+        static::creating(function ($news) {
+            $news->slug = Str::slug($news->title);
+        });
+
+        static::updating(function ($news) {
+            if ($news->isDirty('title')) {
+                $news->slug = Str::slug($news->title);
+            }
+        });
+
+    public function author()
+    {
+        return $this->belongsTo(User::class, 'author_id');
+    }
+
+    public function scopePublished($query)
+    {
+        return $query->where('is_published', true)
+            ->where('publish_date', '<=', now());
     }
 }
