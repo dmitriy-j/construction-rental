@@ -9,7 +9,7 @@ use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 
 class Company extends Authenticatable implements AuthenticatableContract
 {
-    use HasFactory;
+    use HasFactory, Authenticatable;
 
     protected $fillable = [
         'type', 'legal_name', 'tax_system', 'inn', 'kpp', 'ogrn', 'okpo',

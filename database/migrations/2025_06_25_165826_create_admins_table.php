@@ -22,6 +22,7 @@ return new class extends Migration
             $table->text('address');
             $table->string('phone');
             $table->string('position');
+            $table->enum('status', ['active', 'inactive'])->default('active'); // Добавить
             $table->rememberToken();
             $table->timestamps();
         });

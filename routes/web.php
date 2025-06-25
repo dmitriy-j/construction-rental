@@ -6,9 +6,9 @@ use App\Http\Controllers\Auth\CompanyAuthController;
 use App\Models\Company;
 use App\Models\User;
 use App\Mail\CompanyRegisteredMail;
-use App\Http\Controllers\NewsController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\Admin\NewsController as AdminNewsController;
+use App\Http\Controllers\Admin\AdminController;
 
 /*
 |--------------------------------------------------------------------------
@@ -85,8 +85,30 @@ Route::get('/test-db', function() {
 
 
 // Админ-панель компании
+
+Route::prefix('adm')->group(function () {
+    // Вход
+    Route::get('/login', [\App\Http\Controllers\Admin\AdminController::class, 'loginForm'])
+        ->name('admin.login.form');
+
+    Route::post('/login', [\App\Http\Controllers\Admin\AdminController::class, 'login'])
+        ->name('admin.login');
+
+    // Выход
+    Route::post('/logout', [\App\Http\Controllers\Admin\AdminController::class, 'logout'])
+        ->name('admin.logout');
+
+    // Защищенные маршруты
+    Route::middleware('auth:admin')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\Admin\AdminController::class, 'dashboard'])
+            ->name('admin.dashboard');
+        });
+});
+
+
+
 Route::prefix('adm')
-    ->middleware(['auth', 'company_admin'])
+    ->middleware(['auth:admin']) // Использовать guard 'admin'
     ->name('admin.')
     ->group(function () {
         // Управление сотрудниками
