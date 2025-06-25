@@ -1,53 +1,68 @@
- <nav class="navbar navbar-expand-md navbar-light bg-white shadow-sm">
-            <div class="container">
-                <a class="navbar-brand" href="{{ url('/') }}">
-                    {{ config('app.name', 'Laravel') }}
-                </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="{{ __('Toggle navigation') }}">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+  <div class="container">
+    <a class="navbar-brand" href="{{ url('/') }}" style="
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 1.8rem;
+    color: white;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 0.2rem 1rem;
+    border-radius: 50px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s;
+">
+    Rent<span style="color: #00d2ff;">Tech</span>
+</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
 
-                <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                    <!-- Left Side Of Navbar -->
-                    <ul class="navbar-nav me-auto">
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="/about">
+      <i class="bi bi-buildings me-2"></i>О компании
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="/requests">
+      <i class="bi bi-clipboard-check me-2"></i>Заявки
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="/catalog">
+      <i class="bi bi-list-ul me-2"></i>Каталог
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="/free">
+      <i class="bi bi-check-circle me-2"></i>Свободная техника
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="/repair">
+      <i class="bi bi-tools me-2"></i>Ремонт техники
+    </a>
+  </li>
+</ul>
 
-                    </ul>
-
-                    <!-- Right Side Of Navbar -->
-                    <ul class="navbar-nav ms-auto">
-                        <!-- Authentication Links -->
-                        @guest
-                            @if (Route::has('login'))
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('login') }}">{{ __('Login') }}</a>
-                                </li>
-                            @endif
-
-                            @if (Route::has('register'))
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('register') }}">{{ __('Register') }}</a>
-                                </li>
-                            @endif
-                        @else
-                            <li class="nav-item dropdown">
-                                <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
-                                    {{ Auth::user()->name }}
-                                </a>
-
-                                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                    <a class="dropdown-item" href="{{ route('logout') }}"
-                                       onclick="event.preventDefault();
-                                                     document.getElementById('logout-form').submit();">
-                                        {{ __('Logout') }}
-                                    </a>
-
-                                    <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
-                                        @csrf
-                                    </form>
-                                </div>
-                            </li>
-                        @endguest
-                    </ul>
-                </div>
-            </div>
-        </nav>
+<ul class="navbar-nav ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="/cooperation">
+  <i class="bi bi-people me-2"></i>Сотрудничество
+</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="/contacts">
+      <i class="bi bi-telephone me-2"></i>Контакты
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="/jobs">
+      <i class="bi bi-briefcase me-2"></i>Вакансии
+    </a>
+  </li>
+</ul>
+    </div>
+  </div>
+</nav>

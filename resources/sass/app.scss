@@ -6,3 +6,269 @@
 
 // Bootstrap
 @import 'bootstrap/scss/bootstrap';
+.navbar {
+  padding: 1rem 0;
+  border-bottom: 2px solid rgba(255,255,255,0.1);
+}
+
+.nav-link {
+  font-weight: 500;
+  margin: 0 10px;
+  position: relative;
+  
+  &:hover::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: white;
+  }
+}
+
+.nav-link i {
+  font-size: 1.1rem;
+  vertical-align: middle;
+}
+
+.card {
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.news-item {
+    padding: 10px;
+    border-left: 3px solid #0d6efd; /* Синяя полоса */
+    margin-bottom: 15px;
+}
+
+.btn-primary {
+    background-color: #0d6efd;
+    border: none;
+    padding: 8px 20px;
+}
+
+.table {
+  th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    color: #6c757d;
+  }
+
+  td {
+    vertical-align: middle;
+  }
+}
+
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.card {
+  transition: transform 0.3s, box-shadow 0.3s;
+  
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  &.border-primary {
+    border-width: 2px !important;
+  }
+
+  &.border-warning {
+    border-width: 2px !important;
+  }
+}
+
+.btn-lg {
+  padding: 0.5rem 1.5rem;
+  border-radius: 50px;
+  font-weight: 500;
+}
+
+footer {
+  a:hover {
+    color: #0d6efd !important;
+    transition: color 0.3s;
+  }
+
+  .social-links i {
+    transition: transform 0.3s;
+    &:hover {
+      transform: scale(1.2);
+    }
+  }
+}
+
+.card {
+    transition: transform 0.3s;
+
+    &:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    &-img-top {
+        object-fit: cover;
+        height: 200px;
+    }
+}
+
+/* Фильтры */
+.form-select {
+    cursor: pointer;
+}
+
+.table-requests {
+    td, th {
+        vertical-align: middle;
+    }
+
+    .badge {
+        font-size: 0.85em;
+        padding: 0.35em 0.65em;
+    }
+}
+
+/* О компании */
+.hero-banner {
+    background: linear-gradient(135deg, #0d6efd 0%, #084298 100%);
+    border-radius: 0 0 20px 20px;
+}
+
+.timeline {
+    position: relative;
+    padding-left: 30px;
+
+    &-item {
+        position: relative;
+        padding-bottom: 20px;
+
+        &::before {
+            content: '';
+            position: absolute;
+            left: -30px;
+            top: 5px;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #0d6efd;
+            border: 3px solid white;
+            box-shadow: 0 0 0 2px #0d6efd;
+        }
+    }
+
+    &-year {
+        font-weight: bold;
+        color: #0d6efd;
+    }
+
+    &-content {
+        margin-top: 5px;
+    }
+}
+
+/* Карточки техники */
+.tech-card {
+  transition: transform 0.3s, box-shadow 0.3s;
+  border-radius: 10px;
+  overflow: hidden;
+
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+  }
+
+  .card-img-top {
+    height: 200px;
+    object-fit: cover;
+  }
+
+ .badge {
+    font-weight: normal;
+    font-size: 0.8rem;
+    padding: 0.5em 0.75em;
+  }
+}
+
+.navbar-brand {
+  position: relative;
+  transition: all 0.3s;
+  
+  &:hover {
+    transform: scale(1.05);
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%);
+    }
+  }
+}
+
+.cooperation-page {
+    .hero-section {
+        background: linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%);
+        padding: 4rem 0;
+    }
+    
+    .card {
+        transition: all 0.3s;
+        
+        &:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+    }
+    
+    .form-control, .form-select {
+        padding: 10px 15px;
+    }
+}
+
+/* Страница вакансий */
+.jobs-page {
+    .hero-section {
+        background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+                    url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80');
+        background-size: cover;
+        background-position: center;
+        padding: 6rem 0;
+    }
+
+    .icon-circle {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .custom-shape-divider-bottom {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        overflow: hidden;
+        line-height: 0;
+        
+        svg {
+            position: relative;
+            display: block;
+            width: calc(100% + 1.3px);
+            height: 60px;
+        }
+        
+        .shape-fill {
+            fill: #f8f9fa;
+        }
+    }
+}

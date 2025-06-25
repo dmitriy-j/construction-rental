@@ -25,6 +25,22 @@ Route::get('/', function () {
     return view('home');
 });
 
+Route::get('/catalog', function () {
+    return view('catalog');
+})->name('catalog');
+
+Route::get('/free', function () {
+    return view('free');
+})->name('free');
+
+Route::get('/cooperation', function () {
+    return view('cooperation');
+})->name('cooperation');
+
+Route::get('/jobs', function () {
+    return view('jobs');
+})->name('jobs');
+
 // Маршрут для tenant dashboard
 Route::get('/tenant/dashboard', function () {
     return 'Dashboard';
@@ -40,6 +56,10 @@ Route::get('/test-email', function() {
     Mail::to($user->email)->send(new CompanyRegisteredMail($company, $user));
     return "Email sent!";
 });
+
+Route::get('/about', fn() => view('pages.about'));
+Route::get('/requests', fn() => view('requests'));
+
 
 Route::post('/register/company', [CompanyRegistrationController::class, 'store'])
     ->name('register.company.store');
