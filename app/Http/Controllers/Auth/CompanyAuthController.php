@@ -11,25 +11,13 @@ use Illuminate\Validation\Rule;
 
 class CompanyAuthController extends Controller
 {
-    /**
-     * Show the registration form for companies.
-     *
-     * @return \Illuminate\View\View
-     */
     public function showRegistrationForm()
     {
         return view('auth.register_company');
     }
 
-    /**
-     * Handle a registration request for the company.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function register(Request $request)
     {
-        // Валидация данных
         $validator = Validator::make($request->all(), [
             'type' => ['required', Rule::in(['lessor', 'lessee'])],
             'legal_name' => 'required|string|max:255',
@@ -51,9 +39,9 @@ class CompanyAuthController extends Controller
             'email' => 'required|string|email|max:255|unique:companies',
             'password' => 'required|string|min:8|confirmed',
         ], [
-            'inn.digits' => 'ИНН должен содержать ровно 10 цифр',
-            'kpp.digits' => 'КПП должен содержать ровно 9 цифр',
-            'ogrn.digits' => 'ОГРН должен содержать ровно 13 цифр',
+            'inn.digits' => 'ИНН должен содержать 10 цифр',
+            'kpp.digits' => 'КПП должен содержать 9 цифр',
+            'ogrn.digits' => 'ОГРН должен содержать 13 цифр',
             'phone.regex' => 'Неверный формат телефона',
         ]);
 
@@ -65,12 +53,10 @@ class CompanyAuthController extends Controller
 
         $data = $validator->validated();
 
-        // Обработка адресов
-        if ($request->has('same_as_legal') && $request->boolean('same_as_legal')) {
+        if ($request->boolean('same_as_legal')) {
             $data['actual_address'] = $data['legal_address'];
         }
 
-        // Создание компании
         Company::create([
             'type' => $data['type'],
             'legal_name' => $data['legal_name'],
@@ -90,8 +76,9 @@ class CompanyAuthController extends Controller
             'contacts' => $data['contacts'] ?? null,
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
+            'status' => 'pending',
         ]);
 
-        return redirect()->route('login')->with('success', 'Регистрация успешно завершена! Теперь вы можете войти в систему.');
+        return redirect()->route('login')->with('success', 'Регистрация успешно завершена!');
     }
 }

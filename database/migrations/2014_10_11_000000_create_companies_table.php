@@ -10,24 +10,27 @@ return new class extends Migration
     {
         Schema::create('companies', function (Blueprint $table) {
             $table->id();
-            // Убрали email и password - теперь они в таблице users
-            $table->string('name');
-            $table->enum('type', ['landlord', 'tenant']); // Тип юрлица
-            $table->boolean('vat')->default(false);
+            $table->enum('type', ['lessor', 'lessee']); // Арендодатель/Арендатор
+            $table->string('legal_name');
+            $table->enum('tax_system', ['vat', 'no_vat']);
             $table->string('inn', 12);
-            $table->string('kpp', 9)->nullable();
-            $table->string('ogrn', 15);
+            $table->string('kpp', 9);
+            $table->string('ogrn', 13);
             $table->string('okpo', 10)->nullable();
-            $table->string('legal_address');
-            $table->string('actual_address')->nullable();
-            $table->boolean('same_address')->default(false);
+            $table->text('legal_address');
+            $table->text('actual_address')->nullable();
             $table->string('bank_name');
             $table->string('bank_account', 20);
             $table->string('bik', 9);
-            $table->string('correspondent_account', 20);
-            $table->string('director');
+            $table->string('correspondent_account', 20)->nullable();
+            $table->string('director_name');
             $table->string('phone');
-            $table->string('manager')->nullable();
+            $table->text('contacts')->nullable();
+            $table->string('email')->unique();
+            $table->string('password');
+            $table->rememberToken();
+
+
 
             // Добавляем статусы верификации
             $table->enum('status', [

@@ -2,39 +2,22 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 
-class Company extends Model
+class Company extends Authenticatable implements AuthenticatableContract
 {
     use HasFactory;
 
     protected $fillable = [
-        'name',
-        'type', // Добавлено: тип компании (landlord/tenant)
-        'vat',
-        'inn',
-        'kpp',
-        'ogrn',
-        'okpo',
-        'legal_address',
-        'actual_address',
-        'same_address',
-        'bank_name',
-        'bank_account',
-        'bik',
-        'correspondent_account',
-        'director',
-        'phone',
-        'manager',
-        'status', // Добавлено: статус верификации
-        'rejection_reason', // Добавлено: причина отклонения
-        'verified_at' // Добавлено: дата верификации
+        'type', 'legal_name', 'tax_system', 'inn', 'kpp', 'ogrn', 'okpo',
+        'legal_address', 'actual_address', 'bank_name', 'bank_account', 'bik',
+        'correspondent_account', 'director_name', 'phone', 'contacts', 'email', 'password',
+        'status', 'rejection_reason', 'verified_at'
     ];
 
-    // Убраны аутентификационные поля
-    // Убрано наследование от Authenticatable
-    // Убраны скрытые поля (password, remember_token)
+    protected $hidden = ['password', 'remember_token'];
 
     public function users()
     {

@@ -29,6 +29,7 @@ class Kernel extends HttpKernel
             'auth' => \App\Http\Middleware\Authenticate::class,
             'type' => \App\Http\Middleware\CheckUserType::class, // Добавлено
             'role' => \App\Http\Middleware\CheckRole::class,
+            'company_admin' => \App\Http\Middleware\EnsureIsCompanyAdmin::class,
     ];
     /**
      * The application's route middleware groups.

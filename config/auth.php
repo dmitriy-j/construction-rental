@@ -38,12 +38,12 @@ return [
     'guards' => [
         'web' => [
             'driver' => 'session',
-            'provider' => 'users',
+            'provider' => 'companies',
         ],
     ],
-     'staff' => [
+     'admin' => [
         'driver' => 'session',
-        'provider' => 'users',
+        'provider' => 'admins',
         ],
 
     /*
@@ -64,15 +64,15 @@ return [
     */
 
     'providers' => [
-        'users' => [
+        'companies' => [
             'driver' => 'eloquent',
-            'model' => App\Models\User::class,
+            'model' => App\Models\Company::class,
         ],
 
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
+         'admins' => [
+        'driver' => 'eloquent',
+        'model' => App\Models\Admin::class, // Модель для сотрудников
+         ],
     ],
 
     /*

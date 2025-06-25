@@ -55,9 +55,44 @@ Route::get('/tenant/dashboard', function () {
     return view('tenant.dashboard');
 })->name('tenant.dashboard')->middleware(['auth', 'type:tenant']);
 
-// Админ-панель для сотрудников
-Route::prefix('admin')->middleware(['auth', 'type:staff', 'role:admin'])->group(function () {
-    Route::get('/dashboard', [AdminController::class, 'dashboard']);
+// Аутентификация
+Route::get('/adm/login', [AuthenticatedSessionController::class, 'create'])
+    ->name('admin.login');
+
+Route::post('/adm/login', [AuthenticatedSessionController::class, 'store']);
+
+
+
+// Админ-панель компании
+Route::prefix('adm')
+    ->middleware(['auth', 'company_admin'])
+    ->name('admin.')
+    ->group(function () {
+        // Управление сотрудниками
+        Route::resource('employees', \App\Http\Controllers\Admin\EmployeeController::class)
+            ->except(['show']);
+
+        // Управление новостями
+        Route::resource('news', AdminNewsController::class)->except(['show']);
+
+        // Дашборд администратора
+        Route::get('/dashboard', function () {
+            return view('admin.dashboard');
+        })->name('dashboard');
+
+        // Дашборд сотрудника
+        Route::get('/employee-dashboard', function () {
+            return view('admin.employee-dashboard');
+        })->name('employee.dashboard');
+
+
+
+        // Другие разделы админ-панели...
+
+});
+Route::middleware(['auth', 'role:company_admin'])->prefix('company')->group(function () {
+    Route::resource('employees', \App\Http\Controllers\Admin\EmployeeController::class)
+        ->except(['show']);
 });
 
 // Маршруты регистрации компании
@@ -99,10 +134,5 @@ Route::get('/news/{news}', [NewsController::class, 'show'])->name('news.show');
 // Статические страницы
 Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/contacts', [PageController::class, 'contacts'])->name('contacts');
-
-// Административные маршруты для управления новостями
-Route::prefix('adm')->name('admin.')->middleware(['auth', 'role:admin'])->group(function () {
-    Route::resource('news', AdminNewsController::class)->except(['show']);
-});
 
 require __DIR__.'/auth.php';
