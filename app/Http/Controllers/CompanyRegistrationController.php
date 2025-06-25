@@ -23,7 +23,7 @@ class CompanyRegistrationController extends Controller
     {
         $validated = $request->validate([
             'email' => 'required|email|unique:companies,email|unique:users,email',
-            'password' => ['required', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'company_name' => 'required',
             'inn' => 'required|digits:12',
             'ogrn' => 'required|digits:13',
@@ -52,24 +52,20 @@ class CompanyRegistrationController extends Controller
             'phone' => $validated['phone'],
         ]);
 
-        // Создание пользователя
+        // Создание пользователя (администратора компании)
         $user = User::create([
-            'name' => $validated['company_name'],
+            'name' => $validated['director'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
+            'type' => 'tenant',
+            'role' => 'admin',
             'company_id' => $company->id,
-            'role' => 'tenant',
         ]);
 
-        // Отправка email через очередь с обработкой исключений
-        try {
-            Mail::to($user->email)->queue(
-                new CompanyRegisteredMail($company, $user)
-            );
-        } catch (\Exception $e) {
-            Log::error('Ошибка отправки email: ' . $e->getMessage());
-            // Не прерываем процесс, только логируем ошибку
-        }
+        // Отправка email
+        Mail::to($user->email)->send(
+            new CompanyRegisteredMail($company, $user)
+        );
 
         Auth::login($user);
         return redirect()->route('tenant.dashboard');

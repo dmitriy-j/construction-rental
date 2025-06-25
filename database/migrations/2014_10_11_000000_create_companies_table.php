@@ -6,13 +6,13 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up(): void
+    public function up()
     {
         Schema::create('companies', function (Blueprint $table) {
             $table->id();
-            $table->string('email')->unique();
-            $table->string('password');
+            // Убрали email и password - теперь они в таблице users
             $table->string('name');
+            $table->enum('type', ['landlord', 'tenant']); // Тип юрлица
             $table->boolean('vat')->default(false);
             $table->string('inn', 12);
             $table->string('kpp', 9)->nullable();
@@ -28,6 +28,16 @@ return new class extends Migration
             $table->string('director');
             $table->string('phone');
             $table->string('manager')->nullable();
+
+            // Добавляем статусы верификации
+            $table->enum('status', [
+                'pending',         // Ожидает проверки
+                'verified',        // Проверено и подтверждено
+                'rejected'         // Отклонено
+            ])->default('pending');
+
+            $table->text('rejection_reason')->nullable(); // Причина отклонения
+            $table->timestamp('verified_at')->nullable();  // Дата верификации
             $table->timestamps();
         });
     }

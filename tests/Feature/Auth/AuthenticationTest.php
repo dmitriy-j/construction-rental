@@ -2,54 +2,70 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\Company;
 use App\Models\User;
-use App\Providers\RouteServiceProvider;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
-    public function test_login_screen_can_be_rendered(): void
+    public function test_successful_login()
     {
-        $response = $this->get('/login');
-
-        $response->assertStatus(200);
-    }
-
-    public function test_users_can_authenticate_using_the_login_screen(): void
-    {
-        $user = User::factory()->create();
-
-        $response = $this->post('/login', [
-            'email' => $user->email,
-            'password' => 'password',
+        $user = User::factory()->verifiedCompany()->create([
+            'password' => bcrypt('password')
         ]);
 
-        $this->assertAuthenticated();
-        $response->assertRedirect(RouteServiceProvider::HOME);
-    }
-
-    public function test_users_can_not_authenticate_with_invalid_password(): void
-    {
-        $user = User::factory()->create();
-
-        $this->post('/login', [
+        $response = $this->postJson('/api/login', [
             'email' => $user->email,
-            'password' => 'wrong-password',
+            'password' => 'password'
         ]);
 
-        $this->assertGuest();
+        $response->assertStatus(200)
+            ->assertJsonStructure(['token']);
     }
 
-    public function test_users_can_logout(): void
+    public function test_login_with_unverified_company()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'password' => bcrypt('password')
+        ]);
 
-        $response = $this->actingAs($user)->post('/logout');
+        $response = $this->postJson('/api/login', [
+            'email' => $user->email,
+            'password' => 'password'
+        ]);
 
-        $this->assertGuest();
-        $response->assertRedirect('/');
+        $response->assertStatus(403)
+            ->assertJson(['error' => 'Company not verified']);
+    }
+
+    public function test_login_with_invalid_credentials()
+    {
+        $user = User::factory()->verifiedCompany()->create();
+
+        $response = $this->postJson('/api/login', [
+            'email' => $user->email,
+            'password' => 'wrong-password'
+        ]);
+
+        $response->assertStatus(401)
+            ->assertJson(['error' => 'Unauthorized']);
+    }
+
+    public function test_platform_admin_login()
+    {
+        $admin = User::factory()->platformAdmin()->create([
+            'password' => bcrypt('adminpassword')
+        ]);
+
+        $response = $this->postJson('/api/login', [
+            'email' => $admin->email,
+            'password' => 'adminpassword'
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonStructure(['token']);
     }
 }

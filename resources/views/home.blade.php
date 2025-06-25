@@ -24,6 +24,7 @@
         </div>
     </div>
 
+<<<<<<< HEAD
     <!-- 2. Новости -->
     <div class="card shadow-sm mb-5">
         <div class="card-body">
@@ -111,3 +112,6 @@
     </div>
 </div>
 @endsection
+=======
+@endsection
+>>>>>>> 90a9a161f67e404eded77a20f6658a74d9498d47

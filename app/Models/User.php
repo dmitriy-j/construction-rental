@@ -9,17 +9,18 @@ use Illuminate\Notifications\Notifiable;
 use App\Mail\CompanyRegisteredMail;
 use Illuminate\Support\Facades\Mail;
 use App\Models\Company;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
     protected $fillable = [
         'name',
         'email',
         'password',
-        'role',
         'type',
+        'role',
         'company_id',
     ];
 
@@ -32,29 +33,39 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
     ];
 
-    // Методы проверки типа пользователя и ролей
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     public function isStaff(): bool
     {
         return $this->type === 'staff';
     }
 
-    public function isCustomer(): bool
+    public function isTenant(): bool
     {
-        return $this->type === 'customer';
+        return $this->type === 'tenant';
+    }
+
+    public function isLandlord(): bool
+    {
+        return $this->type === 'landlord';
     }
 
     public function isAdmin(): bool
     {
-        return $this->isStaff() && $this->role === 'admin';
+        return $this->type === 'admin' &&
+           in_array($this->role, [
+               'platform_support',
+               'platform_moder',
+               'platform_manager',
+               'platform_super'
+           ]);
     }
 
-    public function hasRole(string $role): bool
+    public function setEmailAttribute($value)
     {
-        return $this->isStaff() && $this->role === $role;
-    }
-
-    public function hasAnyRole(array $roles): bool
-    {
-        return $this->isStaff() && in_array($this->role, $roles);
+        $this->attributes['email'] = strtolower($value);
     }
 }

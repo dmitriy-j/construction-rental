@@ -12,6 +12,12 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
+         // Отключаем интерактивные запросы в миграциях
+        \Illuminate\Console\Application::starting(function ($console) {
+        $console->setInteractive(false);
+
+        });
+
         // Отключаем CSRF-защиту для всех тестов
         $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
     }
