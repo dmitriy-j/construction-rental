@@ -42,14 +42,20 @@ Route::get('/jobs', function () {
 })->name('jobs');
 
 // Маршрут для tenant dashboard
-Route::get('/tenant/dashboard', function () {
-    return 'Dashboard';
-})->name('tenant.dashboard');
+/*Route::get('/tenant/dashboard', function () {
+    return view('tenant.dashboard');
+})->name('tenant.dashboard')->middleware('auth:company');*/
 
 
-// Авторизация для всех пользователей
-Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+// Добавить перед маршрутами регистрации
+Route::get('/company/login', [CompanyAuthController::class, 'showLoginForm'])
+    ->name('company.login.form');
 
+Route::post('/company/login', [CompanyAuthController::class, 'login'])
+    ->name('company.login');
+//Маршрут выхода
+Route::post('/company/logout', [CompanyAuthController::class, 'logout'])
+    ->name('company.logout');
 // Dashboard для арендатора
 Route::get('/tenant/dashboard', function () {
     return view('tenant.dashboard');
@@ -61,6 +67,21 @@ Route::get('/adm/login', [AuthenticatedSessionController::class, 'create'])
 
 Route::post('/adm/login', [AuthenticatedSessionController::class, 'store']);
 
+//временный маршрут подключение к БД
+Route::get('/test-db', function() {
+    try {
+        DB::connection()->getPdo();
+        return response()->json([
+            'status' => 'success',
+            'database' => DB::connection()->getDatabaseName()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+});
 
 
 // Админ-панель компании

@@ -30,15 +30,15 @@
                     <label class="form-label">Тип компании *</label>
                     <div class="form-check">
                         <input class="form-check-input" type="radio" name="type"
-                               id="type_tenant" value="tenant" {{ old('type', 'tenant') == 'tenant' ? 'checked' : '' }}>
-                        <label class="form-check-label" for="type_tenant">
+                               id="type_lessee" value="lessee" {{ old('type', 'lessee') == 'lessee' ? 'checked' : '' }}>
+                        <label class="form-check-label" for="type_lessee">
                             Арендатор (Tenant)
                         </label>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="radio" name="type"
-                               id="type_landlord" value="landlord" {{ old('type') == 'landlord' ? 'checked' : '' }}>
-                        <label class="form-check-label" for="type_landlord">
+                               id="type_lessor" value="lessor" {{ old('type') == 'lessor' ? 'checked' : '' }}>
+                        <label class="form-check-label" for="type_lessor">
                             Арендодатель (Landlord)
                         </label>
                     </div>

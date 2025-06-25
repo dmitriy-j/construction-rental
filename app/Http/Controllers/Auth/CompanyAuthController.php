@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -25,9 +24,13 @@ class CompanyAuthController extends Controller
 
     public function register(Request $request)
     {
+        Log::info('--- НАЧАЛО РЕГИСТРАЦИИ КОМПАНИИ ---');
+        Log::debug('Полученные данные:', $request->all());
+
         DB::beginTransaction();
 
         try {
+            // Валидация данных
             $validator = Validator::make($request->all(), [
                 'type' => ['required', Rule::in(['lessor', 'lessee'])],
                 'legal_name' => 'required|string|max:255',
@@ -35,7 +38,7 @@ class CompanyAuthController extends Controller
                 'inn' => 'required|digits:10',
                 'kpp' => 'required|digits:9',
                 'ogrn' => 'required|digits:13',
-                'okpo' => 'nullable|digits:8',
+                'okpo' => 'nullable|digits:10',
                 'legal_address' => 'required|string|max:500',
                 'same_as_legal' => 'sometimes|boolean',
                 'actual_address' => 'required_if:same_as_legal,false|nullable|string|max:500',
@@ -46,7 +49,7 @@ class CompanyAuthController extends Controller
                 'director_name' => 'required|string|max:255',
                 'phone' => 'required|string|max:20|regex:/^\+?[0-9\s\-\(\)]+$/',
                 'contacts' => 'nullable|string|max:500',
-                'email' => 'required|string|email|max:255|unique:companies,email|unique:users,email',
+                'email' => 'required|string|email|max:255|unique:companies',
                 'password' => ['required', 'confirmed', Password::defaults()],
             ], [
                 'inn.digits' => 'ИНН должен содержать 10 цифр',
@@ -57,18 +60,22 @@ class CompanyAuthController extends Controller
             ]);
 
             if ($validator->fails()) {
+                Log::error('ОШИБКИ ВАЛИДАЦИИ:', $validator->errors()->toArray());
                 return redirect()->back()
                     ->withErrors($validator)
                     ->withInput();
             }
 
             $data = $validator->validated();
+            Log::debug('Данные после валидации:', $data);
 
             if ($request->boolean('same_as_legal')) {
                 $data['actual_address'] = $data['legal_address'];
+                Log::debug('Фактический адрес установлен как юридический');
             }
 
             // Создаем компанию
+            Log::info('Создание компании...');
             $company = Company::create([
                 'type' => $data['type'],
                 'legal_name' => $data['legal_name'],
@@ -91,31 +98,28 @@ class CompanyAuthController extends Controller
                 'status' => 'pending',
             ]);
 
-            // Создаем пользователя (администратора компании)
-            $user = User::create([
-                'name' => $data['director_name'],
-                'email' => $data['email'],
-                'password' => Hash::make($data['password']),
-                'type' => $data['type'] == 'lessor' ? 'landlord' : 'tenant',
-                'role' => 'admin',
-                'company_id' => $company->id,
-            ]);
+            Log::info('Компания успешно создана! ID: ' . $company->id);
 
-            // Отправляем email
-            Mail::to($user->email)->send(new CompanyRegisteredMail($company, $user));
+            // Отправляем email (временно отключим для теста)
+            Log::info('Отправка email...');
+            // Mail::to($company->email)->send(new CompanyRegisteredMail($company));
+            Log::info('Email отправлен!');
 
-            // Авторизуем пользователя
-            Auth::login($user);
+            // Авторизуем компанию
+            Log::info('Авторизация компании...');
+            Auth::guard('company')->login($company);
+            Log::info('Авторизация успешна!');
 
             DB::commit();
+            Log::info('Транзакция завершена успешно!');
 
             return redirect()->route('tenant.dashboard')
                    ->with('success', 'Компания успешно зарегистрирована!');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Ошибка регистрации компании: ' . $e->getMessage());
-            Log::error($e->getTraceAsString());
+            Log::error('КРИТИЧЕСКАЯ ОШИБКА: ' . $e->getMessage());
+            Log::error('Трассировка: ' . $e->getTraceAsString());
 
             return back()->withInput()
                    ->with('error', 'Ошибка при регистрации: ' . $e->getMessage());
