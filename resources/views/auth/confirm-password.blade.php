@@ -1,27 +1,55 @@
-<x-guest-layout>
-    <div class="mb-4 text-sm text-gray-600">
-        {{ __('This is a secure area of the application. Please confirm your password before continuing.') }}
+<x-auth-layout title="Подтверждение пароля">
+    <div class="alert alert-warning mb-4">
+        <i class="bi bi-shield-lock me-2"></i>
+        Это защищенная зона приложения. Пожалуйста, подтвердите ваш пароль.
     </div>
 
     <form method="POST" action="{{ route('password.confirm') }}">
         @csrf
 
         <!-- Password -->
-        <div>
-            <x-input-label for="password" :value="__('Password')" />
-
-            <x-text-input id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="current-password" />
-
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
+        <div class="mb-4">
+            <label for="password" class="form-label">Пароль</label>
+            <div class="input-group">
+                <input id="password" 
+                       type="password"
+                       class="form-control @error('password') is-invalid @enderror"
+                       name="password"
+                       required
+                       autocomplete="current-password"
+                       placeholder="Введите ваш пароль">
+                <button class="btn btn-outline-secondary toggle-password" type="button">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </div>
+            @error('password')
+            <div class="invalid-feedback d-block">
+                <i class="bi bi-exclamation-circle me-1"></i> {{ $message }}
+            </div>
+            @enderror
         </div>
 
-        <div class="flex justify-end mt-4">
-            <x-primary-button>
-                {{ __('Confirm') }}
-            </x-primary-button>
+        <div class="d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary btn-auth">
+                <i class="bi bi-check-circle me-2"></i> Подтвердить
+            </button>
         </div>
     </form>
-</x-guest-layout>
+
+    @section('scripts')
+    <script>
+        document.querySelector('.toggle-password').addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const icon = this.querySelector('i');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.replace('bi-eye', 'bi-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.replace('bi-eye-slash', 'bi-eye');
+            }
+        });
+    </script>
+    @endsection
+</x-auth-layout>

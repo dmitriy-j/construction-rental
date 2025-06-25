@@ -1,31 +1,36 @@
-<x-guest-layout>
-    <div class="mb-4 text-sm text-gray-600">
-        {{ __('Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another.') }}
+<x-auth-layout title="Подтверждение email">
+    <div class="alert alert-info mb-4">
+        <i class="bi bi-envelope-check me-2"></i>
+        Спасибо за регистрацию! Прежде чем начать, подтвердите ваш email, перейдя по ссылке в письме.
+        Если вы не получили письмо, мы с радостью отправим его снова.
     </div>
 
     @if (session('status') == 'verification-link-sent')
-        <div class="mb-4 font-medium text-sm text-green-600">
-            {{ __('A new verification link has been sent to the email address you provided during registration.') }}
+        <div class="alert alert-success mb-4">
+            <i class="bi bi-check-circle me-2"></i>
+            Новое письмо с подтверждением было отправлено на указанный email.
         </div>
     @endif
 
-    <div class="mt-4 flex items-center justify-between">
+    <div class="d-flex justify-content-between align-items-center mt-4">
         <form method="POST" action="{{ route('verification.send') }}">
             @csrf
-
-            <div>
-                <x-primary-button>
-                    {{ __('Resend Verification Email') }}
-                </x-primary-button>
-            </div>
+            <button type="submit" class="btn btn-primary btn-auth">
+                <i class="bi bi-envelope-arrow-up me-2"></i> Отправить письмо повторно
+            </button>
         </form>
 
         <form method="POST" action="{{ route('logout') }}">
             @csrf
-
-            <button type="submit" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                {{ __('Log Out') }}
+            <button type="submit" class="btn btn-outline-secondary">
+                <i class="bi bi-box-arrow-right me-2"></i> Выйти
             </button>
         </form>
     </div>
-</x-guest-layout>
+
+    <div class="text-center mt-5">
+        <img src="https://cdn-icons-png.flaticon.com/512/3178/3178283.png" 
+             alt="Письмо" 
+             style="max-width: 200px; opacity: 0.8;">
+    </div>
+</x-auth-layout>

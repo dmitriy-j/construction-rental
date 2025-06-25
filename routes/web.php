@@ -60,7 +60,8 @@ Route::prefix('admin')->middleware(['auth', 'type:staff', 'role:admin'])->group(
     Route::get('/dashboard', [AdminController::class, 'dashboard']);
 });
 
-// Маршруты регистрации компании
+
+
 Route::get('/register/company', [CompanyRegistrationController::class, 'create'])
     ->name('register.company');
 
@@ -78,8 +79,8 @@ Route::get('/about', fn() => view('pages.about'));
 Route::get('/requests', fn() => view('requests'));
 
 
-Route::post('/register/company', [CompanyRegistrationController::class, 'store'])
-    ->name('register.company.store');
+//Route::post('/register/company', [CompanyRegistrationController::class, 'store'])
+   // ->name('register.company.store');
 
 // Маршруты аутентификации
 Route::middleware('auth')->group(function () {

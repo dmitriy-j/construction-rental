@@ -20,6 +20,11 @@
                     <label class="form-check-label" for="remember">Запомнить меня</label>
                 </div>
                 <button type="submit" class="btn btn-primary">Войти</button>
+                <div class="text-center mt-3">
+    <a href="{{ route('register') }}" class="btn btn-outline-secondary btn-sm">
+      Нет аккаунта? <strong>Зарегистрироваться</strong>
+    </a>
+  </div>
             </form>
         </div>
     </div>
