@@ -30,9 +30,26 @@ Route::get('/tenant/dashboard', function () {
     return 'Dashboard';
 })->name('tenant.dashboard');
 
+
+// Авторизация для всех пользователей
+Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+
+// Dashboard для арендатора
+Route::get('/tenant/dashboard', function () {
+    return view('tenant.dashboard');
+})->name('tenant.dashboard')->middleware(['auth', 'type:tenant']);
+
+// Админ-панель для сотрудников
+Route::prefix('admin')->middleware(['auth', 'type:staff', 'role:admin'])->group(function () {
+    Route::get('/dashboard', [AdminController::class, 'dashboard']);
+});
+
 // Маршруты регистрации компании
 Route::get('/register/company', [CompanyRegistrationController::class, 'create'])
     ->name('register.company');
+
+Route::post('/register/company', [CompanyRegistrationController::class, 'store'])
+    ->name('register.company.store');
 
 Route::get('/test-email', function() {
     $company = Company::first();

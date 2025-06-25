@@ -10,15 +10,16 @@ class NewsFactory extends Factory
 {
     protected $model = News::class;
 
-    public function definition()
+    public function definition(): array
     {
         return [
             'title' => $this->faker->sentence,
             'slug' => $this->faker->slug,
+            'excerpt' => $this->faker->sentence,
             'content' => $this->faker->paragraphs(3, true),
             'publish_date' => now(),
             'is_published' => true,
-            'author_id' => User::factory(),
+            'author_id' => \App\Models\User::factory(),
         ];
     }
 

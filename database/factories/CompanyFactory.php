@@ -14,10 +14,9 @@ class CompanyFactory extends Factory
     {
         return [
             'name' => $this->faker->company,
-            'email' => $this->faker->unique()->companyEmail,
-            'password' => bcrypt('password'),
-            'inn' => $this->faker->numerify('#############'),
-            'ogrn' => $this->faker->numerify('###############'),
+            'type' => $this->faker->randomElement(['landlord', 'tenant']),
+            'inn' => $this->faker->numerify('############'),
+            'ogrn' => $this->faker->numerify('#############'),
             'legal_address' => $this->faker->address,
             'bank_name' => $this->faker->company . ' Bank',
             'bank_account' => $this->faker->bankAccountNumber,
@@ -25,6 +24,7 @@ class CompanyFactory extends Factory
             'correspondent_account' => $this->faker->bankAccountNumber,
             'director' => $this->faker->name,
             'phone' => $this->faker->phoneNumber,
+            'status' => 'pending',
         ];
     }
 }

@@ -8,12 +8,30 @@ use Illuminate\Auth\Access\Response;
 
 class NewsPolicy
 {
+
+
+
+     public function create(User $user): bool
+    {
+        return $user->isAdmin();
+    }
+
+    public function update(User $user, News $news): bool
+    {
+        return $user->isAdmin();
+    }
+
+    public function delete(User $user, News $news): bool
+    {
+        return $user->isAdmin();
+    }
+
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        //
+        return true; // Разрешаем публичный доступ
     }
 
     /**
@@ -27,26 +45,26 @@ class NewsPolicy
     /**
      * Determine whether the user can create models.
      */
-    public function create(User $user): bool
+    /*public function create(User $user): bool
     {
         //
     }
-
+    */
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, News $news): bool
+  /*  public function update(User $user, News $news): bool
     {
         //
     }
-
+*/
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, News $news): bool
+    /*public function delete(User $user, News $news): bool
     {
         //
-    }
+    }*/
 
     /**
      * Determine whether the user can restore the model.

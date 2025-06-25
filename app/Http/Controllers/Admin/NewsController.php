@@ -5,13 +5,23 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\News;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str; // Добавлен импорт
+use Illuminate\Support\Facades\Gate; // Добавлено для авторизации
 
 class NewsController extends Controller
 {
+
+     public function __construct()
+    {
+        $this->authorizeResource(News::class, 'news'); // Добавлена авторизация
+    }
+
     public function index()
     {
-        $news = News::latest()->paginate(10);
-        return view('admin.news.index', compact('news'));
+         return NewsResource::collection(
+        News::published()->paginate(10)
+         );
+
     }
 
     public function create()

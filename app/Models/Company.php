@@ -2,19 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use App\Models\User;
 
-class Company extends Authenticatable
+class Company extends Model
 {
-    use HasFactory, Notifiable; // Добавлен HasFactory
+    use HasFactory;
 
     protected $fillable = [
-        'email',
-        'password',
         'name',
+        'type', // Добавлено: тип компании (landlord/tenant)
         'vat',
         'inn',
         'kpp',
@@ -29,13 +26,15 @@ class Company extends Authenticatable
         'correspondent_account',
         'director',
         'phone',
-        'manager'
+        'manager',
+        'status', // Добавлено: статус верификации
+        'rejection_reason', // Добавлено: причина отклонения
+        'verified_at' // Добавлено: дата верификации
     ];
 
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
+    // Убраны аутентификационные поля
+    // Убрано наследование от Authenticatable
+    // Убраны скрытые поля (password, remember_token)
 
     public function users()
     {

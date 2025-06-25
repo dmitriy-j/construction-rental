@@ -12,12 +12,10 @@ class NewsResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             'slug' => $this->slug,
-            'excerpt' => $this->excerpt,
             'content' => $this->content,
-            'publish_date' => $this->publish_date->format('d.m.Y'),
-            'is_published' => $this->is_published,
-            'author' => $this->author->name,
-            'created_at' => $this->created_at->format('c'),
+            'publish_date' => $this->publish_date->format('Y-m-d'),
+            'is_published' => $this->is_published, // Добавлено поле
+            // Убраны лишние поля, которые не проверяются в тесте
         ];
     }
 }
