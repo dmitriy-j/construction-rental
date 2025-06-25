@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CompanyRegistrationController;
+use App\Http\Controllers\Auth\CompanyAuthController;
 use App\Models\Company;
 use App\Models\User;
 use App\Mail\CompanyRegisteredMail;
@@ -95,12 +95,14 @@ Route::middleware(['auth', 'role:company_admin'])->prefix('company')->group(func
         ->except(['show']);
 });
 
-// Маршруты регистрации компании
-Route::get('/register/company', [CompanyRegistrationController::class, 'create'])
-    ->name('register.company');
 
-Route::post('/register/company', [CompanyRegistrationController::class, 'store'])
-    ->name('register.company.store');
+
+// Регистрация компании
+Route::get('/register/company', [CompanyAuthController::class, 'showRegistrationForm'])
+     ->name('register.company');
+
+Route::post('/register/company', [CompanyAuthController::class, 'register'])
+     ->name('register.company.store');
 
 Route::get('/test-email', function() {
     $company = Company::first();
@@ -113,8 +115,8 @@ Route::get('/about', fn() => view('pages.about'));
 Route::get('/requests', fn() => view('requests'));
 
 
-Route::post('/register/company', [CompanyRegistrationController::class, 'store'])
-    ->name('register.company.store');
+//Route::post('/register/company', [CompanyRegistrationController::class, 'store'])
+   // ->name('register.company.store');
 
 // Маршруты аутентификации
 Route::middleware('auth')->group(function () {
