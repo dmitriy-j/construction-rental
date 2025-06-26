@@ -11,8 +11,16 @@ class DatabaseSeeder extends Seeder
     {
         \App\Models\News::factory(5)->create();
 
+
+          $this->call([
+            CategoriesSeeder::class,
+            LocationsSeeder::class,
+            CompaniesSeeder::class,
+            EquipmentSeeder::class,
+        ]);
+
         // Создаем обычного пользователя-арендатора
-        \App\Models\User::factory()->create([
+        /*\App\Models\User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
             'type' => 'tenant', // Исправлено с 'customer' на допустимое значение
@@ -24,5 +32,6 @@ class DatabaseSeeder extends Seeder
             'name' => 'Admin User',
             'email' => 'admin@example.com',
         ]);
+        */
     }
 }

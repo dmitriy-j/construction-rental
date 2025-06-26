@@ -9,6 +9,8 @@ use App\Mail\CompanyRegisteredMail;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\Admin\NewsController as AdminNewsController;
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Catalog\CatalogController;
+use App\Http\Controllers\Equipment\EquipmentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,9 +27,10 @@ Route::get('/', function () {
     return view('home');
 });
 
-Route::get('/catalog', function () {
-    return view('catalog');
-})->name('catalog');
+// Каталог
+Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog');
+Route::get('/catalog/{equipment}', [CatalogController::class, 'show'])->name('catalog.show');
+
 
 Route::get('/free', function () {
     return view('free');
@@ -56,7 +59,13 @@ Route::post('/company/login', [CompanyAuthController::class, 'login'])
 //Маршрут выхода
 Route::post('/company/logout', [CompanyAuthController::class, 'logout'])
     ->name('company.logout');
-// Dashboard для арендатора
+
+// Личный кабинет арендодателя
+Route::prefix('tenant')->middleware('auth:company')->group(function () {
+    Route::resource('equipment', Tenant\EquipmentController::class);
+});
+
+    // Dashboard для арендатора
 Route::get('/tenant/dashboard', function () {
     return view('tenant.dashboard');
 })->name('tenant.dashboard')->middleware(['auth', 'type:tenant']);
@@ -128,10 +137,15 @@ Route::prefix('adm')
             return view('admin.employee-dashboard');
         })->name('employee.dashboard');
 
+        //Модерация техники
+        Route::prefix('admin')->middleware('auth:admin')->group(function () {
+            Route::get('/equipment/pending', [Admin\EquipmentController::class, 'pending'])->name('admin.equipment.pending');
+            Route::post('/equipment/{equipment}/approve', [Admin\EquipmentController::class, 'approve'])->name('admin.equipment.approve');
+            Route::post('/equipment/{equipment}/reject', [Admin\EquipmentController::class, 'reject'])->name('admin.equipment.reject');
 
 
         // Другие разделы админ-панели...
-
+      });
 });
 Route::middleware(['auth', 'role:company_admin'])->prefix('company')->group(function () {
     Route::resource('employees', \App\Http\Controllers\Admin\EmployeeController::class)
