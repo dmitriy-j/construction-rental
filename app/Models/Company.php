@@ -2,25 +2,19 @@
 
 namespace App\Models;
 
-
-use Illuminate\Auth\Authenticatable;
-use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-
-class Company extends Model implements AuthenticatableContract
+class Company extends Model
 {
-    use HasFactory, Authenticatable; // Используем трейт Authenticatable
+    use HasFactory;
 
     protected $fillable = [
         'type', 'legal_name', 'tax_system', 'inn', 'kpp', 'ogrn', 'okpo',
         'legal_address', 'actual_address', 'bank_name', 'bank_account', 'bik',
-        'correspondent_account', 'director_name', 'phone', 'contacts', 'email', 'password',
+        'correspondent_account', 'director_name', 'phone', 'contacts', 'contact_email',
         'status', 'rejection_reason', 'verified_at'
     ];
-
-    protected $hidden = ['password', 'remember_token'];
 
     public function users()
     {

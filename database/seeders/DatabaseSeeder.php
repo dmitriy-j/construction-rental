@@ -2,36 +2,38 @@
 
 namespace Database\Seeders;
 
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        \App\Models\News::factory(5)->create();
 
 
-          $this->call([
+         // Сначала очищаем таблицы
+        \App\Models\User::truncate();
+        \App\Models\Company::truncate();
+        \App\Models\Admin::truncate();
+        \Spatie\Permission\Models\Role::truncate();
+        \Spatie\Permission\Models\Permission::truncate();
+
+        // 1. Сначала создаем разрешения и роли
+        $this->call(PermissionSeeder::class);
+
+        // 2. Затем создаем компании и пользователей
+        $this->call([
+            CompaniesSeeder::class,
+            UserSeeder::class,
+        ]);
+
+        // 3. Затем остальные данные, которые зависят от компаний/пользователей
+        $this->call([
             CategoriesSeeder::class,
             LocationsSeeder::class,
-            CompaniesSeeder::class,
             EquipmentSeeder::class,
         ]);
 
-        // Создаем обычного пользователя-арендатора
-        /*\App\Models\User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-            'type' => 'tenant', // Исправлено с 'customer' на допустимое значение
-            // 'role' удалено - для обычного пользователя должно быть NULL
-        ]);
-
-        // Дополнительно: создаем администратора
-        \App\Models\User::factory()->admin()->create([
-            'name' => 'Admin User',
-            'email' => 'admin@example.com',
-        ]);
-        */
+        // 4. Новости (не зависят от других данных)
+        \App\Models\News::factory(5)->create();
     }
 }

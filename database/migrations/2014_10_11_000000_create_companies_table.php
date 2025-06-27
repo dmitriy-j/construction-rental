@@ -10,10 +10,10 @@ return new class extends Migration
     {
         Schema::create('companies', function (Blueprint $table) {
             $table->id();
-            $table->enum('type', ['lessor', 'lessee']); // Арендодатель/Арендатор
+            $table->enum('type', ['lessor', 'lessee']);
             $table->string('legal_name');
             $table->enum('tax_system', ['vat', 'no_vat']);
-            $table->string('inn', 12);
+            $table->string('inn', 10);
             $table->string('kpp', 9);
             $table->string('ogrn', 13);
             $table->string('okpo', 10)->nullable();
@@ -24,23 +24,22 @@ return new class extends Migration
             $table->string('bik', 9);
             $table->string('correspondent_account', 20)->nullable();
             $table->string('director_name');
-            $table->string('phone');
+            $table->string('phone', 20);
             $table->text('contacts')->nullable();
-            $table->string('email')->unique();
-            $table->string('password');
-            $table->rememberToken();
+            $table->string('contact_email'); // Изменили с email на contact_email
 
+            // Убрали поля аутентификации
+            // $table->string('password');
+            // $table->rememberToken();
 
-
-            // Добавляем статусы верификации
             $table->enum('status', [
-                'pending',         // Ожидает проверки
-                'verified',        // Проверено и подтверждено
-                'rejected'         // Отклонено
+                'pending',
+                'verified',
+                'rejected'
             ])->default('pending');
 
-            $table->text('rejection_reason')->nullable(); // Причина отклонения
-            $table->timestamp('verified_at')->nullable();  // Дата верификации
+            $table->text('rejection_reason')->nullable();
+            $table->timestamp('verified_at')->nullable();
             $table->timestamps();
         });
     }

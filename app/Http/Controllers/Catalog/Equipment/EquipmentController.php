@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Equipment;
+namespace App\Http\Controllers\Catalog\Equipment\Equipment;
 
 use App\Http\Controllers\Controller;
 use App\Models\Equipment;
