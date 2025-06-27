@@ -40,12 +40,12 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
-    ],
-     'staff' => [
-        'driver' => 'session',
-        'provider' => 'users',
-        ],
 
+     'admin' => [
+        'driver' => 'session',
+        'provider' => 'admins',
+        ],
+     ],
     /*
     |--------------------------------------------------------------------------
     | User Providers
@@ -64,15 +64,16 @@ return [
     */
 
     'providers' => [
+
         'users' => [
             'driver' => 'eloquent',
             'model' => App\Models\User::class,
         ],
 
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
+         'admins' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Admin::class, // Модель для сотрудников
+         ],
     ],
 
     /*

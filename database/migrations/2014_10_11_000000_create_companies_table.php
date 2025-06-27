@@ -10,34 +10,36 @@ return new class extends Migration
     {
         Schema::create('companies', function (Blueprint $table) {
             $table->id();
-            // Убрали email и password - теперь они в таблице users
-            $table->string('name');
-            $table->enum('type', ['landlord', 'tenant']); // Тип юрлица
-            $table->boolean('vat')->default(false);
-            $table->string('inn', 12);
-            $table->string('kpp', 9)->nullable();
-            $table->string('ogrn', 15);
+            $table->enum('type', ['lessor', 'lessee']);
+            $table->string('legal_name');
+            $table->enum('tax_system', ['vat', 'no_vat']);
+            $table->string('inn', 10);
+            $table->string('kpp', 9);
+            $table->string('ogrn', 13);
             $table->string('okpo', 10)->nullable();
-            $table->string('legal_address');
-            $table->string('actual_address')->nullable();
-            $table->boolean('same_address')->default(false);
+            $table->text('legal_address');
+            $table->text('actual_address')->nullable();
             $table->string('bank_name');
             $table->string('bank_account', 20);
             $table->string('bik', 9);
-            $table->string('correspondent_account', 20);
-            $table->string('director');
-            $table->string('phone');
-            $table->string('manager')->nullable();
+            $table->string('correspondent_account', 20)->nullable();
+            $table->string('director_name');
+            $table->string('phone', 20);
+            $table->text('contacts')->nullable();
+            $table->string('contact_email'); // Изменили с email на contact_email
 
-            // Добавляем статусы верификации
+            // Убрали поля аутентификации
+            // $table->string('password');
+            // $table->rememberToken();
+
             $table->enum('status', [
-                'pending',         // Ожидает проверки
-                'verified',        // Проверено и подтверждено
-                'rejected'         // Отклонено
+                'pending',
+                'verified',
+                'rejected'
             ])->default('pending');
 
-            $table->text('rejection_reason')->nullable(); // Причина отклонения
-            $table->timestamp('verified_at')->nullable();  // Дата верификации
+            $table->text('rejection_reason')->nullable();
+            $table->timestamp('verified_at')->nullable();
             $table->timestamps();
         });
     }

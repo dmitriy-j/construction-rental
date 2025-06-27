@@ -1,109 +1,88 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CompanyRegistrationController;
-use App\Models\Company;
-use App\Models\User;
-use App\Mail\CompanyRegisteredMail;
-use App\Http\Controllers\NewsController;
+use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\CompanyEmployeeController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PageController;
-use App\Http\Controllers\Admin\NewsController as AdminNewsController;
+use App\Http\Controllers\Catalog\CatalogController;
+use App\Http\Controllers\Catalog\Equipment\EquipmentController;
+use App\Http\Controllers\Catalog\EquipmentImageController;
+use App\Http\Controllers\Catalog\EquipmentRentalController;
+use App\Http\Controllers\Catalog\EquipmentReviewController;
+use App\Http\Controllers\Catalog\EquipmentFavoriteController;
 
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "web" middleware group. Make something great!
-|
-*/
 
+// Главная страница
 Route::get('/', function () {
     return view('home');
-});
+})->name('home');
 
-Route::get('/catalog', function () {
-    return view('catalog');
-})->name('catalog');
-
-Route::get('/free', function () {
-    return view('free');
-})->name('free');
-
-Route::get('/cooperation', function () {
-    return view('cooperation');
-})->name('cooperation');
-
-Route::get('/jobs', function () {
-    return view('jobs');
-})->name('jobs');
-
-// Маршрут для tenant dashboard
-Route::get('/tenant/dashboard', function () {
-    return 'Dashboard';
-})->name('tenant.dashboard');
-
-
-// Авторизация для всех пользователей
-Route::post('/login', [AuthenticatedSessionController::class, 'store']);
-
-// Dashboard для арендатора
-Route::get('/tenant/dashboard', function () {
-    return view('tenant.dashboard');
-})->name('tenant.dashboard')->middleware(['auth', 'type:tenant']);
-
-// Админ-панель для сотрудников
-Route::prefix('admin')->middleware(['auth', 'type:staff', 'role:admin'])->group(function () {
-    Route::get('/dashboard', [AdminController::class, 'dashboard']);
-});
-
-
-
-Route::get('/register/company', [CompanyRegistrationController::class, 'create'])
-    ->name('register.company');
-
-Route::post('/register/company', [CompanyRegistrationController::class, 'store'])
-    ->name('register.company.store');
-
-Route::get('/test-email', function() {
-    $company = Company::first();
-    $user = User::first();
-    Mail::to($user->email)->send(new CompanyRegisteredMail($company, $user));
-    return "Email sent!";
-});
-
-Route::get('/about', fn() => view('pages.about'));
-Route::get('/requests', fn() => view('requests'));
-
-
-//Route::post('/register/company', [CompanyRegistrationController::class, 'store'])
-   // ->name('register.company.store');
-
-// Маршруты аутентификации
-Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
-
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
-
-// Новости - только просмотр
-Route::get('/news', [NewsController::class, 'index'])->name('news.index');
-Route::get('/news/{news}', [NewsController::class, 'show'])->name('news.show');
+// Каталог
+Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog');
+Route::get('/catalog/{equipment}', [CatalogController::class, 'show'])->name('catalog.show');
 
 // Статические страницы
+Route::get('/free', fn() => view('free'))->name('free');
+Route::get('/cooperation', fn() => view('cooperation'))->name('cooperation');
+Route::get('/jobs', fn() => view('jobs'))->name('jobs');
 Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/contacts', [PageController::class, 'contacts'])->name('contacts');
 
-// Административные маршруты для управления новостями
-Route::prefix('adm')->name('admin.')->middleware(['auth', 'role:admin'])->group(function () {
-    Route::resource('news', AdminNewsController::class)->except(['show']);
-});
+// Регистрация и аутентификация
+Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
+Route::post('/register', [RegisteredUserController::class, 'store'])->name('register.store');
+
+// Личный кабинет компании
+Route::prefix('/company')
+    ->middleware(['auth', 'role:company_admin'])
+    ->group(function () {
+        Route::get('/dashboard', fn() => view('company.dashboard'))->name('company.dashboard');
+        Route::resource('employees', CompanyEmployeeController::class);
+    });
+
+// Админ-панель платформы
+Route::prefix('adm')
+    ->group(function () {
+        // Вход
+        Route::get('/login', [\App\Http\Controllers\Admin\AdminController::class, 'loginForm'])
+            ->name('admin.login.form');
+        Route::post('/login', [\App\Http\Controllers\Admin\AdminController::class, 'login'])
+            ->name('admin.login');
+
+        // Защищенные маршруты
+        Route::middleware('auth:admin')->group(function () {
+            Route::post('/logout', [\App\Http\Controllers\Admin\AdminController::class, 'logout'])
+                ->name('admin.logout');
+
+            Route::get('/dashboard', [\App\Http\Controllers\Admin\AdminController::class, 'dashboard'])
+                ->name('admin.dashboard');
+
+            // Управление сотрудниками платформы
+            Route::resource('employees', \App\Http\Controllers\Admin\EmployeeController::class)
+                ->except(['show']);
+
+            // Управление новостями
+            Route::resource('news', \App\Http\Controllers\Admin\NewsController::class)
+                ->except(['show']);
+
+            // Модерация техники
+           /*  Route::prefix('equipment')->group(function () {
+                Route::get('/pending', [\App\Http\Controllers\Admin\EquipmentController::class, 'pending'])
+                    ->name('admin.equipment.pending');
+                Route::post('/{equipment}/approve', [\App\Http\Controllers\Admin\EquipmentController::class, 'approve'])
+                    ->name('admin.equipment.approve');
+                Route::post('/{equipment}/reject', [\App\Http\Controllers\Admin\EquipmentController::class, 'reject'])
+                    ->name('admin.equipment.reject');
+            });*/
+        });
+    });
+
+// Профиль пользователя
+    Route::middleware('auth')->group(function () {
+        Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+        Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+        Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    });
 
 require __DIR__.'/auth.php';

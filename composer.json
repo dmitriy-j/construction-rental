@@ -8,6 +8,7 @@
         "php": "^8.1",
         "algolia/algoliasearch-client-php": "^4.23",
         "bacon/bacon-qr-code": "^3.0",
+        "diglactic/laravel-breadcrumbs": "^10.0",
         "guzzlehttp/guzzle": "^7.2",
         "laravel/framework": "^10.0",
         "laravel/sanctum": "^3.2",
@@ -16,6 +17,7 @@
         "laravel/ui": "^4.6",
         "owen-it/laravel-auditing": "^13.7",
         "pragmarx/google2fa": "^8.0",
+        "spatie/laravel-medialibrary": "^10.15",
         "spatie/laravel-permission": "^6.20"
     },
     "require-dev": {
