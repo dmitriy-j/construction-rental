@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('content');
             $table->date('publish_date')->default(now());
             $table->boolean('is_published')->default(true);
-            $table->foreignId('author_id')->constrained('users');
+            $table->foreignId('author_id')->constrained('admins');
             $table->timestamps();
             $table->softDeletes();
         });

@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\News;
 use App\Models\User;
+use App\Models\Admin;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class NewsFactory extends Factory
@@ -14,12 +15,12 @@ class NewsFactory extends Factory
     {
         return [
             'title' => $this->faker->sentence,
-            'slug' => $this->faker->slug,
+            'slug' => $this->faker->unique()->slug,
             'excerpt' => $this->faker->sentence,
             'content' => $this->faker->paragraphs(3, true),
             'publish_date' => now(),
             'is_published' => true,
-            'author_id' => \App\Models\User::factory(),
+            'author_id' => Admin::inRandomOrder()->first()->id ?? Admin::factory(),
         ];
     }
 

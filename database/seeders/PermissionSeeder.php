@@ -5,14 +5,14 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Illuminate\Support\Facades\DB;
 
 class PermissionSeeder extends Seeder
 {
     public function run()
     {
-
-        \Spatie\Permission\Models\Permission::truncate();
-        \Spatie\Permission\Models\Role::truncate();
+        // Удаление данных вместо truncate
+        $this->clearPermissionTables();
 
         // Создаем разрешения
         $permissions = [
@@ -33,6 +33,25 @@ class PermissionSeeder extends Seeder
         // Создаем роли и назначаем разрешения
         $this->createPlatformRoles($permissions);
         $this->createCompanyRoles($permissions);
+    }
+
+    private function clearPermissionTables()
+    {
+        $tableNames = config('permission.table_names');
+
+        // Удаление данных в правильном порядке
+        DB::table($tableNames['role_has_permissions'])->delete();
+        DB::table($tableNames['model_has_roles'])->delete();
+        DB::table($tableNames['model_has_permissions'])->delete();
+        DB::table($tableNames['roles'])->delete();
+        DB::table($tableNames['permissions'])->delete();
+
+        // Сброс автоинкремента
+        DB::statement('ALTER TABLE '.$tableNames['role_has_permissions'].' AUTO_INCREMENT = 1');
+        DB::statement('ALTER TABLE '.$tableNames['model_has_roles'].' AUTO_INCREMENT = 1');
+        DB::statement('ALTER TABLE '.$tableNames['model_has_permissions'].' AUTO_INCREMENT = 1');
+        DB::statement('ALTER TABLE '.$tableNames['roles'].' AUTO_INCREMENT = 1');
+        DB::statement('ALTER TABLE '.$tableNames['permissions'].' AUTO_INCREMENT = 1');
     }
 
     private function createPlatformRoles($permissions)

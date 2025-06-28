@@ -45,4 +45,8 @@ class User extends Authenticatable
     {
         $this->attributes['email'] = strtolower($value);
     }
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
 }
