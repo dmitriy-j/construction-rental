@@ -8,6 +8,7 @@
         </div>
     @endif
 
+   
     <div class="card-body">
         <h5 class="card-title">{{ $equipment->title }}</h5>
         <p class="text-muted">{{ $equipment->category->name }}</p>
