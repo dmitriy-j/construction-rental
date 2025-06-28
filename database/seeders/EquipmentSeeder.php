@@ -9,6 +9,7 @@ class EquipmentSeeder extends Seeder
 {
     public function run()
     {
+        // Создаем демо-запись
         Equipment::create([
             'title' => 'Экскаватор JCB',
             'slug' => 'ekskavator-jcb',
@@ -22,5 +23,8 @@ class EquipmentSeeder extends Seeder
             'hours_worked' => 500,
             'is_approved' => true,
         ]);
+
+        // Создаем 49 случайных записей через фабрику
+        Equipment::factory()->count(49)->create();
     }
 }
