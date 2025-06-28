@@ -464,3 +464,27 @@ footer {
         animation-delay: 0.6s;
     }
 }
+
+/* Каталог */
+.tech-card {
+  transition: transform 0.3s;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .card-img-top {
+    height: 200px;
+    object-fit: cover;
+  }
+}
+
+/* Пагинация */
+.pagination {
+  .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+  }
+}
