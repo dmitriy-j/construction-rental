@@ -64,6 +64,12 @@ class DatabaseSeeder extends Seeder
             EquipmentSeeder::class,
         ]);
 
+        // 5. Создаем связанные данные для оборудования
+         $this->call([
+        EquipmentImageSeeder::class, // Изображения
+        RentalTermSeeder::class,     // Условия аренды
+    ]);
+
         // 5. Новости
         \App\Models\News::factory(5)->create();
     }

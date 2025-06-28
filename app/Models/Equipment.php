@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
 
 class Equipment extends Model
 {
@@ -53,7 +56,8 @@ class Equipment extends Model
 
     public function getMainImageAttribute()
     {
-        return $this->images()->where('is_main', true)->first();
+        return $this->images()->where('is_main', true)->first()
+            ?? $this->images()->first();
     }
     public function availabilities()
     {
