@@ -53,4 +53,8 @@ class Equipment extends Model
     {
         return $this->images()->where('is_main', true)->first();
     }
+    public function availabilities()
+    {
+    return $this->hasMany(EquipmentAvailability::class);
+    }
 }

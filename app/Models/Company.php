@@ -20,4 +20,13 @@ class Company extends Model
     {
         return $this->hasMany(User::class);
     }
+    public function lesseeOrders()
+    {
+        return $this->hasMany(Order::class, 'lessee_company_id');
+    }
+
+    public function lessorOrders()
+    {
+        return $this->hasMany(Order::class, 'lessor_company_id');
+    }
 }

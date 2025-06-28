@@ -9,20 +9,22 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up()
-    {
-    Schema::create('audit_logs', function (Blueprint $table) {
-        $table->id();
-        $table->string('event');  // created, updated, deleted
-        $table->morphs('auditable'); // Полиморфная связь
-        $table->json('old_values')->nullable();
-        $table->json('new_values')->nullable();
-        $table->foreignId('user_id')->constrained()->onDelete('cascade');
-        $table->string('ip_address', 45)->nullable();
-        $table->text('user_agent')->nullable();
-        $table->timestamps();
-        });
-    }
+        public function up()
+        {
+            Schema::create('audit_logs', function (Blueprint $table) {
+                $table->id();
+                $table->string('event');
+                $table->morphs('auditable');
+                $table->json('old_values')->nullable();
+                $table->json('new_values')->nullable();
+                $table->foreignId('user_id')
+                    ->constrained()
+                    ->onDelete('cascade'); // Добавлено каскадное удаление
+                $table->string('ip_address', 45)->nullable();
+                $table->text('user_agent')->nullable();
+                $table->timestamps();
+            });
+        }
 
     /**
      * Reverse the migrations.
