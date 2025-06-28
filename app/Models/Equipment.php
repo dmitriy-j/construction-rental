@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 class Equipment extends Model
 {
 
+    use HasFactory;
+
     protected $fillable = [
     'title', 'slug', 'description', 'company_id', 'category_id',
     'location_id', 'brand', 'model', 'year', 'hours_worked',
