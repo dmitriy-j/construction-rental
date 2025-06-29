@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
+use App\Models\DiscountTier;
 
 class CompaniesSeeder extends Seeder
 {
@@ -62,5 +63,17 @@ class CompaniesSeeder extends Seeder
         if (!$user->hasRole('company_admin')) {
             $user->assignRole('company_admin');
         }
+
+        DiscountTier::create([
+            'company_id' => $company->id,
+            'min_turnover' => 0,
+            'discount_percent' => 5
+        ]);
+
+        DiscountTier::create([
+            'company_id' => $company->id,
+            'min_turnover' => 100000,
+            'discount_percent' => 10
+        ]);
     }
 }

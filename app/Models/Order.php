@@ -22,7 +22,13 @@ class Order extends Model
         'start_date',
         'end_date',
         'extension_requested',
-        'requested_end_date'
+        'requested_end_date',
+        'platform_id',
+        'base_amount',
+        'platform_fee',
+        'discount_amount',
+        'lessor_payout',
+        'penalty_amount'
     ];
 
     protected $casts = [
@@ -69,7 +75,10 @@ class Order extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
-
+    public function platform()
+    {
+        return $this->belongsTo(Platform::class);
+    }
     public function cancel()
     {
         // Проверка прав доступа (если нужно)

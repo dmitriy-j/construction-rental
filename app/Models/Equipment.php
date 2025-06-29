@@ -41,7 +41,7 @@ class Equipment extends Model
 
     public function rentalTerms()
     {
-        return $this->hasMany(RentalTerm::class);
+        return $this->hasMany(EquipmentRentalTerm::class);
     }
 
     public function images()

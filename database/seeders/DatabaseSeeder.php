@@ -52,6 +52,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             CompaniesSeeder::class,
             UserSeeder::class,
+            PlatformSeeder::class,
         ]);
 
         // 3. Затем создаем администраторов
@@ -62,13 +63,15 @@ class DatabaseSeeder extends Seeder
             CategoriesSeeder::class,
             LocationsSeeder::class,
             EquipmentSeeder::class,
+            //OrdersSeeder::class,
+            EquipmentAvailabilitySeeder::class,
         ]);
 
         // 5. Создаем связанные данные для оборудования
          $this->call([
-        EquipmentImageSeeder::class, // Изображения
-        RentalTermSeeder::class,     // Условия аренды
-    ]);
+            EquipmentImageSeeder::class, // Изображения
+            EquipmentRentalTermSeeder::class,     // Условия аренды
+        ]);
 
         // 5. Новости
         \App\Models\News::factory(5)->create();

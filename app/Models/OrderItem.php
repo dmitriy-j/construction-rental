@@ -12,8 +12,12 @@ class OrderItem extends Model
         'equipment_id',
         'rental_term_id',
         'quantity',
+        'base_price', // Добавлено
         'price_per_unit',
-        'total_price'
+        'platform_fee', // Добавлено
+        'discount_amount', // Добавлено
+        'total_price',
+        'period_count' // Добавлено
     ];
 
     public function order(): BelongsTo
@@ -28,6 +32,6 @@ class OrderItem extends Model
 
     public function rentalTerm(): BelongsTo
     {
-        return $this->belongsTo(RentalTerm::class);
+        return $this->belongsTo(EquipmentRentalTerm::class, 'rental_term_id');
     }
 }

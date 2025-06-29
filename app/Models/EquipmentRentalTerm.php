@@ -3,52 +3,41 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Model; // Исправленный импорт
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class RentalTerm extends Model
+class EquipmentRentalTerm extends Model
 {
     use HasFactory;
 
-    /**
-     * Поля, доступные для массового заполнения
-     */
     protected $table = 'equipment_rental_terms';
 
-    protected $fillable = [
-        'equipment_id',
-        'period',
-        'price',
-        'currency'
-    ];
-
-    /**
-     * Отношение к оборудованию
-     */
     public function equipment(): BelongsTo
     {
         return $this->belongsTo(Equipment::class);
     }
 
-    /**
-     * Отношение к элементам заказа
-     */
-    public function orderItems()
+    protected $fillable = [
+        'equipment_id',
+        'period',
+        'price',
+        'currency',
+        'delivery_price',
+        'delivery_days',
+        'return_policy'
+    ];
+
+    public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
     }
 
-    /**
-     * Получить форматированную цену
-     */
     public function getFormattedPriceAttribute(): string
     {
         return number_format($this->price, 2, '.', ' ') . ' ' . $this->currency;
     }
 
-    /**
-     * Получить полное описание периода
-     */
     public function getFullPeriodAttribute(): string
     {
         $periods = [

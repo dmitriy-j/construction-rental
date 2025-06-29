@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\Equipment;
 use App\Models\EquipmentAvailability;
 use Carbon\CarbonPeriod;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class EquipmentAvailabilityService
@@ -31,17 +32,22 @@ class EquipmentAvailabilityService
         return true;
     }
 
-    public function isAvailable(Equipment $equipment, $startDate, $endDate): bool
+    public function isAvailable(Equipment $equipment, $start, $end): bool
     {
-        $period = CarbonPeriod::create($startDate, $endDate);
+        $start = Carbon::parse($start);
+        $end = Carbon::parse($end);
 
-        foreach ($period as $date) {
-            $exists = EquipmentAvailability::where('equipment_id', $equipment->id)
-                ->where('date', $date->format('Y-m-d'))
-                ->where('status', 'available')
-                ->exists();
+        // Проверяем по дням
+        $days = $start->diffInDays($end) + 1;
+        for ($i = 0; $i < $days; $i++) {
+            $date = $start->copy()->addDays($i)->format('Y-m-d');
 
-            if (!$exists) {
+            $status = EquipmentAvailability::where('equipment_id', $equipment->id)
+                ->where('date', $date)
+                ->value('status');
+
+            // Если статус 'booked' или 'maintenance' - недоступно
+            if (in_array($status, ['booked', 'maintenance'])) {
                 return false;
             }
         }
@@ -52,23 +58,20 @@ class EquipmentAvailabilityService
     /**
      * Бронирует оборудование на указанный период
      */
-    public function bookEquipment(
-        Equipment $equipment,
-        $startDate,
-        $endDate,
-        ?int $orderId = null,
-        string $status = 'booked'
-    ): void {
-        if (is_string($startDate)) $startDate = \Carbon\Carbon::parse($startDate);
-        if (is_string($endDate)) $endDate = \Carbon\Carbon::parse($endDate);
+    public function bookEquipment(Equipment $equipment, $start, $end, ?int $orderId = null, string $status = 'booked'): void
+    {
+        $start = Carbon::parse($start);
+        $end = Carbon::parse($end);
 
-        $period = \Carbon\CarbonPeriod::create($startDate, $endDate);
+        $days = $start->diffInDays($end);
 
-        foreach ($period as $date) {
-            \App\Models\EquipmentAvailability::updateOrCreate(
+        for ($i = 0; $i <= $days; $i++) {
+            $date = $start->copy()->addDays($i)->format('Y-m-d');
+
+            EquipmentAvailability::updateOrCreate(
                 [
                     'equipment_id' => $equipment->id,
-                    'date' => $date->format('Y-m-d')
+                    'date' => $date
                 ],
                 [
                     'status' => $status,
@@ -92,5 +95,38 @@ class EquipmentAvailabilityService
                     'order_id' => null
                 ]);
         }
+    }
+
+    public function reportDowntime(
+        Equipment $equipment,
+            string $startTime,
+            string $endTime,
+            string $status,
+            bool $customerResponsible = false,
+            float $penaltyAmount = 0,
+            ?string $notes = null,
+            ?int $orderId = null
+    ): EquipmentStatusLog {
+        $log = EquipmentStatusLog::create([
+            'equipment_id' => $equipment->id,
+            'order_id' => $orderId,
+            'status' => $status,
+            'start_time' => $startTime,
+            'end_time' => $endTime,
+            'customer_responsible' => $customerResponsible,
+            'penalty_amount' => $penaltyAmount,
+            'notes' => $notes
+        ]);
+
+        // Если простой связан с заказом и клиент ответственен
+        if ($customerResponsible && $orderId) {
+            $order = Order::find($orderId);
+            $order->update([
+                'total_amount' => $order->total_amount + $penaltyAmount,
+                'penalty_amount' => $order->penalty_amount + $penaltyAmount
+            ]);
+        }
+
+        return $log;
     }
 }

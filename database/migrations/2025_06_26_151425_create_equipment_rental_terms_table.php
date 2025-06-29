@@ -16,6 +16,9 @@ return new class extends Migration
             $table->foreignId('equipment_id')->constrained('equipment');
             $table->string('period'); // час, смена, сутки, месяц
             $table->decimal('price', 10, 2);
+            $table->decimal('delivery_price', 10, 2)->default(0);
+            $table->integer('delivery_days')->default(1); // Срок доставки в днях
+            $table->text('return_policy')->nullable();
             $table->string('currency', 3)->default('RUB');
             $table->timestamps();
         });

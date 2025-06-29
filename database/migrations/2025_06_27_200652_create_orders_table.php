@@ -9,6 +9,11 @@ return new class extends Migration {
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('platform_id')
+                ->nullable()
+                ->constrained('platforms')
+                ->onDelete('set null');
+
             $table->foreignId('lessee_company_id')->constrained('companies')->comment('Арендатор');
             $table->foreignId('lessor_company_id')->constrained('companies')->comment('Арендодатель');
             $table->foreignId('user_id')->constrained()->comment('Ответственный за заказ');
@@ -22,6 +27,14 @@ return new class extends Migration {
             ])->default('pending');
 
             $table->decimal('total_amount', 12, 2);
+            $table->decimal('base_amount', 12, 2)->default(0)->comment('Сумма без наценки');
+            $table->decimal('platform_fee', 12, 2)->default(0)->comment('Наценка платформы');
+            $table->decimal('discount_amount', 12, 2)->default(0)->comment('Скидка для арендатора');
+            $table->decimal('lessor_payout', 12, 2)->default(0)->comment('Сумма к выплате арендодателю');
+
+            // Убрали метод after() - просто добавляем столбец в нужной позиции
+            $table->decimal('penalty_amount', 12, 2)->default(0)->comment('Штрафы за простой или повреждение');
+
             $table->text('notes')->nullable();
             $table->date('start_date');
             $table->date('end_date');

@@ -29,4 +29,14 @@ class Company extends Model
     {
         return $this->hasMany(Order::class, 'lessor_company_id');
     }
+
+    public function platformMarkups()
+    {
+        return $this->morphMany(PlatformMarkup::class, 'markupable');
+    }
+
+    public function getMarkupAttribute()
+    {
+        return $this->platformMarkups()->first();
+    }
 }

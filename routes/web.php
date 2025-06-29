@@ -11,6 +11,8 @@ use App\Http\Controllers\Catalog\EquipmentImageController;
 use App\Http\Controllers\Catalog\EquipmentRentalController;
 use App\Http\Controllers\Catalog\EquipmentReviewController;
 use App\Http\Controllers\Catalog\EquipmentFavoriteController;
+use App\Http\Controllers\OrderController;
+
 
 
 // Главная страница
@@ -40,6 +42,20 @@ Route::prefix('/company')
         Route::get('/dashboard', fn() => view('company.dashboard'))->name('company.dashboard');
         Route::resource('employees', CompanyEmployeeController::class);
     });
+
+// Корзина
+Route::middleware('auth')->group(function () {
+    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+    Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
+    Route::delete('/cart/remove/{item}', [CartController::class, 'remove'])->name('cart.remove');
+    Route::post('/cart/clear', [CartController::class, 'clear'])->name('cart.clear');
+
+    // Оформление заказа
+    Route::post('/checkout', [CheckoutController::class, 'checkout'])->name('checkout');
+});
+
+// Заказы
+Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
 
 // Админ-панель платформы
 Route::prefix('adm')
