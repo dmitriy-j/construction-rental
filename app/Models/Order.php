@@ -6,11 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Order extends Model
 {
     const STATUS_EXTENSION_REQUESTED = 'extension_requested';
-    use SoftDeletes;
+    use SoftDeletes; use HasFactory;
 
     protected $fillable = [
         'lessee_company_id',

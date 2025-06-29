@@ -71,6 +71,7 @@ class DatabaseSeeder extends Seeder
          $this->call([
             EquipmentImageSeeder::class, // Изображения
             EquipmentRentalTermSeeder::class,     // Условия аренды
+            OrderSeeder::class,
         ]);
 
         // 5. Новости
