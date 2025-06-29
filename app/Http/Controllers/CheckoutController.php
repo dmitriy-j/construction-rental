@@ -36,7 +36,8 @@ class CheckoutController extends Controller
         $cart = $this->cartService->getCart();
         $cart->load([
             'items.rentalTerm.equipment.company',
-            'items.rentalTerm.equipment.category'
+            'items.rentalTerm.equipment.category',
+            'items.rentalTerm' // Добавляем загрузку rentalTerm
         ]);
 
         if ($cart->items->isEmpty()) {
@@ -82,7 +83,7 @@ class CheckoutController extends Controller
             return redirect()->back()->with('error', 'Ошибка оформления заказа: ' . $e->getMessage());
         }
 
-        return redirect()->route('orders.index')
+        return redirect()->route('orders.index') // Изменено с orders.show
             ->with('success', 'Заказы успешно оформлены! Создано заказов: ' . count($orders));
     }
 
@@ -141,15 +142,32 @@ class CheckoutController extends Controller
         $equipment = $item->rentalTerm->equipment;
         $rentalTerm = $item->rentalTerm;
 
-        // Учитываем срок доставки: начинаем бронь раньше на delivery_days дней
-        $deliveryStartDate = $startDate->copy()->subDays($rentalTerm->delivery_days);
+         // Получаем количество дней доставки из условия аренды
+        $deliveryDays = $rentalTerm->delivery_days ?? 0; // Используем 0, если не указано
 
-        // Проверяем доступность оборудования
+        // Учитываем срок доставки: начинаем бронь раньше на delivery_days дней
+        $deliveryStartDate = $startDate->copy()->subDays($deliveryDays);
+
+        $days = $deliveryStartDate->diffInDays($endDate) + 1;
+
+        // Логирование параметров
+        \Log::info("Попытка бронирования оборудования", [
+            'equipment_id' => $equipment->id,
+            'start_date' => $deliveryStartDate->format('Y-m-d'),
+            'end_date' => $endDate->format('Y-m-d'),
+            'order_id' => $orderId
+        ]);
+
         if (!$this->availabilityService->isAvailable($equipment, $deliveryStartDate, $endDate)) {
             throw new Exception("Оборудование {$equipment->title} недоступно на выбранные даты с учетом срока доставки.");
         }
 
-        // Бронируем
         $this->availabilityService->bookEquipment($equipment, $deliveryStartDate, $endDate, $orderId, 'booked');
+
+        // Логирование успешного бронирования
+        \Log::info("Оборудование успешно забронировано", [
+            'equipment_id' => $equipment->id,
+            'order_id' => $orderId
+        ]);
     }
 }

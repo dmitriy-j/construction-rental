@@ -39,4 +39,9 @@ class Company extends Model
     {
         return $this->platformMarkups()->first();
     }
+
+    public function __toString()
+    {
+        return $this->legal_name;
+    }
 }

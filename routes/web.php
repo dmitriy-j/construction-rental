@@ -12,6 +12,7 @@ use App\Http\Controllers\Catalog\EquipmentRentalController;
 use App\Http\Controllers\Catalog\EquipmentReviewController;
 use App\Http\Controllers\Catalog\EquipmentFavoriteController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\CheckoutController;
 
 
 
@@ -55,7 +56,8 @@ Route::middleware('auth')->group(function () {
 });
 
 // Заказы
-Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+Route::get('/orders', [CheckoutController::class, 'index'])->name('orders.index');
 
 // Админ-панель платформы
 Route::prefix('adm')

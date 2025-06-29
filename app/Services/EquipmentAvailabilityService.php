@@ -37,9 +37,15 @@ class EquipmentAvailabilityService
         $start = Carbon::parse($start);
         $end = Carbon::parse($end);
 
-        // Проверяем по дням
-        $days = $start->diffInDays($end) + 1;
-        for ($i = 0; $i < $days; $i++) {
+        // Логирование параметров запроса
+        \Log::info("Проверка доступности оборудования", [
+            'equipment_id' => $equipment->id,
+            'start_date' => $start->format('Y-m-d'),
+            'end_date' => $end->format('Y-m-d')
+        ]);
+
+        $days = $start->diffInDays($end);
+        for ($i = 0; $i <= $days; $i++) {
             $date = $start->copy()->addDays($i)->format('Y-m-d');
 
             $status = EquipmentAvailability::where('equipment_id', $equipment->id)
@@ -48,10 +54,16 @@ class EquipmentAvailabilityService
 
             // Если статус 'booked' или 'maintenance' - недоступно
             if (in_array($status, ['booked', 'maintenance'])) {
+                \Log::warning("Оборудование недоступно", [
+                    'equipment_id' => $equipment->id,
+                    'date' => $date,
+                    'status' => $status
+                ]);
                 return false;
             }
         }
 
+        \Log::info("Оборудование доступно", ['equipment_id' => $equipment->id]);
         return true;
     }
 
