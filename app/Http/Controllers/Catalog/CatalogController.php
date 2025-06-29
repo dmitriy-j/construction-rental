@@ -58,6 +58,10 @@ class CatalogController extends Controller
         $equipments = $query->paginate(12);
         $categories = Category::all();
         $locations = Location::all();
+        //добавим eager loading для оптимизации запросов
+        $query = Equipment::query()
+    ->with(['category', 'rentalTerms', 'images', 'company'])
+    ->where('is_approved', true);
 
         return view('catalog.index', compact('equipments', 'categories', 'locations'));
     }
