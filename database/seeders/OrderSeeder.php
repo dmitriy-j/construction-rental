@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use App\Models\Order;
 use App\Models\Platform;
 
+
 class OrderSeeder extends Seeder
 {
     public function run()

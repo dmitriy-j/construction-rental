@@ -29,6 +29,7 @@ return new class extends Migration {
             $table->decimal('total_amount', 12, 2);
             $table->decimal('base_amount', 12, 2)->default(0)->comment('Сумма без наценки');
             $table->decimal('platform_fee', 12, 2)->default(0)->comment('Наценка платформы');
+            $table->decimal('prepayment_amount', 12, 2)->default(0);
             $table->decimal('discount_amount', 12, 2)->default(0)->comment('Скидка для арендатора');
             $table->decimal('lessor_payout', 12, 2)->default(0)->comment('Сумма к выплате арендодателю');
 

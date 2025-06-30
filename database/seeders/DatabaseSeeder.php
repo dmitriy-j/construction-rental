@@ -53,6 +53,7 @@ class DatabaseSeeder extends Seeder
             CompaniesSeeder::class,
             UserSeeder::class,
             PlatformSeeder::class,
+            PlatformMarkupSeeder::class,
         ]);
 
         // 3. Затем создаем администраторов
@@ -63,7 +64,7 @@ class DatabaseSeeder extends Seeder
             CategoriesSeeder::class,
             LocationsSeeder::class,
             EquipmentSeeder::class,
-            //OrdersSeeder::class,
+            PlatformMarkupSeeder::class,
             EquipmentAvailabilitySeeder::class,
         ]);
 

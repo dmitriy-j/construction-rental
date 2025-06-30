@@ -6,6 +6,8 @@ use App\Models\Order;
 use App\Models\Company;
 use App\Models\User;
 use App\Models\Platform;
+use App\Models\Equipment; // Добавляем импорт
+use App\Models\EquipmentRentalTerm; // Добавляем импорт
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class OrderFactory extends Factory
@@ -16,13 +18,13 @@ class OrderFactory extends Factory
     {
         $lessee = Company::where('type', 'lessee')->inRandomOrder()->first();
         $lessor = Company::where('type', 'lessor')->inRandomOrder()->first();
-        $platform = Platform::first(); // Получаем главную платформу
+        $platform = Platform::first();
 
         $startDate = $this->faker->dateTimeBetween('now', '+1 month');
         $endDate = (clone $startDate)->modify('+'.rand(1,14).' days');
 
         return [
-            'platform_id' => $platform->id, // Добавляем platform_id
+            'platform_id' => $platform->id,
             'lessee_company_id' => $lessee->id,
             'lessor_company_id' => $lessor->id,
             'user_id' => User::inRandomOrder()->first()->id,
@@ -31,7 +33,7 @@ class OrderFactory extends Factory
             'platform_fee' => $this->faker->randomFloat(2, 100, 5000),
             'discount_amount' => $this->faker->randomFloat(2, 0, 1000),
             'total_amount' => $this->faker->randomFloat(2, 1500, 55000),
-            'lessor_payout' => $this->faker->randomFloat(2, 1000, 50000), // Добавляем это поле
+            'lessor_payout' => $this->faker->randomFloat(2, 1000, 50000),
             'start_date' => $startDate,
             'end_date' => $endDate,
             'created_at' => $this->faker->dateTimeBetween('-1 year', 'now'),
@@ -41,22 +43,43 @@ class OrderFactory extends Factory
     public function configure()
     {
         return $this->afterCreating(function (Order $order) {
-            // Создаем 1-3 позиции для каждого заказа
-            $itemsCount = rand(1, 3);
+            $pricingService = new \App\Services\PricingService();
 
+            $itemsCount = rand(1, 3);
             for ($i = 0; $i < $itemsCount; $i++) {
+                $equipment = Equipment::with('category')->inRandomOrder()->first();
+                $rentalTerm = EquipmentRentalTerm::inRandomOrder()->first();
+                $periodCount = rand(1, 14);
+
+                $priceData = $pricingService->calculatePrice(
+                    $rentalTerm,
+                    $order->lesseeCompany, // Убедитесь, что это свойство существует
+                    $periodCount
+                );
+
+                $quantity = rand(1, 3);
+
                 $order->items()->create([
-                    'equipment_id' => \App\Models\Equipment::inRandomOrder()->first()->id,
-                    'rental_term_id' => \App\Models\EquipmentRentalTerm::inRandomOrder()->first()->id,
-                    'quantity' => rand(1, 3),
-                    'base_price' => $this->faker->randomFloat(2, 500, 10000),
-                    'price_per_unit' => $this->faker->randomFloat(2, 500, 5000),
-                    'platform_fee' => $this->faker->randomFloat(2, 50, 500),
-                    'discount_amount' => $this->faker->randomFloat(2, 0, 200),
-                    'total_price' => $this->faker->randomFloat(2, 600, 12000),
-                    'period_count' => rand(1, 14),
+                    'equipment_id' => $equipment->id,
+                    'rental_term_id' => $rentalTerm->id,
+                    'quantity' => $quantity,
+                    'base_price' => $priceData['base_price_per_unit'],
+                    'price_per_unit' => $priceData['base_price_per_unit'] + $priceData['platform_fee_per_unit'],
+                    'platform_fee' => $priceData['platform_fee'],
+                    'discount_amount' => $priceData['discount_amount'],
+                    'total_price' => $priceData['final_price'],
+                    'period_count' => $periodCount,
                 ]);
             }
+
+            $order->update([
+                'base_amount' => $order->items->sum(function($item) {
+                    return $item->base_price * $item->quantity * $item->period_count;
+                }),
+                'platform_fee' => $order->items->sum('platform_fee'),
+                'total_amount' => $order->items->sum('total_price'),
+                'lessor_payout' => $order->base_amount - $order->items->sum('discount_amount'),
+            ]);
         });
     }
 }

@@ -2,11 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\UPDPdfGenerator;
 use App\Models\Order;
 use Illuminate\Http\Request;
+use App\Models\Contract;
 
 class OrderController extends Controller
 {
+
+    public function downloadUPDF(Order $order, $type)
+    {
+        $generator = new UPDPdfGenerator();
+
+        return match($type) {
+            'lessor' => $generator->generateForLessor($order),
+            'lessee' => $generator->generateForLessee($order),
+            default => abort(404)
+        };
+    }
+
+
     public function index()
     {
         $orders = Order::where('lessee_company_id', auth()->user()->company_id)
@@ -51,6 +66,8 @@ class OrderController extends Controller
                 return back()->withErrors("Оборудование {$item->equipment->title} недоступно на выбранные даты");
             }
         }
+
+
 
         // Сохраняем запрос на продление
         $order->update([

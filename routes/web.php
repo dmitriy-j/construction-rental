@@ -59,6 +59,10 @@ Route::middleware('auth')->group(function () {
 Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
 Route::get('/orders', [CheckoutController::class, 'index'])->name('orders.index');
 
+//Загрузка УПД
+Route::get('/orders/{order}/upd/{type}', [OrderController::class, 'downloadUPDF']);
+
+
 // Админ-панель платформы
 Route::prefix('adm')
     ->group(function () {
