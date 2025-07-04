@@ -34,6 +34,10 @@ class CompletionActGenerator
             throw new \Exception('No valid work_date found in waybills');
         }
 
+         if (!$order->service_start_date) {
+        throw new \Exception('Service start date not set for order #' . $order->id);
+        }
+
         $act = new CompletionAct([
             'order_id' => $order->id,
             'act_date' => now(),
@@ -44,9 +48,7 @@ class CompletionActGenerator
             'prepayment_amount' => $order->prepayment_amount ?? 0, // Исправлено
         ]);
 
-        if (!$order->service_start_date) {
-        throw new \Exception('Service start date not set for order #' . $order->id);
-        }
+
 
         // Исправленный расчет штрафов
         $act->penalty_amount = self::calculatePenalties($waybills, $contract, $order);

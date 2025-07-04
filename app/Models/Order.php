@@ -12,6 +12,7 @@ use App\Models\DeliveryNote;
 use App\Models\Platform;
 use App\Models\Waybill;
 use App\Models\CompletionAct;
+use Illuminate\Support\Carbon;
 
 class Order extends Model
 {
@@ -27,8 +28,8 @@ class Order extends Model
         'notes',
         'start_date',
         'end_date',
-        'service_start_date' => 'datetime:Y-m-d', // Одинаковый формат
-        'service_end_date' => 'datetime:Y-m-d',   // Одинаковый формат
+        'service_start_date', // Исправлено: убрано приведение типа
+        'service_end_date',   // Исправлено: убрано приведение типа
         'contract_date' => 'date',
         'extension_requested',
         'requested_end_date',
@@ -131,7 +132,9 @@ class Order extends Model
 
     public function setServiceStartDate($date): void
     {
-        $this->update(['service_start_date' => $date]);
+        $this->service_start_date = Carbon::parse($date);
+        $this->save();
+        $this->refresh();
     }
 
     public function cancel()
