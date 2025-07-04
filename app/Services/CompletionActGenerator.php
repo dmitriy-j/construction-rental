@@ -44,6 +44,10 @@ class CompletionActGenerator
             'prepayment_amount' => $order->prepayment_amount ?? 0, // Исправлено
         ]);
 
+        if (!$order->service_start_date) {
+        throw new \Exception('Service start date not set for order #' . $order->id);
+        }
+
         // Исправленный расчет штрафов
         $act->penalty_amount = self::calculatePenalties($waybills, $contract, $order);
 
@@ -62,14 +66,13 @@ class CompletionActGenerator
     private static function calculatePenalties($waybills, $contract, $order)
     {
         $penalty = 0;
-
-        // Добавлена проверка на наличие items
         $hourlyRate = $order->items->first() ? $order->items->first()->price_per_unit : 0;
 
         foreach ($waybills as $waybill) {
             if ($waybill->downtime_cause === 'lessee') {
+                // Исправленная формула (убрано деление на 100)
                 $penalty += $waybill->downtime_hours
-                            * ($contract->penalty_rate / 100)
+                            * $contract->penalty_rate
                             * $hourlyRate;
             }
         }

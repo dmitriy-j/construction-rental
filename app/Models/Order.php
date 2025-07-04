@@ -45,8 +45,8 @@ class Order extends Model
     protected $casts = [
         'start_date' => 'datetime:Y-m-d',
         'end_date' => 'datetime:Y-m-d',
-        'service_start_date' => 'datetime', // Убрать формат
-        'service_end_date' => 'datetime',
+        'service_start_date' => 'date', // Убрать формат
+        'service_end_date' => 'date',
         'requested_end_date' => 'datetime:Y-m-d',
         'contract_date' => 'datetime:Y-m-d',
         'extension_requested' => 'boolean',
@@ -129,6 +129,11 @@ class Order extends Model
         return $this->hasOne(CompletionAct::class);
     }
 
+    public function setServiceStartDate($date): void
+    {
+        $this->update(['service_start_date' => $date]);
+    }
+
     public function cancel()
     {
         // Проверка прав доступа (если нужно)
@@ -145,6 +150,7 @@ class Order extends Model
         app(\App\Services\EquipmentAvailabilityService::class)->releaseBooking($this);
         return $this;
     }
+
     /*public function prepayments()
     {
         return $this->hasMany(Prepayment::class);

@@ -97,7 +97,7 @@ $completionAct = CompletionActGenerator::generate($order);
 
 // 9. Проверяем результаты
 echo "Order ID: ".$order->id."\n";
-echo "Service Period: ".$order->service_start_date->format('d.m.Y')." - ".$completionAct->service_end_date->format('d.m.Y')."\n";
+echo "Service Period: ".$order->service_start_date->format('d.m.Y')." - ".$completionAct->service_end_date->format('d.m.Y')."\n"; - ошибка!!!!!
 echo "Total Hours: ".$completionAct->total_hours."\n";
 echo "Downtime Hours: ".$completionAct->total_downtime."\n";
 echo "Penalty Amount: ".$completionAct->penalty_amount."\n";
