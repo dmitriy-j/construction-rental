@@ -20,24 +20,16 @@ use Illuminate\Validation\Rule;
 
 class RegisteredUserController extends Controller
 {
-    /**
-     * Display the registration view.
-     */
     public function create(): View
     {
         return view('auth.register');
     }
 
-    /**
-     * Handle an incoming registration request.
-     *
-     * @throws \Illuminate\Validation\ValidationException
-     */
     public function store(Request $request): RedirectResponse
     {
         $validatedData = $request->validate([
             // Данные компании
-            'type' => ['required', Rule::in(['lessor', 'lessee'])],
+            'company_type' => ['required', Rule::in(['lessor', 'lessee'])],
             'legal_name' => 'required|string|max:255',
             'tax_system' => ['required', Rule::in(['vat', 'no_vat'])],
             'inn' => 'required|digits:10',
@@ -69,14 +61,14 @@ class RegisteredUserController extends Controller
         DB::beginTransaction();
 
         try {
-            // Обработка адреса
             $actualAddress = $request->same_as_legal
                 ? $request->legal_address
                 : $request->actual_address;
 
             // Создаем компанию
             $company = Company::create([
-                'type' => $validatedData['type'],
+                'is_lessor' => $validatedData['company_type'] === 'lessor',
+                'is_lessee' => $validatedData['company_type'] === 'lessee',
                 'legal_name' => $validatedData['legal_name'],
                 'tax_system' => $validatedData['tax_system'],
                 'inn' => $validatedData['inn'],
@@ -92,28 +84,19 @@ class RegisteredUserController extends Controller
                 'director_name' => $validatedData['director_name'],
                 'phone' => $validatedData['phone'],
                 'contacts' => $validatedData['contacts'] ?? null,
-                'contact_email' => $validatedData['email'], // Используем email пользователя
                 'status' => 'pending'
             ]);
 
-            // Создаем пользователя-администратора
+            // Создаем пользователя
             $user = User::create([
                 'name' => $validatedData['name'],
                 'email' => $validatedData['email'],
                 'phone' => $validatedData['phone'],
                 'password' => Hash::make($validatedData['password']),
                 'company_id' => $company->id,
-                'type' => 'staff',
-                'position' => 'admin'
             ]);
 
-            // Назначаем роль
             $user->assignRole('company_admin');
-
-            // Отправляем письмо
-            /*Mail::to($user->email)->send(
-                new CompanyRegisteredMail($company, $user)
-            );*/
 
             event(new Registered($user));
             Auth::login($user);

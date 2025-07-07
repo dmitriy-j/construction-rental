@@ -13,13 +13,18 @@ use App\Http\Controllers\Catalog\EquipmentReviewController;
 use App\Http\Controllers\Catalog\EquipmentFavoriteController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CheckoutController;
-
-
+use App\Http\Controllers\Lessor\DashboardController as LessorDashboardController;
+use App\Http\Controllers\Lessee\DashboardController as LesseeDashboardController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
 // Главная страница
 Route::get('/', function () {
     return view('home');
 })->name('home');
+
+Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 
 // Каталог
 Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog');
@@ -44,6 +49,26 @@ Route::prefix('/company')
         Route::resource('employees', CompanyEmployeeController::class);
     });
 
+Route::get('/debug/login-test', [\App\Http\Controllers\Auth\DebugAuthController::class, 'loginTest']);
+Route::get('/debug/check-auth', [\App\Http\Controllers\Auth\DebugAuthController::class, 'checkAuth']);
+
+// Для арендодателя
+Route::prefix('lessor')
+    ->middleware(['auth', 'company.verified', 'company.lessor'])->group(function () {
+    Route::get('/dashboard', [LessorDashboardController::class, 'index'])->name('lessor.dashboard');
+    Route::get('/equipment', [LessorDashboardController::class, 'equipment'])->name('lessor.equipment');
+    Route::get('/orders', [LessorDashboardController::class, 'orders'])->name('lessor.orders');
+    Route::get('/documents', [LessorDashboardController::class, 'documents'])->name('lessor.documents');
+});
+
+// Для арендатора
+Route::prefix('lessee')
+    ->middleware(['auth', 'company.verified', 'company.lessee'])->group(function () {
+    Route::get('/dashboard', [LesseeDashboardController::class, 'index'])->name('lessee.dashboard');
+    Route::get('/orders', [LesseeDashboardController::class, 'orders'])->name('lessee.orders');
+    Route::get('/documents', [LesseeDashboardController::class, 'documents'])->name('lessee.documents');
+});
+
 // Корзина
 Route::middleware('auth')->group(function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
@@ -57,11 +82,9 @@ Route::middleware('auth')->group(function () {
 
 // Заказы
 Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
-Route::get('/orders', [CheckoutController::class, 'index'])->name('orders.index');
 
-//Загрузка УПД
+// Загрузка УПД
 Route::get('/orders/{order}/upd/{type}', [OrderController::class, 'downloadUPDF']);
-
 
 // Админ-панель платформы
 Route::prefix('adm')
@@ -87,24 +110,14 @@ Route::prefix('adm')
             // Управление новостями
             Route::resource('news', \App\Http\Controllers\Admin\NewsController::class)
                 ->except(['show']);
-
-            // Модерация техники
-           /*  Route::prefix('equipment')->group(function () {
-                Route::get('/pending', [\App\Http\Controllers\Admin\EquipmentController::class, 'pending'])
-                    ->name('admin.equipment.pending');
-                Route::post('/{equipment}/approve', [\App\Http\Controllers\Admin\EquipmentController::class, 'approve'])
-                    ->name('admin.equipment.approve');
-                Route::post('/{equipment}/reject', [\App\Http\Controllers\Admin\EquipmentController::class, 'reject'])
-                    ->name('admin.equipment.reject');
-            });*/
         });
     });
 
 // Профиль пользователя
-    Route::middleware('auth')->group(function () {
-        Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-        Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-        Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    });
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
 
 require __DIR__.'/auth.php';

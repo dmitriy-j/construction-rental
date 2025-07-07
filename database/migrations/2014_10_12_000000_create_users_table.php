@@ -12,31 +12,15 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('phone')->nullable(); // Добавлено
+            $table->string('phone')->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
 
-            $table->enum('type', [
-                'tenant',       // Арендатор
-                'landlord',     // Арендодатель
-                'admin',        // Администратор платформы
-                'staff'         // Сотрудник компании
-            ])->default('tenant');
-
-            $table->enum('position', [
-                'admin',
-                'manager',
-                'dispatcher',
-                'accountant'
-            ])->nullable();
-
-            $table->enum('role', [
-                'company_admin',    // Админ компании
-                'platform_support', // Поддержка платформы
-                'platform_moder',   // Модератор платформы
-                'platform_manager', // Менеджер платформы
-                'platform_super'    // Суперадмин
-            ])->nullable();
+            // Добавляем поля для админов платформы
+            $table->date('birth_date')->nullable();
+            $table->text('address')->nullable();
+            $table->string('position')->nullable();
+            $table->enum('status', ['active', 'inactive'])->default('active');
 
             $table->foreignId('company_id')->nullable()->constrained()->onDelete('cascade');
             $table->rememberToken();

@@ -3,28 +3,33 @@
 @section('content')
 <div class="container mt-5">
     <!-- 1. Форма входа -->
-    <div class="card shadow-sm mb-5">
-        <div class="card-body">
-            <h2 class="mb-4">Ввод в систему</h2>
-            <form>
-                <div class="mb-3">
-                    <label for="email" class="form-label">Ваш email</label>
-                    <input type="email" class="form-control" id="email">
-                </div>
-                <div class="mb-3">
-                    <label for="password" class="form-label">Пароль</label>
-                    <input type="password" class="form-control" id="password">
-                </div>
-                <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="remember">
-                    <label class="form-check-label" for="remember">Запомнить меня</label>
-                </div>
-                <button type="submit" class="btn btn-primary">Войти</button>
-                <div class="text-center mt-3">
-    <a href="{{ route('register') }}" class="btn btn-outline-secondary btn-sm">
-      Нет аккаунта? <strong>Зарегистрироваться</strong>
-    </a>
-  </div>
+    <!-- Исправленная форма входа -->
+<form method="POST" action="{{ route('login') }}">
+    @csrf <!-- Обязательно для безопасности Laravel -->
+    
+    <div class="mb-3">
+        <label for="email" class="form-label">Ваш email</label>
+        <input type="email" class="form-control" id="email" name="email" required autofocus>
+    </div>
+    
+    <div class="mb-3">
+        <label for="password" class="form-label">Пароль</label>
+        <input type="password" class="form-control" id="password" name="password" required>
+    </div>
+    
+    <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" id="remember" name="remember">
+        <label class="form-check-label" for="remember">Запомнить меня</label>
+    </div>
+    
+    <button type="submit" class="btn btn-primary">Войти</button>
+    
+    <div class="text-center mt-3">
+        <a href="{{ route('register') }}" class="btn btn-outline-secondary btn-sm">
+            Нет аккаунта? <strong>Зарегистрироваться</strong>
+        </a>
+    </div>
+</form>
             </form>
         </div>
     </div>

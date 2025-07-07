@@ -18,8 +18,10 @@ class UserFactory extends Factory
             'email' => $this->faker->unique()->safeEmail,
             'phone' => $this->faker->phoneNumber,
             'password' => bcrypt('password'),
-            'type' => $this->faker->randomElement(['tenant', 'landlord', 'staff']),
-            'position' => $this->faker->randomElement(['admin', 'manager', 'dispatcher', 'accountant']),
+            'birth_date' => $this->faker->optional()->date(),
+            'address' => $this->faker->optional()->address,
+            'position' => $this->faker->optional()->jobTitle,
+            'status' => $this->faker->randomElement(['active', 'inactive']),
             'company_id' => Company::factory(),
         ];
     }
@@ -28,18 +30,19 @@ class UserFactory extends Factory
     public function platformAdmin()
     {
         return $this->state([
-            'type' => 'staff',
-            'position' => 'admin',
+            'birth_date' => $this->faker->date(),
+            'address' => $this->faker->address,
+            'position' => 'Platform Administrator',
             'company_id' => null,
-            'position' => null,
-        ]);
+        ])->afterCreating(function (User $user) {
+            $user->assignRole('platform_super');
+        });
     }
 
     public function companyAdmin()
     {
         return $this->state([
-            'type' => 'staff',
-            'position' => 'admin',
+            'position' => 'Company Administrator',
         ])->afterCreating(function (User $user) {
             $user->assignRole('company_admin');
         });
@@ -48,35 +51,30 @@ class UserFactory extends Factory
     public function manager()
     {
         return $this->state([
-            'type' => 'staff',
-            'position' => 'manager',
-        ]);
+            'position' => 'Manager',
+        ])->afterCreating(function (User $user) {
+            $user->assignRole('lessor_manager');
+        });
     }
 
     public function dispatcher()
     {
         return $this->state([
-            'type' => 'staff',
-            'position' => 'dispatcher',
-        ]);
+            'position' => 'Dispatcher',
+        ])->afterCreating(function (User $user) {
+            $user->assignRole('dispatcher');
+        });
     }
 
     public function accountant()
     {
         return $this->state([
-            'type' => 'staff',
-            'position' => 'accountant',
-        ]);
+            'position' => 'Accountant',
+        ])->afterCreating(function (User $user) {
+            $user->assignRole('accountant');
+        });
     }
 
-    public function verifiedCompany()
-    {
-        return $this->state([
-            'company_id' => Company::factory()->state(['status' => 'verified']),
-        ]);
-    }
-
-    // В UserFactory.php
     public function withRole($roleName)
     {
         return $this->afterCreating(function (User $user) use ($roleName) {

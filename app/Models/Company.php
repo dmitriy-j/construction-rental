@@ -10,10 +10,26 @@ class Company extends Model
     use HasFactory;
 
     protected $fillable = [
-        'type', 'legal_name', 'tax_system', 'inn', 'kpp', 'ogrn', 'okpo',
-        'legal_address', 'actual_address', 'bank_name', 'bank_account', 'bik',
-        'correspondent_account', 'director_name', 'phone', 'contacts', 'contact_email',
-        'status', 'rejection_reason', 'verified_at'
+        'is_lessor',
+        'is_lessee',
+        'legal_name',
+        'tax_system',
+        'inn',
+        'kpp',
+        'ogrn',
+        'okpo',
+        'legal_address',
+        'actual_address',
+        'bank_name',
+        'bank_account',
+        'bik',
+        'correspondent_account',
+        'director_name',
+        'phone',
+        'contacts',
+        'status',
+        'rejection_reason',
+        'verified_at'
     ];
 
     public function users()

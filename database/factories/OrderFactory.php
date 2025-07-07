@@ -16,8 +16,8 @@ class OrderFactory extends Factory
 
     public function definition()
     {
-        $lessee = Company::where('type', 'lessee')->inRandomOrder()->first();
-        $lessor = Company::where('type', 'lessor')->inRandomOrder()->first();
+        $lessee = Company::where('is_lessee', true)->inRandomOrder()->first();
+        $lessor = Company::where('is_lessor', true)->inRandomOrder()->first();
         $platform = Platform::first();
 
         $startDate = $this->faker->dateTimeBetween('now', '+1 month');
@@ -53,7 +53,7 @@ class OrderFactory extends Factory
 
                 $priceData = $pricingService->calculatePrice(
                     $rentalTerm,
-                    $order->lesseeCompany, // Убедитесь, что это свойство существует
+                    $order->lesseeCompany,
                     $periodCount
                 );
 

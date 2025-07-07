@@ -50,7 +50,10 @@ class DatabaseSeeder extends Seeder
 
         // 2. Затем создаем компании и пользователей
         $this->call([
+            RoleSeeder::class,
+            PermissionSeeder::class,
             CompaniesSeeder::class,
+            DiscountTierSeeder::class,
             UserSeeder::class,
             PlatformSeeder::class,
             PlatformMarkupSeeder::class,
@@ -73,9 +76,10 @@ class DatabaseSeeder extends Seeder
             EquipmentImageSeeder::class, // Изображения
             EquipmentRentalTermSeeder::class,     // Условия аренды
             OrderSeeder::class,
+            
         ]);
 
         // 5. Новости
-        \App\Models\News::factory(5)->create();
+       // \App\Models\News::factory(5)->create();
     }
 }

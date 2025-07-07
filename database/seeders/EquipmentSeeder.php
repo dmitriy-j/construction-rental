@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Equipment;
 use App\Models\EquipmentRentalTerm; // Правильный импорт
 use Illuminate\Database\Seeder;
+use App\Models\Specification;
 
 class EquipmentSeeder extends Seeder
 {
@@ -37,12 +38,21 @@ class EquipmentSeeder extends Seeder
         ]);
 
         // Для фабричных записей
-        Equipment::factory()->count(49)
-            ->has(EquipmentRentalTerm::factory()->state([ // Исправлено здесь
+        Equipment::factory()
+        ->count(49)
+        ->has(
+            EquipmentRentalTerm::factory()->state([
                 'period' => 'смена',
                 'price' => rand(10000, 30000),
                 'currency' => 'RUB'
-            ]), 'rentalTerms') // Это должно соответствовать имени отношения в модели Equipment
-            ->create();
-    }
+            ]),
+            'rentalTerms'
+        )
+        ->has(
+            Specification::factory()->count(rand(3, 7)),
+            'specifications'
+        )
+        ->create();
+        }
 }
+

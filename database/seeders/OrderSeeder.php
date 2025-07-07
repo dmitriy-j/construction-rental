@@ -2,9 +2,13 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
+use App\Models\Contract; // Добавьте этот импорт
+use App\Models\DeliveryNote; // Добавьте этот импорт
+use App\Models\Waybill; // Добавьте этот импорт
+use App\Models\CompletionAct; // Добавьте этот импорт
 use App\Models\Order;
 use App\Models\Platform;
+use Illuminate\Database\Seeder;
 
 
 class OrderSeeder extends Seeder
@@ -16,6 +20,24 @@ class OrderSeeder extends Seeder
 
         // Специальные тестовые заказы
         $this->createTestOrders();
+
+        $orders = Order::all();
+    
+        foreach ($orders as $order) {
+            // Contract
+            Contract::factory()->create(['order_id' => $order->id]);
+            
+            // DeliveryNote
+            DeliveryNote::factory()->create(['order_id' => $order->id]);
+            
+            // Waybills (2-5 на заказ)
+            Waybill::factory()->count(rand(2, 5))->create(['order_id' => $order->id]);
+            
+            // CompletionAct (только для завершенных заказов)
+            if ($order->status === 'completed') {
+                CompletionAct::factory()->create(['order_id' => $order->id]);
+            }
+        }
     }
 
     protected function createTestOrders()

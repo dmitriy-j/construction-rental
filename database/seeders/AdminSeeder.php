@@ -2,27 +2,29 @@
 
 namespace Database\Seeders;
 
+use App\Models\User;
 use Illuminate\Database\Seeder;
-use App\Models\Admin;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class AdminSeeder extends Seeder
 {
-    public function run(): void
+    public function run()
     {
-        Admin::create([
+        $admin = User::create([
+            'name' => 'Admin Name',
             'email' => 'admin@example.com',
             'password' => Hash::make('password'),
-            'last_name' => 'Admin',
-            'first_name' => 'Super',
-            'birth_date' => '1980-01-01',
+            'birth_date' => '1990-01-01',
             'address' => 'Admin Address',
-            'phone' => '+1234567890',
-            'position' => 'System Administrator',
+            'position' => 'Platform Administrator',
             'status' => 'active',
         ]);
 
-        // Создаем 5 администраторов через фабрику
-        Admin::factory()->count(5)->create();
+        $admin->assignRole('platform_super');
+        
+        $this->command->info('Администратор платформы создан!');
+        $this->command->info('Email: admin@example.com');
+        $this->command->info('Password: password');
     }
 }

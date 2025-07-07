@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class CompletionAct extends Model
 {
+    use HasFactory;
+    
     protected $fillable = [
         'order_id', 'act_date', 'service_start_date', 'service_end_date', 'total_hours', 'total_downtime',
         'penalty_amount', 'total_amount', 'prepayment_amount',

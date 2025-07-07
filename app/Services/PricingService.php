@@ -8,8 +8,8 @@ use App\Models\EquipmentRentalTerm;
 use App\Models\DiscountTier;
 use App\Models\PlatformMarkup;
 use App\Models\EquipmentCategory;
-use Illuminate\Support\Facades\Cache; // Добавляем этот импорт
-
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class PricingService
 {
@@ -21,12 +21,12 @@ class PricingService
         // Базовая стоимость без наценки
         $basePrice = $term->price * $periodCount;
 
-        // Наценка платформы - используем новую систему
+        // Наценка платформы
         $markup = $this->getPlatformMarkup($term->equipment, $lesseeCompany, $periodCount);
         $platformFee = $this->applyMarkup($basePrice, $markup);
 
-        // Скидка арендатора (если компания указана)
-        $discount = $lesseeCompany
+        // Скидка арендатора
+        $discount = $lesseeCompany && $lesseeCompany->is_lessee
             ? $this->getDiscount($lesseeCompany, $basePrice + $platformFee)
             : 0;
 
@@ -57,18 +57,19 @@ class PricingService
         // Приоритет наценок:
         // 1. Конкретное оборудование
         // 2. Категория оборудования
-        // 3. Компания-арендатор
+        // 3. Компания-арендатор (если это арендатор)
         // 4. Базовая наценка платформы
 
         $markup = $this->findMarkup(Equipment::class, $equipment->id);
-        $source = 'equipment'; // Фиксируем источник
+        $source = 'equipment';
 
         if (!$markup) {
             $markup = $this->findMarkup(EquipmentCategory::class, $equipment->category_id);
             $source = 'category';
         }
 
-        if (!$markup && $lesseeCompany) {
+        // Проверяем, является ли компания арендатором
+        if (!$markup && $lesseeCompany && $lesseeCompany->is_lessee) {
             $markup = $this->findMarkup(Company::class, $lesseeCompany->id);
             $source = 'company';
         }
@@ -78,15 +79,15 @@ class PricingService
             $source = 'default';
         }
 
-        $originalValue = $markup['value']; // Сохраняем оригинальное значение
+        $originalValue = $markup['value'];
 
         // Для фиксированных наценок применяем множитель периода
         if ($markup['type'] === 'fixed') {
             $markup['value'] *= $periodCount;
         }
 
-        // Логирование с безопасным доступом к данным
-        \Log::info('Applied markup', [
+        // Логирование
+        Log::debug('Applied markup', [
             'equipment_id' => $equipment->id,
             'company_id' => $lesseeCompany?->id,
             'source' => $source,
@@ -135,4 +136,4 @@ class PricingService
             ? $price * ($markup['value'] / 100)
             : $markup['value'];
     }
-}
+};

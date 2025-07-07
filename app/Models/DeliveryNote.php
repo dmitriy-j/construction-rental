@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class DeliveryNote extends Model
 {
+    use HasFactory;
+    
     protected $fillable = [
         'order_id', 'delivery_date', 'driver_name',
         'receiver_name', 'receiver_signature_path',

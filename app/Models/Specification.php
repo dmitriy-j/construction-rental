@@ -9,5 +9,12 @@ class Specification extends Model
 {
     use HasFactory;
 
+    protected $table = 'equipment_specifications';
+
     protected $fillable = ['equipment_id', 'key', 'value'];
+    
+    public function equipment()
+    {
+        return $this->belongsTo(Equipment::class);
+    }
 }
