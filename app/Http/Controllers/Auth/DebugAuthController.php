@@ -14,8 +14,8 @@ class DebugAuthController extends Controller
     {
         // Тестовые учетные данные
         $credentials = [
-            'email' => 'admin@stroytech.ru',
-            'password' => '1234' // Замените на реальный
+            'email' => 'shaun.green@example.com',
+            'password' => '123456789' // Замените на реальный
         ];
 
         Log::info('Starting authentication test', $credentials);

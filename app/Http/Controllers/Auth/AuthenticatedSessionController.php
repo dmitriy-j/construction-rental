@@ -20,42 +20,19 @@ class AuthenticatedSessionController extends Controller
         return view('auth.login');
     }
 
-    public function store(Request $request): RedirectResponse
-    {
-        Log::debug('Login attempt', ['email' => $request->email]);
-        
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
-        ]);
+    public function store(Request $request)
+{
+    $credentials = $request->validate([
+        'email' => 'required|email',
+        'password' => 'required',
+    ]);
 
-        if (!Auth::attempt($credentials, $request->boolean('remember'))) {
-            Log::warning('Authentication failed', ['email' => $request->email]);
-            throw ValidationException::withMessages([
-                'email' => __('auth.failed'),
-            ]);
-        }
+    if (Auth::attempt($credentials)) {
+        return redirect()->route('home')->with('success', 'Успешный вход!');
+    }
 
-        $request->session()->regenerate();
-        Log::info('User authenticated', [
-            'user_id' => Auth::id(),
-            'session_id' => session()->getId()
-        ]);
-
-        $user = Auth::user();
-        $company = $user->company;
-
-        // Проверка статуса компании - ДОБАВЛЕНО ВОЗВРАТ РЕДИРЕКТА
-        if ($company && $company->status !== 'verified') {
-            Auth::logout();
-            Log::warning('Company not verified', [
-                'user_id' => $user->id,
-                'company_status' => $company->status
-            ]);
-            return back()->withErrors([ // ВОЗВРАТ ЗДЕСЬ
-                'email' => 'Ваша компания не прошла верификацию'
-            ]);
-        }
+    return back()->withErrors(['email' => 'Неверные данные']);
+}
 
         // Подробное логирование
         Log::debug('User details', [
