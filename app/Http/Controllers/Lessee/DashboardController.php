@@ -34,12 +34,26 @@ class DashboardController extends Controller
             ->get();
 
         return view('lessee.dashboard', compact('stats', 'recentOrders'));
-    }
 
-    public function orders()
+            $upcomingReturns = Order::where('lessee_company_id', $companyId)
+            ->where('status', Order::STATUS_ACTIVE)
+            ->where('end_date', '<=', now()->addDays(3))
+            ->with('lessorCompany')
+            ->limit(5)
+            ->get();
+            
+        return view('lessee.dashboard', compact('stats', 'recentOrders', 'upcomingReturns'));
+        }
+
+    public function orders(Request $request)
     {
+        $status = $request->input('status');
+        
         $orders = Order::with(['lessorCompany', 'items.equipment'])
             ->where('lessee_company_id', Auth::user()->company_id)
+            ->when($status, function ($query, $status) {
+                return $query->where('status', $status);
+            })
             ->latest()
             ->paginate(10);
 

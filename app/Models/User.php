@@ -78,4 +78,26 @@ class User extends Authenticatable
     {
         return $this->hasMany(Order::class);
     }
+
+    public function isLessee(): bool
+    {
+        return $this->role === 'lessee';
+    }
+
+    public function isLessor(): bool
+    {
+        return $this->role === 'lessor';
+    }
+
+    public function cartItemsCount(): int
+    {
+        return $this->cart->items->count() ?? 0;
+    }
+
+    public function notifications()
+    {
+        return $this->morphMany(DatabaseNotification::class, 'notifiable')
+                    ->orderBy('created_at', 'desc');
+    }
+
 }

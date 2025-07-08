@@ -33,7 +33,13 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        return view('lessor.dashboard', compact('stats', 'recentOrders'));
+        $featuredEquipment = Equipment::where('company_id', $companyId)
+        ->where('is_featured', true)
+        ->with(['images', 'category'])
+        ->limit(5)
+        ->get();
+
+    return view('lessor.dashboard', compact('stats', 'recentOrders', 'featuredEquipment'));
     }
 
     public function equipment()
@@ -45,14 +51,19 @@ class DashboardController extends Controller
         return view('lessor.equipment.index', compact('equipment'));
     }
 
-    public function orders()
+    public function orders(Request $request)
     {
-        $orders = Order::with(['lesseeCompany', 'items.equipment'])
-            ->where('lessor_company_id', Auth::user()->company_id)
+        $status = $request->input('status');
+        
+        $orders = Order::with(['lessorCompany', 'items.equipment'])
+            ->where('lessee_company_id', Auth::user()->company_id)
+            ->when($status, function ($query, $status) {
+                return $query->where('status', $status);
+            })
             ->latest()
             ->paginate(10);
 
-        return view('lessor.orders.index', compact('orders'));
+        return view('lessee.orders.index', compact('orders'));
     }
 
     public function documents()

@@ -43,6 +43,10 @@ class OrderController extends Controller
     {
         $this->authorize('cancel', $order);
         $order->cancel();
+
+        // Добавить эту строку:
+        $order->user->notify(new \App\Notifications\OrderStatusChanged($order));
+
         return redirect()->back()->with('success', 'Заказ успешно отменен');
     }
 
