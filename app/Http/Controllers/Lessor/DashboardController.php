@@ -54,18 +54,18 @@ class DashboardController extends Controller
     public function orders(Request $request)
     {
         $status = $request->input('status');
+        $companyId = Auth::user()->company_id;
         
-        $orders = Order::with(['lessorCompany', 'items.equipment'])
-            ->where('lessee_company_id', Auth::user()->company_id)
+        $orders = Order::with(['lesseeCompany', 'items.equipment'])
+            ->where('lessor_company_id', $companyId)
             ->when($status, function ($query, $status) {
                 return $query->where('status', $status);
             })
-            ->latest()
+            ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        return view('lessee.orders.index', compact('orders'));
+        return view('lessor.orders.index', compact('orders'));
     }
-
     public function documents()
     {
         // Логика для документов арендодателя

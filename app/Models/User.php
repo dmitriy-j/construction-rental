@@ -81,12 +81,12 @@ class User extends Authenticatable
 
     public function isLessee(): bool
     {
-        return $this->role === 'lessee';
+        return $this->company->is_lessee;
     }
 
     public function isLessor(): bool
     {
-        return $this->role === 'lessor';
+        return $this->company->is_lessor;
     }
 
     public function cartItemsCount(): int

@@ -8,8 +8,8 @@
         <div class="col-md-3">
             <select class="form-select" onchange="window.location.href = this.value">
                 <option value="{{ route('lessor.orders') }}">Все статусы</option>
-                @foreach(['pending', 'confirmed', 'active', 'completed', 'cancelled', 'extension_requested'] as $status)
-                <option value="{{ route('lessor.orders', ['status' => $status]) }}" 
+                @foreach(\App\Models\Order::statuses() as $status)
+                <option value="{{ route('lessor.orders', ['status' => $status]) }}"
                     {{ request('status') == $status ? 'selected' : '' }}>
                     {{ \App\Models\Order::statusText($status) }}
                 </option>
@@ -20,91 +20,88 @@
 
     <div class="card">
         <div class="card-body">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Арендатор</th>
-                        <th>Сумма</th>
-                        <th>Статус</th>
-                        <th>Дата создания</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($orders as $order)
-                    <tr>
-                        <td>{{ $order->id }}</td>
-                        <td>{{ $order->lesseeCompany->legal_name }}</td>
-                        <td>{{ number_format($order->total_amount, 0) }} ₽</td>
-                        <td>
-                            <span class="badge bg-{{ $order->status_color }}">
-                                {{ $order->status_text }}
-                            </span>
-                        </td>
-                        <td>{{ $order->created_at->format('d.m.Y') }}</td>
-                        <td>
-                            <a href="{{ route('lessor.orders.show', $order) }}" class="btn btn-sm btn-primary">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                            
-                            @if($order->status === \App\Models\Order::STATUS_PENDING)
-                                <form action="{{ route('lessor.orders.updateStatus', $order) }}" method="POST" class="d-inline">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Арендатор</th>
+                            <th>Сумма</th>
+                            <th>Статус</th>
+                            <th>Дата создания</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($orders as $order)
+                        <tr>
+                            <td>{{ $order->id }}</td>
+                            <td>{{ $order->lesseeCompany->legal_name }}</td>
+                            <td>{{ number_format($order->total_amount, 2) }} ₽</td>
+                            <td>
+                                <span class="badge bg-{{ $order->status_color }}">
+                                    {{ $order->status_text }}
+                                </span>
+                            </td>
+                            <td>{{ $order->created_at->format('d.m.Y H:i') }}</td>
+                            <td class="d-flex gap-2">
+                                <a href="{{ route('lessor.orders.show', $order) }}" 
+                                   class="btn btn-sm btn-outline-primary" title="Просмотр">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                
+                                @if($order->status === \App\Models\Order::STATUS_PENDING)
+                                <form action="{{ route('lessor.orders.updateStatus', $order) }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="status" value="confirmed">
-                                    <button class="btn btn-sm btn-success" title="Подтвердить заказ">
+                                    <button class="btn btn-sm btn-success" title="Подтвердить">
                                         <i class="fas fa-check"></i>
                                     </button>
                                 </form>
-                                
-                                <form action="{{ route('lessor.orders.updateStatus', $order) }}" method="POST" class="d-inline">
+
+                                <form action="{{ route('lessor.orders.updateStatus', $order) }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="status" value="cancelled">
-                                    <button class="btn btn-sm btn-danger" title="Отменить заказ">
+                                    <button class="btn btn-sm btn-danger" title="Отменить">
                                         <i class="fas fa-times"></i>
                                     </button>
                                 </form>
-                            @endif
-                            
-                            @if($order->status === \App\Models\Order::STATUS_CONFIRMED)
-                                <form action="{{ route('lessor.orders.markAsActive', $order) }}" method="POST" class="d-inline">
+                                @endif
+
+                                @if($order->status === \App\Models\Order::STATUS_CONFIRMED)
+                                <form action="{{ route('lessor.orders.markActive', $order) }}" method="POST">
                                     @csrf
                                     <button class="btn btn-sm btn-info" title="Начать аренду">
                                         <i class="fas fa-play"></i>
                                     </button>
                                 </form>
-                            @endif
-                            
-                            @if($order->status === \App\Models\Order::STATUS_ACTIVE)
-                                <form action="{{ route('lessor.orders.markAsCompleted', $order) }}" method="POST" class="d-inline">
+                                @endif
+
+                                @if($order->status === \App\Models\Order::STATUS_ACTIVE)
+                                <form action="{{ route('lessor.orders.markCompleted', $order) }}" method="POST">
                                     @csrf
                                     <button class="btn btn-sm btn-success" title="Завершить аренду">
                                         <i class="fas fa-flag-checkered"></i>
                                     </button>
                                 </form>
-                            @endif
-                            
-                            @if($order->status === \App\Models\Order::STATUS_EXTENSION_REQUESTED)
-                                <button class="btn btn-sm btn-warning" data-bs-toggle="modal" 
-                                        data-bs-target="#extensionModal-{{ $order->id }}" title="Обработать продление">
-                                    <i class="fas fa-calendar-plus"></i>
-                                </button>
-                            @endif
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="6" class="text-center">Заказы не найдены</td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                                @endif
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="6" class="text-center py-4">Заказы не найдены</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            
+            @if($orders->hasPages())
+            <div class="card-footer">
+                {{ $orders->links() }}
+            </div>
+            @endif
         </div>
-        @if($orders->hasPages())
-        <div class="card-footer">
-            {{ $orders->links() }}
-        </div>
-        @endif
     </div>
 </div>
 
