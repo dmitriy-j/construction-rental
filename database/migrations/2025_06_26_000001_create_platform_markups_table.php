@@ -14,15 +14,18 @@ return new class extends Migration
         Schema::create('platform_markups', function (Blueprint $table) {
             $table->id();
             $table->foreignId('platform_id')->constrained()->cascadeOnDelete();
-            $table->morphs('markupable');
+
+            // Изменяем morphs() на nullableMorphs()
+            $table->nullableMorphs('markupable');
+
             $table->string('type')->default('fixed')->comment('fixed, percent');
             $table->decimal('value', 10, 2);
             $table->timestamps();
 
-            // Исправленное имя индекса
+            // Обновляем имя индекса
             $table->unique(
                 ['platform_id', 'markupable_id', 'markupable_type'],
-                'idx_platform_markup_unique'
+                'platform_markup_unique'
             );
         });
     }

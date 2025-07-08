@@ -19,3 +19,10 @@ Route::middleware(['auth:sanctum', 'role:admin|editor'])->group(function () {
     Route::put('/news/{news}', [NewsController::class, 'update']);
     Route::delete('/news/{news}', [NewsController::class, 'destroy']);
 });
+
+//Документы
+Route::prefix('documents')->group(function () {
+    Route::post('orders/{order}/delivery-notes', [DocumentController::class, 'createDeliveryNote']);
+    Route::post('orders/{order}/waybills', [DocumentController::class, 'createWaybill']);
+    Route::post('orders/{order}/completion-act', [DocumentController::class, 'generateCompletionAct']);
+});

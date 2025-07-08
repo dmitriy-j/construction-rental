@@ -11,7 +11,6 @@ class PermissionSeeder extends Seeder
 {
     public function run()
     {
-        // Удаление данных вместо truncate
         $this->clearPermissionTables();
 
         // Создаем разрешения
@@ -60,31 +59,26 @@ class PermissionSeeder extends Seeder
         $superAdmin = Role::firstOrCreate(['name' => 'platform_super']);
         $superAdmin->syncPermissions($permissions);
 
-        // Менеджер платформы
-        $manager = Role::firstOrCreate(['name' => 'platform_manager']);
-        $manager->syncPermissions([
+        // Администратор платформы
+        $admin = Role::firstOrCreate(['name' => 'platform_admin']);
+        $admin->syncPermissions([
             'manage users',
             'moderate content',
-            'view reports'
-        ]);
-
-        // Модератор платформы
-        $moderator = Role::firstOrCreate(['name' => 'platform_moder']);
-        $moderator->syncPermissions([
-            'moderate content',
-            'view reports'
+            'view reports',
+            'manage platform settings'
         ]);
 
         // Техподдержка
         $support = Role::firstOrCreate(['name' => 'platform_support']);
         $support->syncPermissions([
-            'view reports'
+            'view reports',
+            'moderate content'
         ]);
     }
 
     private function createCompanyRoles($permissions)
     {
-        // Администратор компании - большинство прав
+        // Администратор компании
         $companyAdmin = Role::firstOrCreate(['name' => 'company_admin']);
         $companyAdmin->syncPermissions([
             'manage users',
@@ -95,10 +89,17 @@ class PermissionSeeder extends Seeder
             'manage company settings'
         ]);
 
-        // Менеджер компании
-        $manager = Role::firstOrCreate(['name' => 'manager']);
-        $manager->syncPermissions([
+        // Менеджер арендодателя
+        $lessorManager = Role::firstOrCreate(['name' => 'lessor_manager']);
+        $lessorManager->syncPermissions([
             'manage equipment',
+            'manage orders',
+            'view reports'
+        ]);
+
+        // Менеджер арендатора
+        $lesseeManager = Role::firstOrCreate(['name' => 'lessee_manager']);
+        $lesseeManager->syncPermissions([
             'manage orders',
             'view reports'
         ]);
@@ -106,8 +107,7 @@ class PermissionSeeder extends Seeder
         // Диспетчер
         $dispatcher = Role::firstOrCreate(['name' => 'dispatcher']);
         $dispatcher->syncPermissions([
-            'manage orders',
-            'view reports'
+            'manage orders'
         ]);
 
         // Бухгалтер

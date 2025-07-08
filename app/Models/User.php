@@ -20,8 +20,10 @@ class User extends Authenticatable
         'email',
         'phone',
         'password',
-        'type',
+        'birth_date',
+        'address',
         'position',
+        'status',
         'company_id',
     ];
 
@@ -32,6 +34,7 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'birth_date' => 'date',
     ];
 
     public function company()
@@ -39,6 +42,16 @@ class User extends Authenticatable
         return $this->belongsTo(Company::class);
     }
 
+    // Проверка ролей платформы
+    public function isPlatformAdmin(): bool
+    {
+        return $this->hasRole([
+            'platform_super', 
+            'platform_admin',
+            'platform_support'
+        ]);
+    }
+    
     public function isCompanyAdmin(): bool
     {
         return $this->hasRole('company_admin');
@@ -54,13 +67,13 @@ class User extends Authenticatable
         return $this->hasOne(Cart::class);
     }
 
-    // Автоматическое создание корзины при создании пользователя
     protected static function booted(): void
     {
         static::created(function ($user) {
             $user->cart()->create();
         });
     }
+    
     public function orders()
     {
         return $this->hasMany(Order::class);

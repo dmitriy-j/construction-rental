@@ -6,11 +6,18 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Contract;
+use App\Models\DeliveryNote;
+use App\Models\Platform;
+use App\Models\Waybill;
+use App\Models\CompletionAct;
+use Illuminate\Support\Carbon;
 
 class Order extends Model
 {
     const STATUS_EXTENSION_REQUESTED = 'extension_requested';
-    use SoftDeletes;
+    use SoftDeletes; use HasFactory;
 
     protected $fillable = [
         'lessee_company_id',
@@ -21,6 +28,9 @@ class Order extends Model
         'notes',
         'start_date',
         'end_date',
+        'service_start_date', // Исправлено: убрано приведение типа
+        'service_end_date',   // Исправлено: убрано приведение типа
+        'contract_date' => 'date',
         'extension_requested',
         'requested_end_date',
         'platform_id',
@@ -28,14 +38,20 @@ class Order extends Model
         'platform_fee',
         'discount_amount',
         'lessor_payout',
+        'prepayment_amount', // Добавьте это поле
         'penalty_amount'
+
     ];
 
     protected $casts = [
         'start_date' => 'datetime:Y-m-d',
         'end_date' => 'datetime:Y-m-d',
+        'service_start_date' => 'date', // Убрать формат
+        'service_end_date' => 'date',
         'requested_end_date' => 'datetime:Y-m-d',
-        'extension_requested' => 'boolean'
+        'contract_date' => 'datetime:Y-m-d',
+        'extension_requested' => 'boolean',
+        'prepayment_amount' => 'decimal:2'
     ];
 
     const STATUS_PENDING = 'pending';
@@ -79,6 +95,48 @@ class Order extends Model
     {
         return $this->belongsTo(Platform::class);
     }
+
+     public function contract()
+    {
+        return $this->hasOne(Contract::class);
+    }
+
+    public function canGenerateCompletionAct()
+    {
+        // Проверка условий для генерации акта:
+        // 1. Заказ в активном или завершенном статусе
+        // 2. Имеется дата начала услуг
+        // 3. Имеются путевые листы
+        // 4. Акт еще не создан
+
+        return in_array($this->status, ['active', 'completed'])
+            && $this->service_start_date
+            && $this->waybills()->exists()
+            && !$this->completionAct;
+    }
+
+    public function deliveryNote()
+    {
+        return $this->hasOne(DeliveryNote::class);
+    }
+
+    public function waybills()
+    {
+        return $this->hasMany(Waybill::class);
+    }
+
+    public function completionAct()
+    {
+        return $this->hasOne(CompletionAct::class);
+    }
+
+    public function setServiceStartDate($date): void
+    {
+        $this->service_start_date = Carbon::parse($date);
+        $this->save();
+        $this->refresh();
+    }
+
     public function cancel()
     {
         // Проверка прав доступа (если нужно)
@@ -95,4 +153,11 @@ class Order extends Model
         app(\App\Services\EquipmentAvailabilityService::class)->releaseBooking($this);
         return $this;
     }
+
+    /*public function prepayments()
+    {
+        return $this->hasMany(Prepayment::class);
+    }*/
+
+
 }

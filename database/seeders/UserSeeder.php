@@ -17,14 +17,14 @@ class UserSeeder extends Seeder
             'name' => 'Platform Admin',
             'email' => 'admin@platform.ru',
             'password' => Hash::make('password'),
-            'type' => 'admin',
-            'role' => 'platform_super',
-            'position' => null,
+            'birth_date' => '1985-01-01',
+            'address' => 'Platform Headquarters',
+            'position' => 'Platform Administrator',
+            'status' => 'active',
             'company_id' => null,
         ]);
 
-        $adminRole = Role::firstOrCreate(['name' => 'platform_super']);
-        $admin->assignRole($adminRole);
+        $admin->assignRole('platform_super');
 
         // Создаем несколько пользователей компаний
         User::factory()
@@ -47,7 +47,7 @@ class UserSeeder extends Seeder
             ->accountant()
             ->create();
 
-        // Создаем пользователей без компаний (для тестов)
+        // Создаем пользователей без компаний
         User::factory()
             ->count(3)
             ->state(['company_id' => null])

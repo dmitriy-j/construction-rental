@@ -13,6 +13,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Exception;
+use App\Models\Contract;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\EquipmentBooking;
 
 class CheckoutController extends Controller
 {

@@ -11,24 +11,27 @@ class CompanyFactory extends Factory
 
     public function definition()
     {
+        $isLessor = $this->faker->boolean;
+        $isLessee = !$isLessor || $this->faker->boolean(30); // 30% шанс быть и тем и другим
+        
         return [
-            'type' => $this->faker->randomElement(['lessor', 'lessee']),
+            'is_lessor' => $isLessor,
+            'is_lessee' => $isLessee,
             'legal_name' => $this->faker->company,
             'tax_system' => $this->faker->randomElement(['vat', 'no_vat']),
-            'inn' => $this->faker->numerify('##########'), // 10 цифр
-            'kpp' => $this->faker->numerify('#########'),  // 9 цифр
-            'ogrn' => $this->faker->numerify('#############'), // 13 цифр
-            'okpo' => $this->faker->numerify('##########'), // 10 цифр
+            'inn' => $this->faker->numerify('##########'),
+            'kpp' => $this->faker->numerify('#########'),
+            'ogrn' => $this->faker->numerify('#############'),
+            'okpo' => $this->faker->numerify('##########'),
             'legal_address' => $this->faker->address,
             'actual_address' => $this->faker->address,
             'bank_name' => $this->faker->company . ' Bank',
-            'bank_account' => $this->faker->numerify('####################'), // 20 символов
-            'bik' => $this->faker->numerify('#########'), // 9 цифр
-            'correspondent_account' => $this->faker->numerify('####################'), // 20 символов
+            'bank_account' => $this->faker->numerify('####################'),
+            'bik' => $this->faker->numerify('#########'),
+            'correspondent_account' => $this->faker->numerify('####################'),
             'director_name' => $this->faker->name,
             'phone' => $this->faker->phoneNumber,
             'contacts' => $this->faker->name . ', ' . $this->faker->phoneNumber,
-            'contact_email' => $this->faker->unique()->safeEmail, // Исправлено на contact_email
             'status' => $this->faker->randomElement(['pending', 'verified', 'rejected']),
             'rejection_reason' => $this->faker->optional(0.3)->sentence,
             'verified_at' => $this->faker->optional(0.7)->dateTimeThisYear,
