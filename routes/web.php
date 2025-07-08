@@ -96,6 +96,12 @@ Route::prefix('adm')
         });
     });
 
+    // Личный кабинет (защищён auth и ролями)
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/tenant-dashboard', fn() => view('tenant'))->name('tenant.dashboard')->middleware('role:tenant');
+    Route::get('/landlord-dashboard', fn() => view('landlord'))->name('landlord.dashboard')->middleware('role:landlord');
+});
+
 // Профиль пользователя
     Route::middleware('auth')->group(function () {
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

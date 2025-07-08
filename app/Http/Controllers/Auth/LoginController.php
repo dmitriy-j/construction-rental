@@ -20,6 +20,16 @@ class LoginController extends Controller
 
     use AuthenticatesUsers;
 
+    protected function redirectTo()
+{
+    if (auth()->user()->hasRole('tenant')) {
+        return route('tenant.dashboard');
+    } elseif (auth()->user()->hasRole('landlord')) {
+        return route('landlord.dashboard');
+    }
+    return '/home'; // fallback
+}
+
     /**
      * Where to redirect users after login.
      *
