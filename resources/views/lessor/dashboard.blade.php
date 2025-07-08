@@ -58,7 +58,11 @@
                         <td>{{ $order->id }}</td>
                         <td>{{ $order->lesseeCompany->legal_name }}</td>
                         <td>{{ number_format($order->total_amount, 0) }} ₽</td>
-                        <td>{{ $order->status }}</td>
+                        <td>
+                            <span class="badge bg-{{ $order->status_color }}">
+                                {{ $order->status_text }}
+                            </span>
+                        </td>
                         <td>{{ $order->created_at->format('d.m.Y') }}</td>
                     </tr>
                     @endforeach
@@ -66,5 +70,35 @@
             </table>
         </div>
     </div>
+    
+    @if($featuredEquipment->isNotEmpty())
+    <div class="card mb-4">
+        <div class="card-header">Рекомендуемое оборудование</div>
+        <div class="card-body">
+            <div class="row">
+                @foreach($featuredEquipment as $equipment)
+                <div class="col-md-3 mb-3">
+                    <div class="card h-100">
+                        @if($equipment->mainImage)
+                        <img src="{{ Storage::url($equipment->mainImage->path) }}" 
+                             class="card-img-top" 
+                             alt="{{ $equipment->title }}"
+                             style="height: 150px; object-fit: cover;">
+                        @endif
+                        <div class="card-body">
+                            <h5 class="card-title">{{ $equipment->title }}</h5>
+                            <p class="card-text">{{ $equipment->category->name }}</p>
+                            <a href="{{ route('catalog.show', $equipment) }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                Подробнее
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
 </div>
 @endsection

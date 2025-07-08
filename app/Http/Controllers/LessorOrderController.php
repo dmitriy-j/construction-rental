@@ -44,6 +44,8 @@ class LessorOrderController extends Controller
             app(EquipmentAvailabilityService::class)->releaseBooking($order);
         }
 
+        $order->user->notify(new \App\Notifications\OrderStatusChanged($order));
+
         return back()->with('success', 'Статус заказа обновлен');
     }
 

@@ -2,27 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\Platform;
-use App\Models\Cart;
 use App\Services\CartService;
 use App\Services\EquipmentAvailabilityService;
 use App\Services\PricingService;
+use App\Models\Order;
+use App\Models\Platform;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 use Exception;
-use App\Models\Contract;
-use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\EquipmentBooking;
+use Carbon\Carbon;
 
 class CheckoutController extends Controller
 {
-    protected CartService $cartService;
-    protected EquipmentAvailabilityService $availabilityService;
-    protected PricingService $pricingService;
+    protected $cartService;
+    protected $availabilityService;
+    protected $pricingService;
 
     public function __construct(
         CartService $cartService,
@@ -41,7 +35,7 @@ class CheckoutController extends Controller
         $cart->load([
             'items.rentalTerm.equipment.company',
             'items.rentalTerm.equipment.category',
-            'items.rentalTerm' // Добавляем загрузку rentalTerm
+            'items.rentalTerm'
         ]);
 
         if ($cart->items->isEmpty()) {
@@ -87,11 +81,11 @@ class CheckoutController extends Controller
             return redirect()->back()->with('error', 'Ошибка оформления заказа: ' . $e->getMessage());
         }
 
-        return redirect()->route('orders.index') // Изменено с orders.show
+        return redirect()->route('lessee.orders.index')
             ->with('success', 'Заказы успешно оформлены! Создано заказов: ' . count($orders));
     }
 
-    protected function createOrder($companyId, $items, Cart $cart, $startDate, $endDate)
+    protected function createOrder($companyId, $items, $cart, $startDate, $endDate)
     {
         // Рассчитываем суммы для заказа
         $baseAmount = $items->sum(function ($item) {
@@ -125,9 +119,9 @@ class CheckoutController extends Controller
         ]);
     }
 
-    protected function createOrderItem(Order $order, $item)
+    protected function createOrderItem($order, $item)
     {
-        OrderItem::create([
+        \App\Models\OrderItem::create([
             'order_id' => $order->id,
             'equipment_id' => $item->rentalTerm->equipment_id,
             'rental_term_id' => $item->rental_term_id,
@@ -135,7 +129,7 @@ class CheckoutController extends Controller
             'base_price' => $item->base_price,
             'platform_fee' => $item->platform_fee,
             'price_per_unit' => $item->base_price,
-            'total_price' => $item->total,
+            'total_price' => $item->base_price * $item->period_count,
             'quantity' => 1,
             'discount_amount' => 0
         ]);
@@ -146,13 +140,11 @@ class CheckoutController extends Controller
         $equipment = $item->rentalTerm->equipment;
         $rentalTerm = $item->rentalTerm;
 
-         // Получаем количество дней доставки из условия аренды
-        $deliveryDays = $rentalTerm->delivery_days ?? 0; // Используем 0, если не указано
+        // Получаем количество дней доставки из условия аренды
+        $deliveryDays = $rentalTerm->delivery_days ?? 0;
 
         // Учитываем срок доставки: начинаем бронь раньше на delivery_days дней
         $deliveryStartDate = $startDate->copy()->subDays($deliveryDays);
-
-        $days = $deliveryStartDate->diffInDays($endDate) + 1;
 
         // Логирование параметров
         \Log::info("Попытка бронирования оборудования", [

@@ -53,4 +53,56 @@ class DocumentController extends Controller
 
         return response()->json($act, 201);
     }
+
+    public function index(Request $request)
+    {
+        $user = auth()->user();
+        $type = $request->query('type', 'contracts');
+        
+        $query = match($type) {
+            'contracts' => Contract::query(),
+            'waybills' => Waybill::query(),
+            'delivery_notes' => DeliveryNote::query(),
+            'completion_acts' => CompletionAct::query(),
+        };
+
+        if ($user->isLessee()) {
+            $query->whereHas('order', fn($q) => $q->where('lessee_company_id', $user->company_id));
+        } else {
+            $query->whereHas('order', fn($q) => $q->where('lessor_company_id', $user->company_id));
+        }
+
+        $documents = $query->with(['order.lesseeCompany', 'order.lessorCompany'])
+                        ->paginate(10);
+
+        return view("{$user->role}.documents.index", [
+            'documents' => $documents,
+            'type' => $type
+        ]);
+    }
+
+    public function download($id, $type)
+    {
+        $document = match($type) {
+            'contracts' => Contract::findOrFail($id),
+            'waybills' => Waybill::findOrFail($id),
+            'delivery_notes' => DeliveryNote::findOrFail($id),
+            'completion_acts' => CompletionAct::findOrFail($id),
+        };
+
+        // Проверка прав доступа
+        if (auth()->user()->cannot('view', $document)) {
+            abort(403);
+        }
+
+        $generatorClass = match($type) {
+            'contracts' => ContractPdfGenerator::class,
+            'waybills' => WaybillPdfGenerator::class,
+            'delivery_notes' => DeliveryNoteGenerator::class,
+            'completion_acts' => CompletionActGenerator::class,
+        };
+
+        return app($generatorClass)->generate($document);
+    }
+
 }

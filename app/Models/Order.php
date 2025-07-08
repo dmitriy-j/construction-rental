@@ -154,6 +154,32 @@ class Order extends Model
         return $this;
     }
 
+    public function getStatusColorAttribute(): string
+    {
+        return match($this->status) {
+            self::STATUS_PENDING => 'warning',
+            self::STATUS_CONFIRMED => 'info',
+            self::STATUS_ACTIVE => 'primary',
+            self::STATUS_COMPLETED => 'success',
+            self::STATUS_CANCELLED => 'danger',
+            self::STATUS_EXTENSION_REQUESTED => 'secondary',
+            default => 'light',
+        };
+    }
+
+    public function getStatusTextAttribute(): string
+    {
+        return match($this->status) {
+            self::STATUS_PENDING => 'Ожидает подтверждения',
+            self::STATUS_CONFIRMED => 'Подтвержден',
+            self::STATUS_ACTIVE => 'Активен',
+            self::STATUS_COMPLETED => 'Завершен',
+            self::STATUS_CANCELLED => 'Отменен',
+            self::STATUS_EXTENSION_REQUESTED => 'Запрос продления',
+            default => $this->status,
+        };
+    }
+
     /*public function prepayments()
     {
         return $this->hasMany(Prepayment::class);

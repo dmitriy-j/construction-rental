@@ -56,9 +56,13 @@
                     @foreach($recentOrders as $order)
                     <tr>
                         <td>{{ $order->id }}</td>
-                        <td>{{ $order->lessorCompany->legal_name }}</td> <!-- Исправлено здесь -->
+                        <td>{{ $order->lessorCompany->legal_name }}</td>
                         <td>{{ number_format($order->total_amount, 0) }} ₽</td>
-                        <td>{{ $order->status }}</td>
+                        <td>
+                            <span class="badge bg-{{ $order->status_color }}">
+                                {{ $order->status_text }}
+                            </span>
+                        </td>
                         <td>{{ $order->created_at->format('d.m.Y') }}</td>
                     </tr>
                     @endforeach
@@ -66,5 +70,41 @@
             </table>
         </div>
     </div>
+    
+    @if($upcomingReturns->isNotEmpty())
+    <div class="card mb-4">
+        <div class="card-header">Ближайшие возвраты</div>
+        <div class="card-body">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Оборудование</th>
+                        <th>Арендодатель</th>
+                        <th>Дата возврата</th>
+                        <th>Статус</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($upcomingReturns as $order)
+                    <tr>
+                        <td>
+                            @foreach($order->items as $item)
+                                {{ $item->equipment->title }}<br>
+                            @endforeach
+                        </td>
+                        <td>{{ $order->lessorCompany->legal_name }}</td>
+                        <td>{{ $order->end_date->format('d.m.Y') }}</td>
+                        <td>
+                            <span class="badge bg-{{ $order->status_color }}">
+                                {{ $order->status_text }}
+                            </span>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
 </div>
 @endsection
