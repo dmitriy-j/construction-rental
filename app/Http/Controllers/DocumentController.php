@@ -3,6 +3,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Contract; // Добавьте эту строку
+use App\Models\Waybill; // Добавьте эту строку
+use App\Models\DeliveryNote; // Добавьте эту строку
+use App\Models\CompletionAct; // Добавьте эту строку
 
 class DocumentController extends Controller
 {
@@ -75,9 +79,12 @@ class DocumentController extends Controller
         $documents = $query->with(['order.lesseeCompany', 'order.lessorCompany'])
                         ->paginate(10);
 
-        return view("{$user->role}.documents.index", [
+        // Определяем тип пользователя для выбора правильной папки шаблонов
+        $userType = $user->company->is_lessor ? 'lessor' : 'lessee';
+        return view("{$userType}.documents.index", [
             'documents' => $documents,
-            'type' => $type
+            'type' => $type,
+            'userType' => $userType // Добавим для использования в шаблоне
         ]);
     }
 

@@ -8,7 +8,7 @@
     <link rel="dns-prefetch" href="//fonts.bunny.net">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
     <link href="https://fonts.bunny.net/css?family=Nunito" rel="stylesheet">
-    @vite(['resources/sass/app.scss', 'resources/js/app.js'])
+    @vite(['resources/sass/app.scss', 'resources/js/app.js', 'resources/css/sidebar.css'])
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         .navbar-nav .nav-link {
@@ -26,11 +26,21 @@
 <body>
     <div id="app">
         @include('components.navbar')
-
-        <main class="py-4">
-            @yield('content')
-        </main>
-      
+        
+        <div class="container-fluid">
+            <div class="row">
+                <!-- Сайдбар -->
+                <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+                    @include('partials.sidebar')
+                </div>
+                
+                <!-- Основной контент -->
+                <div class="col-md-9 col-lg-10 ml-sm-auto px-4 py-4">
+                    @yield('content')
+                </div>
+            </div>
+        </div>
+        
         @include('components.footer')
     </div>
 </body>

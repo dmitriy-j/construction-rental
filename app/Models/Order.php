@@ -16,8 +16,15 @@ use Illuminate\Support\Carbon;
 
 class Order extends Model
 {
+    use SoftDeletes, HasFactory;
+
+    // Константы статусов
+    const STATUS_PENDING = 'pending';
+    const STATUS_CONFIRMED = 'confirmed';
+    const STATUS_ACTIVE = 'active'; // Исправлено: добавлена буква T
+    const STATUS_COMPLETED = 'completed';
+    const STATUS_CANCELLED = 'cancelled';
     const STATUS_EXTENSION_REQUESTED = 'extension_requested';
-    use SoftDeletes; use HasFactory;
 
     protected $fillable = [
         'lessee_company_id',
@@ -28,9 +35,9 @@ class Order extends Model
         'notes',
         'start_date',
         'end_date',
-        'service_start_date', // Исправлено: убрано приведение типа
-        'service_end_date',   // Исправлено: убрано приведение типа
-        'contract_date' => 'date',
+        'service_start_date',
+        'service_end_date',
+        'contract_date', // Исправлено: убрано приведение типа
         'extension_requested',
         'requested_end_date',
         'platform_id',
@@ -38,27 +45,20 @@ class Order extends Model
         'platform_fee',
         'discount_amount',
         'lessor_payout',
-        'prepayment_amount', // Добавьте это поле
+        'prepayment_amount',
         'penalty_amount'
-
     ];
 
     protected $casts = [
-        'start_date' => 'datetime:Y-m-d',
-        'end_date' => 'datetime:Y-m-d',
-        'service_start_date' => 'date', // Убрать формат
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
+        'service_start_date' => 'date',
         'service_end_date' => 'date',
-        'requested_end_date' => 'datetime:Y-m-d',
-        'contract_date' => 'datetime:Y-m-d',
+        'requested_end_date' => 'datetime',
+        'contract_date' => 'datetime',
         'extension_requested' => 'boolean',
         'prepayment_amount' => 'decimal:2'
     ];
-
-    const STATUS_PENDING = 'pending';
-    const STATUS_CONFIRMED = 'confirmed';
-    const STATUS_ACTIVE = 'active';
-    const STATUS_COMPLETED = 'completed';
-    const STATUS_CANCELLED = 'cancelled';
 
     public static function statuses(): array
     {
@@ -70,6 +70,20 @@ class Order extends Model
             self::STATUS_CANCELLED,
             self::STATUS_EXTENSION_REQUESTED,
         ];
+    }
+
+    // Добавлен статический метод для получения текста статуса
+    public static function statusText(string $status): string
+    {
+        return match($status) {
+            self::STATUS_PENDING => 'Ожидает подтверждения',
+            self::STATUS_CONFIRMED => 'Подтвержден',
+            self::STATUS_ACTIVE => 'Активен',
+            self::STATUS_COMPLETED => 'Завершен',
+            self::STATUS_CANCELLED => 'Отменен',
+            self::STATUS_EXTENSION_REQUESTED => 'Запрос продления',
+            default => $status,
+        };
     }
 
     public function lesseeCompany(): BelongsTo
@@ -91,24 +105,19 @@ class Order extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
+
     public function platform()
     {
         return $this->belongsTo(Platform::class);
     }
 
-     public function contract()
+    public function contract()
     {
         return $this->hasOne(Contract::class);
     }
 
     public function canGenerateCompletionAct()
     {
-        // Проверка условий для генерации акта:
-        // 1. Заказ в активном или завершенном статусе
-        // 2. Имеется дата начала услуг
-        // 3. Имеются путевые листы
-        // 4. Акт еще не создан
-
         return in_array($this->status, ['active', 'completed'])
             && $this->service_start_date
             && $this->waybills()->exists()
@@ -139,15 +148,10 @@ class Order extends Model
 
     public function cancel()
     {
-        // Проверка прав доступа (если нужно)
-    // if ($this->user_id !== auth()->id() && !auth()->user()->hasRole('admin')) {
-    //     abort(403);
-    // }
-
         $allowedStatuses = [self::STATUS_PENDING, self::STATUS_CONFIRMED];
         if (!in_array($this->status, $allowedStatuses)) {
-        throw new \Exception('Невозможно отменить заказ в текущем статусе');
-    }
+            throw new \Exception('Невозможно отменить заказ в текущем статусе');
+        }
 
         $this->update(['status' => self::STATUS_CANCELLED]);
         app(\App\Services\EquipmentAvailabilityService::class)->releaseBooking($this);
@@ -169,21 +173,6 @@ class Order extends Model
 
     public function getStatusTextAttribute(): string
     {
-        return match($this->status) {
-            self::STATUS_PENDING => 'Ожидает подтверждения',
-            self::STATUS_CONFIRMED => 'Подтвержден',
-            self::STATUS_ACTIVE => 'Активен',
-            self::STATUS_COMPLETED => 'Завершен',
-            self::STATUS_CANCELLED => 'Отменен',
-            self::STATUS_EXTENSION_REQUESTED => 'Запрос продления',
-            default => $this->status,
-        };
+        return self::statusText($this->status); // Использование единого метода
     }
-
-    /*public function prepayments()
-    {
-        return $this->hasMany(Prepayment::class);
-    }*/
-
-
 }
