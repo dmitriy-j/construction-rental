@@ -11,7 +11,7 @@ class DashboardController extends Controller
     public function index()
     {
         $companyId = Auth::user()->company_id;
-        
+
         $stats = [
             'active_orders' => Order::where('lessee_company_id', $companyId)
                                 ->where('status', 'active')
@@ -33,22 +33,24 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        return view('lessee.dashboard', compact('stats', 'recentOrders'));
-
-            $upcomingReturns = Order::where('lessee_company_id', $companyId)
+        $upcomingReturns = Order::where('lessee_company_id', $companyId)
             ->where('status', Order::STATUS_ACTIVE)
             ->where('end_date', '<=', now()->addDays(3))
             ->with('lessorCompany')
             ->limit(5)
             ->get();
-            
-        return view('lessee.dashboard', compact('stats', 'recentOrders', 'upcomingReturns'));
-        }
+
+        return view('lessee.dashboard', compact(
+            'stats',
+            'recentOrders',
+            'upcomingReturns'
+        ));
+    }
 
     public function orders(Request $request)
     {
         $status = $request->input('status');
-        
+
         $orders = Order::with(['lessorCompany', 'items.equipment'])
             ->where('lessee_company_id', Auth::user()->company_id)
             ->when($status, function ($query, $status) {

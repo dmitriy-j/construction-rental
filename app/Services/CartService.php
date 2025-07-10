@@ -15,7 +15,7 @@ class CartService
         return Cart::firstOrCreate(['user_id' => Auth::id()]);
     }
 
-    public function addItem($rentalTermId, $periodCount, $basePrice, $platformFee)
+    public function addItem($rentalTermId, $periodCount, $basePrice, $platformFee, $startDate = null, $endDate = null)
     {
         $cart = $this->getCart();
 
@@ -27,7 +27,9 @@ class CartService
             [
                 'period_count' => $periodCount,
                 'base_price' => $basePrice,
-                'platform_fee' => $platformFee
+                'platform_fee' => $platformFee,
+                'start_date' => $startDate ? Carbon::parse($startDate) : null,
+                'end_date' => $endDate ? Carbon::parse($endDate) : null,
             ]
         );
 
@@ -48,6 +50,26 @@ class CartService
             'start_date' => Carbon::parse($startDate),
             'end_date' => Carbon::parse($endDate)
         ]);
+
+        // Обновляем даты для всех элементов корзины
+        foreach ($cart->items as $item) {
+            $item->update([
+                'start_date' => Carbon::parse($startDate),
+                'end_date' => Carbon::parse($endDate)
+            ]);
+        }
+
+        // Пересчитываем периоды для всех элементов
+        foreach ($cart->items as $item) {
+            $periodCount = $item->rentalTerm->calculatePeriodCount(
+                $startDate,
+                $endDate
+            );
+
+            $item->update(['period_count' => $periodCount]);
+        }
+
+        $this->recalculateTotals($cart);
     }
 
     public function recalculateTotals(Cart $cart)
@@ -64,6 +86,32 @@ class CartService
 
         $cart->discount_amount = 0; // Рассчитывается при оформлении
         $cart->save();
+    }
+
+    public function updateDates(Request $request)
+    {
+        $request->validate([
+            'start_date' => 'required|date|after:now',
+            'end_date' => 'required|date|after:start_date'
+        ]);
+
+        $startDate = Carbon::parse($request->start_date);
+        $endDate = Carbon::parse($request->end_date);
+
+        $cart = $this->getCart();
+        $cart->update([
+            'start_date' => $startDate,
+            'end_date' => $endDate
+        ]);
+
+        foreach ($cart->items as $item) {
+            $item->update([
+                'start_date' => $startDate,
+                'end_date' => $endDate
+            ]);
+        }
+
+        return back()->with('success', 'Даты аренды обновлены');
     }
 
     public function clearCart()

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model; // Исправленный импорт
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Carbon\Carbon;
 
 class EquipmentRentalTerm extends Model
 {
@@ -48,5 +49,25 @@ class EquipmentRentalTerm extends Model
         ];
 
         return $periods[$this->period] ?? $this->period;
+    }
+
+    public function calculatePeriodCount($start, $end): int
+    {
+        $start = Carbon::parse($start);
+        $end = Carbon::parse($end);
+
+        switch ($this->period) {
+            case 'час':
+                return $start->diffInHours($end);
+            case 'смена':
+                // Предположим, что смена = 8 часов
+                return ceil($start->diffInHours($end) / 8);
+            case 'сутки':
+                return $start->diffInDays($end);
+            case 'месяц':
+                return $start->diffInMonths($end);
+            default:
+                return $start->diffInDays($end);
+        }
     }
 }

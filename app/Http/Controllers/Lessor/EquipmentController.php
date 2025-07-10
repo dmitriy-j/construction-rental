@@ -11,6 +11,8 @@ use App\Models\EquipmentImage;
 use App\Http\Requests\Catalog\StoreEquipmentRequest;
 use App\Http\Requests\Catalog\UpdateEquipmentRequest;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB; // Добавлено
+use Illuminate\Support\Facades\Log; // Добавлено
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -44,35 +46,56 @@ class EquipmentController extends Controller
 
     public function store(StoreEquipmentRequest $request)
     {
-        $equipment = Equipment::create([
-            'title' => $request->title,
-            'slug' => Str::slug($request->title),
-            'description' => $request->description,
-            'company_id' => auth()->user()->company_id,
-            'category_id' => $request->category_id,
-            'location_id' => $request->location_id,
-            'brand' => $request->brand,
-            'model' => $request->model,
-            'year' => $request->year,
-            'hours_worked' => $request->hours_worked,
-            'is_approved' => false,
-        ]);
+        try {
+            DB::beginTransaction();
 
-        // Создаем тарифы
-        $this->createRentalTerms($equipment, $request);
+            // Генерируем уникальный slug
+            $slug = Str::slug($request->title);
+            $counter = 1;
 
-        // Обработка изображений
-        if ($request->hasFile('images')) {
-            foreach ($request->images as $key => $image) {
-                $path = $image->store('public/equipment');
-                $equipment->images()->create([
-                    'path' => str_replace('public/', '', $path),
-                    'is_main' => $key === 0
-                ]);
+            while (Equipment::where('slug', $slug)->exists()) {
+                $slug = Str::slug($request->title) . '-' . $counter;
+                $counter++;
             }
-        }
 
-        return redirect()->route('lessor.equipment.index');
+            $equipment = Equipment::create([
+                'title' => $request->title,
+                'slug' => $slug,
+                'description' => $request->description,
+                'company_id' => auth()->user()->company_id,
+                'category_id' => $request->category_id,
+                'location_id' => $request->location_id,
+                'brand' => $request->brand,
+                'model' => $request->model,
+                'year' => (int)$request->year,
+                'hours_worked' => (float)$request->hours_worked,
+                'is_approved' => false,
+            ]);
+
+            // Создаем тарифы
+            $this->createRentalTerms($equipment, $request);
+
+            // Обработка изображений
+            if ($request->hasFile('images')) {
+                foreach ($request->images as $key => $image) {
+                    $path = $image->store('public/equipment');
+                    $equipment->images()->create([
+                        'path' => str_replace('public/', '', $path),
+                        'is_main' => $key === 0
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('lessor.equipment.show', $equipment);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            // Используем встроенный логгер Laravel
+            logger()->error('Ошибка при создании техники: ' . $e->getMessage());
+            return back()->withInput()->withErrors(['error' => 'Ошибка при сохранении: ' . $e->getMessage()]);
+        }
     }
 
     public function show(Equipment $equipment)
@@ -188,7 +211,8 @@ class EquipmentController extends Controller
         ];
 
         foreach ($periods as $period => $field) {
-            if ($request->filled($field)) {
+            // Более надежная проверка для числовых полей
+            if ($request->has($field) && $request->$field !== '' && $request->$field !== null) {
                 $equipment->rentalTerms()->create([
                     'period' => $period,
                     'price' => $request->$field,

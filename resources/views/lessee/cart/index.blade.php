@@ -1,26 +1,26 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container">
+<div class="container py-5">
     <h1>Корзина</h1>
-    
+
     @if($cart->items->isEmpty())
         <div class="alert alert-info">Ваша корзина пуста</div>
     @else
-        <form action="{{ route('lessee.cart.updateDates') }}" method="POST">
+        <form action="{{ route('cart.update-dates') }}" method="POST">
             @csrf
             <div class="row mb-4">
                 <div class="col-md-4">
                     <label>Дата начала аренды</label>
-                    <input type="date" name="start_date" 
-                           value="{{ $cart->start_date->format('Y-m-d') }}" 
-                           class="form-control">
+                    <input type="date" name="start_date"
+                           value="{{ $cart->start_date ? $cart->start_date->format('Y-m-d') : now()->format('Y-m-d') }}"
+                           class="form-control" required>
                 </div>
                 <div class="col-md-4">
                     <label>Дата окончания</label>
-                    <input type="date" name="end_date" 
-                           value="{{ $cart->end_date->format('Y-m-d') }}" 
-                           class="form-control">
+                    <input type="date" name="end_date"
+                           value="{{ $cart->end_date ? $cart->end_date->format('Y-m-d') : now()->addDays(1)->format('Y-m-d') }}"
+                           class="form-control" required>
                 </div>
                 <div class="col-md-4 align-self-end">
                     <button type="submit" class="btn btn-primary">Обновить даты</button>
@@ -34,41 +34,78 @@
                     <thead>
                         <tr>
                             <th>Оборудование</th>
-                            <th>Период</th>
-                            <th>Кол-во</th>
-                            <th>Цена/ед.</th>
-                            <th>Сбор</th>
+                            <th>Период аренды</th>
+                            <th>Даты аренды</th>
+                            <th>Кол-во периодов</th>
+                            <th>Цена за период</th>
+                            <th>Комиссия платформы</th>
                             <th>Итого</th>
-                            <th></th>
+                            <th>Действия</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($cart->items as $item)
-                        <tr>
-                            <td>{{ $item->rentalTerm->equipment->title }}</td>
-                            <td>{{ $item->rentalTerm->full_period }}</td>
-                            <td>{{ $item->period_count }}</td>
-                            <td>{{ number_format($item->base_price, 2) }} ₽</td>
-                            <td>{{ number_format($item->platform_fee, 2) }} ₽</td>
-                            <td>{{ number_format($item->total, 2) }} ₽</td>
-                            <td>
-                                <form action="{{ route('lessee.cart.remove', $item->id) }}" method="POST">
-                                    @csrf @method('DELETE')
-                                    <button class="btn btn-sm btn-danger">×</button>
-                                </form>
-                            </td>
-                        </tr>
+                            <tr>
+                                <td>
+                                    <a href="{{ route('catalog.show', $item->rentalTerm->equipment) }}">
+                                        {{ $item->rentalTerm->equipment->title }}
+                                    </a>
+                                </td>
+                                <td>{{ $item->rentalTerm->period }}</td>
+                                <td>
+                                    @if($item->start_date && $item->end_date)
+                                        {{ $item->start_date->format('d.m.Y') }} -
+                                        {{ $item->end_date->format('d.m.Y') }}
+                                    @else
+                                        <span class="text-danger">Даты не указаны</span>
+                                    @endif
+                                </td>
+                                <td>{{ $item->period_count }}</td>
+                                <td>{{ number_format($item->base_price, 2) }} ₽</td>
+                                <td>{{ number_format($item->platform_fee, 2) }} ₽</td>
+                                <td>{{ number_format($item->base_price * $item->period_count, 2) }} ₽</td>
+                                <td>
+                                    <form action="{{ route('cart.remove', $item->id) }}" method="POST">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-danger btn-sm">
+                                            <i class="bi bi-trash"></i> Удалить
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
                         @endforeach
                     </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="5"></td>
+                            <td><strong>Итого:</strong></td>
+                            <td colspan="2">
+                                <strong>{{ number_format($total, 2) }} ₽</strong>
+                            </td
+                    <tfoot>
+                        <tr>
+                            <td colspan="5"></td>
+                            <td><strong>Итого:</strong></td>
+                            <td colspan="2">
+                                <strong>{{ number_format($total, 2) }} ₽</strong>
+                            </td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
-            <div class="card-footer d-flex justify-content-between">
-                <div class="h4">Общая сумма: {{ number_format($total, 2) }} ₽</div>
-                <form action="{{ route('lessee.checkout') }}" method="POST">
-                    @csrf
-                    <button type="submit" class="btn btn-success">Оформить заказ</button>
-                </form>
-            </div>
+        </div>
+
+        <div class="d-flex justify-content-between mt-4">
+            <a href="{{ route('catalog.index') }}" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-left"></i> Продолжить выбор
+            </a>
+            <form action="{{ route('checkout') }}" method="POST">
+                @csrf
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="bi bi-check-circle"></i> Оформить заказ
+                </button>
+            </form>
         </div>
     @endif
 </div>

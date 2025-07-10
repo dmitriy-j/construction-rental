@@ -6,6 +6,7 @@ use App\Services\CartService;
 use App\Models\EquipmentRentalTerm;
 use Illuminate\Http\Request;
 use App\Services\PricingService;
+use App\Services\EquipmentAvailabilityService; // Добавлен импорт
 
 class CartController extends Controller
 {
@@ -20,7 +21,7 @@ class CartController extends Controller
     {
         $cart = $this->cartService->getCart();
         $cart->load('items.rentalTerm.equipment');
-        
+
         return view('lessee.cart.index', [
             'cart' => $cart,
             'total' => $cart->total_base_amount + $cart->total_platform_fee - $cart->discount_amount
@@ -30,22 +31,55 @@ class CartController extends Controller
     public function add(EquipmentRentalTerm $rentalTerm, Request $request)
     {
         $request->validate([
-            'period_count' => 'required|integer|min:1',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date'
         ]);
 
+        // Проверяем аутентификацию
+        if (!auth()->check()) {
+            return redirect()->route('login')->with('error', 'Пожалуйста, войдите в систему');
+        }
+
+        if (!auth()->user()->company) {
+            return back()->with('error', 'Ваш профиль не привязан к компании');
+        }
+
+        // Рассчитываем количество периодов
+        $periodCount = $rentalTerm->calculatePeriodCount(
+            $request->start_date,
+            $request->end_date
+        );
+
+        // Проверяем минимальный период аренды
+        if ($periodCount < 1) {
+            return back()->with('error', 'Минимальный период аренды: 1 ' . $rentalTerm->period);
+        }
+
+        // Проверка доступности оборудования
+        $availabilityService = app(EquipmentAvailabilityService::class); // Исправленный вызов
+        if (!$availabilityService->isAvailable(
+            $rentalTerm->equipment,
+            $request->start_date,
+            $request->end_date
+        )) {
+            return back()->withErrors([
+                'availability' => 'Оборудование недоступно на выбранные даты'
+            ]);
+        }
+
         $pricing = app(PricingService::class)->calculatePrice(
             $rentalTerm,
             auth()->user()->company,
-            $request->period_count
+            $periodCount
         );
 
         $this->cartService->addItem(
             $rentalTerm->id,
-            $request->period_count,
+            $periodCount,
             $pricing['base_price_per_unit'],
-            $pricing['platform_fee_per_unit']
+            $pricing['platform_fee_per_unit'],
+            $request->start_date,
+            $request->end_date
         );
 
         return back()->with('success', 'Оборудование добавлено в корзину');

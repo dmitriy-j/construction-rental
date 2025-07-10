@@ -50,6 +50,12 @@ class Cart extends Model
     /**
      * Устанавливает даты аренды для корзины
      */
+
+    protected $casts = [
+    'start_date' => 'datetime',
+    'end_date' => 'datetime',
+    ];
+
     public function setDates(Carbon $startDate, Carbon $endDate): void
     {
         $this->update([

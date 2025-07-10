@@ -3,7 +3,7 @@
 @section('content')
 <div class="container">
     <h1>Личный кабинет арендатора</h1>
-    
+
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card text-white bg-primary">
@@ -70,7 +70,7 @@
             </table>
         </div>
     </div>
-    
+
     @if($upcomingReturns->isNotEmpty())
     <div class="card mb-4">
         <div class="card-header">Ближайшие возвраты</div>

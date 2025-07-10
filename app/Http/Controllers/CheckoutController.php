@@ -135,35 +135,25 @@ class CheckoutController extends Controller
         ]);
     }
 
-    protected function bookEquipment($item, $startDate, $endDate, $orderId)
+    protected function bookEquipment($item, $orderId)
     {
         $equipment = $item->rentalTerm->equipment;
         $rentalTerm = $item->rentalTerm;
 
+        // Используем даты из корзины
+        $startDate = Carbon::parse($item->start_date);
+        $endDate = Carbon::parse($item->end_date);
+
         // Получаем количество дней доставки из условия аренды
         $deliveryDays = $rentalTerm->delivery_days ?? 0;
 
-        // Учитываем срок доставки: начинаем бронь раньше на delivery_days дней
+        // Учитываем срок доставки
         $deliveryStartDate = $startDate->copy()->subDays($deliveryDays);
-
-        // Логирование параметров
-        \Log::info("Попытка бронирования оборудования", [
-            'equipment_id' => $equipment->id,
-            'start_date' => $deliveryStartDate->format('Y-m-d'),
-            'end_date' => $endDate->format('Y-m-d'),
-            'order_id' => $orderId
-        ]);
 
         if (!$this->availabilityService->isAvailable($equipment, $deliveryStartDate, $endDate)) {
             throw new Exception("Оборудование {$equipment->title} недоступно на выбранные даты с учетом срока доставки.");
         }
 
         $this->availabilityService->bookEquipment($equipment, $deliveryStartDate, $endDate, $orderId, 'booked');
-
-        // Логирование успешного бронирования
-        \Log::info("Оборудование успешно забронировано", [
-            'equipment_id' => $equipment->id,
-            'order_id' => $orderId
-        ]);
     }
 }

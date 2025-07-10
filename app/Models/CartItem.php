@@ -12,7 +12,14 @@ class CartItem extends Model
         'rental_term_id',
         'period_count',
         'base_price',
-        'platform_fee'
+        'platform_fee',
+        'start_date', // добавлено
+        'end_date',   // добавлено
+    ];
+
+    protected $casts = [
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
     ];
 
     public function cart(): BelongsTo

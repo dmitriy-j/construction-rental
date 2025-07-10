@@ -10,7 +10,7 @@
         border-radius: 8px;
         box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }
-    
+
     /* Фиксация навбара */
     .navbar {
         position: sticky;
@@ -32,5 +32,16 @@
             height: calc(100vh - 56px);
             overflow-y: auto;
         }
+    }
+
+    .sidebar .nav-link {
+        padding: 0.5rem 1rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .sidebar .nav-link i {
+        min-width: 24px;
+        text-align: center;
     }
 }

@@ -12,7 +12,9 @@ class CatalogController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Equipment::query()->where('is_approved', true);
+        $query = Equipment::query()
+            ->with(['category', 'rentalTerms', 'images', 'company'])
+            ->where('is_approved', true);
 
         // Фильтр по категории
         if ($request->category) {
@@ -31,11 +33,11 @@ class CatalogController extends Controller
             });
         }
 
-        //Поиск по характеристикам
+        // Поиск по характеристикам
         if ($request->has('weight')) {
             $query->whereHas('specifications', function($q) use ($request) {
                 $q->where('key', 'weight')
-                ->where('value', '>=', $request->weight);
+                    ->where('value', '>=', $request->weight);
             });
         }
 
@@ -58,10 +60,6 @@ class CatalogController extends Controller
         $equipments = $query->paginate(12);
         $categories = Category::all();
         $locations = Location::all();
-        //добавим eager loading для оптимизации запросов
-        $query = Equipment::query()
-    ->with(['category', 'rentalTerms', 'images', 'company'])
-    ->where('is_approved', true);
 
         return view('catalog.index', compact('equipments', 'categories', 'locations'));
     }

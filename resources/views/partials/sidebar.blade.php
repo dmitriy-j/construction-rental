@@ -5,23 +5,29 @@
             @if(auth()->user()->company->is_lessor)
             <!-- Меню для арендодателя -->
             <li class="nav-item">
-                <a class="nav-link" href="{{ route('lessor.dashboard') }}">
-                    <i class="fas fa-tachometer-alt"></i> Главная
+                <a class="nav-link {{ Request::is('lessor/dashboard') ? 'active' : '' }}"
+                   href="{{ route('lessor.dashboard') }}">
+                    <i class="fas fa-tachometer-alt me-2"></i> Главная
                 </a>
             </li>
+
             <li class="nav-item">
-                <a class="nav-link" href="{{ route('lessor.equipment') }}">
-                    <i class="fas fa-cogs"></i> Моя техника
+                <a class="nav-link {{ Request::is('lessor/equipment*') ? 'active' : '' }}"
+                   href="{{ route('lessor.equipment.index') }}">
+                    <i class="fas fa-cogs me-2"></i> Моя техника
                 </a>
             </li>
+
             <li class="nav-item">
-                <a class="nav-link" href="{{ route('lessor.orders') }}">
-                    <i class="fas fa-list"></i> Заказы
+                <a class="nav-link {{ Request::is('lessor/orders*') ? 'active' : '' }}"
+                   href="{{ route('lessor.orders') }}">
+                    <i class="fas fa-list me-2"></i> Заказы
                 </a>
             </li>
+
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="documentsDropdown" role="button" data-bs-toggle="dropdown">
-                    <i class="fas fa-file-contract"></i> Документы
+                    <i class="fas fa-file-contract me-2"></i> Документы
                 </a>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="{{ route('lessor.documents', ['type' => 'contracts']) }}">Договоры</a></li>
@@ -33,28 +39,36 @@
         @else
             <!-- Меню для арендатора -->
             <li class="nav-item">
-                <a class="nav-link" href="{{ route('lessee.dashboard') }}">
-                    <i class="fas fa-tachometer-alt"></i> Главная
+                <a class="nav-link {{ Request::is('lessee/dashboard') ? 'active' : '' }}"
+                   href="{{ route('lessee.dashboard') }}">
+                    <i class="fas fa-tachometer-alt me-2"></i> Главная
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="{{ route('catalog') }}">
-                    <i class="fas fa-search"></i> Каталог техники
+                <a class="nav-link {{ Request::is('catalog*') ? 'active' : '' }}"
+                href="{{ route('catalog.index') }}">
+                    <i class="fas fa-search me-2"></i> Каталог техники
                 </a>
             </li>
+
+            <!-- Корзина -->
             <li class="nav-item">
-                <a class="nav-link" href="{{ route('lessee.cart.index') }}">
-                    <i class="fas fa-shopping-cart"></i> Корзина
+                <a class="nav-link {{ Request::is('lessee/cart*') ? 'active' : '' }}"
+                href="{{ route('cart.index') }}">
+                    <i class="fas fa-shopping-cart me-2"></i> Корзина
                 </a>
             </li>
+
+            <!-- Мои заказы -->
             <li class="nav-item">
-                <a class="nav-link" href="{{ route('lessee.orders') }}">
-                    <i class="fas fa-list"></i> Мои заказы
+                <a class="nav-link {{ Request::is('lessee/orders*') ? 'active' : '' }}"
+                href="{{ route('lessee.orders') }}">
+                    <i class="fas fa-list me-2"></i> Мои заказы
                 </a>
             </li>
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="documentsDropdown" role="button" data-bs-toggle="dropdown">
-                    <i class="fas fa-file-contract"></i> Документы
+                    <i class="fas fa-file-contract me-2"></i> Документы
                 </a>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item" href="{{ route('lessee.documents', ['type' => 'contracts']) }}">Договоры</a></li>
@@ -65,24 +79,20 @@
             </li>
         @endif
     @endif
-        
+
         <!-- Общие пункты -->
         <li class="nav-item">
-            <a class="nav-link" href="{{ route('profile.edit') }}">
-                <i class="fas fa-user"></i> Профиль
+            <a class="nav-link {{ Request::is('profile') ? 'active' : '' }}"
+               href="{{ route('profile.edit') }}">
+                <i class="fas fa-user me-2"></i> Профиль
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" href="{{ route('notifications') }}">
-                <i class="fas fa-bell"></i> Уведомления
+            <a class="nav-link {{ Request::is('notifications') ? 'active' : '' }}"
+               href="{{ route('notifications') }}">
+                <i class="fas fa-bell me-2"></i> Уведомления
             </a>
         </li>
-        <!-- Добавим позже -->
-        <!-- <li class="nav-item">
-            <a class="nav-link" href="#">
-                <i class="fas fa-wallet"></i> Баланс
-            </a>
-        </li> -->
     </ul>
 </div>
 @endauth
