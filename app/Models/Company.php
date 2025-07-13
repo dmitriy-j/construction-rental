@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Company extends Model
 {
@@ -59,5 +60,25 @@ class Company extends Model
     public function __toString()
     {
         return $this->legal_name;
+    }
+
+      public function rentalConditions()
+    {
+        return $this->hasMany(RentalCondition::class);
+    }
+
+    public function defaultRentalCondition()
+    {
+        return $this->rentalConditions()->where('is_default', true)->first();
+    }
+
+    public function equipment()
+    {
+        return $this->hasMany(Equipment::class);
+    }
+
+    public function locations(): HasMany
+    {
+        return $this->hasMany(Location::class);
     }
 }

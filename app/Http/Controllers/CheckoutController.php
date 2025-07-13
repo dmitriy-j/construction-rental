@@ -32,11 +32,10 @@ class CheckoutController extends Controller
     {
         // Получаем корзину с необходимыми отношениями
         $cart = $this->cartService->getCart();
-        $cart->load([
-            'items.rentalTerm.equipment.company',
-            'items.rentalTerm.equipment.category',
-            'items.rentalTerm'
-        ]);
+        $selectedItems = $request->input('selected_items', []);
+
+        // Фильтруем только выбранные элементы
+        $cart->items = $cart->items->filter(fn($item) => in_array($item->id, $selectedItems));
 
         if ($cart->items->isEmpty()) {
             return redirect()->back()->with('error', 'Корзина пуста');

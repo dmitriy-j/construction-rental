@@ -27,7 +27,11 @@
                 </div>
             </div>
         </form>
-
+        <div class="alert alert-info">
+            Рассчитанная стоимость является ориентировочной. Окончательная сумма
+            будет определена в акте выполненных работ на основании фактического
+            времени использования техники.
+        </div>
         <div class="card">
             <div class="card-body">
                 <table class="table">
@@ -39,6 +43,7 @@
                             <th>Кол-во периодов</th>
                             <th>Цена за период</th>
                             <th>Комиссия платформы</th>
+                            <th>Доставка</th>
                             <th>Итого</th>
                             <th>Действия</th>
                         </tr>
@@ -63,6 +68,17 @@
                                 <td>{{ $item->period_count }}</td>
                                 <td>{{ number_format($item->base_price, 2) }} ₽</td>
                                 <td>{{ number_format($item->platform_fee, 2) }} ₽</td>
+                                <td>
+                                    @if($item->delivery_cost > 0)
+                                        {{ number_format($item->delivery_cost, 2) }} ₽
+                                        <br><small>
+                                            От: {{ $item->deliveryFrom->short_address ?? 'N/A' }}
+                                            <br>До: {{ $item->deliveryTo->short_address ?? 'N/A' }}
+                                        </small>
+                                    @else
+                                        Самовывоз
+                                    @endif
+                                </td>
                                 <td>{{ number_format($item->base_price * $item->period_count, 2) }} ₽</td>
                                 <td>
                                     <form action="{{ route('cart.remove', $item->id) }}" method="POST">
@@ -78,14 +94,7 @@
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td colspan="5"></td>
-                            <td><strong>Итого:</strong></td>
-                            <td colspan="2">
-                                <strong>{{ number_format($total, 2) }} ₽</strong>
-                            </td
-                    <tfoot>
-                        <tr>
-                            <td colspan="5"></td>
+                            <td colspan="6"></td>
                             <td><strong>Итого:</strong></td>
                             <td colspan="2">
                                 <strong>{{ number_format($total, 2) }} ₽</strong>

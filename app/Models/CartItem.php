@@ -13,8 +13,12 @@ class CartItem extends Model
         'period_count',
         'base_price',
         'platform_fee',
-        'start_date', // добавлено
-        'end_date',   // добавлено
+        'start_date',
+        'end_date',
+        'rental_condition_id',
+        'delivery_from_id',
+        'delivery_to_id',
+        'delivery_cost'
     ];
 
     protected $casts = [
@@ -38,5 +42,20 @@ class CartItem extends Model
     public function getTotalAttribute(): float
     {
         return ($this->base_price + $this->platform_fee) * $this->period_count;
+    }
+
+     public function rentalCondition()
+    {
+        return $this->belongsTo(RentalCondition::class);
+    }
+
+    public function deliveryFrom(): BelongsTo
+    {
+        return $this->belongsTo(Location::class, 'delivery_from_id');
+    }
+
+    public function deliveryTo(): BelongsTo
+    {
+        return $this->belongsTo(Location::class, 'delivery_to_id');
     }
 }

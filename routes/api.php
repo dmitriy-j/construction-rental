@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\NewsController;
+use App\Http\Controllers\DeliveryController; // Импорт контроллера
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
@@ -11,7 +12,16 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 // Публичные маршруты
 Route::get('/news', [NewsController::class, 'index']);
 Route::get('/news/{news}', [NewsController::class, 'show']);
-Route::get('/news/search', [NewsController::class, 'search']); // Добавлена точка с запятой
+Route::get('/news/search', [NewsController::class, 'search']);
+
+// Доставка
+Route::prefix('delivery')->group(function() {
+    Route::post('/calculate', [DeliveryController::class, 'calculate']);
+    Route::get('/locations', [DeliveryController::class, 'getLocations']);
+});
+
+// УДАЛИТЕ ЭТУ ЧАСТЬ (СТРОКИ 24-39)
+// КЛАСС DeliveryController УЖЕ ОПРЕДЕЛЕН В ОТДЕЛЬНОМ ФАЙЛЕ
 
 // Защищенные маршруты (только для админов/редакторов)
 Route::middleware(['auth:sanctum', 'role:admin|editor'])->group(function () {
@@ -20,7 +30,7 @@ Route::middleware(['auth:sanctum', 'role:admin|editor'])->group(function () {
     Route::delete('/news/{news}', [NewsController::class, 'destroy']);
 });
 
-//Документы
+// Документы
 Route::prefix('documents')->group(function () {
     Route::post('orders/{order}/delivery-notes', [DocumentController::class, 'createDeliveryNote']);
     Route::post('orders/{order}/waybills', [DocumentController::class, 'createWaybill']);

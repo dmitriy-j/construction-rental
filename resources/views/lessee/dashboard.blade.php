@@ -38,6 +38,14 @@
             </div>
         </div>
     </div>
+    <div class="card mb-4">
+        <div class="card-header">Управление условиями аренды</div>
+            <div class="card-body">
+                <a href="{{ route('lessee.rental-conditions.index') }}" class="btn btn-primary">
+                    <i class="bi bi-gear"></i> Мои условия аренды
+                </a>
+            </div>
+        </div>
 
     <div class="card mb-4">
         <div class="card-header">Последние заказы</div>

@@ -5,13 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Models\Contract;
-use App\Models\DeliveryNote;
-use App\Models\Platform;
-use App\Models\Waybill;
-use App\Models\CompletionAct;
 use Illuminate\Support\Carbon;
 
 class Order extends Model
@@ -21,7 +17,7 @@ class Order extends Model
     // Константы статусов
     const STATUS_PENDING = 'pending';
     const STATUS_CONFIRMED = 'confirmed';
-    const STATUS_ACTIVE = 'active'; // Исправлено: добавлена буква T
+    const STATUS_ACTIVE = 'active';
     const STATUS_COMPLETED = 'completed';
     const STATUS_CANCELLED = 'cancelled';
     const STATUS_EXTENSION_REQUESTED = 'extension_requested';
@@ -37,7 +33,7 @@ class Order extends Model
         'end_date',
         'service_start_date',
         'service_end_date',
-        'contract_date', // Исправлено: убрано приведение типа
+        'contract_date',
         'extension_requested',
         'requested_end_date',
         'platform_id',
@@ -72,7 +68,6 @@ class Order extends Model
         ];
     }
 
-    // Добавлен статический метод для получения текста статуса
     public static function statusText(string $status): string
     {
         return match($status) {
@@ -106,17 +101,17 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    public function platform()
+    public function platform(): BelongsTo
     {
         return $this->belongsTo(Platform::class);
     }
 
-    public function contract()
+    public function contract(): HasOne
     {
         return $this->hasOne(Contract::class);
     }
 
-    public function canGenerateCompletionAct()
+    public function canGenerateCompletionAct(): bool
     {
         return in_array($this->status, ['active', 'completed'])
             && $this->service_start_date
@@ -124,17 +119,22 @@ class Order extends Model
             && !$this->completionAct;
     }
 
-    public function deliveryNote()
+    public function deliveryNote(): HasOne
     {
         return $this->hasOne(DeliveryNote::class);
     }
 
-    public function waybills()
+    public function rentalCondition(): BelongsTo
+    {
+        return $this->belongsTo(RentalCondition::class);
+    }
+
+    public function waybills(): HasMany
     {
         return $this->hasMany(Waybill::class);
     }
 
-    public function completionAct()
+    public function completionAct(): HasOne
     {
         return $this->hasOne(CompletionAct::class);
     }
@@ -173,6 +173,11 @@ class Order extends Model
 
     public function getStatusTextAttribute(): string
     {
-        return self::statusText($this->status); // Использование единого метода
+        return self::statusText($this->status);
+    }
+
+    public function getDeliveryCostAttribute(): ?float
+    {
+        return $this->deliveryNote?->calculated_cost;
     }
 }

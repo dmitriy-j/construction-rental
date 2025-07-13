@@ -12,7 +12,13 @@ class EquipmentAvailability extends Model
         'equipment_id',
         'date',
         'status',
-        'order_id'
+        'order_id',
+        'expires_at'
+    ];
+
+    protected $casts = [
+        'date' => 'date',
+        'expires_at' => 'datetime'
     ];
 
     public function equipment()

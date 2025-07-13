@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Catalog;
 
 use App\Http\Controllers\Controller;
-use App\Models\Equipment; // Добавить
-use App\Models\Category;  // Добавить
-use App\Models\Location;  // Добавить
+use App\Models\Equipment;
+use App\Models\Category;
+use App\Models\Location;
 use Illuminate\Http\Request;
 
 class CatalogController extends Controller
@@ -14,7 +14,8 @@ class CatalogController extends Controller
     {
         $query = Equipment::query()
             ->with(['category', 'rentalTerms', 'images', 'company'])
-            ->where('is_approved', true);
+            ->where('is_approved', true)
+            ->has('rentalTerms'); // Фильтр техники с условиями аренды
 
         // Фильтр по категории
         if ($request->category) {
@@ -66,6 +67,11 @@ class CatalogController extends Controller
 
     public function show(Equipment $equipment)
     {
+        // Проверка наличия условий аренды
+        if ($equipment->rentalTerms->isEmpty()) {
+            abort(404, 'Условия аренды не найдены');
+        }
+
         $equipment->increment('views');
         return view('catalog.show', compact('equipment'));
     }

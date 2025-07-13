@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 
+
 class Equipment extends Model
 {
 
@@ -22,6 +23,7 @@ class Equipment extends Model
 
     protected $casts = [
         'specifications' => 'array',
+        'working_hours_per_day' => 'integer', // Добавить новое поле
     ];
 
     public function company()
@@ -61,6 +63,28 @@ class Equipment extends Model
     }
     public function availabilities()
     {
-    return $this->hasMany(EquipmentAvailability::class);
+        return $this->hasMany(EquipmentAvailability::class);
+    }
+
+    public function hasActiveRentalTerms(): bool
+    {
+        return $this->rentalTerms()->exists();
+    }
+
+    public function getAvailabilityStatusAttribute(): string
+    {
+        $activeBookings = EquipmentAvailability::where('equipment_id', $this->id)
+            ->where('date', '>=', now()->format('Y-m-d'))
+            ->where(function($query) {
+                $query->where('status', 'booked')
+                    ->orWhere('status', 'maintenance')
+                    ->orWhere(function($q) {
+                        $q->where('status', 'temp_reserve')
+                            ->where('expires_at', '>', now());
+                    });
+            })
+            ->exists();
+
+        return $activeBookings ? 'unavailable' : 'available';
     }
 }

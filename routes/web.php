@@ -108,6 +108,20 @@ Route::prefix('lessee')
         Route::get('/documents', [DocumentController::class, 'index'])->name('lessee.documents');
         Route::get('/documents/download/{id}/{type}', [DocumentController::class, 'download'])->name('lessee.documents.download');
 
+        // Управление условиями аренды
+        Route::get('/rental-conditions', [RentalConditionController::class, 'index'])
+            ->name('lessee.rental-conditions.index');
+
+        Route::get('/rental-conditions/create', [RentalConditionController::class, 'create'])
+            ->name('lessee.rental-conditions.create');
+
+        Route::post('/rental-conditions', [RentalConditionController::class, 'store'])
+            ->name('lessee.rental-conditions.store');
+
+        Route::put('/rental-conditions/{condition}/set-default',
+            [RentalConditionController::class, 'setDefault'])
+            ->name('lessee.rental-conditions.set-default');
+
         // Корзина
         Route::prefix('cart')->name('cart.')->group(function () {
             Route::get('/', [CartController::class, 'index'])->name('index');

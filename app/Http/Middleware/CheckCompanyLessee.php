@@ -12,11 +12,13 @@ class CheckCompanyLessee
     public function handle(Request $request, Closure $next): Response
     {
         $user = Auth::user();
-        
+
         if (!$user || !$user->company || !$user->company->is_lessee) {
             abort(403, 'Доступ только для компаний-арендаторов');
         }
 
         return $next($request);
     }
+
+    // УДАЛИТЬ ЭТОТ МЕТОД (дубликат) ↓
 }

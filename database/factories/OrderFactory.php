@@ -6,79 +6,63 @@ use App\Models\Order;
 use App\Models\Company;
 use App\Models\User;
 use App\Models\Platform;
-use App\Models\Equipment; // Добавляем импорт
-use App\Models\EquipmentRentalTerm; // Добавляем импорт
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Carbon\Carbon;
 
 class OrderFactory extends Factory
 {
     protected $model = Order::class;
 
+    // Статические кэши для данных
+    private static $lesseeCompanies;
+    private static $lessorCompanies;
+    private static $users;
+
     public function definition()
     {
-        $lessee = Company::where('is_lessee', true)->inRandomOrder()->first();
-        $lessor = Company::where('is_lessor', true)->inRandomOrder()->first();
-        $platform = Platform::first();
+        // Инициализация статических данных один раз
+        if (!isset(self::$lesseeCompanies)) {
+            self::$lesseeCompanies = Company::where('is_lessee', true)->pluck('id')->all();
+            self::$lessorCompanies = Company::where('is_lessor', true)->pluck('id')->all();
+            self::$users = User::pluck('id')->all();
+        }
 
         $startDate = $this->faker->dateTimeBetween('now', '+1 month');
-        $endDate = (clone $startDate)->modify('+'.rand(1,14).' days');
+        $endDate = Carbon::parse($startDate)->addDays(rand(1, 14));
 
         return [
-            'platform_id' => $platform->id,
-            'lessee_company_id' => $lessee->id,
-            'lessor_company_id' => $lessor->id,
-            'user_id' => User::inRandomOrder()->first()->id,
+            'platform_id' => Platform::first()->id,
+            'lessee_company_id' => $this->faker->randomElement(self::$lesseeCompanies),
+            'lessor_company_id' => $this->faker->randomElement(self::$lessorCompanies),
+            'user_id' => $this->faker->randomElement(self::$users),
             'status' => $this->faker->randomElement(['pending', 'confirmed', 'active', 'completed']),
-            'base_amount' => $this->faker->randomFloat(2, 1000, 50000),
-            'platform_fee' => $this->faker->randomFloat(2, 100, 5000),
-            'discount_amount' => $this->faker->randomFloat(2, 0, 1000),
-            'total_amount' => $this->faker->randomFloat(2, 1500, 55000),
-            'lessor_payout' => $this->faker->randomFloat(2, 1000, 50000),
             'start_date' => $startDate,
             'end_date' => $endDate,
             'created_at' => $this->faker->dateTimeBetween('-1 year', 'now'),
+
+            // Инициализация всех полей с суммами
+            'total_amount' => $this->faker->numberBetween(10000, 100000),
+            'base_amount' => $this->faker->numberBetween(5000, 50000),
+            'platform_fee' => $this->faker->numberBetween(500, 5000),
+            'prepayment_amount' => $this->faker->numberBetween(0, 10000),
+            'discount_amount' => $this->faker->numberBetween(0, 5000),
+            'lessor_payout' => $this->faker->numberBetween(5000, 60000),
+            'penalty_amount' => $this->faker->numberBetween(0, 2000),
+            'service_start_date' => $this->faker->optional()->dateTimeBetween($startDate, $endDate),
+            'service_end_date' => $this->faker->optional()->dateTimeBetween($startDate, $endDate),
+            'contract_date' => $this->faker->optional()->dateTimeBetween($startDate, $endDate),
+            'extension_requested' => false,
+            'requested_end_date' => null,
+            'notes' => $this->faker->optional(0.3)->sentence,
         ];
     }
 
     public function configure()
     {
         return $this->afterCreating(function (Order $order) {
-            $pricingService = new \App\Services\PricingService();
-
-            $itemsCount = rand(1, 3);
-            for ($i = 0; $i < $itemsCount; $i++) {
-                $equipment = Equipment::with('category')->inRandomOrder()->first();
-                $rentalTerm = EquipmentRentalTerm::inRandomOrder()->first();
-                $periodCount = rand(1, 14);
-
-                $priceData = $pricingService->calculatePrice(
-                    $rentalTerm,
-                    $order->lesseeCompany,
-                    $periodCount
-                );
-
-                $quantity = rand(1, 3);
-
-                $order->items()->create([
-                    'equipment_id' => $equipment->id,
-                    'rental_term_id' => $rentalTerm->id,
-                    'quantity' => $quantity,
-                    'base_price' => $priceData['base_price_per_unit'],
-                    'price_per_unit' => $priceData['base_price_per_unit'] + $priceData['platform_fee_per_unit'],
-                    'platform_fee' => $priceData['platform_fee'],
-                    'discount_amount' => $priceData['discount_amount'],
-                    'total_price' => $priceData['final_price'],
-                    'period_count' => $periodCount,
-                ]);
-            }
-
-            $order->update([
-                'base_amount' => $order->items->sum(function($item) {
-                    return $item->base_price * $item->quantity * $item->period_count;
-                }),
-                'platform_fee' => $order->items->sum('platform_fee'),
-                'total_amount' => $order->items->sum('total_price'),
-                'lessor_payout' => $order->base_amount - $order->items->sum('discount_amount'),
+            // Используем фабрику для создания DeliveryNote
+            \App\Models\DeliveryNote::factory()->create([
+                'order_id' => $order->id
             ]);
         });
     }

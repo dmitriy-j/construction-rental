@@ -71,7 +71,8 @@ class EquipmentController extends Controller
                 ]);
             }
         }
-
+        if (!$equipment->hasActiveRentalTerms()) {
+        throw new \Exception("Оборудование должно иметь хотя бы одно условие аренды");
         return redirect()->route('lessor.equipment.index');
     }
 
@@ -198,9 +199,8 @@ class EquipmentController extends Controller
         }
     }
 
-    protected function updateRentalTerms(Equipment $equipment, $request)
+   protected function updateRentalTerms(Equipment $equipment, $request)
     {
-        // Периоды и соответствующие поля запроса
         $periods = [
             'час' => 'price_per_hour',
             'смена' => 'price_per_shift',
@@ -209,17 +209,17 @@ class EquipmentController extends Controller
         ];
 
         foreach ($periods as $period => $field) {
-            if ($request->has($field)) {
-                EquipmentRentalTerm::updateOrCreate(
-                    [
-                        'equipment_id' => $equipment->id,
-                        'period' => $period
-                    ],
-                    [
-                        'price' => $request->$field,
-                        'currency' => 'RUB'
-                    ]
-                );
+            if ($request->filled($field)) {
+                try {
+                    EquipmentRentalTerm::updateOrCreate(
+                        ['equipment_id' => $equipment->id, 'period' => $period],
+                        ['price' => $request->$field, 'currency' => 'RUB']
+                    );
+                } catch (\Exception $e) {
+                    logger()->error("Ошибка создания условия аренды: " . $e->getMessage());
+                    return redirect()->back()
+                        ->withErrors(['error' => 'Не удалось сохранить условия аренды: дубликат периода']);
+                }
             }
         }
     }

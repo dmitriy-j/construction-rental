@@ -5,6 +5,8 @@ namespace Database\Factories;
 use App\Models\Company;
 use App\Models\Category;
 use App\Models\Location;
+use App\Models\Equipment;
+use App\Models\EquipmentRentalTerm;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class EquipmentFactory extends Factory
@@ -38,4 +40,5 @@ class EquipmentFactory extends Factory
             'is_featured' => $this->faker->boolean(30),
         ];
     }
+
 }

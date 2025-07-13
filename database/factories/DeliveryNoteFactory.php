@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\DeliveryNote;
-use App\Models\Order;
+use App\Models\Location;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class DeliveryNoteFactory extends Factory
@@ -12,12 +12,27 @@ class DeliveryNoteFactory extends Factory
 
     public function definition()
     {
+        // Предзагружаем ID локаций
+        static $locationIds;
+        if (!$locationIds) {
+            $locationIds = Location::pluck('id')->all();
+        }
+
         return [
-            'order_id' => Order::factory(),
-            'delivery_date' => $this->faker->dateTimeBetween('-1 week'),
+            'delivery_from_id' => $this->faker->randomElement($locationIds),
+            'delivery_to_id' => $this->faker->randomElement($locationIds),
+            'delivery_date' => $this->faker->dateTimeBetween('now', '+1 month'),
             'driver_name' => $this->faker->name,
             'receiver_name' => $this->faker->name,
-            'receiver_signature_path' => $this->faker->imageUrl(),
+            'receiver_signature_path' => $this->faker->optional()->imageUrl(),
+            'equipment_condition' => $this->faker->optional()->sentence,
+            'vehicle_type' => $this->faker->randomElement([
+                DeliveryNote::VEHICLE_25T,
+                DeliveryNote::VEHICLE_45T,
+                DeliveryNote::VEHICLE_110T
+            ]),
+            'distance_km' => $this->faker->numberBetween(10, 500),
+            'calculated_cost' => $this->faker->numberBetween(500, 5000),
         ];
     }
 }
