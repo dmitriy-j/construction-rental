@@ -41,4 +41,28 @@ class EquipmentFactory extends Factory
         ];
     }
 
+    public function configure()
+    {
+        return $this->afterCreating(function (Equipment $equipment) {
+            $isTruck = str_contains($equipment->title, 'Самосвал') ||
+                    str_contains($equipment->title, 'Бетононасос');
+
+            $specs = [
+                'weight' => $isTruck ? rand(15000, 35000) : rand(5000, 20000),
+                'length' => $isTruck ? rand(8, 15) : rand(5, 10),
+                'width' => $isTruck ? rand(3, 4) : rand(2, 3),
+                'height' => $isTruck ? rand(3, 4) : rand(2, 3)
+            ];
+
+            foreach ($specs as $key => $value) {
+                Specification::create([
+                    'equipment_id' => $equipment->id,
+                    'key' => $key,
+                    'value' => $value,
+                    $key => $value // сохраняем числовое значение
+                ]);
+            }
+        });
+    }
+
 }

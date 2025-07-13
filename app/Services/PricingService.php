@@ -15,13 +15,13 @@ use Illuminate\Support\Facades\Log;
 class PricingService
 {
     public function calculatePrice(
-        EquipmentRentalTerm $term,
+        EEquipmentRentalTerm $term,
         Company $lesseeCompany,
         int $periodCount,
         RentalCondition $condition
     ): array {
         // Базовая стоимость
-        $basePrice = $term->price * $periodCount;
+        $basePrice = $term->price_per_hour * $periodCount;
 
         // Добавляем дополнительные расходы
         $additionalCosts = 0;
@@ -55,7 +55,7 @@ class PricingService
             'platform_fee' => $platformFee,
             'discount_amount' => $discount,
             'final_price' => $basePrice + $platformFee - $discount,
-            'base_price_per_unit' => $term->price,
+            'base_price_per_unit' => $term->price_per_hour, // Было: $term->price
             'platform_fee_per_unit' => $platformFee / max(1, $periodCount),
             'markup_type' => $markup['type'],
             'markup_value' => $markup['value']

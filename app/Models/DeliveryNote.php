@@ -44,15 +44,21 @@ class DeliveryNote extends Model
 
     public function calculateDeliveryCost(): void
     {
-        $rates = [
-            self::VEHICLE_25T => 200,
-            self::VEHICLE_45T => 250,
-            self::VEHICLE_110T => 350,
-        ];
+        $transportService = app(TransportCalculatorService::class);
+        $rates = $transportService->getTransportRates();
 
         $this->calculated_cost = $this->distance_km * ($rates[$this->vehicle_type] ?? 200);
         $this->save();
     }
+
+    public function setEquipmentDimensions(Equipment $equipment): void
+    {
+        $this->weight = $equipment->specifications->where('key', 'weight')->first()->value ?? 0;
+        $this->length = $equipment->specifications->where('key', 'length')->first()->value ?? 0;
+        $this->width = $equipment->specifications->where('key', 'width')->first()->value ?? 0;
+        $this->height = $equipment->specifications->where('key', 'height')->first()->value ?? 0;
+    }
+
 
     public function deliveryFrom(): BelongsTo
     {

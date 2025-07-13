@@ -48,4 +48,9 @@ class RentalCondition extends Model
     {
         return $this->belongsTo(Location::class, 'delivery_location_id');
     }
+
+    public function equipment()
+    {
+        return $this->belongsTo(Equipment::class);
+    }
 }

@@ -21,12 +21,12 @@ class EquipmentRentalTerm extends Model
 
     protected $fillable = [
         'equipment_id',
-        'period',
-        'price',
+        'price_per_hour',
+        'price_per_km', // Новая поле
         'currency',
-        'delivery_price',
         'delivery_days',
-        'return_policy'
+        'return_policy',
+        'min_rental_hours' // Минимальное время аренды
     ];
 
     public function orderItems(): HasMany
@@ -34,54 +34,40 @@ class EquipmentRentalTerm extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    public function getFormattedPriceAttribute(): string
+    public function getFormattedHourlyPriceAttribute(): string
     {
-        return number_format($this->price, 2, '.', ' ') . ' ' . $this->currency;
+        return number_format($this->price_per_hour, 2, '.', ' ') . ' ' . $this->currency . '/час';
     }
 
-    public function getFullPeriodAttribute(): string
+    public function getFormattedKmPriceAttribute(): string
     {
-        $periods = [
-            'час' => 'в час',
-            'смена' => 'за смену',
-            'сутки' => 'в сутки',
-            'месяц' => 'в месяц',
-        ];
-
-        return $periods[$this->period] ?? $this->period;
+        return $this->price_per_km
+            ? number_format($this->price_per_km, 2, '.', ' ') . ' ' . $this->currency . '/км'
+            : 'Не применяется';
     }
 
-    public function calculatePeriodCount(
-            $startDate,
-            $endDate,
-            RentalCondition $condition
-        ): int {
-            try {
-                $start = Carbon::parse($startDate);
-                $end = Carbon::parse($endDate);
+    public function calculateRentalCost(
+        RentalCondition $condition,
+        int $hours,
+        float $distance = 0
+    ): float {
+        $cost = 0;
 
-                // Простейший расчет по дням для теста
-                return $end->diffInDays($start);
-
-            } catch (\Exception $e) {
-                \Log::error('Error calculating period count: ' . $e->getMessage());
-                return 1;
-            }
+        // Основная стоимость аренды
+        if ($condition->payment_type === 'mileage') {
+            $cost = $distance * $this->price_per_km;
+        } else {
+            $cost = $hours * $this->price_per_hour;
         }
+
+        // Минимальная стоимость аренды
+        $minCost = $this->min_rental_hours * $this->price_per_hour;
+        return max($cost, $minCost);
+    }
 
     protected function calculateDistance($startDate, $endDate): float
     {
-        // Заглушка для расчета дистанции
-        // В реальном приложении здесь должна быть интеграция с GPS-трекерами
-        // или использование данных из заказа
-        return rand(50, 500); // Случайное расстояние в км
-    }
-
-    protected function calculateVolume($startDate, $endDate): float
-    {
-        // Заглушка для расчета объема
-        // В реальном приложении здесь должна быть логика расчета
-        // на основе характеристик оборудования и времени работы
-        return rand(10, 100); // Случайный объем в м³
+        // Реализация расчета дистанции
+        return rand(50, 500);
     }
 }

@@ -25,7 +25,22 @@
                                 @endforeach
                             </select>
                         </div>
-
+                        <!-- Фильтр по статусу -->
+                        <div class="mb-3">
+                            <label class="form-label">Статус</label>
+                            <select name="status" class="form-select">
+                                <option value="">Все</option>
+                                <option value="available" {{ request('status') == 'available' ? 'selected' : '' }}>
+                                    Доступно
+                                </option>
+                                <option value="unavailable" {{ request('status') == 'unavailable' ? 'selected' : '' }}>
+                                    Занято
+                                </option>
+                                <option value="maintenance" {{ request('status') == 'maintenance' ? 'selected' : '' }}>
+                                    На обслуживании
+                                </option>
+                            </select>
+                        </div>
                         <!-- Цена -->
                         <div class="mb-3">
                             <label class="form-label">Цена за час (от)</label>
@@ -66,30 +81,46 @@
             </div>
 
             <!-- Карточки -->
-            <div class="row">
+            <div class="row"> <!-- Исправленный блок -->
                 @foreach($equipments as $equipment)
+                    @php
+                        $status = $equipment->status_details;
+                        $firstTerm = $equipment->rentalTerms->first();
+                    @endphp
+
                     <div class="col-md-6 col-lg-4 mb-4">
                         <div class="card h-100 shadow-sm">
+                            <!-- Статус -->
+                            <span class="badge bg-{{ $status['class'] }}"
+                                style="position: absolute; top: 10px; left: 10px; z-index: 10;">
+                                {{ $status['message'] }}
+                            </span>
+
                             @if($equipment->images->first())
                                 <img src="{{ asset('storage/' . $equipment->images->first()->path) }}"
-                                     class="card-img-top"
-                                     alt="{{ $equipment->title }}"
-                                     style="height: 200px; object-fit: cover;">
+                                    class="card-img-top"
+                                    alt="{{ $equipment->title }}"
+                                    style="height: 200px; object-fit: cover;">
                             @else
                                 <div class="bg-light border-bottom" style="height: 200px"></div>
                             @endif
+
                             <div class="card-body">
                                 <h5 class="card-title">{{ $equipment->title }}</h5>
                                 <p class="card-text text-muted small">{{ $equipment->category->name }}</p>
                                 <p class="card-text">{{ Str::limit($equipment->description, 100) }}</p>
+
                                 <div class="d-flex justify-content-between align-items-center">
-                                    @if($equipment->rentalTerms->isNotEmpty())
-                                        <span class="fw-bold">{{ $equipment->rentalTerms->first()->price }} ₽/час</span>
+                                    @if($firstTerm)
+                                        <span class="fw-bold">
+                                            {{ $firstTerm->price_per_hour }} ₽/час
+                                        </span>
                                     @else
-                                        <span class="text-danger">Нет условий аренды</span>
+                                        <span class="text-danger">Нет условий</span>
                                     @endif
                                 </div>
                             </div>
+
                             <div class="card-footer bg-white">
                                 <a href="{{ route('catalog.show', $equipment) }}" class="btn btn-primary w-100">
                                     <i class="bi bi-eye me-1"></i> Подробнее

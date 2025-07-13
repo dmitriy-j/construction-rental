@@ -119,8 +119,11 @@ class CartService
             return $item->platform_fee * $item->period_count;
         });
 
-        $cart->discount_amount = 0; // Рассчитывается при оформлении
+        $cart->discount_amount = 0;
         $cart->save();
+
+        // Важное дополнение - обновляем модель
+        $cart->refresh();
     }
 
     public function updateDates(Request $request)

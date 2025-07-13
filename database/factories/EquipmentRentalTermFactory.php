@@ -14,21 +14,12 @@ class EquipmentRentalTermFactory extends Factory
     {
         $equipment = Equipment::inRandomOrder()->first() ?? Equipment::factory()->create();
 
-        $periods = ['час', 'смена', 'сутки', 'месяц'];
-        $existingPeriods = $equipment->rentalTerms()->pluck('period')->toArray();
-        $availablePeriods = array_diff($periods, $existingPeriods);
-
-        // Если все периоды уже использованы, используем случайный
-        $period = !empty($availablePeriods)
-            ? $this->faker->randomElement($availablePeriods)
-            : $this->faker->randomElement($periods);
-
         return [
             'equipment_id' => $equipment->id,
-            'period' => $period,
-            'price' => $this->faker->numberBetween(1000, 50000),
+            'price_per_hour' => $this->faker->numberBetween(500, 5000),
+            'price_per_km' => $this->faker->optional(0.7)->numberBetween(10, 100), // 70% chance not null
+            'min_rental_hours' => $this->faker->numberBetween(1, 24),
             'currency' => 'RUB',
-            'delivery_price' => $this->faker->numberBetween(500, 5000),
             'delivery_days' => $this->faker->numberBetween(1, 3),
             'return_policy' => $this->faker->sentence
         ];

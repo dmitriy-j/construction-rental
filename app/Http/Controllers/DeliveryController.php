@@ -1,5 +1,3 @@
-// app/Http/Controllers/DeliveryController.php
-
 <?php
 
 namespace App\Http\Controllers;
