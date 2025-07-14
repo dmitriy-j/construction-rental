@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 class PricingService
 {
     public function calculatePrice(
-        EEquipmentRentalTerm $term,
+        EquipmentRentalTerm $term,
         Company $lesseeCompany,
         int $periodCount,
         RentalCondition $condition

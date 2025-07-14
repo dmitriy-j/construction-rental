@@ -6,6 +6,7 @@ use App\Http\Controllers\CompanyEmployeeController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\Catalog\CatalogController;
+use App\Http\Controllers\Catalog\Equipment\EquipmentController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CheckoutController;
@@ -13,20 +14,15 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\Lessor\DashboardController as LessorDashboardController;
 use App\Http\Controllers\Lessor\OrderController as LessorOrderController;
 use App\Http\Controllers\Lessee\DashboardController as LesseeDashboardController;
-<<<<<<< HEAD
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\Admin\AdminNewsController;
-
-
 
 //use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Admin\DashboardController;
 //use App\Http\Controllers\Admin\EquipmentController;
 use App\Http\Controllers\Admin\OrdersController;
 
-=======
->>>>>>> 79881ea0251f8c67829e39a1935771c9c3f29440
 
 // Главная страница
 Route::get('/', function () {
@@ -153,16 +149,15 @@ Route::prefix('lessee')
         Route::post('/checkout', [CheckoutController::class, 'checkout'])->name('checkout');
     });
 
-// Загрузка УПД
+
+// Загрузка УПД (общий доступ)
 Route::get('/orders/{order}/upd/{type}', [OrderController::class, 'downloadUPDF']);
 
-<<<<<<< HEAD
 // админ кабинет 
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
     Route::resource('equipment', EquipmentController::class);
     Route::resource('orders', OrdersController::class);
-    //Route::resource('news', NewsController::class)->only(['index', 'show']);
     Route::resource('news', AdminNewsController::class)->names([
         'index' => 'admin.news.index',
         'create' => 'admin.news.create',
@@ -179,38 +174,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/tenant-dashboard', fn() => view('tenant'))->name('tenant.dashboard')->middleware('role:tenant');
     Route::get('/landlord-dashboard', fn() => view('landlord'))->name('landlord.dashboard')->middleware('role:landlord');
 });
-=======
-// Админ-панель платформы
-Route::prefix('adm')
-    ->group(function () {
-        Route::get('/login', [\App\Http\Controllers\Admin\AdminController::class, 'loginForm'])
-            ->name('admin.login.form');
-        Route::post('/login', [\App\Http\Controllers\Admin\AdminController::class, 'login'])
-            ->name('admin.login');
-
-        Route::middleware('auth:admin')->group(function () {
-            Route::post('/logout', [\App\Http\Controllers\Admin\AdminController::class, 'logout'])
-                ->name('admin.logout');
-
-            Route::get('/dashboard', [\App\Http\Controllers\Admin\AdminController::class, 'dashboard'])
-                ->name('admin.dashboard');
-
-            Route::resource('employees', \App\Http\Controllers\Admin\EmployeeController::class)
-                ->except(['show'])
-                ->names([
-                    'index' => 'admin.employees.index',
-                    'create' => 'admin.employees.create',
-                    'store' => 'admin.employees.store',
-                    'edit' => 'admin.employees.edit',
-                    'update' => 'admin.employees.update',
-                    'destroy' => 'admin.employees.destroy'
-                ]);
-
-            Route::resource('news', \App\Http\Controllers\Admin\NewsController::class)
-                ->except(['show']);
-        });
-    });
->>>>>>> 79881ea0251f8c67829e39a1935771c9c3f29440
 
 // Профиль пользователя
 Route::middleware('auth')->group(function () {
@@ -219,7 +182,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])
+Route::get('/notifications', [NotificationController::class, 'index'])
     ->middleware('auth')
     ->name('notifications');
 
