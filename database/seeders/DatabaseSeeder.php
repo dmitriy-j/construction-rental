@@ -67,17 +67,25 @@ class DatabaseSeeder extends Seeder
             CategoriesSeeder::class,
             LocationsSeeder::class,
             EquipmentSeeder::class,
+            EquipmentImageSeeder::class, // Изображения
+            EquipmentRentalTermSeeder::class,     // Условия аренды
+            OperatorSeeder::class,
             PlatformMarkupSeeder::class,
             EquipmentAvailabilitySeeder::class,
+<<<<<<< HEAD
             NewsSeeder::class,
+=======
+            RentalConditionsSeeder::class,
+
+>>>>>>> 79881ea0251f8c67829e39a1935771c9c3f29440
         ]);
 
         // 5. Создаем связанные данные для оборудования
          $this->call([
-            EquipmentImageSeeder::class, // Изображения
-            EquipmentRentalTermSeeder::class,     // Условия аренды
+
+
             OrderSeeder::class,
-            
+
         ]);
 
         // 5. Новости

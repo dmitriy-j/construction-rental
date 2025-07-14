@@ -13,22 +13,33 @@ class EquipmentAvailabilitySeeder extends Seeder
     {
         $startDate = now()->subDays(15);
         $endDate = now()->addMonths(3);
+        $days = $startDate->diffInDays($endDate) + 1;
 
-        Equipment::each(function ($equipment) use ($startDate, $endDate) {
-            $current = $startDate->copy();
+        Equipment::chunk(100, function ($equipments) use ($startDate, $days) {
+            $availabilities = [];
 
-            while ($current <= $endDate) {
-                // 90% дней доступны
-                $status = rand(1, 10) <= 9 ? 'available' : 'booked';
+            foreach ($equipments as $equipment) {
+                for ($i = 0; $i < $days; $i++) {
+                    $date = $startDate->copy()->addDays($i);
+                    $status = rand(1, 10) <= 9 ? 'available' : 'booked';
 
-                EquipmentAvailability::create([
-                    'equipment_id' => $equipment->id,
-                    'date' => $current->format('Y-m-d'),
-                    'status' => $status,
-                    'order_id' => null //$status === 'booked' ? rand(1, 50) : null
-                ]);
+                    $availabilities[] = [
+                        'equipment_id' => $equipment->id,
+                        'date' => $date->format('Y-m-d'),
+                        'status' => $status,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ];
 
-                $current->addDay();
+                    if (count($availabilities) >= 500) {
+                        EquipmentAvailability::insert($availabilities);
+                        $availabilities = [];
+                    }
+                }
+            }
+
+            if (!empty($availabilities)) {
+                EquipmentAvailability::insert($availabilities);
             }
         });
     }

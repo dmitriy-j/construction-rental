@@ -80,10 +80,24 @@
     <div class="container my-5">
         <h2 class="text-center mb-5">Наша команда</h2>
         <div class="row g-4">
-            @foreach(['Алексей Петров (CEO)', 'Мария Иванова (Менеджер)', 'Дмитрий Сидоров (Технический отдел)'] as $member)
+            @php
+                // Определяем фото для каждого сотрудника
+                $teamPhotos = [
+                    'Вячеслав Алёшин (Директор)' => asset('storage/team/slava.jpg'), // Путь к реальному фото
+                    'Мария Иванова (Менеджер)' => 'https://via.placeholder.com/300x300?text=Photo',
+                    'Дмитрий Сидоров (Технический отдел)' => 'https://via.placeholder.com/300x300?text=Photo'
+                ];
+            @endphp
+
+            @foreach(['Вячеслав Алёшин (Директор)', 'Мария Иванова (Менеджер)', 'Дмитрий Сидоров (Технический отдел)'] as $member)
             <div class="col-md-4">
-                <div class="card border-0 shadow-sm">
-                    <img src="https://via.placeholder.com/300x300?text=Photo" class="card-img-top" alt="Фото">
+                <div class="card border-0 shadow-sm h-100">
+                    <img
+                        src="{{ $teamPhotos[$member] }}"
+                        class="card-img-top object-fit-cover"
+                        alt="{{ explode(' ', $member)[0] }} {{ explode(' ', $member)[1] }}"
+                        style="height: 300px;"
+                    >
                     <div class="card-body text-center">
                         <h5 class="card-title">{{ $member }}</h5>
                         <p class="text-muted">10+ лет опыта</p>

@@ -4,16 +4,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>RentTech - {{ $title ?? 'Авторизация' }}</title>
-    
+
     <!-- Bootstrap CSS -->
     @vite(['resources/sass/app.scss'])
-    
+
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    
+
     <!-- Montserrat Font -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
-    
+
     <style>
         .auth-bg {
             background: linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%);
@@ -49,9 +49,9 @@
                         <div class="auth-logo mb-3">Rent<span>Tech</span></div>
                         <h2 class="h4">{{ $title ?? 'Добро пожаловать' }}</h2>
                     </div>
-                    
-                    {{ $slot }}
-                    
+
+                    @yield('content')
+
                     <div class="text-center mt-4">
                         @if(Route::has('register'))
                         <p class="text-muted">Ещё нет аккаунта? <a href="{{ route('register') }}" class="text-primary">Зарегистрируйтесь</a></p>

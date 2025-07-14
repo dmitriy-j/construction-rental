@@ -18,7 +18,7 @@ class ContractFactory extends Factory
             'description' => $this->faker->sentence,
             'payment_type' => $this->faker->randomElement(['prepay', 'postpay', 'mixed']),
             'documentation_deadline' => $this->faker->numberBetween(1, 30), // дни
-        'payment_deadline' => $this->faker->numberBetween(1, 30),       // дни
+            'payment_deadline' => $this->faker->numberBetween(1, 30),       // дни
             'penalty_rate' => $this->faker->randomFloat(2, 0.1, 1),
             'file_path' => $this->faker->url,
         ];

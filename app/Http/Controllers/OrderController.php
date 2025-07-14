@@ -6,6 +6,7 @@ use App\Services\UPDPdfGenerator;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use App\Models\Contract;
+use App\Services\EquipmentAvailabilityService;
 
 class OrderController extends Controller
 {

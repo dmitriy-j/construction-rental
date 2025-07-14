@@ -16,6 +16,10 @@ class SpecificationFactory extends Factory
             'equipment_id' => Equipment::factory(),
             'key' => $this->faker->word,
             'value' => $this->faker->words(3, true),
+            'weight' => $this->faker->numberBetween(1000, 35000),
+            'length' => $this->faker->randomFloat(2, 1, 20),
+            'width' => $this->faker->randomFloat(2, 1, 5),
+            'height' => $this->faker->randomFloat(2, 1, 5),
         ];
     }
 }

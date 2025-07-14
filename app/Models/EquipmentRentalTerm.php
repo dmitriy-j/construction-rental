@@ -3,9 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model; // Исправленный импорт
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Carbon\Carbon;
 
 class EquipmentRentalTerm extends Model
 {
@@ -20,12 +21,12 @@ class EquipmentRentalTerm extends Model
 
     protected $fillable = [
         'equipment_id',
-        'period',
-        'price',
+        'price_per_hour',
+        'price_per_km', // Новая поле
         'currency',
-        'delivery_price',
         'delivery_days',
-        'return_policy'
+        'return_policy',
+        'min_rental_hours' // Минимальное время аренды
     ];
 
     public function orderItems(): HasMany
@@ -33,20 +34,40 @@ class EquipmentRentalTerm extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    public function getFormattedPriceAttribute(): string
+    public function getFormattedHourlyPriceAttribute(): string
     {
-        return number_format($this->price, 2, '.', ' ') . ' ' . $this->currency;
+        return number_format($this->price_per_hour, 2, '.', ' ') . ' ' . $this->currency . '/час';
     }
 
-    public function getFullPeriodAttribute(): string
+    public function getFormattedKmPriceAttribute(): string
     {
-        $periods = [
-            'час' => 'в час',
-            'смена' => 'за смену',
-            'сутки' => 'в сутки',
-            'месяц' => 'в месяц',
-        ];
+        return $this->price_per_km
+            ? number_format($this->price_per_km, 2, '.', ' ') . ' ' . $this->currency . '/км'
+            : 'Не применяется';
+    }
 
-        return $periods[$this->period] ?? $this->period;
+    public function calculateRentalCost(
+        RentalCondition $condition,
+        int $hours,
+        float $distance = 0
+    ): float {
+        $cost = 0;
+
+        // Основная стоимость аренды
+        if ($condition->payment_type === 'mileage') {
+            $cost = $distance * $this->price_per_km;
+        } else {
+            $cost = $hours * $this->price_per_hour;
+        }
+
+        // Минимальная стоимость аренды
+        $minCost = $this->min_rental_hours * $this->price_per_hour;
+        return max($cost, $minCost);
+    }
+
+    protected function calculateDistance($startDate, $endDate): float
+    {
+        // Реализация расчета дистанции
+        return rand(50, 500);
     }
 }

@@ -26,7 +26,7 @@ return new class extends Migration {
                 'cancelled'     // Отменен
             ])->default('pending');
 
-            $table->decimal('total_amount', 12, 2);
+            $table->decimal('total_amount', 12, 2)->default(0);
             $table->decimal('base_amount', 12, 2)->default(0)->comment('Сумма без наценки');
             $table->decimal('platform_fee', 12, 2)->default(0)->comment('Наценка платформы');
             $table->decimal('prepayment_amount', 12, 2)->default(0);

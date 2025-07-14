@@ -12,7 +12,7 @@ class CreateWaybillsTable extends Migration
             $table->id();
             $table->foreignId('order_id')->constrained()->onDelete('cascade');
             $table->foreignId('equipment_id')->constrained()->onDelete('cascade');
-            $table->foreignId('operator_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('operator_id')->constrained('operators')->onDelete('cascade');
             $table->date('work_date');
             $table->decimal('hours_worked', 8, 2);
             $table->decimal('downtime_hours', 8, 2)->default(0);

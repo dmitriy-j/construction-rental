@@ -8,25 +8,45 @@ use App\Models\EquipmentRentalTerm;
 use App\Models\DiscountTier;
 use App\Models\PlatformMarkup;
 use App\Models\EquipmentCategory;
+use App\Models\RentalCondition; // Исправленный импорт
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class PricingService
 {
     public function calculatePrice(
-        EquipmentRentalTerm $term,
-        ?Company $lesseeCompany,
-        int $periodCount
+        EEquipmentRentalTerm $term,
+        Company $lesseeCompany,
+        int $periodCount,
+        RentalCondition $condition
     ): array {
-        // Базовая стоимость без наценки
-        $basePrice = $term->price * $periodCount;
+        // Базовая стоимость
+        $basePrice = $term->price_per_hour * $periodCount;
+
+        // Добавляем дополнительные расходы
+        $additionalCosts = 0;
+
+        // Транспортировка
+        if ($condition->transportation === 'lessee') {
+            $additionalCosts += $term->delivery_price;
+        } elseif ($condition->transportation === 'shared') {
+            $additionalCosts += $term->delivery_price / 2;
+        }
+
+        // ГСМ
+        if ($condition->fuel_responsibility === 'lessee') {
+            $fuelCost = $this->calculateFuelCost($term, $periodCount, $condition);
+            $additionalCosts += $fuelCost;
+        }
+
+        $basePrice += $additionalCosts;
 
         // Наценка платформы
         $markup = $this->getPlatformMarkup($term->equipment, $lesseeCompany, $periodCount);
         $platformFee = $this->applyMarkup($basePrice, $markup);
 
         // Скидка арендатора
-        $discount = $lesseeCompany && $lesseeCompany->is_lessee
+        $discount = $lesseeCompany->is_lessee
             ? $this->getDiscount($lesseeCompany, $basePrice + $platformFee)
             : 0;
 
@@ -35,11 +55,29 @@ class PricingService
             'platform_fee' => $platformFee,
             'discount_amount' => $discount,
             'final_price' => $basePrice + $platformFee - $discount,
-            'base_price_per_unit' => (float) $term->price,
+            'base_price_per_unit' => $term->price_per_hour, // Было: $term->price
             'platform_fee_per_unit' => $platformFee / max(1, $periodCount),
             'markup_type' => $markup['type'],
             'markup_value' => $markup['value']
         ];
+    }
+
+     private function calculateFuelCost(
+        EquipmentRentalTerm $term,
+        int $periodCount,
+        RentalCondition $condition
+    ): float {
+        // Простая реализация расчета стоимости топлива
+        // Используем данные из оборудования и условий аренды
+
+        // Если в оборудовании указан расход топлива
+        $fuelConsumption = $term->equipment->fuel_consumption ?? 0;
+
+        // Если в условиях аренды указана средняя цена топлива
+        $fuelPrice = $condition->average_fuel_price ?? 0;
+
+        // Расчет: расход * цена * количество периодов
+        return $fuelConsumption * $fuelPrice * $periodCount;
     }
 
     public function getDiscount(Company $company, float $amount): float

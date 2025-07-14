@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Waybill extends Model
 {
     use HasFactory;
-    
+
     protected $fillable = [
         'order_id', 'equipment_id', 'operator_id', 'work_date',
         'hours_worked', 'downtime_hours', 'downtime_cause',
@@ -27,6 +27,6 @@ class Waybill extends Model
 
     public function operator()
     {
-        return $this->belongsTo(User::class, 'operator_id');
+        return $this->belongsTo(Operator::class);
     }
 }

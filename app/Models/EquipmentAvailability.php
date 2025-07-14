@@ -12,7 +12,13 @@ class EquipmentAvailability extends Model
         'equipment_id',
         'date',
         'status',
-        'order_id'
+        'order_id',
+        'expires_at'
+    ];
+
+    protected $casts = [
+        'date' => 'date',
+        'expires_at' => 'datetime'
     ];
 
     public function equipment()
@@ -23,5 +29,10 @@ class EquipmentAvailability extends Model
     public function order()
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

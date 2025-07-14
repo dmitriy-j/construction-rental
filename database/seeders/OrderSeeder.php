@@ -2,82 +2,307 @@
 
 namespace Database\Seeders;
 
-use App\Models\Contract; // Добавьте этот импорт
-use App\Models\DeliveryNote; // Добавьте этот импорт
-use App\Models\Waybill; // Добавьте этот импорт
-use App\Models\CompletionAct; // Добавьте этот импорт
+use App\Models\Contract;
+use App\Models\Waybill;
+use App\Models\CompletionAct;
 use App\Models\Order;
 use App\Models\Platform;
+use App\Models\Company;
+use App\Models\Equipment;
+use App\Models\RentalCondition;
+use App\Models\EquipmentRentalTerm;
+use App\Models\Operator;
 use Illuminate\Database\Seeder;
-
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class OrderSeeder extends Seeder
 {
+    // Статические кэши для данных
+    private static $equipmentIds;
+    private static $rentalConditions;
+    private static $rentalTermsCache = [];
+    private static $operatorsByEquipment = [];
+    private static $companies;
+
     public function run()
     {
-        // Создаем 50 заказов
-        Order::factory()->count(50)->create();
+        // Предзагрузка данных
+        self::$equipmentIds = Equipment::pluck('id')->all();
+        self::$rentalConditions = RentalCondition::pluck('id')->all();
+        self::$companies = Company::where('is_lessor', true)->get();
 
-        // Специальные тестовые заказы
-        $this->createTestOrders();
+        // Гарантируем наличие операторов для всего оборудования
+        $this->ensureOperatorsForAllEquipment();
 
-        $orders = Order::all();
-    
-        foreach ($orders as $order) {
-            // Contract
-            Contract::factory()->create(['order_id' => $order->id]);
-            
-            // DeliveryNote
-            DeliveryNote::factory()->create(['order_id' => $order->id]);
-            
-            // Waybills (2-5 на заказ)
-            Waybill::factory()->count(rand(2, 5))->create(['order_id' => $order->id]);
-            
-            // CompletionAct (только для завершенных заказов)
-            if ($order->status === 'completed') {
-                CompletionAct::factory()->create(['order_id' => $order->id]);
+        // Предзагрузка операторов по оборудованию
+        $operators = Operator::where('is_active', true)->get();
+        foreach ($operators as $operator) {
+            if ($operator->equipment_id) {
+                self::$operatorsByEquipment[$operator->equipment_id][] = $operator->id;
             }
+        }
+
+        // Предзагрузка rental_term_id для оборудования
+        foreach (self::$equipmentIds as $equipmentId) {
+            $term = Equipment::find($equipmentId)->rentalTerms()->first();
+            if ($term) {
+                self::$rentalTermsCache[$equipmentId] = $term->id;
+            } else {
+                $term = EquipmentRentalTerm::factory()->create(['equipment_id' => $equipmentId]);
+                self::$rentalTermsCache[$equipmentId] = $term->id;
+            }
+        }
+
+        $this->command->info('Creating orders...');
+        $progressBar = $this->command->getOutput()->createProgressBar(50);
+
+        for ($i = 0; $i < 50; $i++) {
+            $order = Order::factory()->create();
+            $this->createDocuments($order);
+            $progressBar->advance();
+            unset($order);
+            gc_collect_cycles();
+        }
+
+        $progressBar->finish();
+        $this->command->info("\nOrders created");
+        $this->createTestOrders();
+    }
+
+    protected function ensureOperatorsForAllEquipment()
+    {
+        $equipments = Equipment::all();
+
+        foreach ($equipments as $equipment) {
+            // Проверяем, есть ли операторы для этого оборудования
+            $hasOperators = Operator::where('equipment_id', $equipment->id)
+                ->where('is_active', true)
+                ->exists();
+
+            if (!$hasOperators) {
+                // Создаем операторов для оборудования
+                $operatorCount = rand(1, 3);
+                for ($i = 0; $i < $operatorCount; $i++) {
+                    Operator::create([
+                        'company_id' => $equipment->company_id,
+                        'equipment_id' => $equipment->id,
+                        'full_name' => fake()->lastName() . ' ' . fake()->firstName(),
+                        'phone' => fake()->phoneNumber(),
+                        'license_number' => 'LN-' . rand(1000, 9999),
+                        'qualification' => fake()->randomElement(['Экскаваторщик', 'Крановщик', 'Бульдозерист', 'Погрузчик']),
+                        'is_active' => true
+                    ]);
+                }
+            }
+        }
+    }
+
+    protected function createDocuments(Order $order)
+    {
+        // Создаем контракт
+        $paymentTypes = ['prepay', 'postpay', 'mixed'];
+        $contract = Contract::create([
+            'order_id' => $order->id,
+            'number' => 'Договор №' . $order->id,
+            'description' => 'Договор аренды строительной техники №' . $order->id,
+            'payment_type' => $paymentTypes[array_rand($paymentTypes)],
+            'documentation_deadline' => rand(1, 5),
+            'payment_deadline' => rand(5, 15),
+            'penalty_rate' => rand(10, 50) / 100,
+            'file_path' => '/contracts/contract_'.$order->id.'.pdf'
+        ]);
+
+        // Создаем условия аренды для контракта
+        $rentalCondition = RentalCondition::inRandomOrder()->first();
+        if ($rentalCondition) {
+            $rentalConditionData = $rentalCondition->toArray();
+            unset($rentalConditionData['id']);
+            $contract->rentalCondition()->create($rentalConditionData);
+        }
+
+        // Создаем элементы заказа
+        $items = [];
+        $itemsCount = rand(1, 3);
+        $now = now();
+
+        for ($i = 0; $i < $itemsCount; $i++) {
+            $equipmentId = self::$equipmentIds[array_rand(self::$equipmentIds)];
+            $rentalConditionId = self::$rentalConditions[array_rand(self::$rentalConditions)];
+
+            $quantity = rand(1, 3);
+            $basePrice = rand(100, 500);
+            $pricePerUnit = rand(500, 1000);
+            $platformFee = rand(10, 50);
+            $discountAmount = rand(0, 20);
+            $totalPrice = ($pricePerUnit * $quantity) - $discountAmount;
+
+            $items[] = [
+                'order_id' => $order->id,
+                'equipment_id' => $equipmentId,
+                'rental_term_id' => self::$rentalTermsCache[$equipmentId],
+                'rental_condition_id' => $rentalConditionId,
+                'quantity' => $quantity,
+                'base_price' => $basePrice,
+                'price_per_unit' => $pricePerUnit,
+                'platform_fee' => $platformFee,
+                'discount_amount' => $discountAmount,
+                'total_price' => $totalPrice,
+                'period_count' => rand(1, 7),
+                'created_at' => $now,
+                'updated_at' => $now
+            ];
+        }
+
+        DB::table('order_items')->insert($items);
+
+        // Создаем путевые листы
+        $waybills = [];
+        $waybillCount = rand(2, 5);
+
+        for ($i = 0; $i < $waybillCount; $i++) {
+            $randomItem = $items[array_rand($items)];
+            $equipmentId = $randomItem['equipment_id'];
+
+            // Выбираем случайного оператора для данного оборудования
+            $operatorId = null;
+            if (!empty(self::$operatorsByEquipment[$equipmentId])) {
+                $operatorId = self::$operatorsByEquipment[$equipmentId][array_rand(self::$operatorsByEquipment[$equipmentId])];
+            } else {
+                // Если операторов нет, создаем нового
+                $equipment = Equipment::find($equipmentId);
+                $operator = Operator::create([
+                    'company_id' => $equipment->company_id,
+                    'equipment_id' => $equipmentId,
+                    'full_name' => fake()->lastName() . ' ' . fake()->firstName(),
+                    'phone' => fake()->phoneNumber(),
+                    'license_number' => 'LN-' . rand(1000, 9999),
+                    'qualification' => fake()->randomElement(['Экскаваторщик', 'Крановщик', 'Бульдозерист', 'Погрузчик']),
+                    'is_active' => true
+                ]);
+                $operatorId = $operator->id;
+                self::$operatorsByEquipment[$equipmentId][] = $operatorId;
+            }
+
+            $waybills[] = [
+                'order_id' => $order->id,
+                'equipment_id' => $equipmentId,
+                'operator_id' => $operatorId,
+                'work_date' => Carbon::now()->subDays(rand(1, 30)),
+                'hours_worked' => rand(1, 10),
+                'downtime_hours' => rand(0, 5),
+                'downtime_cause' => rand(0, 1) ? ['lessee', 'lessor', 'force_majeure'][rand(0,2)] : null,
+                'operator_signature_path' => '/signatures/operator_'.$order->id.'_'.$i.'.png',
+                'customer_signature_path' => '/signatures/customer_'.$order->id.'_'.$i.'.png',
+                'notes' => $i === 0 ? 'Путевой лист' : null,
+                'created_at' => $now,
+                'updated_at' => $now
+            ];
+        }
+
+        DB::table('waybills')->insert($waybills);
+
+        // Для завершенных заказов создаем акт
+        if ($order->status === 'completed') {
+            CompletionAct::create([
+                'order_id' => $order->id,
+                'act_date' => now(),
+                'service_start_date' => $order->service_start_date ?? $order->start_date,
+                'service_end_date' => $order->service_end_date ?? $order->end_date,
+                'total_hours' => rand(10, 100),
+                'total_downtime' => rand(0, 10),
+                'penalty_amount' => 0,
+                'total_amount' => $order->total_amount,
+                'prepayment_amount' => $order->prepayment_amount,
+                'final_amount' => $order->total_amount - $order->prepayment_amount,
+                'act_file_path' => '/completion_acts/act_'.$order->id.'.pdf',
+                'status' => 'draft'
+            ]);
         }
     }
 
     protected function createTestOrders()
     {
-        $platform = Platform::first(); // Получаем главную платформу
+        $this->command->info('Creating test orders...');
+
+        $platform = Platform::first();
+        $lessee = Company::where('is_lessee', true)->first();
+        $lessor = Company::where('is_lessor', true)->first();
 
         // Заказ в статусе pending
-        Order::factory()->create([
+        $pendingOrder = Order::factory()->create([
             'platform_id' => $platform->id,
+            'lessee_company_id' => $lessee->id,
+            'lessor_company_id' => $lessor->id,
             'status' => 'pending',
-            'total_amount' => 15000.00,
         ]);
+        $this->createDocuments($pendingOrder);
 
         // Заказ в статусе confirmed
-        Order::factory()->create([
+        $confirmedOrder = Order::factory()->create([
             'platform_id' => $platform->id,
+            'lessee_company_id' => $lessee->id,
+            'lessor_company_id' => $lessor->id,
             'status' => 'confirmed',
-            'total_amount' => 25000.00,
         ]);
+        $this->createDocuments($confirmedOrder);
 
         // Заказ с большим количеством позиций
         $order = Order::factory()->create([
             'platform_id' => $platform->id,
+            'lessee_company_id' => $lessee->id,
+            'lessor_company_id' => $lessor->id,
             'status' => 'active',
-            'total_amount' => 45000.00,
         ]);
+        $this->createDocuments($order);
 
         // Добавляем 5 позиций
+        $items = [];
+        $now = now();
+
         for ($i = 0; $i < 5; $i++) {
-            $order->items()->create([
-                'equipment_id' => \App\Models\Equipment::inRandomOrder()->first()->id,
-                'rental_term_id' => \App\Models\EquipmentRentalTerm::inRandomOrder()->first()->id,
-                'quantity' => rand(1, 2),
-                'base_price' => rand(1000, 5000),
-                'price_per_unit' => rand(500, 2500),
-                'platform_fee' => rand(100, 500),
-                'discount_amount' => rand(0, 200),
-                'total_price' => rand(1500, 6000),
+            $equipmentId = self::$equipmentIds[array_rand(self::$equipmentIds)];
+            $rentalConditionId = self::$rentalConditions[array_rand(self::$rentalConditions)];
+
+            $quantity = rand(1, 2);
+            $basePrice = rand(100, 500);
+            $pricePerUnit = rand(500, 1000);
+            $platformFee = rand(10, 50);
+            $discountAmount = rand(0, 20);
+            $totalPrice = ($pricePerUnit * $quantity) - $discountAmount;
+
+            $items[] = [
+                'order_id' => $order->id,
+                'equipment_id' => $equipmentId,
+                'rental_term_id' => self::$rentalTermsCache[$equipmentId],
+                'rental_condition_id' => $rentalConditionId,
+                'quantity' => $quantity,
+                'base_price' => $basePrice,
+                'price_per_unit' => $pricePerUnit,
+                'platform_fee' => $platformFee,
+                'discount_amount' => $discountAmount,
+                'total_price' => $totalPrice,
                 'period_count' => rand(1, 7),
-            ]);
+                'created_at' => $now,
+                'updated_at' => $now
+            ];
         }
+
+        DB::table('order_items')->insert($items);
+
+        // Пересчитываем итоги
+        $baseAmount = collect($items)->sum('base_price');
+        $platformFee = collect($items)->sum('platform_fee');
+        $discountAmount = collect($items)->sum('discount_amount');
+        $deliveryCost = $order->deliveryNote ? $order->deliveryNote->calculated_cost : 0;
+        $totalAmount = collect($items)->sum('total_price') + $deliveryCost;
+
+        $order->update([
+            'base_amount' => $baseAmount,
+            'platform_fee' => $platformFee,
+            'discount_amount' => $discountAmount,
+            'total_amount' => $totalAmount,
+        ]);
     }
 }

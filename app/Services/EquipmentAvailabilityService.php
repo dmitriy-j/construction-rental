@@ -2,143 +2,111 @@
 
 namespace App\Services;
 
-use App\Models\Order;
 use App\Models\Equipment;
 use App\Models\EquipmentAvailability;
-use Carbon\CarbonPeriod;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class EquipmentAvailabilityService
 {
-    /**
-     * Проверяет доступность оборудования в указанный период
-     */
-    public function checkAvailability(Equipment $equipment, string $startDate, string $endDate): bool
+    public function getStatusDetails(Equipment $equipment): array
     {
-        $period = CarbonPeriod::create($startDate, $endDate);
-
-        foreach ($period as $date) {
-            $exists = EquipmentAvailability::where('equipment_id', $equipment->id)
-                ->where('date', $date->format('Y-m-d'))
-                ->where('status', 'available')
-                ->exists();
-
-            if (!$exists) {
-                return false;
-            }
+        // Проверка глобального статуса оборудования
+        if ($equipment->global_status === 'maintenance') {
+            return $this->formatStatus('maintenance', 'На обслуживании', 'secondary');
         }
 
-        return true;
-    }
-
-    public function isAvailable(Equipment $equipment, $start, $end): bool
-    {
-        $start = Carbon::parse($start);
-        $end = Carbon::parse($end);
-
-        // Логирование параметров запроса
-        \Log::info("Проверка доступности оборудования", [
-            'equipment_id' => $equipment->id,
-            'start_date' => $start->format('Y-m-d'),
-            'end_date' => $end->format('Y-m-d')
-        ]);
-
-        $days = $start->diffInDays($end);
-        for ($i = 0; $i <= $days; $i++) {
-            $date = $start->copy()->addDays($i)->format('Y-m-d');
-
-            $status = EquipmentAvailability::where('equipment_id', $equipment->id)
-                ->where('date', $date)
-                ->value('status');
-
-            // Если статус 'booked' или 'maintenance' - недоступно
-            if (in_array($status, ['booked', 'maintenance'])) {
-                \Log::warning("Оборудование недоступно", [
-                    'equipment_id' => $equipment->id,
-                    'date' => $date,
-                    'status' => $status
-                ]);
-                return false;
-            }
+        if ($equipment->global_status === 'out_of_service') {
+            return $this->formatStatus('out_of_service', 'Не эксплуатируется', 'dark');
         }
 
-        \Log::info("Оборудование доступно", ['equipment_id' => $equipment->id]);
-        return true;
-    }
+        // Проверка доступности на сегодня
+        $today = Carbon::today()->toDateString();
+        $availability = EquipmentAvailability::where('equipment_id', $equipment->id)
+            ->where('date', $today)
+            ->first();
 
-    /**
-     * Бронирует оборудование на указанный период
-     */
-    public function bookEquipment(Equipment $equipment, $start, $end, ?int $orderId = null, string $status = 'booked'): void
-    {
-        $start = Carbon::parse($start);
-        $end = Carbon::parse($end);
+        // Если записи нет - считаем доступным
+        if (!$availability) {
+            return $this->formatStatus('available', 'Доступно', 'success');
+        }
 
-        $days = $start->diffInDays($end);
+        // Обработка статуса с учетом возможности продления
+        if ($availability->status === 'booked') {
+            return $this->handleBookedStatus($equipment, $today);
+        }
 
-        for ($i = 0; $i <= $days; $i++) {
-            $date = $start->copy()->addDays($i)->format('Y-m-d');
+        // Обработка статусов из equipment_availability
+        switch ($availability->status) {
+            case 'booked':
+                return $this->handleBookedStatus($equipment, $today);
 
-            EquipmentAvailability::updateOrCreate(
-                [
-                    'equipment_id' => $equipment->id,
-                    'date' => $date
-                ],
-                [
-                    'status' => $status,
-                    'order_id' => $orderId,
-                    'updated_at' => now()
-                ]
-            );
+            case 'maintenance':
+                return $this->formatStatus('maintenance', 'На обслуживании', 'secondary');
+
+            default: // available
+                return $this->formatStatus('available', 'Доступно', 'success');
         }
     }
 
-    /**
-     * Освобождает бронь оборудования по заказу
-     */
-    public function releaseBooking(Order $order): void
+    private function handleBookedStatus(Equipment $equipment, string $today): array
     {
-        foreach ($order->items as $item) {
-            EquipmentAvailability::where('equipment_id', $item->equipment_id)
-                ->where('order_id', $order->id)
-                ->update([
-                    'status' => 'available',
-                    'order_id' => null
-                ]);
+        $condition = $equipment->rentalCondition;
+        $extensionPolicy = optional($condition)->extension_policy;
+
+        // Если продление запрещено - показываем дату освобождения
+        if ($extensionPolicy === 'not_allowed') {
+            $nextAvailable = $this->calculateNextAvailableDate($equipment->id);
+            $message = $nextAvailable
+                ? 'Занята до '. $nextAvailable->format('d.m.Y')
+                : 'Занята';
+
+            return $this->formatStatus('unavailable', $message, 'warning');
         }
+
+        // Для разрешенного продления показываем особый статус
+        return $this->formatStatus('unavailable_extension', 'Недоступно (возможно продление)', 'danger');
     }
 
-    public function reportDowntime(
-        Equipment $equipment,
-            string $startTime,
-            string $endTime,
-            string $status,
-            bool $customerResponsible = false,
-            float $penaltyAmount = 0,
-            ?string $notes = null,
-            ?int $orderId = null
-    ): EquipmentStatusLog {
-        $log = EquipmentStatusLog::create([
-            'equipment_id' => $equipment->id,
-            'order_id' => $orderId,
+    private function formatStatus(string $status, string $message, string $class): array
+    {
+        return [
             'status' => $status,
-            'start_time' => $startTime,
-            'end_time' => $endTime,
-            'customer_responsible' => $customerResponsible,
-            'penalty_amount' => $penaltyAmount,
-            'notes' => $notes
-        ]);
+            'message' => $message,
+            'class' => $class
+        ];
+    }
 
-        // Если простой связан с заказом и клиент ответственен
-        if ($customerResponsible && $orderId) {
-            $order = Order::find($orderId);
-            $order->update([
-                'total_amount' => $order->total_amount + $penaltyAmount,
-                'penalty_amount' => $order->penalty_amount + $penaltyAmount
-            ]);
-        }
+    public function calculateNextAvailableDate(int $equipmentId): ?Carbon
+    {
+        $nextAvailable = EquipmentAvailability::where('equipment_id', $equipmentId)
+            ->where('date', '>=', now())
+            ->where(function($query) {
+                $query->where('status', 'available')
+                    ->orWhere(function($q) {
+                        $q->where('status', 'temp_reserve')
+                            ->where('expires_at', '<', now());
+                    });
+            })
+            ->orderBy('date')
+            ->first();
 
-        return $log;
+        return $nextAvailable?->date;
+    }
+
+    public function isAvailable(Equipment $equipment, $startDate, $endDate): bool
+    {
+        $conflicting = EquipmentAvailability::where('equipment_id', $equipment->id)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->where(function($query) {
+                $query->where('status', 'booked')
+                    ->orWhere('status', 'maintenance')
+                    ->orWhere(function($q) {
+                        $q->where('status', 'temp_reserve')
+                            ->where('expires_at', '>', now());
+                    });
+            })
+            ->exists();
+
+        return !$conflicting;
     }
 }

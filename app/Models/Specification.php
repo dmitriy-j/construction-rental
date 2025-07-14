@@ -11,8 +11,16 @@ class Specification extends Model
 
     protected $table = 'equipment_specifications';
 
-    protected $fillable = ['equipment_id', 'key', 'value'];
-    
+    protected $fillable = [
+        'equipment_id',
+        'key',
+        'value',
+        'weight',
+        'length',
+        'width',
+        'height'
+    ];
+
     public function equipment()
     {
         return $this->belongsTo(Equipment::class);

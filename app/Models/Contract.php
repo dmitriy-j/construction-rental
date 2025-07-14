@@ -24,4 +24,20 @@ class Contract extends Model
     {
         return $this->belongsTo(Order::class);
     }
+    public function rentalCondition()
+    {
+        return $this->hasOne(RentalCondition::class);
+    }
+
+    // Создаем условия аренды при создании договора
+    /*public static function boot()
+    {
+        parent::boot();
+
+        static::created(function ($contract) {
+            $contract->rentalCondition()->create(
+                RentalCondition::defaultForCompany($contract->lesseeCompany)->toArray()
+            );
+        });
+    }*/
 }

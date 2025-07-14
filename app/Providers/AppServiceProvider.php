@@ -27,8 +27,17 @@ class AppServiceProvider extends ServiceProvider
         //
  //   }
 
-    public function boot() 
+    public function boot()
     {
     Paginator::useBootstrapFive();
+
+        // Логирование всех необработанных исключений
+        register_shutdown_function(function() {
+            $error = error_get_last();
+            if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR])) {
+                \Log::emergency('SHUTDOWN ERROR', $error);
+            }
+        });
+
     }
 }
