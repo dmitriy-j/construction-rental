@@ -137,8 +137,9 @@
                                             <div class="row mb-3">
                                                 <div class="col-md-6">
                                                     <label class="form-label">Откуда (база техники)</label>
+                                                    <!-- Для баз техники (арендодатель) -->
                                                     <select name="delivery_from_id" class="form-select" required>
-                                                        @if($equipment->company && $equipment->company->locations)
+                                                        @if($equipment->company && $equipment->company->locations->count())
                                                             @foreach($equipment->company->locations as $location)
                                                                 <option value="{{ $location->id }}"
                                                                     {{ $loop->first ? 'selected' : '' }}>
@@ -146,12 +147,13 @@
                                                                 </option>
                                                             @endforeach
                                                         @else
-                                                            <option value="">Локации не найдены</option>
+                                                            <option value="" disabled>Локации не найдены</option>
                                                         @endif
                                                     </select>
 
+                                                    <!-- Для строительных площадок (арендатор) -->
                                                     <select name="delivery_to_id" class="form-select" required>
-                                                        @if(auth()->user()->company && auth()->user()->company->locations)
+                                                        @if(auth()->user()->company && auth()->user()->company->locations->count())
                                                             @foreach(auth()->user()->company->locations as $location)
                                                                 <option value="{{ $location->id }}"
                                                                     {{ $loop->first ? 'selected' : '' }}>
@@ -159,7 +161,7 @@
                                                                 </option>
                                                             @endforeach
                                                         @else
-                                                            <option value="">Локации не найдены</option>
+                                                            <option value="" disabled>Локации не найдены</option>
                                                         @endif
                                                     </select>
                 </div>

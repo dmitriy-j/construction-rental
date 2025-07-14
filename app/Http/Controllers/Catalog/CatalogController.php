@@ -117,6 +117,9 @@ class CatalogController extends Controller
         $defaultStart = $nextAvailable ?: now()->addDay();
         $defaultEnd = $defaultStart->copy()->addDays(1);
 
+        // Загружаем компанию арендодателя с локациями
+        $equipment->load('company.locations');
+
         $equipment->increment('views');
         return view('catalog.show', compact('equipment', 'defaultStart', 'defaultEnd'));
     }
