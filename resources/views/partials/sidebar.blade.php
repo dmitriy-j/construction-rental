@@ -37,6 +37,13 @@
                     <i class="fas fa-tachometer-alt"></i> Главная
                 </a>
             </li>
+
+            <li class="nav-item">
+    <a class="nav-link" href="{{ route('news.index') }}">
+        <i class="bi bi-newspaper me-2"></i> Новости
+    </a>
+</li>
+
             <li class="nav-item">
                 <a class="nav-link" href="{{ route('catalog') }}">
                     <i class="fas fa-search"></i> Каталог техники

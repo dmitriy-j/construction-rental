@@ -69,6 +69,7 @@ class DatabaseSeeder extends Seeder
             EquipmentSeeder::class,
             PlatformMarkupSeeder::class,
             EquipmentAvailabilitySeeder::class,
+            NewsSeeder::class,
         ]);
 
         // 5. Создаем связанные данные для оборудования

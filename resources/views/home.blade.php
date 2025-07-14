@@ -6,17 +6,28 @@
 
     <!-- 2. Новости -->
     <div class="card shadow-sm mb-5">
-        <div class="card-body">
-            <h3 class="mb-4">Новости</h3>
-            <div class="news-item mb-3">
-                <h5>Новая партия экскаваторов</h5>
-                <small class="text-muted">12.04.2023</small>
-            </div>
-            <div class="news-item">
-                <h5>Скидки на аренду в мае</h5>
-                <small class="text-muted">10.04.2023</small>
-            </div>
-            <h3 class="mb-4">Срочные заявки</h3>
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3>Последние новости</h3>
+            <a href="{{ route('news.index') }}" class="btn btn-sm btn-outline-primary">
+                Все новости
+            </a>
+        </div>
+        
+        @foreach(\App\Models\News::published()->latest()->take(2)->get() as $news)
+        <div class="news-item mb-3 pb-3 border-bottom">
+            <h5>{{ $news->title }}</h5>
+            <p class="text-muted small mb-2">
+                {{ $news->publish_date->format('d.m.Y') }}
+            </p>
+            <p>{{ Str::limit($news->excerpt, 100) }}</p>
+            <a href="{{ route('news.show', $news->slug) }}" class="btn btn-sm btn-outline-secondary">
+                Подробнее
+            </a>
+        </div>
+        @endforeach
+    </div>
+</div>
     
     <!-- Таблица -->
     <div class="table-responsive">
