@@ -45,11 +45,7 @@
                 </a>
             </li>
 
-            <li class="nav-item">
-    <a class="nav-link" href="{{ route('news.index') }}">
-        <i class="bi bi-newspaper me-2"></i> Новости
-    </a>
-</li>
+            
 
             <li class="nav-item">
                 <a class="nav-link {{ Request::is('catalog*') ? 'active' : '' }}"
@@ -94,6 +90,12 @@
                 <i class="fas fa-user me-2"></i> Профиль
             </a>
         </li>
+        <li class="nav-item">
+    <a class="nav-link {{ request()->is('admin/equipment*') ? 'active' : '' }}" href="{{ route('admin.equipment.index') }}">
+        <i class="bi bi-tools me-2"></i> Каталог техники
+       
+    </a>
+</li>
         <li class="nav-item">
             <a class="nav-link {{ Request::is('notifications') ? 'active' : '' }}"
                href="{{ route('notifications') }}">

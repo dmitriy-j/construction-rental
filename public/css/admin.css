@@ -1,0 +1,27 @@
+/* Таблица */
+.table-responsive {
+    overflow-x: auto;
+}
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+.table th {
+    white-space: nowrap;
+    background-color: #f8f9fa;
+}
+.badge {
+    font-size: 0.85em;
+    padding: 0.35em 0.65em;
+}
+
+/* Фильтры */
+.card-header h5 {
+    font-weight: 600;
+}
+.form-select, .form-control {
+    border-radius: 4px;
+}
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
