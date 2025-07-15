@@ -1,11 +1,11 @@
-@extends('admin.layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Управление новостями')
 
 @section('content')
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Список новостей</h2>
-        <a href="{{ route('admin.news.create') }}" class="btn btn-primary">
+        <a href="{{ route('news.create') }}" class="btn btn-primary">
             <i class="bi bi-plus-lg"></i> Добавить новость
         </a>
     </div>
@@ -36,10 +36,10 @@
                                 </td>
                                 <td>
                                     <div class="btn-group">
-                                        <a href="{{ route('admin.news.edit', $item->id) }}" class="btn btn-sm btn-outline-primary">
+                                        <a href="{{ route('news.edit', $item->id) }}" class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        <form action="{{ route('admin.news.destroy', $item->id) }}" method="POST">
+                                        <form action="{{ route('news.destroy', $item->id) }}" method="POST">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить новость?')">

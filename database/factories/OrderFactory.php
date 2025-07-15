@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\Company;
 use App\Models\User;
 use App\Models\Platform;
+use App\Models\Contract;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Carbon\Carbon;
 
@@ -13,18 +14,18 @@ class OrderFactory extends Factory
 {
     protected $model = Order::class;
 
-    // Статические кэши для данных
     private static $lesseeCompanies;
     private static $lessorCompanies;
     private static $users;
+    private static $contracts;
 
     public function definition()
     {
-        // Инициализация статических данных один раз
         if (!isset(self::$lesseeCompanies)) {
             self::$lesseeCompanies = Company::where('is_lessee', true)->pluck('id')->all();
             self::$lessorCompanies = Company::where('is_lessor', true)->pluck('id')->all();
             self::$users = User::pluck('id')->all();
+            self::$contracts = Contract::pluck('id')->all();
         }
 
         $startDate = $this->faker->dateTimeBetween('now', '+1 month');
@@ -34,6 +35,7 @@ class OrderFactory extends Factory
             'platform_id' => Platform::first()->id,
             'lessee_company_id' => $this->faker->randomElement(self::$lesseeCompanies),
             'lessor_company_id' => $this->faker->randomElement(self::$lessorCompanies),
+            'contract_id' => $this->faker->randomElement(self::$contracts),
             'user_id' => $this->faker->randomElement(self::$users),
             'status' => $this->faker->randomElement(['pending', 'confirmed', 'active', 'completed']),
             'start_date' => $startDate,
@@ -50,7 +52,6 @@ class OrderFactory extends Factory
             'penalty_amount' => $this->faker->numberBetween(0, 2000),
             'service_start_date' => $this->faker->optional()->dateTimeBetween($startDate, $endDate),
             'service_end_date' => $this->faker->optional()->dateTimeBetween($startDate, $endDate),
-            'contract_date' => $this->faker->optional()->dateTimeBetween($startDate, $endDate),
             'extension_requested' => false,
             'requested_end_date' => null,
             'notes' => $this->faker->optional(0.3)->sentence,
@@ -60,7 +61,6 @@ class OrderFactory extends Factory
     public function configure()
     {
         return $this->afterCreating(function (Order $order) {
-            // Используем фабрику для создания DeliveryNote
             \App\Models\DeliveryNote::factory()->create([
                 'order_id' => $order->id
             ]);

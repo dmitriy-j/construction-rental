@@ -38,6 +38,7 @@ class EquipmentFactory extends Factory
             'is_approved' => $this->faker->boolean(90), // 90% chance true
             'rating' => $this->faker->randomFloat(1, 3, 5),
             'is_featured' => $this->faker->boolean(30),
+            'rental_terms' => EquipmentRentalTerm::factory()->create(),
         ];
     }
 

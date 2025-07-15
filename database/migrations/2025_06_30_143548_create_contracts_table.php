@@ -10,7 +10,7 @@ class CreateContractsTable extends Migration
     {
         Schema::create('contracts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('order_id')->constrained()->onDelete('cascade');
+            $table->unsignedBigInteger('order_id')->nullable();
             $table->string('number')->comment('Номер договора');
             $table->text('description')->nullable()->comment('Предмет договора');
             $table->enum('payment_type', ['prepay', 'postpay', 'mixed'])->default('postpay');

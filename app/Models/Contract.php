@@ -4,40 +4,47 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Contract extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'order_id', 'number', 'description', 'payment_type',
-        'documentation_deadline', 'payment_deadline',
-        'penalty_rate', 'file_path'
+        'company_id',
+        'number',
+        'description',
+        'payment_type',
+        'documentation_deadline',
+        'payment_deadline',
+        'penalty_rate',
+        'file_path',
+        'start_date',
+        'end_date',
+        'is_active'
     ];
 
     protected $casts = [
-    'documentation_deadline' => 'integer', // Приведение к целому числу
-    'payment_deadline' => 'integer',       // Приведение к целому числу
+        'documentation_deadline' => 'integer',
+        'payment_deadline' => 'integer',
+        'start_date' => 'date',
+        'end_date' => 'date',
+        'is_active' => 'boolean',
     ];
 
-    public function order()
+    public function company(): BelongsTo
     {
-        return $this->belongsTo(Order::class);
-    }
-    public function rentalCondition()
-    {
-        return $this->hasOne(RentalCondition::class);
+        return $this->belongsTo(Company::class);
     }
 
-    // Создаем условия аренды при создании договора
-    /*public static function boot()
+    public function orders(): HasMany
     {
-        parent::boot();
+        return $this->hasMany(Order::class);
+    }
 
-        static::created(function ($contract) {
-            $contract->rentalCondition()->create(
-                RentalCondition::defaultForCompany($contract->lesseeCompany)->toArray()
-            );
-        });
-    }*/
+    public function rentalConditions(): HasMany
+    {
+        return $this->hasMany(RentalCondition::class);
+    }
 }

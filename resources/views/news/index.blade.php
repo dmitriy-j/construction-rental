@@ -1,26 +1,32 @@
 @extends('layouts.app')
-@section('title', 'Новости')
+
 @section('content')
-
-<h1 class="text-2xl font-bold mb-6">Новости</h1>
-
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    @foreach ($news as $item)
-        <div class="bg-white shadow rounded-lg p-4 relative hover:shadow-lg transition">
-            @if($item->is_urgent)
-                <span class="absolute top-2 right-2 text-red-500">
-                    <i class="fas fa-fire"></i>
-                </span>
-            @endif
-            <h2 class="text-xl font-semibold">{{ $item->title }}</h2>
-            <p class="text-sm text-gray-600 mt-2">{!! Str::limit($item->content, 100) !!}</p>
-            <a href="/news/{{ $item->id }}" class="mt-4 inline-block text-blue-500 hover:underline">Подробнее</a>
+<div class="container py-5">
+    <h1 class="mb-4">Новости компании</h1>
+    
+    <div class="row g-4">
+        @foreach($news as $item)
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">{{ $item->title }}</h5>
+                    <p class="text-muted small mb-2">
+                        {{ $item->publish_date->format('d.m.Y') }}
+                    </p>
+                    <p class="card-text">{{ $item->excerpt }}</p>
+                </div>
+                <div class="card-footer bg-white">
+                    <a href="{{ route('news.show', $item->slug) }}" class="btn btn-sm btn-outline-primary">
+                        Читать далее
+                    </a>
+                </div>
+            </div>
         </div>
-    @endforeach
-</div>
+        @endforeach
+    </div>
 
-<div class="mt-6">
-    {{ $news->links() }}
+    <div class="mt-4">
+        {{ $news->links() }}
+    </div>
 </div>
-
 @endsection

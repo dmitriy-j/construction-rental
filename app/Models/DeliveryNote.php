@@ -26,7 +26,8 @@ class DeliveryNote extends Model
         'equipment_condition',
         'vehicle_type',
         'distance_km',
-        'calculated_cost'
+        'calculated_cost',
+        'cart_item_id'
     ];
 
     protected $casts = [
@@ -73,5 +74,10 @@ class DeliveryNote extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function cartItem()
+    {
+        return $this->belongsTo(CartItem::class);
     }
 }

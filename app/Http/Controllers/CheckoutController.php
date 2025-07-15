@@ -130,8 +130,22 @@ class CheckoutController extends Controller
             'price_per_unit' => $item->base_price,
             'total_price' => $item->base_price * $item->period_count,
             'quantity' => 1,
-            'discount_amount' => 0
+            'discount_amount' => 0,
+            'delivery_cost' => $item->delivery_cost
         ]);
+
+        // Создаем запись о доставке
+        if ($item->delivery_cost > 0) {
+            DeliveryNote::create([
+                'order_id' => $order->id,
+                'cart_item_id' => $item->id,
+                'delivery_from_id' => $item->delivery_from_id,
+                'delivery_to_id' => $item->delivery_to_id,
+                'vehicle_type' => $this->calculateVehicleType($item),
+                'distance_km' => $this->calculateDistance($item),
+                'calculated_cost' => $item->delivery_cost
+            ]);
+        }
     }
 
     protected function bookEquipment($item, $orderId)

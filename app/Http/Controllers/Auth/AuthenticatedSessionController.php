@@ -58,12 +58,12 @@ class AuthenticatedSessionController extends Controller
         }
 
         // Подробное логирование
-        Log::debug('User details', [
-            'id' => $user->id,
-            'email' => $user->email,
-            'company_id' => $user->company_id,
-            'is_platform_admin' => $user->isPlatformAdmin()
-        ]);
+      //  Log::debug('User details', [
+      //      'id' => $user->id,
+      //      'email' => $user->email,
+      //      'company_id' => $user->company_id,
+      //      'is_platform_admin' => $user->isPlatformAdmin()
+     //   ]);
 
         if ($company) {
             Log::debug('Company details', [

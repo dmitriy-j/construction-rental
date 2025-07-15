@@ -109,4 +109,26 @@ class EquipmentAvailabilityService
 
         return !$conflicting;
     }
+
+    public function cancelUserReserves(int $userId)
+    {
+        // Отменяем временные резервы пользователя
+        EquipmentAvailability::where('user_id', $userId)
+            ->where('status', 'temp_reserve')
+            ->where('expires_at', '>', now())
+            ->delete();
+
+        Log::info("Cancelled temp reserves for user: $userId");
+    }
+
+     public function cancelTempReserves(int $userId)
+    {
+        $deleted = EquipmentAvailability::where('user_id', $userId)
+            ->where('status', 'temp_reserve')
+            ->where('expires_at', '>', now())
+            ->delete();
+
+        Log::info("Cancelled $deleted temp reserves for user: $userId");
+        return $deleted;
+    }
 }

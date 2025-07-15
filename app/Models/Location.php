@@ -26,9 +26,8 @@ class Location extends Model
     // Новый метод для получения короткого адреса
     public function getShortAddressAttribute(): string
     {
-        $parts = explode(',', $this->address);
-        return count($parts) > 2
-            ? implode(',', [$parts[0], $parts[1]])
-            : $this->address;
+        // Извлекаем только улицу и дом
+        preg_match('/(ул\.|улица|проспект|пр\.|шоссе|б-р) [\w\s\.-]+,?\s*\d+/u', $this->address, $matches);
+        return $matches[0] ?? $this->address;
     }
 }

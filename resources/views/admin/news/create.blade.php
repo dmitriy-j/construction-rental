@@ -1,4 +1,4 @@
-@extends('admin.layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Добавить новость')
 
@@ -8,7 +8,7 @@
             <h4>Добавить новость</h4>
         </div>
         <div class="card-body">
-            <form action="{{ route('admin.news.store') }}" method="POST">
+            <form action="{{ route('news.store') }}" method="POST">
                 @csrf
 
                 <div class="mb-3">
@@ -48,7 +48,7 @@
                 </div>
 
                 <div class="d-flex justify-content-between mt-4">
-                    <a href="{{ route('admin.news.index') }}" class="btn btn-secondary">
+                    <a href="{{ route('news.index') }}" class="btn btn-secondary">
                         <i class="bi bi-arrow-left"></i> Назад
                     </a>
                     <button type="submit" class="btn btn-primary">
