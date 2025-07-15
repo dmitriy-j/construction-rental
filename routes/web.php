@@ -144,6 +144,7 @@ Route::prefix('lessee')
             Route::delete('/remove/{itemId}', [CartController::class, 'remove'])->name('remove');
             Route::post('/update-dates', [CartController::class, 'updateDates'])->name('update-dates');
             Route::post('/clear', [CartController::class, 'clear'])->name('clear');
+            Route::delete('/remove-selected', [CartController::class, 'removeSelected'])->name('remove-selected');
         });
 
         // Оформление заказа
@@ -154,7 +155,7 @@ Route::prefix('lessee')
 // Загрузка УПД (общий доступ)
 Route::get('/orders/{order}/upd/{type}', [OrderController::class, 'downloadUPDF']);
 
-// админ кабинет 
+// админ кабинет
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
     Route::get('/equipment', [AdminEquipmentController::class, 'index'])->name('admin.equipment.index');

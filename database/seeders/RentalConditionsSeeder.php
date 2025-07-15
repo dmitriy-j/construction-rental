@@ -3,36 +3,29 @@
 namespace Database\Seeders;
 
 use App\Models\Company;
+use App\Models\Contract;
+use App\Models\Location;
 use App\Models\RentalCondition;
 use Illuminate\Database\Seeder;
+use Faker\Factory as Faker; // Добавлен импорт Faker
 
 class RentalConditionsSeeder extends Seeder
 {
     public function run()
     {
-        // Для каждой компании-арендатора создаем условия аренды
-        $lesseeCompanies = Company::where('is_lessee', true)->get();
+        $faker = \Faker\Factory::create(); // Исправлено создание Faker
 
-        foreach ($lesseeCompanies as $company) {
-            // Создаем 2 нестандартных условия
-            for ($i = 0; $i < 2; $i++) {
-                RentalCondition::create([
-                    'company_id' => $company->id,
-                    'shift_hours' => rand(6, 12),
-                    'shifts_per_day' => rand(1, 3),
-                    'transportation' => $this->randomTransportation(),
-                    'fuel_responsibility' => $this->randomFuelResponsibility(),
-                    'extension_policy' => $this->randomExtensionPolicy(),
-                    'payment_type' => $this->randomPaymentType(),
-                    'delivery_cost_per_km' => rand(50, 200),
-                    'loading_cost' => rand(1000, 5000),
-                    'unloading_cost' => rand(1000, 5000),
-                    'is_default' => false
-                ]);
-            }
+        $contracts = Contract::where('is_active', true)->get();
+
+        foreach ($contracts as $contract) {
+            $company = $contract->company;
+            $locations = $company->locations;
+
+            if ($locations->isEmpty()) continue;
 
             // Создаем условие по умолчанию
             RentalCondition::create([
+                'contract_id' => $contract->id,
                 'company_id' => $company->id,
                 'shift_hours' => 8,
                 'shifts_per_day' => 1,
@@ -40,12 +33,32 @@ class RentalConditionsSeeder extends Seeder
                 'fuel_responsibility' => 'lessee',
                 'extension_policy' => 'allowed',
                 'payment_type' => 'hourly',
-                'delivery_cost_per_km' => 100,
-                'loading_cost' => 3000,
-                'unloading_cost' => 3000,
+                'delivery_location_id' => $locations->first()->id,
+                'delivery_cost_per_km' => rand(50, 200),
+                'loading_cost' => rand(1000, 5000),
+                'unloading_cost' => rand(1000, 5000),
                 'is_default' => true
             ]);
-        }
+
+            // Создаем 2 нестандартных условия
+            for ($i = 0; $i < 2; $i++) {
+                RentalCondition::create([ // Исправлено - добавлены все необходимые поля
+                    'contract_id' => $contract->id,
+                    'company_id' => $company->id,
+                    'shift_hours' => rand(6, 12),
+                    'shifts_per_day' => rand(1, 3),
+                    'transportation' => $this->randomTransportation(),
+                    'fuel_responsibility' => $this->randomFuelResponsibility(),
+                    'extension_policy' => $this->randomExtensionPolicy(),
+                    'payment_type' => $this->randomPaymentType(),
+                    'delivery_location_id' => $locations->random()->id,
+                    'delivery_cost_per_km' => rand(50, 200),
+                    'loading_cost' => rand(1000, 5000),
+                    'unloading_cost' => rand(1000, 5000),
+                    'is_default' => false
+                ]);
+            } // Добавлена закрывающая скобка цикла for
+        } // Исправлено - удален дублирующий код создания условия по умолчанию
     }
 
     private function randomTransportation(): string

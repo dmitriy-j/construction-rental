@@ -58,4 +58,29 @@ class CartItem extends Model
     {
         return $this->belongsTo(Location::class, 'delivery_to_id');
     }
+
+    public function getTotalPriceAttribute(): float
+    {
+        return ($this->base_price * $this->period_count) + $this->delivery_cost;
+    }
+
+    public function getDisplayPriceAttribute(): string
+    {
+        return number_format($this->base_price, 2) . ' ₽';
+    }
+
+    public function getTotalWithoutDeliveryAttribute(): float
+    {
+        return $this->base_price * $this->period_count;
+    }
+
+    public function getTotalWithDeliveryAttribute(): float
+    {
+        return ($this->base_price * $this->period_count) + $this->delivery_cost;
+    }
+
+    public function deliveryNote()
+    {
+        return $this->hasOne(DeliveryNote::class, 'cart_item_id');
+    }
 }

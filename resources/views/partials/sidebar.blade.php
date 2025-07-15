@@ -44,9 +44,12 @@
                     <i class="fas fa-tachometer-alt me-2"></i> Главная
                 </a>
             </li>
+<<<<<<< HEAD
 
             
 
+=======
+>>>>>>> 233cf9252a6f110863815bd507ccb668657bce76
             <li class="nav-item">
                 <a class="nav-link {{ Request::is('catalog*') ? 'active' : '' }}"
                 href="{{ route('catalog.index') }}">

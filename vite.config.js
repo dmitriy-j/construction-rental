@@ -8,25 +8,24 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/js/app.js',
+
             ],
             refresh: true,
         }),
     ],
     resolve: {
         alias: {
-            'bootstrap': path.resolve(__dirname, 'node_modules/bootstrap'),
-            'alpinejs': path.resolve(__dirname, 'node_modules/alpinejs/dist/module.esm.js')
+            '@': path.resolve(__dirname, 'resources/js'),
         }
     },
     build: {
+        manifest: true,
         rollupOptions: {
-            external: [
-                'bootstrap',
-                'alpinejs'
-            ],
-        },
-    },
-    optimizeDeps: {
-        include: ['bootstrap', 'alpinejs']
+            output: {
+                entryFileNames: `assets/[name].js`,
+                chunkFileNames: `assets/[name].js`,
+                assetFileNames: `assets/[name].[ext]`
+            }
+        }
     }
 });

@@ -111,13 +111,10 @@
                                 <p class="card-text">{{ Str::limit($equipment->description, 100) }}</p>
 
                                 <div class="d-flex justify-content-between align-items-center">
-                                    @if($firstTerm)
-                                        <span class="fw-bold">
-                                            {{ $firstTerm->price_per_hour }} ₽/час
-                                        </span>
-                                    @else
-                                        <span class="text-danger">Нет условий</span>
-                                    @endif
+                                    <!-- Изменено: вывод цены с наценкой -->
+                                    <span class="fw-bold">
+                                        {{ $equipment->display_price }}
+                                    </span>
                                 </div>
                             </div>
 

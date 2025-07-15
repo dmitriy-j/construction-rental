@@ -8,24 +8,24 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Services\EquipmentAvailabilityService;
 use Illuminate\Support\Carbon;
-
-
+use App\Services\PricingService; // Добавлен импорт сервиса
 
 class Equipment extends Model
 {
-
     use HasFactory;
 
-    protected $fillable = [
-    'title', 'slug', 'description', 'company_id', 'category_id',
-    'location_id', 'brand', 'model', 'year', 'hours_worked',
-    'rating', 'is_featured', 'is_approved'
-    ];
 
+
+
+    protected $fillable = [
+        'title', 'slug', 'description', 'company_id', 'category_id',
+        'location_id', 'brand', 'model', 'year', 'hours_worked',
+        'rating', 'is_featured', 'is_approved'
+    ];
 
     protected $casts = [
         'specifications' => 'array',
-        'working_hours_per_day' => 'integer', // Добавить новое поле
+        'working_hours_per_day' => 'integer',
     ];
 
     public function company()
@@ -63,6 +63,7 @@ class Equipment extends Model
         return $this->images()->where('is_main', true)->first()
             ?? $this->images()->first();
     }
+
     public function availabilities()
     {
         return $this->hasMany(EquipmentAvailability::class);
@@ -80,7 +81,6 @@ class Equipment extends Model
 
     public function getAvailabilityStatusAttribute(): string
     {
-        // Проверяем только сегодняшний день
         $today = now()->format('Y-m-d');
 
         $activeToday = EquipmentAvailability::where('equipment_id', $this->id)
@@ -108,9 +108,6 @@ class Equipment extends Model
         return app(EquipmentAvailabilityService::class)->getStatusDetails($this);
     }
 
-
-
-    // [MODIFIED] Добавлен аксессор даты доступности
     public function getNextAvailableDateAttribute(): ?Carbon
     {
         return app(EquipmentAvailabilityService::class)
@@ -145,6 +142,7 @@ class Equipment extends Model
             $query->with('specifications');
         });
     }
+
     public function getNumericSpecValue(string $key): float
     {
         $spec = $this->specifications->firstWhere('key', $key);
@@ -153,7 +151,6 @@ class Equipment extends Model
             return 0;
         }
 
-        // Возвращаем числовое значение если оно есть
         if ($key === 'Вес' && $spec->weight) {
             return $spec->weight;
         }
@@ -170,8 +167,34 @@ class Equipment extends Model
             return $spec->height;
         }
 
-        // Пытаемся извлечь число из строки
         preg_match('/(\d+[\.,]?\d*)/', $spec->value, $matches);
         return isset($matches[1]) ? (float)str_replace(',', '.', $matches[1]) : 0;
+    }
+
+    public function getDisplayPriceAttribute()
+    {
+        if (!$this->rentalTerms->isEmpty()) {
+            $term = $this->rentalTerms->first();
+            $price = $term->price_per_hour;
+
+            // Добавляем наценку платформы
+            $pricingService = app(PricingService::class);
+            $markup = $pricingService->getPlatformMarkup(
+                $this,
+                auth()->user()->company,
+                1 // 1 час для расчета
+            );
+
+            $priceWithMarkup = $price + $pricingService->applyMarkup($price, $markup);
+
+            return number_format($priceWithMarkup, 2) . ' ₽/час';
+        }
+
+        return 'Цена не указана';
+    }
+
+    public function mainImage()
+    {
+        return $this->hasOne(EquipmentImage::class)->where('is_main', true);
     }
 }

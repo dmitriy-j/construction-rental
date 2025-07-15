@@ -25,6 +25,7 @@ class OrderSeeder extends Seeder
     private static $rentalTermsCache = [];
     private static $operatorsByEquipment = [];
     private static $companies;
+    private static $contracts;
 
     public function run()
     {
@@ -32,6 +33,7 @@ class OrderSeeder extends Seeder
         self::$equipmentIds = Equipment::pluck('id')->all();
         self::$rentalConditions = RentalCondition::pluck('id')->all();
         self::$companies = Company::where('is_lessor', true)->get();
+        self::$contracts = Contract::all();
 
         // Гарантируем наличие операторов для всего оборудования
         $this->ensureOperatorsForAllEquipment();
@@ -76,13 +78,11 @@ class OrderSeeder extends Seeder
         $equipments = Equipment::all();
 
         foreach ($equipments as $equipment) {
-            // Проверяем, есть ли операторы для этого оборудования
             $hasOperators = Operator::where('equipment_id', $equipment->id)
                 ->where('is_active', true)
                 ->exists();
 
             if (!$hasOperators) {
-                // Создаем операторов для оборудования
                 $operatorCount = rand(1, 3);
                 for ($i = 0; $i < $operatorCount; $i++) {
                     Operator::create([
@@ -101,26 +101,7 @@ class OrderSeeder extends Seeder
 
     protected function createDocuments(Order $order)
     {
-        // Создаем контракт
-        $paymentTypes = ['prepay', 'postpay', 'mixed'];
-        $contract = Contract::create([
-            'order_id' => $order->id,
-            'number' => 'Договор №' . $order->id,
-            'description' => 'Договор аренды строительной техники №' . $order->id,
-            'payment_type' => $paymentTypes[array_rand($paymentTypes)],
-            'documentation_deadline' => rand(1, 5),
-            'payment_deadline' => rand(5, 15),
-            'penalty_rate' => rand(10, 50) / 100,
-            'file_path' => '/contracts/contract_'.$order->id.'.pdf'
-        ]);
-
-        // Создаем условия аренды для контракта
-        $rentalCondition = RentalCondition::inRandomOrder()->first();
-        if ($rentalCondition) {
-            $rentalConditionData = $rentalCondition->toArray();
-            unset($rentalConditionData['id']);
-            $contract->rentalCondition()->create($rentalConditionData);
-        }
+        // Удалено создание контракта - теперь контракты создаются отдельно
 
         // Создаем элементы заказа
         $items = [];
@@ -165,12 +146,10 @@ class OrderSeeder extends Seeder
             $randomItem = $items[array_rand($items)];
             $equipmentId = $randomItem['equipment_id'];
 
-            // Выбираем случайного оператора для данного оборудования
             $operatorId = null;
             if (!empty(self::$operatorsByEquipment[$equipmentId])) {
                 $operatorId = self::$operatorsByEquipment[$equipmentId][array_rand(self::$operatorsByEquipment[$equipmentId])];
             } else {
-                // Если операторов нет, создаем нового
                 $equipment = Equipment::find($equipmentId);
                 $operator = Operator::create([
                     'company_id' => $equipment->company_id,
@@ -229,12 +208,14 @@ class OrderSeeder extends Seeder
         $platform = Platform::first();
         $lessee = Company::where('is_lessee', true)->first();
         $lessor = Company::where('is_lessor', true)->first();
+        $contract = self::$contracts->first();
 
         // Заказ в статусе pending
         $pendingOrder = Order::factory()->create([
             'platform_id' => $platform->id,
             'lessee_company_id' => $lessee->id,
             'lessor_company_id' => $lessor->id,
+            'contract_id' => $contract->id,
             'status' => 'pending',
         ]);
         $this->createDocuments($pendingOrder);
@@ -244,6 +225,7 @@ class OrderSeeder extends Seeder
             'platform_id' => $platform->id,
             'lessee_company_id' => $lessee->id,
             'lessor_company_id' => $lessor->id,
+            'contract_id' => $contract->id,
             'status' => 'confirmed',
         ]);
         $this->createDocuments($confirmedOrder);
@@ -253,6 +235,7 @@ class OrderSeeder extends Seeder
             'platform_id' => $platform->id,
             'lessee_company_id' => $lessee->id,
             'lessor_company_id' => $lessor->id,
+            'contract_id' => $contract->id,
             'status' => 'active',
         ]);
         $this->createDocuments($order);

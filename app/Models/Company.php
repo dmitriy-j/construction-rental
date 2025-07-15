@@ -81,4 +81,12 @@ class Company extends Model
     {
         return $this->hasMany(Location::class);
     }
+
+    public function activeRentalConditions()
+    {
+        return $this->hasMany(RentalCondition::class)
+                    ->whereHas('contract', function($query) {
+                        $query->where('is_active', true);
+                    });
+    }
 }

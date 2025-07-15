@@ -42,7 +42,8 @@ class Order extends Model
         'discount_amount',
         'lessor_payout',
         'prepayment_amount',
-        'penalty_amount'
+        'penalty_amount',
+        'contract_id'
     ];
 
     protected $casts = [
@@ -106,9 +107,9 @@ class Order extends Model
         return $this->belongsTo(Platform::class);
     }
 
-    public function contract(): HasOne
+    public function contract(): BelongsTo
     {
-        return $this->hasOne(Contract::class);
+        return $this->belongsTo(Contract::class);
     }
 
     public function canGenerateCompletionAct(): bool

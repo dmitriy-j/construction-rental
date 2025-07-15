@@ -1,11 +1,17 @@
-import 'bootstrap/dist/js/bootstrap.bundle.min.js';
-import 'bootstrap/dist/css/bootstrap.min.css';
-
-
+import './bootstrap';
 import Alpine from 'alpinejs';
+import * as bootstrap from 'bootstrap';
 
 window.Alpine = Alpine;
+window.bootstrap = bootstrap;
+
 Alpine.start();
+
+// Явно импортируем Bootstrap и делаем глобальным
+
+
+// Добавьте CSRF токен для всех запросов
+window.csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
 // Инициализация компонентов Bootstrap
 document.addEventListener('DOMContentLoaded', () => {
