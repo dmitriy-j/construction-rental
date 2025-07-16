@@ -118,6 +118,7 @@ class CatalogController extends Controller
         $defaultEnd = $defaultStart->copy()->addDays(1);
 
         // Загружаем компанию арендодателя с локациями
+
         $equipment->load('company.locations');
 
         $equipment->increment('views');

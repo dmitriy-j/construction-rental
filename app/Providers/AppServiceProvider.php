@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use App\Services\EquipmentAvailabilityService;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Log;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -14,7 +15,15 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(EquipmentAvailabilityService::class, function ($app) {
-        return new EquipmentAvailabilityService();
+            return new EquipmentAvailabilityService();
+        });
+
+        $this->app->bind(TransportCalculatorService::class, function () {
+            return new TransportCalculatorService();
+        });
+
+        $this->app->bind(DeliveryCalculatorService::class, function () {
+            return new DeliveryCalculatorService();
         });
         //
     }

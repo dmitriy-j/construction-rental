@@ -131,4 +131,33 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // 4. Оформление заказа - критически важное исправление
+    const checkoutForm = document.getElementById('checkout-form');
+    if (checkoutForm) {
+        checkoutForm.addEventListener('submit', function(e) {
+            // Собираем выбранные элементы
+            const selectedItems = Array.from(document.querySelectorAll('.item-checkbox:checked'))
+                .map(checkbox => checkbox.value);
+
+            // Создаем скрытое поле для передачи данных
+            let selectedItemsInput = document.getElementById('selected-items');
+            if (!selectedItemsInput) {
+                selectedItemsInput = document.createElement('input');
+                selectedItemsInput.type = 'hidden';
+                selectedItemsInput.name = 'selected_items';
+                selectedItemsInput.id = 'selected-items';
+                checkoutForm.appendChild(selectedItemsInput);
+            }
+
+            // Записываем значение как JSON-строку
+            selectedItemsInput.value = JSON.stringify(selectedItems);
+
+            // Если ничего не выбрано, отменяем отправку
+            if (selectedItems.length === 0) {
+                e.preventDefault();
+                alert('Пожалуйста, выберите хотя бы один элемент для оформления заказа.');
+            }
+        });
+    }
 });

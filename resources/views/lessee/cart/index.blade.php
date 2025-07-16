@@ -172,8 +172,10 @@
             <a href="{{ route('catalog.index') }}" class="btn btn-lg btn-outline-primary">
                 <i class="bi bi-arrow-left me-2"></i> Продолжить выбор
             </a>
-            <form action="{{ route('checkout') }}" method="POST">
+            <form action="{{ route('checkout') }}" method="POST" id="checkout-form">
                 @csrf
+                <!-- Скрытое поле для передачи выбранных элементов -->
+                <input type="hidden" name="selected_items" id="selected-items" value="">
                 <button type="submit" class="btn btn-lg btn-success shadow-sm">
                     <i class="bi bi-check-circle me-2"></i> Оформить заказ
                 </button>
@@ -202,7 +204,34 @@
                     html: true,
                     trigger: 'hover focus'
                 })
-            })
+            });
+
+            // Обработка оформления заказа
+            const checkoutForm = document.getElementById('checkout-form');
+            if (checkoutForm) {
+                checkoutForm.addEventListener('submit', function(e) {
+                    // Собираем выбранные элементы
+                    const selectedItems = Array.from(document.querySelectorAll('.item-checkbox:checked'))
+                        .map(checkbox => checkbox.value);
+
+                    // Записываем в скрытое поле
+                    document.getElementById('selected-items').value = JSON.stringify(selectedItems);
+
+                    // Если ничего не выбрано, отменяем отправку
+                    if (selectedItems.length === 0) {
+                        e.preventDefault();
+                        alert('Пожалуйста, выберите хотя бы один элемент для оформления заказа.');
+                    }
+                });
+            }
+
+            // Обработчик для чекбокса "Выбрать все"
+            document.getElementById('select-all').addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.item-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+            });
         });
     </script>
 @endpush

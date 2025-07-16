@@ -62,7 +62,7 @@ class DocumentController extends Controller
     {
         $user = auth()->user();
         $type = $request->query('type', 'contracts');
-        
+
         $query = match($type) {
             'contracts' => Contract::query(),
             'waybills' => Waybill::query(),
@@ -111,5 +111,17 @@ class DocumentController extends Controller
 
         return app($generatorClass)->generate($document);
     }
+
+    public function downloadUPDF(Order $order, $type)
+    {
+        $generator = new UPDPdfGenerator();
+
+        return match($type) {
+            'lessor' => $generator->generateForLessor($order),
+            'lessee' => $generator->generateForLessee($order),
+            default => abort(404)
+        };
+    }
+
 
 }

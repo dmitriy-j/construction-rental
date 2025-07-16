@@ -62,7 +62,7 @@
             <!-- Мои заказы -->
             <li class="nav-item">
                 <a class="nav-link {{ Request::is('lessee/orders*') ? 'active' : '' }}"
-                href="{{ route('lessee.orders') }}">
+                href="{{ route('lessee.orders.index') }}">
                     <i class="fas fa-list me-2"></i> Мои заказы
                 </a>
             </li>

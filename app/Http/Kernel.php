@@ -17,7 +17,10 @@ class Kernel extends HttpKernel
 
     protected $routeMiddleware = [
     // ...
-    'admin' => \App\Http\Middleware\AdminMiddleware::class, // Добавь эту строку
+    'admin' => \App\Http\Middleware\AdminMiddleware::class,
+    'company.lessee' => \App\Http\Middleware\CheckCompanyLessee::class,
+    'company.lessor' => \App\Http\Middleware\CheckCompanyLessor::class,
+    'company.verified' => \App\Http\Middleware\CheckCompanyVerified::class, // Добавь эту строку
 ];
 
     protected $middlewareGroups = [
@@ -48,7 +51,7 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'company.verified' => \App\Http\Middleware\CheckCompanyVerified::class,
-        
+
         // Кастомные middleware
         'role' => \App\Http\Middleware\CheckRole::class,
         'company_admin' => \App\Http\Middleware\EnsureIsCompanyAdmin::class,

@@ -216,8 +216,16 @@ class OrderSeeder extends Seeder
             'lessee_company_id' => $lessee->id,
             'lessor_company_id' => $lessor->id,
             'contract_id' => $contract->id,
-            'status' => 'pending',
+            'status' => 'pending_approval',
         ]);
+
+        // Добавить новые статусы в создание тестовых заказов
+        $rejectedOrder = Order::factory()->create([
+            'status' => 'rejected',
+            'rejection_reason' => 'Техника недоступна',
+            'rejected_at' => now(),
+        ]);
+
         $this->createDocuments($pendingOrder);
 
         // Заказ в статусе confirmed

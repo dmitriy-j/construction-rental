@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RentalCondition extends Model
 {
-
     use HasFactory;
 
     protected $fillable = [
@@ -28,10 +27,14 @@ class RentalCondition extends Model
         'delivery_cost_per_km',
         'loading_cost',
         'unloading_cost',
+
+
+
     ];
 
     protected $casts = [
         'is_default' => 'boolean',
+
     ];
 
     public function company(): BelongsTo
