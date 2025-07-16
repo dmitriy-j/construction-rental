@@ -17,6 +17,7 @@ class DeliveryNote extends Model
 
     protected $fillable = [
         'order_id',
+        'order_item_id', // Добавлено
         'delivery_from_id',
         'delivery_to_id',
         'delivery_date',
@@ -27,7 +28,7 @@ class DeliveryNote extends Model
         'vehicle_type',
         'distance_km',
         'calculated_cost',
-        'cart_item_id'
+        // Убрано 'cart_item_id'
     ];
 
     protected $casts = [
@@ -52,15 +53,6 @@ class DeliveryNote extends Model
         $this->save();
     }
 
-    public function setEquipmentDimensions(Equipment $equipment): void
-    {
-        $this->weight = $equipment->specifications->where('key', 'weight')->first()->value ?? 0;
-        $this->length = $equipment->specifications->where('key', 'length')->first()->value ?? 0;
-        $this->width = $equipment->specifications->where('key', 'width')->first()->value ?? 0;
-        $this->height = $equipment->specifications->where('key', 'height')->first()->value ?? 0;
-    }
-
-
     public function deliveryFrom(): BelongsTo
     {
         return $this->belongsTo(Location::class, 'delivery_from_id');
@@ -76,8 +68,14 @@ class DeliveryNote extends Model
         return $this->belongsTo(Order::class);
     }
 
-    public function cartItem()
+    public function orderItem(): BelongsTo
     {
-        return $this->belongsTo(CartItem::class);
+        return $this->belongsTo(OrderItem::class);
     }
+
+    // Убрана связь с CartItem
+    // public function cartItem()
+    // {
+    //     return $this->belongsTo(CartItem::class);
+    // }
 }

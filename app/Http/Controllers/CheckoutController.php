@@ -33,7 +33,7 @@ class CheckoutController extends Controller
     }
 
     public function checkout(Request $request)
-{
+    {
         Log::info('[CHECKOUT] Начало оформления заказа', [
             'user_id' => auth()->id(),
             'selected_items' => $request->input('selected_items', ''),
@@ -43,11 +43,8 @@ class CheckoutController extends Controller
         try {
             $cart = $this->cartService->getCart();
             $selectedItems = $request->input('selected_items', '');
-
-            // Декодируем JSON-строку в массив
             $selectedItems = json_decode($selectedItems, true) ?? [];
 
-            // Если массив пуст, используем всю корзину
             if (empty($selectedItems)) {
                 Log::warning('[CHECKOUT] Параметр selected_items пуст, используем всю корзину');
                 $selectedItems = $cart->items->pluck('id')->toArray();
@@ -73,54 +70,58 @@ class CheckoutController extends Controller
                 return redirect()->back()->with('error', 'Корзина пуста');
             }
 
-            $groupedItems = $cartItems->groupBy(function ($item) {
-                return $item->rentalTerm->equipment->company_id;
-            });
-
-            Log::info('[CHECKOUT] Группировка по арендодателям', [
-                'groups' => $groupedItems->keys()->toArray()
-            ]);
-
-            $orders = [];
-
             DB::beginTransaction();
-            Log::info('[CHECKOUT] Начало транзакции');
 
             try {
+                // 1. Создаем главный заказ для арендатора
+                $parentOrder = $this->createParentOrder($cartItems);
+
+                // 2. Группируем позиции по арендодателям
+                $groupedItems = $cartItems->groupBy(
+                    fn($item) => $item->rentalTerm->equipment->company_id
+                );
+
+                $orders = [];
+
                 foreach ($groupedItems as $companyId => $items) {
-                    Log::info('[CHECKOUT] Создание заказа для арендодателя', [
+                    $childOrder = $this->createChildOrder(
+                        $parentOrder->id, // parent_order_id
+                        $companyId,
+                        $items
+                    );
+
+                    // Добавляем явную связь
+                    $parentOrder->childOrders()->save($childOrder);
+                    $orders[] = $childOrder;
+
+                    Log::info('[CHECKOUT] Дочерний заказ создан', [
+                        'order_id' => $childOrder->id,
                         'company_id' => $companyId,
                         'item_count' => $items->count()
                     ]);
 
-                    $order = $this->createOrder($companyId, $items);
-                    $orders[] = $order;
-
-                    Log::info('[CHECKOUT] Заказ создан', [
-                        'order_id' => $order->id,
-                        'status' => $order->status
-                    ]);
-
                     foreach ($items as $item) {
-                        Log::debug('[CHECKOUT] Создание позиции заказа', [
-                            'cart_item_id' => $item->id,
-                            'equipment_id' => $item->rentalTerm->equipment_id
-                        ]);
+                        // 4. Создаем позиции в дочернем заказе
+                        $this->createOrderItem($childOrder, $item);
+                        $this->bookEquipment($item, $childOrder->id);
 
-                        $this->createOrderItem($order, $item);
-                        $this->bookEquipment($item, $order->id);
+                        if ($item->deliveryNote) {
+                            $item->deliveryNote->update(['cart_item_id' => null]);
+                        }
                     }
                 }
 
+                // 5. Удаляем элементы из корзины
                 Log::info('[CHECKOUT] Удаление элементов из корзины', [
                     'item_ids' => $selectedItems
                 ]);
-
                 $cart->items()->whereIn('id', $selectedItems)->delete();
                 $this->cartService->recalculateTotals($cart);
 
                 DB::commit();
-                Log::info('[CHECKOUT] Транзакция успешно завершена');
+
+                return redirect()->route('lessee.orders.show', $parentOrder)
+                    ->with('success', 'Заказы успешно оформлены! Создано подзаказов: ' . count($orders));
 
             } catch (Exception $e) {
                 DB::rollBack();
@@ -131,9 +132,6 @@ class CheckoutController extends Controller
                 return redirect()->back()->with('error', 'Ошибка оформления заказа: ' . $e->getMessage());
             }
 
-            return redirect()->route('lessee.orders.index')
-                ->with('success', 'Заказы успешно оформлены! Создано заказов: ' . count($orders));
-
         } catch (Exception $e) {
             Log::error('[CHECKOUT] Критическая ошибка', [
                 'error' => $e->getMessage(),
@@ -143,37 +141,53 @@ class CheckoutController extends Controller
         }
     }
 
-    protected function createOrder($companyId, $items)
+    protected function createParentOrder($items)
     {
-        $baseAmount = $items->sum(function ($item) {
+        $totalAmount = $items->sum(function($item) {
+            return ($item->base_price * $item->period_count) + $item->platform_fee + $item->delivery_cost;
+        });
+
+        return Order::create([
+            'user_id' => auth()->id(),
+            'lessee_company_id' => auth()->user()->company_id,
+            'lessor_company_id' => null, // Явное указание NULL
+            'status' => Order::STATUS_AGGREGATED,
+            'total_amount' => $totalAmount,
+            'start_date' => $items->min('start_date'),
+            'end_date' => $items->max('end_date'),
+        ]);
+    }
+
+    protected function createChildOrder($parentId, $companyId, $items)
+    {
+        $baseAmount = $items->sum(function($item) {
             return $item->base_price * $item->period_count;
         });
 
-        $platformFee = $items->sum(function ($item) {
-            return $item->platform_fee * $item->period_count;
-        });
+        $platformFee = $items->sum('platform_fee');
+        $deliveryCost = $items->sum('delivery_cost');
+        $totalAmount = $baseAmount + $platformFee + $deliveryCost;
 
         $discountAmount = $this->pricingService->getDiscount(
             auth()->user()->company,
             $baseAmount + $platformFee
         );
 
-        $totalAmount = $baseAmount + $platformFee - $discountAmount;
-
-        $startDate = $items->min('start_date');
-        $endDate = $items->max('end_date');
+        $totalAmount -= $discountAmount;
 
         return Order::create([
-            'user_id' => auth()->id(),
-            'lessee_company_id' => auth()->user()->company_id,
+            'user_id' => auth()->id(), // Добавляем user_id
+            'parent_order_id' => $parentId,
             'lessor_company_id' => $companyId,
+            'lessee_company_id' => auth()->user()->company_id,
+            'status' => Order::STATUS_PENDING_APPROVAL,
             'base_amount' => $baseAmount,
             'platform_fee' => $platformFee,
+            'delivery_cost' => $deliveryCost,
             'discount_amount' => $discountAmount,
             'total_amount' => $totalAmount,
-            'status' => Order::STATUS_PENDING_APPROVAL,
-            'start_date' => $startDate,
-            'end_date' => $endDate,
+            'start_date' => $items->min('start_date'),
+            'end_date' => $items->max('end_date'),
             'platform_id' => Platform::getMain()->id,
             'rental_condition_id' => $items->first()->rental_condition_id
         ]);
@@ -181,22 +195,35 @@ class CheckoutController extends Controller
 
     protected function createOrderItem($order, $item)
     {
+        $term = $item->rentalTerm;
+        $equipment = $term->equipment;
+
+        // Рассчитываем скидку для позиции
+        $itemTotal = ($item->base_price * $item->period_count) + $item->platform_fee;
+        $orderTotal = $order->base_amount + $order->platform_fee;
+
+        $discountAmount = 0;
+        if ($orderTotal > 0 && $order->discount_amount > 0) {
+            $discountAmount = round(($itemTotal / $orderTotal) * $order->discount_amount, 2);
+        }
+
         $orderItem = \App\Models\OrderItem::create([
             'order_id' => $order->id,
-            'equipment_id' => $item->rentalTerm->equipment_id,
-            'rental_term_id' => $item->rental_term_id,
+            'equipment_id' => $equipment->id,
+            'rental_term_id' => $term->id,
+            'rental_condition_id' => $item->rental_condition_id,
             'period_count' => $item->period_count,
-            'base_price' => $item->base_price,
-            'platform_fee' => $item->platform_fee,
-            'price_per_unit' => $item->base_price,
-            'total_price' => $item->base_price * $item->period_count,
             'quantity' => 1,
-            'discount_amount' => 0,
+            'base_price' => $item->base_price,
+            'price_per_unit' => $item->base_price,
+            'platform_fee' => $item->platform_fee,
+            'discount_amount' => $discountAmount,
+            'total_price' => $itemTotal - $discountAmount,
             'delivery_cost' => $item->delivery_cost
         ]);
 
         if ($item->delivery_cost > 0) {
-            $deliveryDays = $item->rentalTerm->delivery_days ?? 1;
+            $deliveryDays = $term->delivery_days ?? 1;
             $deliveryDate = Carbon::parse($item->start_date)->subDays($deliveryDays);
 
             $vehicleType = $this->calculateVehicleType($item);
@@ -204,46 +231,64 @@ class CheckoutController extends Controller
 
             DeliveryNote::create([
                 'order_id' => $order->id,
-                'cart_item_id' => $item->id,
+                'order_item_id' => $orderItem->id,
                 'delivery_from_id' => $item->delivery_from_id,
                 'delivery_to_id' => $item->delivery_to_id,
                 'vehicle_type' => $vehicleType,
                 'distance_km' => $distance,
                 'calculated_cost' => $item->delivery_cost,
                 'delivery_date' => $deliveryDate,
-                'driver_name' => 'Не указано', // Добавлено значение по умолчанию
-                'receiver_name' => 'Не указано', // Для других обязательных полей
-                'equipment_condition' => 'Хорошее' // Значение по умолчанию
+                'driver_name' => 'Не указано',
+                'receiver_name' => 'Не указано',
+                'equipment_condition' => 'Хорошее'
             ]);
         }
 
         return $orderItem;
     }
 
+    protected function calculateItemDiscount($item, $orderDiscount)
+    {
+        // Если скидка нулевая - возвращаем 0
+        if ($orderDiscount <= 0) {
+            return 0;
+        }
+
+        // Рассчитываем общую стоимость позиции
+        $itemTotal = ($item->base_price * $item->period_count) + $item->platform_fee;
+
+        // Рассчитываем долю позиции в общей сумме заказа
+        $orderTotal = $order->base_amount + $order->platform_fee;
+
+        if ($orderTotal <= 0) {
+            return 0;
+        }
+
+        // Скидка пропорциональна вкладу позиции в общую сумму
+        return round(($itemTotal / $orderTotal) * $orderDiscount, 2);
+    }
+
     protected function bookEquipment($item, $orderId)
     {
         $equipment = $item->rentalTerm->equipment;
         $rentalTerm = $item->rentalTerm;
+        $deliveryDays = $rentalTerm->delivery_days ?? 0;
 
         $startDate = Carbon::parse($item->start_date);
         $endDate = Carbon::parse($item->end_date);
-        $deliveryDays = $rentalTerm->delivery_days ?? 0;
-        $deliveryStartDate = $startDate->copy()->subDays($deliveryDays);
 
         Log::debug('[BOOKING] Параметры бронирования', [
             'equipment_id' => $equipment->id,
             'start_date' => $startDate->format('Y-m-d'),
             'end_date' => $endDate->format('Y-m-d'),
             'delivery_days' => $deliveryDays,
-            'delivery_start_date' => $deliveryStartDate->format('Y-m-d'),
             'now' => now()->format('Y-m-d H:i:s'),
             'item_id' => $item->id
         ]);
 
-        // Проверка доступности
         $isAvailable = $this->availabilityService->isAvailable(
             $equipment,
-            $deliveryStartDate->format('Y-m-d'),
+            $startDate->format('Y-m-d'),
             $endDate->format('Y-m-d')
         );
 
@@ -252,21 +297,17 @@ class CheckoutController extends Controller
         ]);
 
         if (!$isAvailable) {
-            // Получаем ближайшую доступную дату
             $nextAvailable = $this->availabilityService->calculateNextAvailableDate($equipment->id);
-
             Log::warning('[BOOKING] Оборудование недоступно', [
                 'next_available' => $nextAvailable ? $nextAvailable->format('Y-m-d') : null
             ]);
-
             throw new \Exception("Оборудование {$equipment->title} недоступно. " .
                 ($nextAvailable ? "Ближайшая доступная дата: {$nextAvailable->format('d.m.Y')}" : ""));
         }
 
-        // Бронируем оборудование
         $this->availabilityService->bookEquipment(
             $equipment,
-            $deliveryStartDate->format('Y-m-d'),
+            $startDate->format('Y-m-d'),
             $endDate->format('Y-m-d'),
             $orderId,
             'booked'

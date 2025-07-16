@@ -79,8 +79,4 @@ class CartItem extends Model
         return ($this->base_price * $this->period_count) + $this->delivery_cost;
     }
 
-    public function deliveryNote()
-    {
-        return $this->hasOne(DeliveryNote::class, 'cart_item_id');
-    }
 }

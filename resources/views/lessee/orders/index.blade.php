@@ -34,9 +34,10 @@
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Арендодатель</th>
+                            <th>Позиции</th>
                             <th>Сумма</th>
                             <th>Статус</th>
+                            <th>Период</th>
                             <th>Дата создания</th>
                             <th>Действия</th>
                         </tr>
@@ -45,13 +46,7 @@
                         @forelse($orders as $order)
                         <tr>
                             <td>{{ $order->id }}</td>
-                            <td>
-                                @if($order->lessorCompany)
-                                    {{ $order->lessorCompany->legal_name }}
-                                @else
-                                    Компания не указана
-                                @endif
-                            </td>
+                            <td>{{ $order->total_items_count ?? 0 }} позиция(й)</td>
                             <td>{{ number_format($order->total_amount, 2) }} ₽</td>
                             <td>
                                 <span class="badge bg-{{ $order->status_color }}">
@@ -63,7 +58,10 @@
                                     @endif
                                 </span>
                             </td>
-                            <td>{{ $order->created_at->format('d.m.Y') }}</td>
+                            <td>
+                                {{ $order->start_date->format('d.m.Y') }} - {{ $order->end_date->format('d.m.Y') }}
+                            </td>
+                            <td>{{ $order->created_at->format('d.m.Y H:i') }}</td>
                             <td>
                                 <a href="{{ route('lessee.orders.show', $order) }}" class="btn btn-sm btn-primary">
                                     <i class="fas fa-eye"></i>
@@ -72,11 +70,11 @@
                                 @if(in_array($order->status, [
                                     App\Models\Order::STATUS_PENDING,
                                     App\Models\Order::STATUS_PENDING_APPROVAL,
-                                    App\Models\Order::STATUS_CONFIRMED
+                                    App\Models\Order::STATUS_CONFIRMED,
+                                    App\Models\Order::STATUS_AGGREGATED
                                 ]))
                                     <form action="{{ route('lessee.orders.cancel', $order) }}" method="POST" class="d-inline">
                                         @csrf
-                                        @method('DELETE')
                                         <button class="btn btn-sm btn-danger" title="Отменить заказ">
                                             <i class="fas fa-times"></i>
                                         </button>
@@ -95,7 +93,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="text-center">Заказы не найдены</td>
+                            <td colspan="7" class="text-center">Заказы не найдены</td>
                         </tr>
                         @endforelse
                     </tbody>

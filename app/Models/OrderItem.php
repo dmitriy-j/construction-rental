@@ -26,9 +26,13 @@ class OrderItem extends Model
         return $this->belongsTo(Order::class);
     }
 
-    public function equipment(): BelongsTo
+    public function equipment()
     {
-        return $this->belongsTo(Equipment::class);
+        return $this->belongsTo(Equipment::class)->withDefault([
+            'title' => 'Удаленное оборудование',
+            'brand' => 'N/A',
+            'model' => 'N/A'
+        ]);
     }
 
     public function rentalTerm(): BelongsTo
@@ -39,5 +43,10 @@ class OrderItem extends Model
     public function rentalCondition(): BelongsTo
     {
         return $this->belongsTo(RentalCondition::class, 'rental_condition_id');
+    }
+
+    public function deliveryNote()
+    {
+        return $this->hasOne(DeliveryNote::class, 'order_item_id');
     }
 }

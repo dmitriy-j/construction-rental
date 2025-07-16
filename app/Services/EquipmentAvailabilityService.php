@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Equipment;
 use App\Models\EquipmentAvailability;
+use App\Models\Order;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\Log;
@@ -204,5 +205,42 @@ class EquipmentAvailabilityService
 
         Log::info("Удалено устаревших резервов: $deleted");
         return $deleted;
+    }
+
+    public function bookDelivery(Order $order)
+    {
+        foreach ($order->items as $item) {
+            $deliveryDays = $item->rentalTerm->delivery_days ?? 0;
+            $startDate = Carbon::parse($item->start_date);
+
+            // Расчет даты начала доставки
+            $deliveryStartDate = $startDate->copy()->subDays($deliveryDays);
+            $deliveryEndDate = $startDate->copy()->subDay(); // Доставка заканчивается за день до аренды
+
+            $this->bookEquipment(
+                $item->equipment,
+                $deliveryStartDate->format('Y-m-d'),
+                $deliveryEndDate->format('Y-m-d'),
+                $order->id,
+                'delivery' // Специальный статус для доставки
+            );
+        }
+    }
+
+    public function releaseBooking(Order $order)
+    {
+        foreach ($order->items as $item) {
+            if ($item->equipment) {
+                // Удаляем бронирование для каждого оборудования
+                EquipmentAvailability::where('equipment_id', $item->equipment->id)
+                    ->where('order_id', $order->id)
+                    ->delete();
+
+                Log::info("[RELEASE] Бронирование снято для оборудования", [
+                    'equipment_id' => $item->equipment->id,
+                    'order_id' => $order->id
+                ]);
+            }
+        }
     }
 }

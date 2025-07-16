@@ -50,10 +50,9 @@ class DashboardController extends Controller
 
     public function orders()
     {
-        // Исправленный запрос с новым пространством имен
         $orders = Order::where('lessee_company_id', auth()->user()->company_id)
-            ->with(['lessorCompany', 'items.equipment'])
-            ->orderBy('created_at', 'desc')
+            ->with(['lessorCompany', 'childOrders.items']) // Загружаем дочерние заказы и их позиции
+            ->orderBy('created_at', 'desc') // Сортировка от новых к старым
             ->paginate(10);
 
         return view('lessee.orders.index', compact('orders'));

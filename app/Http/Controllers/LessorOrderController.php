@@ -13,8 +13,8 @@ class LessorOrderController extends Controller
     public function index()
     {
         $orders = Order::where('lessor_company_id', auth()->user()->company_id)
-            ->with(['lesseeCompany', 'items.equipment'])
-            ->orderBy('created_at', 'desc')
+            ->whereNotNull('parent_order_id') // Только дочерние заказы
+            ->with(['items.equipment', 'lesseeCompany'])
             ->paginate(10);
 
         return view('lessor.orders.index', compact('orders'));
@@ -22,11 +22,17 @@ class LessorOrderController extends Controller
 
     public function show(Order $order)
     {
-        if ($order->lessor_company_id !== auth()->user()->company_id) {
+        // Проверка прав
+        if ($order->lessor_company_id !== auth()->user()->company_id || $order->isParent()) {
             abort(403);
         }
 
-        $order->load(['items.equipment', 'lesseeCompany']);
+        $order->load([
+            'items.equipment',
+            'lesseeCompany',
+            'parentOrder'
+        ]);
+
         return view('lessor.orders.show', compact('order'));
     }
 
@@ -173,4 +179,26 @@ class LessorOrderController extends Controller
 
         return back()->with('success', 'Заказ отклонен');
     }
+
+    public function approveOrder(Order $order)
+    {
+        // Проверка прав арендодателя
+        if ($order->lessor_company_id !== auth()->user()->company_id) {
+            abort(403);
+        }
+
+        DB::transaction(function() use ($order) {
+            // Подтверждение заказа
+            $order->update([
+                'status' => Order::STATUS_CONFIRMED,
+                'confirmed_at' => now()
+            ]);
+
+            // Бронирование доставки
+            app(EquipmentAvailabilityService::class)->bookDelivery($order);
+        });
+
+        return redirect()->back()->with('success', 'Заказ подтвержден');
+    }
+
 }
