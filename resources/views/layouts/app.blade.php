@@ -5,15 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name', 'Laravel') }}</title>
-    <link rel="dns-prefetch" href="//fonts.bunny.net">
+
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
     <link href="https://fonts.bunny.net/css?family=Nunito" rel="stylesheet">
 
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <!-- Подключаем Vite только для CSS -->
     @vite(['resources/sass/app.scss', 'resources/css/sidebar.css'])
-
-    <!-- Bootstrap иконки -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
     <style>
         .navbar-nav .nav-link {
@@ -43,6 +50,11 @@
             border-radius: 10px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
+
+        /* Фикс для выпадающего меню */
+        .dropdown-toggle::after {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -66,6 +78,9 @@
         @include('components.footer')
     </div>
 
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <!-- Подключаем JS отдельно через Vite -->
     @vite(['resources/js/app.js'])
 
@@ -75,20 +90,22 @@
     <script>
         // Инициализация после загрузки DOM
         document.addEventListener('DOMContentLoaded', function() {
-            // Инициализация Alpine.js
-            if (typeof Alpine === 'object') {
-                Alpine.start();
-            }
-
             // Инициализация компонентов Bootstrap
             if (typeof bootstrap !== 'undefined') {
                 // Тултипы
-                [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-                    .forEach(tooltip => new bootstrap.Tooltip(tooltip));
+                document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(tooltipEl => {
+                    new bootstrap.Tooltip(tooltipEl);
+                });
+
+                // Выпадающие меню
+                document.querySelectorAll('.dropdown-toggle').forEach(dropdownEl => {
+                    new bootstrap.Dropdown(dropdownEl);
+                });
 
                 // Модальные окна
-                [].slice.call(document.querySelectorAll('.modal'))
-                    .forEach(modal => new bootstrap.Modal(modal));
+                document.querySelectorAll('.modal').forEach(modalEl => {
+                    new bootstrap.Modal(modalEl);
+                });
             }
         });
     </script>

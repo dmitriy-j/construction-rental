@@ -4,7 +4,10 @@ namespace App\Services;
 
 use App\Models\Equipment;
 use App\Models\EquipmentAvailability;
+use App\Models\Order;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
+use Illuminate\Support\Facades\Log;
 
 class EquipmentAvailabilityService
 {
@@ -79,24 +82,31 @@ class EquipmentAvailabilityService
     public function calculateNextAvailableDate(int $equipmentId): ?Carbon
     {
         $nextAvailable = EquipmentAvailability::where('equipment_id', $equipmentId)
-            ->where('date', '>=', now())
-            ->where(function($query) {
-                $query->where('status', 'available')
-                    ->orWhere(function($q) {
-                        $q->where('status', 'temp_reserve')
-                            ->where('expires_at', '<', now());
-                    });
-            })
+            ->where('date', '>=', now()->format('Y-m-d'))
+            ->where('status', 'available')
             ->orderBy('date')
             ->first();
 
-        return $nextAvailable?->date;
+        return $nextAvailable ? Carbon::parse($nextAvailable->date) : null;
     }
 
     public function isAvailable(Equipment $equipment, $startDate, $endDate): bool
     {
+        // Преобразуем даты в Carbon, если они строки
+        if (is_string($startDate)) $startDate = Carbon::parse($startDate);
+        if (is_string($endDate)) $endDate = Carbon::parse($endDate);
+
+        Log::debug('[AVAILABILITY] Проверка доступности', [
+            'equipment_id' => $equipment->id,
+            'start_date' => $startDate->format('Y-m-d'),
+            'end_date' => $endDate->format('Y-m-d')
+        ]);
+
         $conflicting = EquipmentAvailability::where('equipment_id', $equipment->id)
-            ->whereBetween('date', [$startDate, $endDate])
+            ->whereBetween('date', [
+                $startDate->format('Y-m-d'),
+                $endDate->format('Y-m-d')
+            ])
             ->where(function($query) {
                 $query->where('status', 'booked')
                     ->orWhere('status', 'maintenance')
@@ -106,6 +116,10 @@ class EquipmentAvailabilityService
                     });
             })
             ->exists();
+
+        Log::debug('[AVAILABILITY] Результат проверки', [
+            'conflicting' => $conflicting
+        ]);
 
         return !$conflicting;
     }
@@ -130,5 +144,103 @@ class EquipmentAvailabilityService
 
         Log::info("Cancelled $deleted temp reserves for user: $userId");
         return $deleted;
+    }
+
+    public function validateRentalConditions(Order $order): bool
+    {
+        $condition = $order->rentalCondition;
+
+        // Если условие не задано
+        if (!$condition) {
+            return false;
+        }
+
+        // Проверяем минимальный срок аренды
+        $rentalDays = $order->start_date->diffInDays($order->end_date);
+        if ($condition->min_rental_days && $rentalDays < $condition->min_rental_days) {
+            return false;
+        }
+
+        // Проверяем тип оплаты
+        if ($condition->payment_type === 'prepayment' && $order->prepayment_amount <= 0) {
+            return false;
+        }
+
+        // Проверяем наличие необходимой документации
+        if ($condition->required_documents) {
+            $userDocuments = $order->user->company->documents ?? [];
+            $missingDocs = array_diff($condition->required_documents, $userDocuments);
+
+            if (!empty($missingDocs)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+   public function bookEquipment(Equipment $equipment, $startDate, $endDate, $orderId, $status)
+    {
+        $period = CarbonPeriod::create($startDate, $endDate);
+
+        foreach ($period as $date) {
+            EquipmentAvailability::updateOrCreate(
+                [
+                    'equipment_id' => $equipment->id,
+                    'date' => $date->format('Y-m-d'),
+                ],
+                [
+                    'status' => $status,
+                    'order_id' => $orderId
+                ]
+            );
+        }
+    }
+
+    public function clearExpiredReservations()
+    {
+        $deleted = EquipmentAvailability::where('status', 'temp_reserve')
+            ->where('expires_at', '<', now())
+            ->delete();
+
+        Log::info("Удалено устаревших резервов: $deleted");
+        return $deleted;
+    }
+
+    public function bookDelivery(Order $order)
+    {
+        foreach ($order->items as $item) {
+            $deliveryDays = $item->rentalTerm->delivery_days ?? 0;
+            $startDate = Carbon::parse($item->start_date);
+
+            // Расчет даты начала доставки
+            $deliveryStartDate = $startDate->copy()->subDays($deliveryDays);
+            $deliveryEndDate = $startDate->copy()->subDay(); // Доставка заканчивается за день до аренды
+
+            $this->bookEquipment(
+                $item->equipment,
+                $deliveryStartDate->format('Y-m-d'),
+                $deliveryEndDate->format('Y-m-d'),
+                $order->id,
+                'delivery' // Специальный статус для доставки
+            );
+        }
+    }
+
+    public function releaseBooking(Order $order)
+    {
+        foreach ($order->items as $item) {
+            if ($item->equipment) {
+                // Удаляем бронирование для каждого оборудования
+                EquipmentAvailability::where('equipment_id', $item->equipment->id)
+                    ->where('order_id', $order->id)
+                    ->delete();
+
+                Log::info("[RELEASE] Бронирование снято для оборудования", [
+                    'equipment_id' => $item->equipment->id,
+                    'order_id' => $order->id
+                ]);
+            }
+        }
     }
 }

@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Notifications\DatabaseNotification;
 
 
 class User extends Authenticatable
@@ -46,12 +47,12 @@ class User extends Authenticatable
     public function isPlatformAdmin(): bool
     {
         return $this->hasRole([
-            'platform_super', 
+            'platform_super',
             'platform_admin',
             'platform_support'
         ]);
     }
-    
+
     public function isCompanyAdmin(): bool
     {
         return $this->hasRole('company_admin');
@@ -73,7 +74,7 @@ class User extends Authenticatable
             $user->cart()->create();
         });
     }
-    
+
     public function orders()
     {
         return $this->hasMany(Order::class);

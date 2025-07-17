@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Lessee;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -47,16 +48,11 @@ class DashboardController extends Controller
         ));
     }
 
-    public function orders(Request $request)
+    public function orders()
     {
-        $status = $request->input('status');
-
-        $orders = Order::with(['lessorCompany', 'items.equipment'])
-            ->where('lessee_company_id', Auth::user()->company_id)
-            ->when($status, function ($query, $status) {
-                return $query->where('status', $status);
-            })
-            ->latest()
+        $orders = Order::where('lessee_company_id', auth()->user()->company_id)
+            ->with(['lessorCompany', 'childOrders.items']) // Загружаем дочерние заказы и их позиции
+            ->orderBy('created_at', 'desc') // Сортировка от новых к старым
             ->paginate(10);
 
         return view('lessee.orders.index', compact('orders'));

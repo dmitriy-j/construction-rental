@@ -6,12 +6,13 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use App\Models\Order; // Добавляем импорт модели
 
 class OrderStatusChanged extends Notification
 {
     use Queueable;
 
-    public function __construct(public Order $order)
+    public function __construct(public Order $order) // Исправляем тип параметра
     {
     }
 

@@ -8,7 +8,6 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\Catalog\CatalogController;
 use App\Http\Controllers\Catalog\Equipment\EquipmentController;
 use App\Http\Controllers\DocumentController;
-use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\Lessor\DashboardController as LessorDashboardController;
@@ -21,9 +20,10 @@ use App\Http\Controllers\Admin\AdminEquipmentController;
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Admin\DashboardController;
-//use App\Http\Controllers\Admin\EquipmentController;
 use App\Http\Controllers\Admin\OrdersController;
-
+use App\Http\Controllers\RentalConditionController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Lessee\OrderController;
 
 // Главная страница
 Route::get('/', function () {
@@ -31,11 +31,8 @@ Route::get('/', function () {
 })->name('home');
 
 // Каталог
-Route::get('/catalog', [App\Http\Controllers\Catalog\CatalogController::class, 'index'])
-    ->name('catalog.index');
-
-Route::get('/catalog/{equipment}', [App\Http\Controllers\Catalog\CatalogController::class, 'show'])
-    ->name('catalog.show');
+Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog.index');
+Route::get('/catalog/{equipment}', [CatalogController::class, 'show'])->name('catalog.show');
 
 // Статические страницы
 Route::get('/free', fn() => view('free'))->name('free');
@@ -76,7 +73,7 @@ Route::prefix('lessor')
         // Дашборд
         Route::get('/dashboard', [LessorDashboardController::class, 'index'])->name('lessor.dashboard');
 
-        // Оборудование - только ресурсный маршрут
+        // Оборудование
         Route::resource('equipment', \App\Http\Controllers\Lessor\EquipmentController::class)
             ->names([
                 'index' => 'lessor.equipment.index',
@@ -96,6 +93,10 @@ Route::prefix('lessor')
         Route::post('/orders/{order}/mark-completed', [LessorOrderController::class, 'markAsCompleted'])->name('lessor.orders.markCompleted');
         Route::post('/orders/{order}/handle-extension', [LessorOrderController::class, 'handleExtension'])->name('lessor.orders.handleExtension');
 
+        // Новые роуты для подтверждения/отклонения заказов
+        Route::post('/orders/{order}/approve', [LessorOrderController::class, 'approve'])->name('lessor.orders.approve');
+        Route::post('/orders/{order}/reject', [LessorOrderController::class, 'reject'])->name('lessor.orders.reject');
+
         // Документы
         Route::get('/documents', [DocumentController::class, 'index'])->name('lessor.documents');
         Route::get('/documents/download/{id}/{type}', [DocumentController::class, 'download'])->name('lessor.documents.download');
@@ -114,11 +115,12 @@ Route::prefix('lessee')
         Route::get('/dashboard', [LesseeDashboardController::class, 'index'])->name('lessee.dashboard');
 
         // Заказы
-        Route::get('/orders', [LesseeDashboardController::class, 'orders'])->name('lessee.orders');
-        Route::get('/orders/{order}', [OrderController::class, 'show'])->name('lessee.orders.show');
-        Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('lessee.orders.cancel');
-        Route::post('/orders/{order}/request-extension', [OrderController::class, 'requestExtension'])->name('lessee.orders.requestExtension');
-
+        Route::prefix('orders')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Lessee\OrderController::class, 'index'])->name('lessee.orders.index');
+            Route::get('/{order}', [\App\Http\Controllers\Lessee\OrderController::class, 'show'])->name('lessee.orders.show');
+            Route::post('/{order}/cancel', [\App\Http\Controllers\Lessee\OrderController::class, 'cancel'])->name('lessee.orders.cancel');
+            Route::post('/{order}/request-extension', [\App\Http\Controllers\Lessee\OrderController::class, 'requestExtension'])->name('lessee.orders.requestExtension');
+        });
         // Документы
         Route::get('/documents', [DocumentController::class, 'index'])->name('lessee.documents');
         Route::get('/documents/download/{id}/{type}', [DocumentController::class, 'download'])->name('lessee.documents.download');
@@ -126,13 +128,10 @@ Route::prefix('lessee')
         // Управление условиями аренды
         Route::get('/rental-conditions', [RentalConditionController::class, 'index'])
             ->name('lessee.rental-conditions.index');
-
         Route::get('/rental-conditions/create', [RentalConditionController::class, 'create'])
             ->name('lessee.rental-conditions.create');
-
         Route::post('/rental-conditions', [RentalConditionController::class, 'store'])
             ->name('lessee.rental-conditions.store');
-
         Route::put('/rental-conditions/{condition}/set-default',
             [RentalConditionController::class, 'setDefault'])
             ->name('lessee.rental-conditions.set-default');
@@ -151,11 +150,10 @@ Route::prefix('lessee')
         Route::post('/checkout', [CheckoutController::class, 'checkout'])->name('checkout');
     });
 
-
 // Загрузка УПД (общий доступ)
 Route::get('/orders/{order}/upd/{type}', [OrderController::class, 'downloadUPDF']);
 
-// админ кабинет
+// Админ кабинет
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
     Route::get('/equipment', [AdminEquipmentController::class, 'index'])->name('admin.equipment.index');
@@ -170,13 +168,6 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
         'update' => 'admin.news.update',
         'destroy' => 'admin.news.destroy'
     ]);
-    Route::resource('news', AdminNewsController::class)->except(['show']);
-});
-
-    // Личный кабинет (защищён auth и ролями)
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/tenant-dashboard', fn() => view('tenant'))->name('tenant.dashboard')->middleware('role:tenant');
-    Route::get('/landlord-dashboard', fn() => view('landlord'))->name('landlord.dashboard')->middleware('role:landlord');
 });
 
 // Профиль пользователя
@@ -186,6 +177,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+// Уведомления
 Route::get('/notifications', [NotificationController::class, 'index'])
     ->middleware('auth')
     ->name('notifications');

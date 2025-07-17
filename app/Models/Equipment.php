@@ -30,7 +30,9 @@ class Equipment extends Model
 
     public function company()
     {
-        return $this->belongsTo(Company::class);
+        return $this->belongsTo(Company::class)->withDefault([
+            'legal_name' => 'Компания недоступна'
+        ]);
     }
 
     public function category()
@@ -195,6 +197,7 @@ class Equipment extends Model
 
     public function mainImage()
     {
-        return $this->hasOne(EquipmentImage::class)->where('is_main', true);
+        return $this->hasOne(EquipmentImage::class)->where('is_main', true)->withDefault();
     }
+
 }

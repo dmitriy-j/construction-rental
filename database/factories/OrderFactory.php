@@ -37,7 +37,15 @@ class OrderFactory extends Factory
             'lessor_company_id' => $this->faker->randomElement(self::$lessorCompanies),
             'contract_id' => $this->faker->randomElement(self::$contracts),
             'user_id' => $this->faker->randomElement(self::$users),
-            'status' => $this->faker->randomElement(['pending', 'confirmed', 'active', 'completed']),
+            'status' => $this->faker->randomElement([
+                'pending',
+                'pending_approval', // новый статус
+                'confirmed',
+                'active',
+                'completed',
+                'cancelled',
+                'rejected' // новый статус
+            ]),
             'start_date' => $startDate,
             'end_date' => $endDate,
             'created_at' => $this->faker->dateTimeBetween('-1 year', 'now'),
