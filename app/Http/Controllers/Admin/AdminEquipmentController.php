@@ -72,4 +72,61 @@ class AdminEquipmentController extends Controller
         $equipment->update(['is_approved' => false]);
         return back()->with('success', 'Техника отклонена!'); // Добавлена закрывающая кавычка
     }
+    public function show($id)
+{
+    $equipment = Equipment::with([
+        'company', 
+        'category', 
+        'location', 
+        'rentalTerms',
+        'images',
+        'specifications'
+    ])->findOrFail($id);
+
+    $companies = Company::all(); // Получаем все компании
+    $locations = Location::all(); // Получаем все локации
+
+    return view('admin.equipment.show', compact('equipment', 'companies', 'locations'));
+}
+
+public function update(Request $request, Equipment $equipment)
+{
+    $validated = $request->validate([
+        'title' => 'required|max:255',
+        'brand' => 'required',
+        'model' => 'required',
+        'year' => 'required|integer',
+        'hours_worked' => 'required|numeric',
+        'company_id' => 'required|exists:companies,id',
+        'location_id' => 'required|exists:locations,id',
+        'price_per_hour' => 'required|numeric',
+        'price_per_km' => 'nullable|numeric',
+        'min_rental_hours' => 'required|integer',
+        'delivery_days' => 'required|integer',
+        'description' => 'nullable|string',
+        'is_approved' => 'boolean',
+        'rating' => 'required|numeric|min:0|max:5',
+        'views' => 'required|integer|min:0'
+    ]);
+
+    $equipment->update($validated);
+
+    // Обновление условий аренды
+    if ($term = $equipment->rentalTerms->first()) {
+        $term->update([
+            'price_per_hour' => $request->price_per_hour,
+            'price_per_km' => $request->price_per_km,
+            'min_rental_hours' => $request->min_rental_hours,
+            'delivery_days' => $request->delivery_days
+        ]);
+    }
+
+    
+
+    // Обработка изображений (если нужно)
+    // ...
+
+    return redirect()->route('admin.equipment.show', $equipment)
+        ->with('success', 'Изменения сохранены!');
+}
 }

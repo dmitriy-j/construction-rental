@@ -44,12 +44,9 @@
                     <i class="fas fa-tachometer-alt me-2"></i> Главная
                 </a>
             </li>
-<<<<<<< HEAD
 
             
 
-=======
->>>>>>> 233cf9252a6f110863815bd507ccb668657bce76
             <li class="nav-item">
                 <a class="nav-link {{ Request::is('catalog*') ? 'active' : '' }}"
                 href="{{ route('catalog.index') }}">
@@ -68,7 +65,7 @@
             <!-- Мои заказы -->
             <li class="nav-item">
                 <a class="nav-link {{ Request::is('lessee/orders*') ? 'active' : '' }}"
-                href="{{ route('lessee.orders.index') }}">
+                href="{{ route('lessee.orders') }}">
                     <i class="fas fa-list me-2"></i> Мои заказы
                 </a>
             </li>

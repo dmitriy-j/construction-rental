@@ -104,20 +104,8 @@
                             </td>
                             <td>{{ $item->created_at->format('d.m.Y H:i') }}</td>
                             <td class="text-nowrap">
-                                @if(!$item->is_approved)
-                                    <a href="{{ route('admin.equipment.approve', $item) }}" 
-                                       class="btn btn-sm btn-success"
-                                       title="Одобрить">
-                                        <i class="bi bi-check-lg"></i>
-                                    </a>
-                                @else
-                                    <a href="{{ route('admin.equipment.reject', $item) }}" 
-                                       class="btn btn-sm btn-warning"
-                                       title="Отклонить">
-                                        <i class="bi bi-x-lg"></i>
-                                    </a>
-                                @endif
-                                <a href="#" 
+                                
+                                <a href="{{ route('admin.equipment.show', $item) }}"
                                    class="btn btn-sm btn-info"
                                    title="Подробнее">
                                     <i class="bi bi-eye"></i>

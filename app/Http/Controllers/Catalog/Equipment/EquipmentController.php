@@ -1,10 +1,6 @@
 <?php
 
-<<<<<<< HEAD
-namespace App\Http\Controllers\Catalog;
-=======
 namespace App\Http\Controllers\Catalog\Equipment;
->>>>>>> 233cf9252a6f110863815bd507ccb668657bce76
 
 use App\Http\Controllers\Controller;
 use App\Models\Equipment;
