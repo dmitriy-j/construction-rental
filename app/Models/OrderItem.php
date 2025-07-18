@@ -18,8 +18,11 @@ class OrderItem extends Model
         'platform_fee',
         'discount_amount',
         'total_price',
-        'period_count'
+        'period_count',
+
     ];
+
+    protected $guarded = ['id'];
 
     public function order(): BelongsTo
     {
@@ -48,5 +51,32 @@ class OrderItem extends Model
     public function deliveryNote()
     {
         return $this->hasOne(DeliveryNote::class, 'order_item_id');
+    }
+
+    public function getDeliveryCostAttribute(): float
+    {
+        return $this->deliveryNote->calculated_cost ?? 0;
+    }
+
+     protected static function booted()
+    {
+        static::updating(function ($model) {
+            $original = $model->getOriginal();
+
+            // Запрещаем изменение критических полей после создания
+            $protected = [
+                'base_price',
+                'price_per_unit',
+                'rental_term_id',
+                'rental_condition_id',
+                'quantity'
+            ];
+
+            foreach ($protected as $field) {
+                if ($model->$field != $original[$field]) {
+                    throw new \Exception("Cannot change $field after creation");
+                }
+            }
+        });
     }
 }

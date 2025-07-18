@@ -16,15 +16,32 @@ class OrderController extends Controller
     {
         $orders = Order::where('lessee_company_id', auth()->user()->company_id)
             ->whereNull('parent_order_id')
-            ->with(['childOrders.items']) // Загружаем дочерние заказы и их позиции
+            ->with([
+                'childOrders.items', // Загружаем дочерние заказы и их позиции
+                'items' // Загружаем позиции для обычных заказов
+            ])
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        // Подсчитываем общее количество позиций для каждого заказа
         $orders->getCollection()->transform(function ($order) {
-            $order->total_items_count = $order->childOrders->sum(function ($childOrder) {
-                return $childOrder->items->count();
-            });
+            // Рассчитываем общую стоимость
+            if ($order->isParent()) {
+                $order->calculated_total = $order->childOrders->sum(function ($childOrder) {
+                    return $childOrder->items->sum(function ($item) {
+                        return ($item->price_per_unit * $item->period_count) + ($item->delivery_cost ?? 0);
+                    });
+                });
+            } else {
+                $order->calculated_total = $order->items->sum(function ($item) {
+                    return ($item->price_per_unit * $item->period_count) + ($item->delivery_cost ?? 0);
+                });
+            }
+
+            // Рассчитываем количество позиций
+            $order->total_items_count = $order->isParent()
+                ? $order->childOrders->sum(fn($child) => $child->items->count())
+                : $order->items->count();
+
             return $order;
         });
 
@@ -37,31 +54,44 @@ class OrderController extends Controller
             abort(403);
         }
 
-        // Упрощаем загрузку отношений
+        // Для родительских заказов
         if ($order->isParent()) {
             $order->load([
-                'childOrders' => function ($query) {
-                    $query->with([
-                        'items.equipment.mainImage',
-                        'items.equipment.company',
-                        'lessorCompany'
-                    ]);
-                }
+                'childOrders.items.equipment.mainImage',
+                'childOrders.items.equipment.company',
+                'childOrders.items.deliveryNote',
+                'childOrders.lessorCompany'
             ]);
-        } else {
+        }
+        // Для дочерних заказов
+        else {
             $order->load([
                 'items.equipment.mainImage',
                 'items.equipment.company',
+                'items.deliveryNote',
                 'lessorCompany'
             ]);
         }
 
-        // Собираем все позиции оборудования
         $allItems = $order->isParent()
-            ? $order->childOrders->flatMap->items
-            : $order->items;
+        ? $order->childOrders->flatMap->items
+        : $order->items;
 
-        return view('lessee.orders.show', compact('order', 'allItems'));
+        // Пересчитываем суммы по простому принципу: (цена за час * часы) + доставка
+        $allItems->each(function ($item) {
+            // Используем price_per_unit как окончательную стоимость часа
+            $item->simple_rental_total = $item->price_per_unit * $item->period_count;
+            $item->simple_total = $item->simple_rental_total + $item->delivery_cost;
+        });
+
+        // Общая сумма заказа - сумма простых итогов по позициям
+        $simpleGrandTotal = $allItems->sum('simple_total');
+
+        return view('lessee.orders.show', compact(
+            'order',
+            'allItems',
+            'simpleGrandTotal'
+        ));
     }
 
     public function cancel(Order $order)

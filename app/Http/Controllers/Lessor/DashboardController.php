@@ -13,19 +13,25 @@ class DashboardController extends Controller
     public function index()
     {
         $companyId = Auth::user()->company_id;
-        
+        $userId = Auth::id();
+
         $stats = [
             'equipment_count' => Equipment::where('company_id', $companyId)->count(),
             'pending_orders' => Order::where('lessor_company_id', $companyId)
-                                    ->where('status', 'pending')
+                                    ->where('status', Order::STATUS_PENDING_APPROVAL)
                                     ->count(),
             'active_orders' => Order::where('lessor_company_id', $companyId)
-                                   ->where('status', 'active')
+                                   ->where('status', Order::STATUS_ACTIVE)
                                    ->count(),
             'revenue' => Order::where('lessor_company_id', $companyId)
-                             ->where('status', 'completed')
+                             ->where('status', Order::STATUS_COMPLETED)
                              ->sum('total_amount')
         ];
+
+        // Сохраняем количество новых заказов в сессии для мигания
+        if ($stats['pending_orders'] > 0) {
+            session()->put("pending_orders_{$userId}", $stats['pending_orders']);
+        }
 
         $recentOrders = Order::with('lesseeCompany')
             ->where('lessor_company_id', $companyId)
@@ -34,31 +40,31 @@ class DashboardController extends Controller
             ->get();
 
         $featuredEquipment = Equipment::where('company_id', $companyId)
-        ->where('is_featured', true)
-        ->with(['images', 'category'])
-        ->limit(5)
-        ->get();
+            ->where('is_featured', true)
+            ->with(['images', 'category'])
+            ->limit(5)
+            ->get();
 
-    return view('lessor.dashboard', compact('stats', 'recentOrders', 'featuredEquipment'));
+        return view('lessor.dashboard', compact('stats', 'recentOrders', 'featuredEquipment'));
     }
-
-    public function equipment()
+    public function markAsViewed(Request $request)
     {
-        $equipment = Equipment::with('category', 'location')
-            ->where('company_id', Auth::user()->company_id)
-            ->paginate(10);
+        $userId = Auth::id();
+        session()->forget("pending_orders_{$userId}");
 
-        return view('lessor.equipment.index', compact('equipment'));
+        return response()->json(['success' => true]);
     }
 
     public function orders(Request $request)
     {
         $status = $request->input('status');
         $companyId = Auth::user()->company_id;
-        
-        $orders = Order::with(['lesseeCompany', 'items.equipment'])
+
+        $orders = Order::with(['items.equipment'])
             ->where('lessor_company_id', $companyId)
+            ->whereNotNull('parent_order_id') // Добавляем проверку на дочерние заказы
             ->when($status, function ($query, $status) {
+                // Исправляем фильтрацию по статусу
                 return $query->where('status', $status);
             })
             ->orderBy('created_at', 'desc')
@@ -66,9 +72,5 @@ class DashboardController extends Controller
 
         return view('lessor.orders.index', compact('orders'));
     }
-    public function documents()
-    {
-        // Логика для документов арендодателя
-        return view('lessor.documents.index');
-    }
+
 }

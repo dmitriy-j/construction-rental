@@ -143,16 +143,28 @@ class CheckoutController extends Controller
 
     protected function createParentOrder($items)
     {
-        $totalAmount = $items->sum(function($item) {
-            return ($item->base_price * $item->period_count) + $item->platform_fee + $item->delivery_cost;
+        $lessorBaseAmount = $items->sum(function($item) {
+            return $item->rentalTerm->price_per_hour * $item->period_count;
         });
+
+        $platformFee = $items->sum('platform_fee');
+        $deliveryCost = $items->sum('delivery_cost');
+
+        // Для арендатора: базовая стоимость + наценка
+        $baseAmount = $lessorBaseAmount + $platformFee;
+
+        $totalAmount = $baseAmount + $deliveryCost;
 
         return Order::create([
             'user_id' => auth()->id(),
             'lessee_company_id' => auth()->user()->company_id,
-            'lessor_company_id' => null, // Явное указание NULL
+            'lessor_company_id' => null,
             'status' => Order::STATUS_AGGREGATED,
             'total_amount' => $totalAmount,
+            'base_amount' => $baseAmount,
+            'lessor_base_amount' => $lessorBaseAmount,
+            'platform_fee' => $platformFee,
+            'delivery_cost' => $deliveryCost,
             'start_date' => $items->min('start_date'),
             'end_date' => $items->max('end_date'),
         ]);
@@ -160,28 +172,41 @@ class CheckoutController extends Controller
 
     protected function createChildOrder($parentId, $companyId, $items)
     {
-        $baseAmount = $items->sum(function($item) {
-            return $item->base_price * $item->period_count;
-        });
+        $lessorBaseAmount = 0;
+        $platformFee = 0;
+        $deliveryCost = 0;
+        $totalHours = 0;
 
-        $platformFee = $items->sum('platform_fee');
-        $deliveryCost = $items->sum('delivery_cost');
-        $totalAmount = $baseAmount + $platformFee + $deliveryCost;
+        foreach ($items as $item) {
+            $term = $item->rentalTerm;
+            // Чистая стоимость арендодателя = цена за час * часы
+            $lessorBaseAmount += $term->price_per_hour * $item->period_count;
+            $platformFee += $item->platform_fee;
+            $deliveryCost += $item->delivery_cost;
+            $totalHours += $item->period_count;
+        }
+
+        // Базовая стоимость для арендатора (с наценкой)
+        $baseAmount = $lessorBaseAmount + $platformFee;
+        $totalAmount = $baseAmount + $deliveryCost;
 
         $discountAmount = $this->pricingService->getDiscount(
             auth()->user()->company,
-            $baseAmount + $platformFee
+            $baseAmount
         );
 
         $totalAmount -= $discountAmount;
 
+        $rentalCondition = $items->first()->rentalCondition;
+
         return Order::create([
-            'user_id' => auth()->id(), // Добавляем user_id
+            'user_id' => auth()->id(),
             'parent_order_id' => $parentId,
             'lessor_company_id' => $companyId,
             'lessee_company_id' => auth()->user()->company_id,
             'status' => Order::STATUS_PENDING_APPROVAL,
-            'base_amount' => $baseAmount,
+            'base_amount' => $baseAmount, // Для арендатора (с наценкой)
+            'lessor_base_amount' => $lessorBaseAmount, // Чистая стоимость арендодателя
             'platform_fee' => $platformFee,
             'delivery_cost' => $deliveryCost,
             'discount_amount' => $discountAmount,
@@ -189,7 +214,12 @@ class CheckoutController extends Controller
             'start_date' => $items->min('start_date'),
             'end_date' => $items->max('end_date'),
             'platform_id' => Platform::getMain()->id,
-            'rental_condition_id' => $items->first()->rental_condition_id
+            'rental_condition_id' => $rentalCondition->id,
+            'shift_hours' => $rentalCondition->shift_hours,
+            'shifts_per_day' => $rentalCondition->shifts_per_day,
+            'payment_type' => $rentalCondition->payment_type,
+            'transportation' => $rentalCondition->transportation,
+            'fuel_responsibility' => $rentalCondition->fuel_responsibility
         ]);
     }
 

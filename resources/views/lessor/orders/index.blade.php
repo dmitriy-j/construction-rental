@@ -4,7 +4,7 @@
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Заказы на мою технику</h1>
-        
+
         <div class="col-md-3">
             <select class="form-select" onchange="window.location.href = this.value">
                 <option value="{{ route('lessor.orders') }}">Все статусы</option>
@@ -25,8 +25,8 @@
                     <thead class="table-light">
                         <tr>
                             <th>ID</th>
-                            <th>Арендатор</th>
-                            <th>Сумма</th>
+                            <th>Период аренды</th> <!-- Заменили "Арендатор" -->
+                            <th>Выплата</th> <!-- Изменили название колонки -->
                             <th>Статус</th>
                             <th>Дата создания</th>
                             <th>Действия</th>
@@ -36,8 +36,10 @@
                         @forelse($orders as $order)
                         <tr>
                             <td>{{ $order->id }}</td>
-                            <td>{{ $order->lesseeCompany->legal_name }}</td>
-                            <td>{{ number_format($order->total_amount, 2) }} ₽</td>
+                            <td>
+                                {{ $order->start_date->format('d.m.Y') }} - {{ $order->end_date->format('d.m.Y') }}
+                            </td>
+                            <td>{{ number_format($order->lessor_base_amount + $order->delivery_cost, 2) }} ₽</td>
                             <td>
                                 <span class="badge bg-{{ $order->status_color }}">
                                     {{ $order->status_text }}
@@ -45,11 +47,11 @@
                             </td>
                             <td>{{ $order->created_at->format('d.m.Y H:i') }}</td>
                             <td class="d-flex gap-2">
-                                <a href="{{ route('lessor.orders.show', $order) }}" 
+                                <a href="{{ route('lessor.orders.show', $order) }}"
                                    class="btn btn-sm btn-outline-primary" title="Просмотр">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                
+
                                 @if($order->status === \App\Models\Order::STATUS_PENDING)
                                 <form action="{{ route('lessor.orders.updateStatus', $order) }}" method="POST">
                                     @csrf
@@ -95,7 +97,7 @@
                     </tbody>
                 </table>
             </div>
-            
+
             @if($orders->hasPages())
             <div class="card-footer">
                 {{ $orders->links() }}
@@ -118,12 +120,12 @@
                 </div>
                 <div class="modal-body">
                     <p>Арендатор запросил продление до: {{ $order->requested_end_date->format('d.m.Y') }}</p>
-                    
+
                     <div class="mb-3">
                         <label class="form-label">Корректировка цены (₽)</label>
                         <input type="number" name="price_adjustment" class="form-control" min="0" step="0.01">
                     </div>
-                    
+
                     <div class="form-check">
                         <input class="form-check-input" type="radio" name="action" id="approveAction" value="approve" checked>
                         <label class="form-check-label" for="approveAction">

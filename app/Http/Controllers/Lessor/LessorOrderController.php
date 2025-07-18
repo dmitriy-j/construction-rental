@@ -1,20 +1,29 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Lessor;
 
+use App\Http\Controllers\Controller; // Добавлен импорт базового контроллера
 use App\Models\Order;
 use Illuminate\Http\Request;
 use App\Services\EquipmentAvailabilityService;
 use App\Notifications\OrderApproved;
 use App\Notifications\OrderRejected;
+use Illuminate\Support\Facades\Log;
 
 class LessorOrderController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $orders = Order::where('lessor_company_id', auth()->user()->company_id)
-            ->whereNotNull('parent_order_id') // Только дочерние заказы
-            ->with(['items.equipment', 'lesseeCompany'])
+        $status = $request->input('status');
+        $companyId = auth()->user()->company_id;
+
+        $orders = Order::where('lessor_company_id', $companyId)
+            ->whereNotNull('parent_order_id')
+            ->when($status, function ($query, $status) {
+                return $query->where('status', $status);
+            })
+            ->with(['items.equipment'])
+            ->orderBy('created_at', 'desc')
             ->paginate(10);
 
         return view('lessor.orders.index', compact('orders'));
@@ -29,11 +38,35 @@ class LessorOrderController extends Controller
 
         $order->load([
             'items.equipment',
-            'lesseeCompany',
+            'items.deliveryNote.deliveryTo', // Добавляем загрузку адреса доставки
             'parentOrder'
         ]);
 
-        return view('lessor.orders.show', compact('order'));
+        // Получаем адрес доставки из первой позиции заказа
+        $deliveryAddress = 'Не указан';
+        if ($order->items->isNotEmpty() && $firstItem = $order->items->first()) {
+            if ($firstItem->deliveryNote && $firstItem->deliveryNote->deliveryTo) {
+                $deliveryAddress = $firstItem->deliveryNote->deliveryTo->address;
+            }
+        }
+
+        // Добавлен расчет деталей заказа
+        $orderDetails = [
+            'shift_hours' => $order->shift_hours,
+            'shifts_per_day' => $order->shifts_per_day,
+            'total_hours' => $order->items->sum('period_count'),
+            'payment_type' => $order->payment_type,
+            'transportation' => $order->transportation,
+            'fuel_responsibility' => $order->fuel_responsibility,
+            'delivery_address' => $deliveryAddress, // Добавляем адрес доставки
+
+            // Финансовые данные
+            'lessor_base_amount' => $order->lessor_base_amount,
+            'delivery_cost' => $order->delivery_cost,
+            'total_payout' => $order->lessor_base_amount + $order->delivery_cost,
+        ];
+
+        return view('lessor.orders.show', compact('order', 'orderDetails'));
     }
 
     public function updateStatus(Order $order, Request $request)
@@ -69,8 +102,20 @@ class LessorOrderController extends Controller
             abort(403);
         }
 
-        $order->update(['status' => Order::STATUS_ACTIVE]);
-        return back()->with('success', 'Заказ переведен в статус "Активный"');
+        if (!$order->canBeActivated()) {
+            $error = $order->status !== Order::STATUS_CONFIRMED
+                ? 'Заказ должен быть в статусе "Подтвержден"'
+                : 'Нельзя начать аренду раньше '. $order->activationAvailableDate();
+
+            return back()->withErrors($error);
+        }
+
+        $order->update([
+            'status' => Order::STATUS_ACTIVE,
+            'service_start_date' => now()
+        ]);
+
+        return back()->with('success', 'Аренда успешно начата');
     }
 
     public function markAsCompleted(Order $order)
@@ -148,8 +193,12 @@ class LessorOrderController extends Controller
             'confirmed_at' => now()
         ]);
 
-        // Отправляем уведомление
-        $order->user->notify(new OrderApproved($order));
+        // Временная замена уведомления на логирование
+        Log::info('Заказ подтверждён', [
+            'order_id' => $order->id,
+            'user_id' => $order->user_id,
+            'message' => 'Уведомление OrderApproved было заменено на логирование'
+        ]);
 
         return back()->with('success', 'Заказ подтвержден');
     }
@@ -167,6 +216,7 @@ class LessorOrderController extends Controller
         // Обновляем статус заказа
         $order->update([
             'status' => Order::STATUS_REJECTED,
+            'confirmed_at' => now(),
             'rejection_reason' => $request->rejection_reason,
             'rejected_at' => now()
         ]);
@@ -174,14 +224,20 @@ class LessorOrderController extends Controller
         // Освобождаем оборудование
         app(EquipmentAvailabilityService::class)->releaseBooking($order);
 
-        // Отправляем уведомление
-        $order->user->notify(new OrderRejected($order, $request->rejection_reason));
+        // Временная замена уведомления на логирование
+        Log::info('Заказ отклонён', [
+            'order_id' => $order->id,
+            'user_id' => $order->user_id,
+            'reason' => $request->rejection_reason,
+            'message' => 'Уведомление OrderRejected было заменено на логирование'
+        ]);
 
         return back()->with('success', 'Заказ отклонен');
     }
 
     public function approveOrder(Order $order)
     {
+        $order->user->notify(new OrderApproved($order));
         // Проверка прав арендодателя
         if ($order->lessor_company_id !== auth()->user()->company_id) {
             abort(403);

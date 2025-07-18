@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@php use App\Models\Order; @endphp
+@php use App\Models\Order; @endphp  <!-- Добавлен импорт класса Order -->
 
 @section('content')
 <div class="container py-5">
@@ -53,7 +53,9 @@
                         </div>
                         <div class="flex-grow-1 ms-3">
                             <h6 class="text-muted mb-1">Общая стоимость</h6>
-                            <p class="h4 text-success mb-0">{{ number_format($order->total_amount, 2) }} ₽</p>
+                            <p class="h4 text-success mb-0">
+                                {{ number_format($simpleGrandTotal, 2) }} ₽
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -79,6 +81,8 @@
                             <th class="py-3">Оборудование</th>
                             <th class="py-3 text-center">Период</th>
                             <th class="py-3 text-center">Часы</th>
+                            <th class="py-3 text-center">Стоимость часа</th>
+                            <th class="py-3 text-end">Стоимость аренды</th>
                             <th class="py-3 text-end">Доставка</th>
                             <th class="py-3 text-end">Итоговая стоимость</th>
                             <th class="py-3 text-center">Статус</th>
@@ -87,7 +91,6 @@
                     <tbody>
                         @forelse($allItems as $item)
                             @php
-                                // Определяем заказ для позиции (дочерний или основной)
                                 $itemOrder = $item->order;
                             @endphp
                             <tr>
@@ -128,11 +131,17 @@
                                         {{ $item->period_count }} ч
                                     </span>
                                 </td>
+                                <td class="text-center">
+                                    {{ number_format($item->price_per_unit, 2) }} ₽/час
+                                </td>
                                 <td class="text-end">
-                                    {{ number_format($item->delivery_cost ?? 0, 2) }} ₽
+                                    {{ number_format($item->simple_rental_total, 2) }} ₽
+                                </td>
+                                <td class="text-end">
+                                    {{ number_format($item->delivery_cost, 2) }} ₽
                                 </td>
                                 <td class="text-end fw-bold">
-                                    {{ number_format($item->total_price + ($item->delivery_cost ?? 0), 2) }} ₽
+                                    {{ number_format($item->simple_total, 2) }} ₽
                                 </td>
                                 <td class="text-center">
                                     <span class="badge bg-{{ $itemOrder->status_color }} py-2">
@@ -142,11 +151,16 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center">Оборудование не найдено</td>
+                                <td colspan="8" class="text-center">Оборудование не найдено</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Итоговая сумма -->
+            <div class="text-end p-3 bg-light fw-bold">
+                Итого: {{ number_format($simpleGrandTotal, 2) }} ₽
             </div>
         </div>
     </div>

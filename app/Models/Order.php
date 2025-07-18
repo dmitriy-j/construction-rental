@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Carbon;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class Order extends Model
 {
@@ -50,7 +51,13 @@ class Order extends Model
         'rejection_reason', // Новое поле
         'confirmed_at', // Новое поле
         'rejected_at', // Новое поле
-        'rental_condition_id' // Новое поле
+        'rental_condition_id', // Новое поле
+        'shift_hours',
+        'shifts_per_day',
+        'payment_type',
+        'transportation',
+        'fuel_responsibility',
+        'lessor_base_amount'
     ];
 
     protected $casts = [
@@ -77,7 +84,7 @@ class Order extends Model
             self::STATUS_CANCELLED,
             self::STATUS_EXTENSION_REQUESTED,
             self::STATUS_REJECTED,
-            self::STATUS_AGGREGATED, // Добавляем новый
+            // self::STATUS_AGGREGATED, // Добавляем новый
         ];
     }
 
@@ -92,7 +99,7 @@ class Order extends Model
             self::STATUS_CANCELLED => 'Отменен',
             self::STATUS_EXTENSION_REQUESTED => 'Запрос продления',
             self::STATUS_REJECTED => 'Отклонен',
-            self::STATUS_AGGREGATED => 'Агрегированный заказ',
+           // self::STATUS_AGGREGATED => 'Агрегированный заказ',
             default => $status,
         };
     }
@@ -137,9 +144,8 @@ class Order extends Model
             && !$this->completionAct;
     }
 
-    public function deliveryNote(): HasOne
+     public function deliveryNote(): HasOneThrough // Изменен тип возвращаемого значения
     {
-        // Измените на связь через orderItem
         return $this->hasOneThrough(
             DeliveryNote::class,
             OrderItem::class,
@@ -242,9 +248,17 @@ class Order extends Model
         return self::statusText($this->status);
     }
 
-    public function getDeliveryCostAttribute(): ?float
+     public function getDeliveryCostAttribute(): ?float
     {
-        return $this->deliveryNote?->calculated_cost;
+        // Исправленный метод
+        if ($this->deliveryNote) {
+            return $this->deliveryNote->calculated_cost;
+        }
+
+        // Альтернативный расчет через позиции заказа
+        return $this->items->sum(function($item) {
+            return $item->deliveryNote->calculated_cost ?? 0;
+        });
     }
 
     public function belongsToLessee(User $user): bool
@@ -286,6 +300,48 @@ class Order extends Model
         }
 
         return $this->items->count();
+    }
+
+    public function getBaseAmountAttribute(): float
+    {
+        return $this->items->sum(function($item) {
+            return $item->base_price * $item->quantity;
+        });
+    }
+
+    public function getFormattedBaseAmountAttribute(): string
+    {
+        return number_format($this->base_amount, 2) . ' ₽';
+    }
+
+    public function getLessorPayoutAttribute()
+    {
+        return $this->lessor_base_amount
+            + $this->delivery_cost
+            - $this->discount_amount;
+    }
+
+    public function getLesseeTotalAttribute()
+    {
+        return $this->base_amount
+            + $this->delivery_cost
+            - $this->discount_amount;
+    }
+
+    public function getTotalPayoutAttribute()
+    {
+        return $this->lessor_base_amount + $this->delivery_cost;
+    }
+
+    public function canBeActivated(): bool
+    {
+        return $this->status === self::STATUS_CONFIRMED &&
+            now()->gte($this->start_date);
+    }
+
+    public function activationAvailableDate(): string
+    {
+        return $this->start_date->format('d.m.Y');
     }
 
 }

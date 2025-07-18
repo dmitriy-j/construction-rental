@@ -11,7 +11,7 @@ use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\Lessor\DashboardController as LessorDashboardController;
-use App\Http\Controllers\Lessor\OrderController as LessorOrderController;
+use App\Http\Controllers\Lessor\LessorOrderController as LessorOrders;
 use App\Http\Controllers\Lessee\DashboardController as LesseeDashboardController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\NewsController;
@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\OrdersController;
 use App\Http\Controllers\RentalConditionController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Lessee\OrderController;
+
 
 // Главная страница
 Route::get('/', function () {
@@ -69,6 +70,8 @@ Route::prefix('lessor')
     ->group(function () {
         // Дашборд
         Route::get('/dashboard', [LessorDashboardController::class, 'index'])->name('lessor.dashboard');
+        Route::post('/dashboard/mark-as-viewed', [DashboardController::class, 'markAsViewed'])
+    ->name('lessor.dashboard.markAsViewed');
 
         // Оборудование
         Route::resource('equipment', \App\Http\Controllers\Lessor\EquipmentController::class)
@@ -83,16 +86,16 @@ Route::prefix('lessor')
             ]);
 
         // Заказы
-        Route::get('/orders', [LessorDashboardController::class, 'orders'])->name('lessor.orders');
-        Route::get('/orders/{order}', [LessorOrderController::class, 'show'])->name('lessor.orders.show');
-        Route::post('/orders/{order}/update-status', [LessorOrderController::class, 'updateStatus'])->name('lessor.orders.updateStatus');
-        Route::post('/orders/{order}/mark-active', [LessorOrderController::class, 'markAsActive'])->name('lessor.orders.markActive');
-        Route::post('/orders/{order}/mark-completed', [LessorOrderController::class, 'markAsCompleted'])->name('lessor.orders.markCompleted');
-        Route::post('/orders/{order}/handle-extension', [LessorOrderController::class, 'handleExtension'])->name('lessor.orders.handleExtension');
+        Route::get('/orders', [LessorOrders::class, 'index'])->name('lessor.orders'); // Обновлено
+        Route::get('/orders/{order}', [LessorOrders::class, 'show'])->name('lessor.orders.show'); // Обновлено
+        Route::post('/orders/{order}/update-status', [LessorOrders::class, 'updateStatus'])->name('lessor.orders.updateStatus');
+        Route::post('/orders/{order}/mark-active', [LessorOrders::class, 'markAsActive'])->name('lessor.orders.markActive');
+        Route::post('/orders/{order}/mark-completed', [LessorOrders::class, 'markAsCompleted'])->name('lessor.orders.markCompleted');
+        Route::post('/orders/{order}/handle-extension', [LessorOrders::class, 'handleExtension'])->name('lessor.orders.handleExtension');
 
         // Новые роуты для подтверждения/отклонения заказов
-        Route::post('/orders/{order}/approve', [LessorOrderController::class, 'approve'])->name('lessor.orders.approve');
-        Route::post('/orders/{order}/reject', [LessorOrderController::class, 'reject'])->name('lessor.orders.reject');
+        Route::post('/orders/{order}/approve', [LessorOrders::class, 'approve'])->name('lessor.orders.approve');
+        Route::post('/orders/{order}/reject', [LessorOrders::class, 'reject'])->name('lessor.orders.reject');
 
         // Документы
         Route::get('/documents', [DocumentController::class, 'index'])->name('lessor.documents');

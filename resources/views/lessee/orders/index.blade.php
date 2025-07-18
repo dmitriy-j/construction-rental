@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@php use App\Models\Order; @endphp <!-- Добавлен импорт класса Order -->
+
 @section('content')
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -9,18 +11,18 @@
             <select class="form-select" onchange="window.location.href = this.value">
                 <option value="{{ route('lessee.orders.index') }}">Все статусы</option>
                 @foreach([
-                    App\Models\Order::STATUS_PENDING,
-                    App\Models\Order::STATUS_PENDING_APPROVAL,
-                    App\Models\Order::STATUS_CONFIRMED,
-                    App\Models\Order::STATUS_ACTIVE,
-                    App\Models\Order::STATUS_COMPLETED,
-                    App\Models\Order::STATUS_CANCELLED,
-                    App\Models\Order::STATUS_EXTENSION_REQUESTED,
-                    App\Models\Order::STATUS_REJECTED
+                    Order::STATUS_PENDING,
+                    Order::STATUS_PENDING_APPROVAL,
+                    Order::STATUS_CONFIRMED,
+                    Order::STATUS_ACTIVE,
+                    Order::STATUS_COMPLETED,
+                    Order::STATUS_CANCELLED,
+                    Order::STATUS_EXTENSION_REQUESTED,
+                    Order::STATUS_REJECTED
                 ] as $status)
                 <option value="{{ route('lessee.orders.index', ['status' => $status]) }}"
                     {{ request('status') == $status ? 'selected' : '' }}>
-                    {{ \App\Models\Order::statusText($status) }}
+                    {{ Order::statusText($status) }}
                 </option>
                 @endforeach
             </select>
@@ -47,11 +49,11 @@
                         <tr>
                             <td>{{ $order->id }}</td>
                             <td>{{ $order->total_items_count ?? 0 }} позиция(й)</td>
-                            <td>{{ number_format($order->total_amount, 2) }} ₽</td>
+                            <td>{{ number_format($order->calculated_total, 2) }} ₽</td>
                             <td>
                                 <span class="badge bg-{{ $order->status_color }}">
                                     {{ $order->status_text }}
-                                    @if($order->status === App\Models\Order::STATUS_REJECTED && $order->rejection_reason)
+                                    @if($order->status === Order::STATUS_REJECTED && $order->rejection_reason)
                                         <i class="fas fa-info-circle ms-1"
                                            title="Причина: {{ $order->rejection_reason }}"
                                            data-bs-toggle="tooltip"></i>
@@ -68,10 +70,10 @@
                                 </a>
 
                                 @if(in_array($order->status, [
-                                    App\Models\Order::STATUS_PENDING,
-                                    App\Models\Order::STATUS_PENDING_APPROVAL,
-                                    App\Models\Order::STATUS_CONFIRMED,
-                                    App\Models\Order::STATUS_AGGREGATED
+                                    Order::STATUS_PENDING,
+                                    Order::STATUS_PENDING_APPROVAL,
+                                    Order::STATUS_CONFIRMED,
+                                    Order::STATUS_AGGREGATED
                                 ]))
                                     <form action="{{ route('lessee.orders.cancel', $order) }}" method="POST" class="d-inline">
                                         @csrf
@@ -81,7 +83,7 @@
                                     </form>
                                 @endif
 
-                                @if($order->status === App\Models\Order::STATUS_ACTIVE)
+                                @if($order->status === Order::STATUS_ACTIVE)
                                     <button class="btn btn-sm btn-warning request-extension-btn"
                                             data-order-id="{{ $order->id }}"
                                             data-order-end-date="{{ $order->end_date->format('Y-m-d') }}"
