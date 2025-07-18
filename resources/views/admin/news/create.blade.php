@@ -8,7 +8,7 @@
             <h4>Добавить новость</h4>
         </div>
         <div class="card-body">
-            <form action="{{ route('news.store') }}" method="POST">
+            <form action="{{ route('admin.news.store') }}" method="POST">
                 @csrf
 
                 <div class="mb-3">

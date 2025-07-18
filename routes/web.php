@@ -16,6 +16,9 @@ use App\Http\Controllers\Lessee\DashboardController as LesseeDashboardController
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\Admin\AdminNewsController;
+use App\Http\Controllers\Admin\AdminEquipmentController;
+
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OrdersController;
 use App\Http\Controllers\RentalConditionController;
@@ -156,7 +159,11 @@ Route::get('/orders/{order}/upd/{type}', [OrderController::class, 'downloadUPDF'
 // Админ кабинет
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
-    Route::resource('equipment', EquipmentController::class);
+    Route::get('/equipment', [AdminEquipmentController::class, 'index'])->name('admin.equipment.index');
+    Route::get('/equipment/approve/{equipment}', [AdminEquipmentController::class, 'approve'])->name('admin.equipment.approve');
+    Route::get('/equipment/reject/{equipment}', [AdminEquipmentController::class, 'reject'])->name('admin.equipment.reject');
+    Route::get('/admin/equipment/{id}', [AdminEquipmentController::class, 'show'])->name('admin.equipment.show');
+    Route::put('/equipment/{equipment}', [AdminEquipmentController::class, 'update'])->name('admin.equipment.update');
     Route::resource('orders', OrdersController::class);
     Route::resource('news', AdminNewsController::class)->names([
         'index' => 'admin.news.index',

@@ -44,6 +44,9 @@
                     <i class="fas fa-tachometer-alt me-2"></i> Главная
                 </a>
             </li>
+
+            
+
             <li class="nav-item">
                 <a class="nav-link {{ Request::is('catalog*') ? 'active' : '' }}"
                 href="{{ route('catalog.index') }}">
@@ -62,7 +65,7 @@
             <!-- Мои заказы -->
             <li class="nav-item">
                 <a class="nav-link {{ Request::is('lessee/orders*') ? 'active' : '' }}"
-                href="{{ route('lessee.orders.index') }}">
+                href="{{ route('lessee.orders') }}">
                     <i class="fas fa-list me-2"></i> Мои заказы
                 </a>
             </li>
@@ -87,6 +90,12 @@
                 <i class="fas fa-user me-2"></i> Профиль
             </a>
         </li>
+        <li class="nav-item">
+    <a class="nav-link {{ request()->is('admin/equipment*') ? 'active' : '' }}" href="{{ route('admin.equipment.index') }}">
+        <i class="bi bi-tools me-2"></i> Каталог техники
+       
+    </a>
+</li>
         <li class="nav-item">
             <a class="nav-link {{ Request::is('notifications') ? 'active' : '' }}"
                href="{{ route('notifications') }}">

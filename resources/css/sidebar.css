@@ -45,3 +45,14 @@
         text-align: center;
     }
 }
+
+.nav-link .badge {
+    font-size: 0.65rem;
+    position: relative;
+    top: -1px;
+}
+
+.table-responsive {
+    overflow-x: auto;
+    min-height: 0.01%;
+}

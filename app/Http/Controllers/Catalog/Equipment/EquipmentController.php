@@ -43,39 +43,41 @@ class EquipmentController extends Controller
     }
 
     public function store(StoreEquipmentRequest $request)
-    {
-        $equipment = Equipment::create([
-            'title' => $request->title,
-            'slug' => Str::slug($request->title),
-            'description' => $request->description,
-            'company_id' => auth()->user()->company_id,
-            'category_id' => $request->category_id,
-            'location_id' => $request->location_id,
-            'brand' => $request->brand,
-            'model' => $request->model,
-            'year' => $request->year,
-            'hours_worked' => $request->hours_worked,
-            'is_approved' => false,
-        ]);
+{
+    $equipment = Equipment::create([
+        'title' => $request->title,
+        'slug' => Str::slug($request->title),
+        'description' => $request->description,
+        'company_id' => auth()->user()->company_id,
+        'category_id' => $request->category_id,
+        'location_id' => $request->location_id,
+        'brand' => $request->brand,
+        'model' => $request->model,
+        'year' => $request->year,
+        'hours_worked' => $request->hours_worked,
+        'is_approved' => false,
+    ]);
 
-        // Создаем тарифы
-        $this->createRentalTerms($equipment, $request);
+    // Создаем тарифы
+    $this->createRentalTerms($equipment, $request);
 
-        // Обработка изображений
-        if ($request->hasFile('images')) {
-            foreach ($request->images as $key => $image) {
-                $path = $image->store('public/equipment');
-                $equipment->images()->create([
-                    'path' => str_replace('public/', '', $path),
-                    'is_main' => $key === 0
-                ]);
-            }
+    // Обработка изображений
+    if ($request->hasFile('images')) {
+        foreach ($request->images as $key => $image) {
+            $path = $image->store('public/equipment');
+            $equipment->images()->create([
+                'path' => str_replace('public/', '', $path),
+                'is_main' => $key === 0
+            ]);
         }
-        if (!$equipment->hasActiveRentalTerms()) {
-        throw new \Exception("Оборудование должно иметь хотя бы одно условие аренды");
-        return redirect()->route('lessor.equipment.index');
     }
 
+    if (!$equipment->hasActiveRentalTerms()) {
+        throw new \Exception("Оборудование должно иметь хотя бы одно условие аренды");
+    }
+
+    return redirect()->route('lessor.equipment.index');
+}
     public function show(Equipment $equipment)
     {
         $this->authorize('view', $equipment);

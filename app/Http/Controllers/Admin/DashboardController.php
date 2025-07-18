@@ -20,6 +20,8 @@ class DashboardController extends Controller
             'draft_news' => News::where('is_published', false)->count(),
             'last_news' => News::latest()->take(5)->get()
         ];
+
+         $stats['unapproved_equipment'] = Equipment::where('is_approved', false)->count();
         
         return view('admin.dashboard', compact('stats'));
     }

@@ -37,7 +37,7 @@
     <div class="card">
         <div class="card-header">
             Последние новости
-            <a href="{{ route('news.create') }}" class="btn btn-sm btn-primary float-end">
+            <a href="{{ route('admin.news.create') }}" class="btn btn-sm btn-primary float-end">
                 <i class="bi bi-plus"></i> Добавить
             </a>
         </div>
@@ -62,7 +62,7 @@
                             </span>
                         </td>
                         <td>
-                            <a href="{{ route('news.edit', $news->id) }}" class="btn btn-sm btn-outline-primary">
+                            <a href="{{ route('admin.news.edit', $news->id) }}" class="btn btn-sm btn-outline-primary">
                                 <i class="bi bi-pencil"></i>
                             </a>
                         </td>
