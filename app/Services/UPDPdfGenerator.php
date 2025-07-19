@@ -50,4 +50,15 @@ class UPDPdfGenerator
 
         return $pdf->download("УПД_{$order->id}_{$type}.pdf");
     }
+
+    public function generateDeliveryNote(DeliveryNote $note): string
+    {
+        $pdf = PDF::loadView('documents.delivery-note', [
+            'note' => $note,
+            'platform' => Platform::getMain(),
+            'currentDate' => now()->format('d.m.Y')
+        ]);
+
+        return $pdf->output();
+    }
 }

@@ -63,6 +63,7 @@ class DatabaseSeeder extends Seeder
 
         // 2. Затем создаем компании и пользователей
         $this->call(CompaniesSeeder::class);
+        $this->call(CarrierCompaniesSeeder::class);
         $this->call(UserSeeder::class);
 
         // 3. Затем создаем администраторов

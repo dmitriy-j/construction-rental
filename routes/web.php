@@ -17,7 +17,6 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\Admin\AdminNewsController;
 use App\Http\Controllers\Admin\AdminEquipmentController;
-
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OrdersController;
@@ -95,6 +94,7 @@ Route::prefix('lessor')
         Route::post('/orders/{order}/mark-active', [LessorOrders::class, 'markAsActive'])->name('lessor.orders.markActive');
         Route::post('/orders/{order}/mark-completed', [LessorOrders::class, 'markAsCompleted'])->name('lessor.orders.markCompleted');
         Route::post('/orders/{order}/handle-extension', [LessorOrders::class, 'handleExtension'])->name('lessor.orders.handleExtension');
+        Route::post('/orders/{order}/prepare-shipment', [LessorOrderController::class, 'prepareForShipment'])->name('lessor.orders.prepare-shipment');
 
         // Новые роуты для подтверждения/отклонения заказов
         Route::post('/orders/{order}/approve', [LessorOrders::class, 'approve'])->name('lessor.orders.approve');
@@ -103,11 +103,19 @@ Route::prefix('lessor')
         // Документы
         Route::get('/documents', [DocumentController::class, 'index'])->name('lessor.documents');
         Route::get('/documents/download/{id}/{type}', [DocumentController::class, 'download'])->name('lessor.documents.download');
+        Route::get('/documents/download/{id}/{type}', [DocumentController::class, 'download'])->name('documents.download')->middleware('auth');
+
+
 
         // Документы для заказов
         Route::post('/orders/{order}/delivery-note', [DocumentController::class, 'createDeliveryNote'])->name('lessor.orders.createDeliveryNote');
         Route::post('/orders/{order}/waybill', [DocumentController::class, 'createWaybill'])->name('lessor.orders.createWaybill');
         Route::post('/orders/{order}/completion-act', [DocumentController::class, 'generateCompletionAct'])->name('lessor.orders.generateCompletionAct');
+        Route::prefix('lessor/delivery-notes')->group(function() {
+        Route::get('/{note}/edit', [\App\Http\Controllers\Lessor\DeliveryNoteController::class, 'edit'])->name('lessor.delivery-notes.edit');
+        Route::put('/{note}', [\App\Http\Controllers\Lessor\DeliveryNoteController::class, 'update'])->name('lessor.delivery-notes.update');
+        Route::post('/{note}/close', [\App\Http\Controllers\Lessor\DeliveryNoteController::class, 'close'])->name('lessor.delivery-notes.close');
+        });
     });
 
 // Для арендатора
@@ -121,7 +129,7 @@ Route::prefix('lessee')
         Route::prefix('orders')->group(function () {
             Route::get('/', [\App\Http\Controllers\Lessee\OrderController::class, 'index'])->name('lessee.orders.index');
             Route::get('/{order}', [\App\Http\Controllers\Lessee\OrderController::class, 'show'])->name('lessee.orders.show');
-            Route::post('/{order}/cancel', [\App\Http\Controllers\Lessee\OrderController::class, 'cancel'])->name('lessee.orders.cancel');
+            Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('lessee.orders.cancel');
             Route::post('/{order}/request-extension', [\App\Http\Controllers\Lessee\OrderController::class, 'requestExtension'])->name('lessee.orders.requestExtension');
         });
         // Документы
@@ -155,6 +163,17 @@ Route::prefix('lessee')
 
 // Загрузка УПД (общий доступ)
 Route::get('/orders/{order}/upd/{type}', [OrderController::class, 'downloadUPDF']);
+
+
+    //Для перевозчика
+    Route::middleware(['auth', 'verified', 'carrier'])->prefix('carrier')->group(function () {
+        Route::get('/dashboard', [CarrierDashboardController::class, 'index'])->name('carrier.dashboard');
+        Route::get('/orders', [CarrierOrderController::class, 'index'])->name('carrier.orders.index');
+        Route::get('/orders/{order}', [CarrierOrderController::class, 'show'])->name('carrier.orders.show');
+        Route::post('/orders/{order}/accept', [CarrierOrderController::class, 'accept'])->name('carrier.orders.accept');
+        Route::post('/orders/{order}/complete', [CarrierOrderController::class, 'complete'])->name('carrier.orders.complete');
+    });
+
 
 // Админ кабинет
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {

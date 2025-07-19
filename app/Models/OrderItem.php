@@ -17,9 +17,18 @@ class OrderItem extends Model
         'price_per_unit',
         'platform_fee',
         'discount_amount',
+        'delivery_cost',
         'total_price',
         'period_count',
+        'delivery_from_id',
+        'delivery_to_id',
+        'lessor_company_id'
 
+
+    ];
+
+    protected $casts = [
+    'delivery_cost' => 'float',
     ];
 
     protected $guarded = ['id'];
@@ -53,11 +62,6 @@ class OrderItem extends Model
         return $this->hasOne(DeliveryNote::class, 'order_item_id');
     }
 
-    public function getDeliveryCostAttribute(): float
-    {
-        return $this->deliveryNote->calculated_cost ?? 0;
-    }
-
      protected static function booted()
     {
         static::updating(function ($model) {
@@ -78,5 +82,20 @@ class OrderItem extends Model
                 }
             }
         });
+    }
+
+    public function deliveryFrom(): BelongsTo
+    {
+        return $this->belongsTo(Location::class, 'delivery_from_id');
+    }
+
+    public function deliveryTo(): BelongsTo
+    {
+        return $this->belongsTo(Location::class, 'delivery_to_id');
+    }
+
+    public function lessorCompany()
+    {
+        return $this->belongsTo(Company::class, 'lessor_company_id');
     }
 }

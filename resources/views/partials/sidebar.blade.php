@@ -45,7 +45,7 @@
                 </a>
             </li>
 
-            
+
 
             <li class="nav-item">
                 <a class="nav-link {{ Request::is('catalog*') ? 'active' : '' }}"
@@ -65,7 +65,7 @@
             <!-- Мои заказы -->
             <li class="nav-item">
                 <a class="nav-link {{ Request::is('lessee/orders*') ? 'active' : '' }}"
-                href="{{ route('lessee.orders') }}">
+                href="{{ route('lessee.orders.index') }}">
                     <i class="fas fa-list me-2"></i> Мои заказы
                 </a>
             </li>
@@ -90,12 +90,7 @@
                 <i class="fas fa-user me-2"></i> Профиль
             </a>
         </li>
-        <li class="nav-item">
-    <a class="nav-link {{ request()->is('admin/equipment*') ? 'active' : '' }}" href="{{ route('admin.equipment.index') }}">
-        <i class="bi bi-tools me-2"></i> Каталог техники
-       
-    </a>
-</li>
+
         <li class="nav-item">
             <a class="nav-link {{ Request::is('notifications') ? 'active' : '' }}"
                href="{{ route('notifications') }}">

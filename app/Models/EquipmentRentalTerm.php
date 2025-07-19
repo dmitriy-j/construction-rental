@@ -26,7 +26,8 @@ class EquipmentRentalTerm extends Model
         'currency',
         'delivery_days',
         'return_policy',
-        'min_rental_hours' // Минимальное время аренды
+        'min_rental_hours', // Минимальное время аренды
+        'delivery_organized_by_lessor',
     ];
 
     public function orderItems(): HasMany

@@ -25,8 +25,8 @@
                     <thead class="table-light">
                         <tr>
                             <th>ID</th>
-                            <th>Период аренды</th> <!-- Заменили "Арендатор" -->
-                            <th>Выплата</th> <!-- Изменили название колонки -->
+                            <th>Период аренды</th>
+                            <th>Сумма аренды</th>
                             <th>Статус</th>
                             <th>Дата создания</th>
                             <th>Действия</th>
@@ -39,7 +39,11 @@
                             <td>
                                 {{ $order->start_date->format('d.m.Y') }} - {{ $order->end_date->format('d.m.Y') }}
                             </td>
-                            <td>{{ number_format($order->lessor_base_amount + $order->delivery_cost, 2) }} ₽</td>
+                            <td>
+                                {{ number_format($order->items->sum(function($item) {
+                                    return $item->rentalTerm->price_per_hour * $item->period_count;
+                                }), 2) }} ₽
+                            </td>
                             <td>
                                 <span class="badge bg-{{ $order->status_color }}">
                                     {{ $order->status_text }}

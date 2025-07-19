@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers\Lessor;
 
-use App\Http\Controllers\Controller; // Добавлен импорт базового контроллера
+use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\DeliveryNote;
 use Illuminate\Http\Request;
 use App\Services\EquipmentAvailabilityService;
-use App\Notifications\OrderApproved;
-use App\Notifications\OrderRejected;
+use App\Services\DeliveryNoteService;
+use App\Services\DeliveryScenarioService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Events\PlatformDeliveryRequested;
 
 class LessorOrderController extends Controller
 {
@@ -38,19 +41,25 @@ class LessorOrderController extends Controller
 
         $order->load([
             'items.equipment',
-            'items.deliveryNote.deliveryTo', // Добавляем загрузку адреса доставки
+            'items.deliveryNote.deliveryTo',
             'parentOrder'
         ]);
 
-        // Получаем адрес доставки из первой позиции заказа
+         // Исправленный расчет адреса доставки
         $deliveryAddress = 'Не указан';
         if ($order->items->isNotEmpty() && $firstItem = $order->items->first()) {
-            if ($firstItem->deliveryNote && $firstItem->deliveryNote->deliveryTo) {
+            if ($firstItem->deliveryTo) {
+                $deliveryAddress = $firstItem->deliveryTo->address;
+            } elseif ($firstItem->deliveryNote && $firstItem->deliveryNote->deliveryTo) {
                 $deliveryAddress = $firstItem->deliveryNote->deliveryTo->address;
             }
         }
 
-        // Добавлен расчет деталей заказа
+        // Исправленный расчет сумм
+        $lessorBaseAmount = $order->items->sum(function($item) {
+            return $item->rentalTerm->price_per_hour * $item->period_count;
+        });
+
         $orderDetails = [
             'shift_hours' => $order->shift_hours,
             'shifts_per_day' => $order->shifts_per_day,
@@ -58,12 +67,12 @@ class LessorOrderController extends Controller
             'payment_type' => $order->payment_type,
             'transportation' => $order->transportation,
             'fuel_responsibility' => $order->fuel_responsibility,
-            'delivery_address' => $deliveryAddress, // Добавляем адрес доставки
+            'delivery_address' => $deliveryAddress,
 
-            // Финансовые данные
-            'lessor_base_amount' => $order->lessor_base_amount,
+            // Исправленные финансовые данные
+            'lessor_base_amount' => $lessorBaseAmount,
             'delivery_cost' => $order->delivery_cost,
-            'total_payout' => $order->lessor_base_amount + $order->delivery_cost,
+            'total_payout' => $lessorBaseAmount + $order->delivery_cost,
         ];
 
         return view('lessor.orders.show', compact('order', 'orderDetails'));
@@ -175,32 +184,66 @@ class LessorOrderController extends Controller
     }
 
     // Обновленные методы подтверждения заказа
-    public function approve(Order $order)
+    public function approve(Request $request, Order $order)
     {
         if ($order->lessor_company_id !== auth()->user()->company_id) {
             abort(403);
         }
 
-        // Проверяем условия аренды
-        $service = app(EquipmentAvailabilityService::class);
-        if (!$service->validateRentalConditions($order)) {
-            return back()->withErrors('Условия аренды не соблюдены');
+        // Определяем сценарий доставки (по умолчанию 'none' для самовывоза)
+        $deliveryScenario = $request->input('delivery_scenario', 'none');
+
+        DB::transaction(function() use ($order, $deliveryScenario) {
+            // Обновляем статус заказа
+            $order->update([
+                'status' => Order::STATUS_CONFIRMED,
+                'delivery_scenario' => $deliveryScenario,
+                'confirmed_at' => now()
+            ]);
+
+            // Обработка доставки только для заказов с доставкой
+            if ($order->delivery_type === Order::DELIVERY_DELIVERY) {
+                $scenarioService = app(\App\Services\DeliveryScenarioService::class);
+
+                foreach ($order->items as $item) {
+                    $scenarioService->handleOrderConfirmation($item, $deliveryScenario);
+                }
+
+                // Если выбран сценарий платформы, запускаем событие
+                if ($deliveryScenario === 'platform') {
+                    event(new \App\Events\PlatformDeliveryRequested($order));
+                }
+            }
+        });
+
+        return back()->with('success', 'Заказ подтвержден');
+    }
+
+
+
+    public function prepareForShipment(Order $order, Request $request)
+    {
+        $request->validate([
+            'delivery_notes' => 'required|array',
+            'delivery_notes.*.id' => 'required|exists:delivery_notes,id',
+            'delivery_notes.*.driver_name' => 'required|string',
+            'delivery_notes.*.vehicle_model' => 'required|string',
+            'delivery_notes.*.vehicle_number' => 'required|string',
+            'delivery_notes.*.driver_contact' => 'required|string',
+            'delivery_notes.*.departure_time' => 'required|date'
+        ]);
+
+        $service = app(DeliveryNoteService::class);
+
+        foreach ($request->delivery_notes as $noteData) {
+            $note = DeliveryNote::find($noteData['id']);
+            $service->completeDeliveryNote($note, $noteData);
         }
 
         // Обновляем статус заказа
-        $order->update([
-            'status' => Order::STATUS_CONFIRMED,
-            'confirmed_at' => now()
-        ]);
+        $order->update(['status' => Order::STATUS_PREPARED_FOR_SHIPMENT]);
 
-        // Временная замена уведомления на логирование
-        Log::info('Заказ подтверждён', [
-            'order_id' => $order->id,
-            'user_id' => $order->user_id,
-            'message' => 'Уведомление OrderApproved было заменено на логирование'
-        ]);
-
-        return back()->with('success', 'Заказ подтвержден');
+        return back()->with('success', 'Данные для доставки успешно сохранены');
     }
 
     public function reject(Order $order, Request $request)
@@ -213,48 +256,20 @@ class LessorOrderController extends Controller
             'rejection_reason' => 'required|string|max:500'
         ]);
 
-        // Обновляем статус заказа
         $order->update([
             'status' => Order::STATUS_REJECTED,
-            'confirmed_at' => now(),
             'rejection_reason' => $request->rejection_reason,
             'rejected_at' => now()
         ]);
 
-        // Освобождаем оборудование
         app(EquipmentAvailabilityService::class)->releaseBooking($order);
 
-        // Временная замена уведомления на логирование
         Log::info('Заказ отклонён', [
             'order_id' => $order->id,
             'user_id' => $order->user_id,
-            'reason' => $request->rejection_reason,
-            'message' => 'Уведомление OrderRejected было заменено на логирование'
+            'reason' => $request->rejection_reason
         ]);
 
         return back()->with('success', 'Заказ отклонен');
     }
-
-    public function approveOrder(Order $order)
-    {
-        $order->user->notify(new OrderApproved($order));
-        // Проверка прав арендодателя
-        if ($order->lessor_company_id !== auth()->user()->company_id) {
-            abort(403);
-        }
-
-        DB::transaction(function() use ($order) {
-            // Подтверждение заказа
-            $order->update([
-                'status' => Order::STATUS_CONFIRMED,
-                'confirmed_at' => now()
-            ]);
-
-            // Бронирование доставки
-            app(EquipmentAvailabilityService::class)->bookDelivery($order);
-        });
-
-        return redirect()->back()->with('success', 'Заказ подтвержден');
-    }
-
 }

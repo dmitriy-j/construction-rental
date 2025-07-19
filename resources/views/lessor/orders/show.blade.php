@@ -45,7 +45,6 @@
                         </div>
                     </div>
 
-                    <!-- Заменено: Арендатор на Локацию -->
                     <div class="d-flex mb-3">
                         <div class="flex-shrink-0">
                             <i class="fas fa-truck-loading fa-2x text-info"></i>
@@ -187,21 +186,23 @@
                         <tr>
                             <td>
                                 <div class="d-flex align-items-center">
-                                    @if($item->equipment->mainImage && $item->equipment->mainImage->path)
-                                    <img src="{{ Storage::url($item->equipment->mainImage->path) }}"
-                                        alt="{{ $item->equipment->title }}"
-                                        class="rounded me-3" width="60" height="60">
-                                    @else
-                                    <div class="bg-light border rounded d-flex align-items-center justify-content-center me-3" style="width: 60px; height: 60px;">
-                                        <i class="fas fa-image text-muted"></i>
-                                    </div>
-                                    @endif
-                                    <div>
-                                        <span class="fw-bold">{{ $item->equipment->title }}</span>
-                                        <div class="text-muted small">
-                                            {{ $item->equipment->brand }} {{ $item->equipment->model }}
+                                    <a href="{{ route('catalog.show', $item->equipment) }}" class="d-flex align-items-center text-decoration-none">
+                                        @if($item->equipment->mainImage && $item->equipment->mainImage->path)
+                                        <img src="{{ Storage::url($item->equipment->mainImage->path) }}"
+                                            alt="{{ $item->equipment->title }}"
+                                            class="rounded me-3" width="60" height="60">
+                                        @else
+                                        <div class="bg-light border rounded d-flex align-items-center justify-content-center me-3" style="width: 60px; height: 60px;">
+                                            <i class="fas fa-image text-muted"></i>
                                         </div>
-                                    </div>
+                                        @endif
+                                        <div>
+                                            <span class="fw-bold">{{ $item->equipment->title }}</span>
+                                            <div class="text-muted small">
+                                                {{ $item->equipment->brand }} {{ $item->equipment->model }}
+                                            </div>
+                                        </div>
+                                    </a>
                                 </div>
                             </td>
                             <td class="text-center">
@@ -221,7 +222,9 @@
                     <tfoot class="table-light">
                         <tr>
                             <th colspan="3" class="text-end">Итого по аренде:</th>
-                            <th class="text-end">{{ number_format($orderDetails['lessor_base_amount'], 2) }} ₽</th>
+                            <th class="text-end">{{ number_format($order->items->sum(function($item) {
+                                return $item->rentalTerm->price_per_hour * $item->period_count;
+                            }), 2) }} ₽</th>
                         </tr>
                     </tfoot>
                 </table>
@@ -236,16 +239,20 @@
             <h5 class="mb-0">Подтверждение заказа</h5>
         </div>
         <div class="card-body">
-            <div class="d-grid gap-3 d-md-flex">
-                <form action="{{ route('lessor.orders.approve', $order) }}" method="POST" class="flex-grow-1">
+            <div class="d-flex justify-content-center gap-3">
+                <!-- Измененная кнопка подтверждения -->
+                <button type="button" class="btn btn-success px-4 py-2" id="approveOrderBtn">
+                    <i class="fas fa-check-circle me-2"></i> Подтвердить
+                </button>
+
+                <!-- Форма для подтверждения (скрытая) -->
+                <form id="approveForm" method="POST" action="{{ route('lessor.orders.approve', $order) }}" style="display: none;">
                     @csrf
-                    <button type="submit" class="btn btn-success w-100 py-3">
-                        <i class="fas fa-check-circle me-2"></i> Подтвердить заказ
-                    </button>
+                    <input type="hidden" name="delivery_scenario" id="deliveryScenarioInput">
                 </form>
 
-                <button type="button" class="btn btn-outline-danger py-3 w-100" id="rejectOrderBtn">
-                    <i class="fas fa-times-circle me-2"></i> Отклонить заказ
+                <button type="button" class="btn btn-outline-danger px-4 py-2" id="rejectOrderBtn">
+                    <i class="fas fa-times-circle me-2"></i> Отклонить
                 </button>
             </div>
         </div>
@@ -267,7 +274,7 @@
                     <form action="{{ route('lessor.orders.markActive', $order) }}" method="POST">
                         @csrf
                         <button type="submit"
-                                class="btn btn-primary w-100 py-3"
+                                class="btn btn-primary py-2"
                                 @if(!$order->canBeActivated())
                                     disabled
                                     title="Аренду можно начать не ранее {{ $order->activationAvailableDate() }}"
@@ -293,7 +300,7 @@
                         </strong>
                     </p>
 
-                    <button type="button" class="btn btn-primary w-100 py-3" id="handleExtensionBtn">
+                    <button type="button" class="btn btn-primary py-2" id="handleExtensionBtn">
                         Обработать запрос
                     </button>
                 </div>
@@ -312,6 +319,69 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Определяем константы для типов доставки
+        const DELIVERY_PICKUP = 'pickup';
+        const DELIVERY_DELIVERY = 'delivery';
+
+        // Получаем тип доставки из PHP
+        const deliveryType = "{{ $order->delivery_type }}";
+
+        // Обработка подтверждения заказа с выбором сценария доставки
+        const approveBtn = document.getElementById('approveOrderBtn');
+        if (approveBtn) {
+            approveBtn.addEventListener('click', function() {
+                if (deliveryType === DELIVERY_DELIVERY) {
+                    // Для заказов с доставкой показываем выбор сценария
+                    Swal.fire({
+                        title: 'Организация доставки',
+                        html: `
+                            <p>Выберите способ организации доставки:</p>
+                            <div class="form-check text-start my-3">
+                                <input class="form-check-input" type="radio" name="delivery_scenario"
+                                       id="scenario_lessor" value="lessor" checked>
+                                <label class="form-check-label" for="scenario_lessor">
+                                    <strong>Организую доставку самостоятельно</strong><br>
+                                    <small class="text-muted">
+                                        (Вы будете грузоотправителем, платформа сгенерирует зеркальный документ для арендатора)
+                                    </small>
+                                </label>
+                            </div>
+                            <div class="form-check text-start my-3">
+                                <input class="form-check-input" type="radio" name="delivery_scenario"
+                                       id="scenario_platform" value="platform">
+                                <label class="form-check-label" for="scenario_platform">
+                                    <strong>Платформа организует доставку</strong><br>
+                                    <small class="text-muted">
+                                        (Платформа будет грузоотправителем и назначит перевозчика)
+                                    </small>
+                                </label>
+                            </div>
+                        `,
+                        showCancelButton: true,
+                        confirmButtonText: 'Подтвердить заказ',
+                        cancelButtonText: 'Отмена',
+                        focusConfirm: false,
+                        width: '650px',
+                        customClass: {
+                            htmlContainer: 'text-start'
+                        },
+                        preConfirm: () => {
+                            return document.querySelector('input[name="delivery_scenario"]:checked').value;
+                        }
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            document.getElementById('deliveryScenarioInput').value = result.value;
+                            document.getElementById('approveForm').submit();
+                        }
+                    });
+                } else {
+                    // Для заказов с самовывозом подтверждаем сразу
+                    document.getElementById('deliveryScenarioInput').value = 'none';
+                    document.getElementById('approveForm').submit();
+                }
+            });
+        }
+
         // Обработка отклонения заказа
         const rejectBtn = document.getElementById('rejectOrderBtn');
         if (rejectBtn) {
@@ -351,7 +421,6 @@
         const extensionBtn = document.getElementById('handleExtensionBtn');
         if (extensionBtn) {
             extensionBtn.addEventListener('click', function() {
-                // Безопасное получение даты продления
                 const requestedDate = '{{ $order->requested_end_date ? $order->requested_end_date->format("d.m.Y") : "Дата не указана" }}';
 
                 Swal.fire({

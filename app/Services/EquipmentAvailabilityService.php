@@ -8,6 +8,7 @@ use App\Models\Order;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class EquipmentAvailabilityService
 {
@@ -18,12 +19,8 @@ class EquipmentAvailabilityService
             return $this->formatStatus('maintenance', 'На обслуживании', 'secondary');
         }
 
-        if ($equipment->global_status === 'out_of_service') {
-            return $this->formatStatus('out_of_service', 'Не эксплуатируется', 'dark');
-        }
-
         // Проверка доступности на сегодня
-        $today = Carbon::today()->toDateString();
+        $today = now()->format('Y-m-d');
         $availability = EquipmentAvailability::where('equipment_id', $equipment->id)
             ->where('date', $today)
             ->first();
@@ -35,18 +32,24 @@ class EquipmentAvailabilityService
 
         // Обработка статуса с учетом возможности продления
         if ($availability->status === 'booked') {
-            return $this->handleBookedStatus($equipment, $today);
+            $condition = $equipment->rentalCondition;
+            $extensionPolicy = optional($condition)->extension_policy;
+
+            // Если продление запрещено - показываем как недоступно
+            if ($extensionPolicy === 'not_allowed') {
+                return $this->formatStatus('unavailable', 'Недоступно', 'warning');
+            }
+
+            // Для разрешенного продления показываем особый статус
+            return $this->formatStatus('unavailable_extension', 'Недоступно (возможно продление)', 'danger');
         }
 
-        // Обработка статусов из equipment_availability
+        // Обработка других статусов
         switch ($availability->status) {
-            case 'booked':
-                return $this->handleBookedStatus($equipment, $today);
-
             case 'maintenance':
                 return $this->formatStatus('maintenance', 'На обслуживании', 'secondary');
-
-            default: // available
+            case 'delivery': // В каталоге не показываем "В пути"
+            default:
                 return $this->formatStatus('available', 'Доступно', 'success');
         }
     }
@@ -110,6 +113,7 @@ class EquipmentAvailabilityService
             ->where(function($query) {
                 $query->where('status', 'booked')
                     ->orWhere('status', 'maintenance')
+                    ->orWhere('status', 'delivery') // Добавляем проверку для delivery
                     ->orWhere(function($q) {
                         $q->where('status', 'temp_reserve')
                             ->where('expires_at', '>', now());
@@ -215,32 +219,54 @@ class EquipmentAvailabilityService
 
             // Расчет даты начала доставки
             $deliveryStartDate = $startDate->copy()->subDays($deliveryDays);
-            $deliveryEndDate = $startDate->copy()->subDay(); // Доставка заканчивается за день до аренды
+            $deliveryEndDate = $startDate->copy()->subDay();
 
             $this->bookEquipment(
                 $item->equipment,
                 $deliveryStartDate->format('Y-m-d'),
                 $deliveryEndDate->format('Y-m-d'),
                 $order->id,
-                'delivery' // Специальный статус для доставки
+                EquipmentAvailability::STATUS_DELIVERY // Используем константу
             );
         }
     }
 
     public function releaseBooking(Order $order)
     {
-        foreach ($order->items as $item) {
-            if ($item->equipment) {
-                // Удаляем бронирование для каждого оборудования
-                EquipmentAvailability::where('equipment_id', $item->equipment->id)
-                    ->where('order_id', $order->id)
-                    ->delete();
-
-                Log::info("[RELEASE] Бронирование снято для оборудования", [
-                    'equipment_id' => $item->equipment->id,
-                    'order_id' => $order->id
-                ]);
+        try {
+            // Для родительских заказов обрабатываем все дочерние заказы
+            if ($order->isParent()) {
+                foreach ($order->childOrders as $childOrder) {
+                    $this->releaseOrderEquipment($childOrder);
+                }
+            } else {
+                $this->releaseOrderEquipment($order);
             }
+        } catch (\Exception $e) {
+            Log::error('Ошибка при освобождении оборудования: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    private function releaseOrderEquipment(Order $order)
+    {
+        foreach ($order->items as $item) {
+            // Явно указываем строковое значение
+            $status = 'cancelled';
+
+            \Log::debug("Updating equipment availability", [
+                'equipment_id' => $item->equipment_id,
+                'order_id' => $order->id,
+                'status' => $status
+            ]);
+
+            DB::table('equipment_availability')
+                ->where('equipment_id', $item->equipment_id)
+                ->where('order_id', $order->id)
+                ->update([
+                    'status' => $status, // Явно задаем строковое значение
+                    'updated_at' => now()
+                ]);
         }
     }
 }

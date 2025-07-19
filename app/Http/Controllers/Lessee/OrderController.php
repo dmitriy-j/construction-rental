@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use App\Notifications\OrderStatusChanged;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class OrderController extends Controller
 {
@@ -16,28 +17,19 @@ class OrderController extends Controller
     {
         $orders = Order::where('lessee_company_id', auth()->user()->company_id)
             ->whereNull('parent_order_id')
-            ->with([
-                'childOrders.items', // Загружаем дочерние заказы и их позиции
-                'items' // Загружаем позиции для обычных заказов
-            ])
+            ->with(['childOrders.items', 'items'])
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
         $orders->getCollection()->transform(function ($order) {
-            // Рассчитываем общую стоимость
-            if ($order->isParent()) {
-                $order->calculated_total = $order->childOrders->sum(function ($childOrder) {
-                    return $childOrder->items->sum(function ($item) {
-                        return ($item->price_per_unit * $item->period_count) + ($item->delivery_cost ?? 0);
-                    });
-                });
-            } else {
-                $order->calculated_total = $order->items->sum(function ($item) {
-                    return ($item->price_per_unit * $item->period_count) + ($item->delivery_cost ?? 0);
-                });
-            }
+            // Правильный расчет стоимости аренды
+            $order->rental_amount = $order->isParent()
+                ? $order->childOrders->sum('lessor_base_amount')
+                : $order->lessor_base_amount;
 
-            // Рассчитываем количество позиций
+            $order->delivery_amount = $order->delivery_cost;
+            $order->calculated_total = $order->rental_amount + $order->delivery_amount;
+
             $order->total_items_count = $order->isParent()
                 ? $order->childOrders->sum(fn($child) => $child->items->count())
                 : $order->items->count();
@@ -57,18 +49,24 @@ class OrderController extends Controller
         // Для родительских заказов
         if ($order->isParent()) {
             $order->load([
+                'childOrders.items.equipment.availabilityStatus',
                 'childOrders.items.equipment.mainImage',
                 'childOrders.items.equipment.company',
                 'childOrders.items.deliveryNote',
+                'childOrders.items.deliveryFrom',
+                'childOrders.items.deliveryTo',
                 'childOrders.lessorCompany'
             ]);
         }
         // Для дочерних заказов
         else {
             $order->load([
+                'childOrders.items.equipment.availabilityStatus',
                 'items.equipment.mainImage',
                 'items.equipment.company',
                 'items.deliveryNote',
+                'items.deliveryFrom',
+                'items.deliveryTo',
                 'lessorCompany'
             ]);
         }
@@ -79,7 +77,6 @@ class OrderController extends Controller
 
         // Пересчитываем суммы по простому принципу: (цена за час * часы) + доставка
         $allItems->each(function ($item) {
-            // Используем price_per_unit как окончательную стоимость часа
             $item->simple_rental_total = $item->price_per_unit * $item->period_count;
             $item->simple_total = $item->simple_rental_total + $item->delivery_cost;
         });
@@ -103,23 +100,26 @@ class OrderController extends Controller
         $allowedStatuses = [
             Order::STATUS_PENDING,
             Order::STATUS_PENDING_APPROVAL,
-            Order::STATUS_CONFIRMED
+            Order::STATUS_CONFIRMED,
+            Order::STATUS_AGGREGATED
         ];
 
         if (!in_array($order->status, $allowedStatuses)) {
-            return back()->withErrors('Невозможно отменить заказ в текущем статусе');
+            return back()->with('error', 'Невозможно отменить заказ в текущем статусе: ' . $order->status_text);
         }
 
         try {
-            $order->load('items.equipment');
             $order->cancel();
 
-            $order->user->notify(new OrderStatusChanged($order));
+            // Отправляем уведомление только для родительского заказа
+            if ($order->isParent()) {
+                $order->user->notify(new OrderStatusChanged($order));
+            }
 
-            return back()->with('success', 'Заказ успешно отменен');
+            return back()->with('success', 'Заказ и все связанные подзаказы успешно отменены');
         } catch (\Exception $e) {
-            Log::error('Ошибка отмены заказа: '.$e->getMessage());
-            return back()->withErrors($e->getMessage());
+            Log::error('Ошибка отмены заказа: '.$e->getMessage(), ['exception' => $e]);
+            return back()->with('error', 'Ошибка при отмене заказа: ' . $e->getMessage());
         }
     }
 
@@ -174,5 +174,49 @@ class OrderController extends Controller
             'success' => true,
             'message' => 'Запрос на продление отправлен арендодателю'
         ]);
+    }
+
+    /**
+     * Создание нового заказа (добавлен метод store)
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            // ... другие поля ...
+            'delivery_type' => 'required|in:pickup,delivery',
+        ]);
+
+        DB::transaction(function() use ($request) {
+            $order = new Order();
+            $order->lessee_company_id = auth()->user()->company_id;
+            $order->status = Order::STATUS_PENDING;
+            $order->delivery_type = $request->delivery_type;
+
+            // Заполнение других полей заказа
+            $order->fill($request->only([
+                'start_date',
+                'end_date',
+                'delivery_address',
+                'notes',
+                // другие поля
+            ]));
+
+            $order->save();
+
+            // Добавление элементов заказа
+            foreach ($request->items as $itemData) {
+                $order->items()->create([
+                    'equipment_id' => $itemData['equipment_id'],
+                    'quantity' => $itemData['quantity'],
+                    'period_count' => $itemData['period_count'],
+                    'delivery_from_id' => $itemData['delivery_from_id'] ?? null,
+                    'delivery_to_id' => $itemData['delivery_to_id'] ?? null,
+                    // другие поля элемента
+                ]);
+            }
+        });
+
+        return redirect()->route('lessee.orders.show', $order)
+            ->with('success', 'Заказ успешно создан');
     }
 }

@@ -30,4 +30,14 @@ class OrderStatusChanged extends Notification
             'url' => route('orders.show', $this->order),
         ];
     }
+
+    public function toArray($notifiable)
+    {
+        return [
+            'order_id' => $this->order->id,
+            'status' => $this->order->status,
+            'message' => "Статус заказа #{$this->order->id} изменен: " . Order::statusText($this->order->status),
+            'url' => route('lessee.orders.show', $this->order),
+        ];
+    }
 }

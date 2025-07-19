@@ -18,6 +18,12 @@ class EventServiceProvider extends ServiceProvider
         Registered::class => [
             SendEmailVerificationNotification::class,
         ],
+         DeliveryNoteSigned::class => [
+            UpdateEquipmentLocation::class,
+        ],
+        PlatformDeliveryRequested::class => [
+            PlatformDeliveryHandler::class,
+        ],
     ];
 
     /**

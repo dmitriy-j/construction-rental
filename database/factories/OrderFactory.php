@@ -69,9 +69,17 @@ class OrderFactory extends Factory
     public function configure()
     {
         return $this->afterCreating(function (Order $order) {
-            \App\Models\DeliveryNote::factory()->create([
-                'order_id' => $order->id
-            ]);
+            // Создаем DeliveryNote для каждого OrderItem
+            foreach ($order->items as $item) {
+                \App\Models\DeliveryNote::factory()->create([
+                    'order_id' => $order->id,
+                    'order_item_id' => $item->id,
+                    'sender_company_id' => $order->lessor_company_id,
+                    'receiver_company_id' => $order->lessee_company_id,
+                    'delivery_from_id' => $item->delivery_from_id,
+                    'delivery_to_id' => $item->delivery_to_id,
+                ]);
+            }
         });
     }
 }

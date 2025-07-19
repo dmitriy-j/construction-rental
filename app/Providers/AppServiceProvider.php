@@ -25,6 +25,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(DeliveryCalculatorService::class, function () {
             return new DeliveryCalculatorService();
         });
+
+        $this->app->bind(DeliveryNoteService::class, function ($app) {
+            return new DeliveryNoteService();
+        });
         //
     }
 

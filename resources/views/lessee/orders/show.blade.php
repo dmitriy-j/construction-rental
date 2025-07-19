@@ -1,9 +1,21 @@
 @extends('layouts.app')
 
-@php use App\Models\Order; @endphp  <!-- Добавлен импорт класса Order -->
+@php use App\Models\Order; @endphp
 
 @section('content')
 <div class="container py-5">
+    <!-- Уведомления -->
+    @if (session('success'))
+        <div class="alert alert-success">
+            {{ session('success') }}
+        </div>
+    @endif
+    @if (session('error'))
+        <div class="alert alert-danger">
+            {{ session('error') }}
+        </div>
+    @endif
+
     <!-- Заголовок заказа -->
     <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
@@ -49,12 +61,24 @@
                 <div class="col-md-6">
                     <div class="d-flex mb-3">
                         <div class="flex-shrink-0">
+                            <i class="fas fa-truck fa-2x text-info"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Стоимость доставки</h6>
+                            <p class="h5 text-info mb-0">
+                                {{ number_format($allItems->sum('delivery_cost'), 2, '.', ' ') }} ₽
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="d-flex mb-3">
+                        <div class="flex-shrink-0">
                             <i class="fas fa-file-invoice-dollar fa-2x text-success"></i>
                         </div>
                         <div class="flex-grow-1 ms-3">
                             <h6 class="text-muted mb-1">Общая стоимость</h6>
                             <p class="h4 text-success mb-0">
-                                {{ number_format($simpleGrandTotal, 2) }} ₽
+                                {{ number_format($simpleGrandTotal, 2, '.', ' ') }} ₽
                             </p>
                         </div>
                     </div>
@@ -85,13 +109,14 @@
                             <th class="py-3 text-end">Стоимость аренды</th>
                             <th class="py-3 text-end">Доставка</th>
                             <th class="py-3 text-end">Итоговая стоимость</th>
-                            <th class="py-3 text-center">Статус</th>
+                            <th class="py-3 text-center">Статус заказа</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($allItems as $item)
                             @php
                                 $itemOrder = $item->order;
+                                $equipmentStatus = $item->equipment->availabilityStatus ?? null;
                             @endphp
                             <tr>
                                 <td>
@@ -132,16 +157,34 @@
                                     </span>
                                 </td>
                                 <td class="text-center">
-                                    {{ number_format($item->price_per_unit, 2) }} ₽/час
+                                    {{ number_format($item->price_per_unit, 2, '.', ' ') }} ₽/час
                                 </td>
-                                <td class="text-end">
-                                    {{ number_format($item->simple_rental_total, 2) }} ₽
+                                <td class="text-end no-wrap">
+                                    {{ number_format($item->simple_rental_total, 2, '.', ' ') }} ₽
                                 </td>
-                                <td class="text-end">
-                                    {{ number_format($item->delivery_cost, 2) }} ₽
+                                <td class="text-center">
+                                    @if($item->delivery_cost > 0)
+                                        <div class="position-relative">
+                                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                                    data-bs-toggle="popover"
+                                                    data-bs-trigger="hover"
+                                                    data-bs-title="Детали доставки"
+                                                    data-bs-html="true"
+                                                    data-bs-content="
+                                                        <div><strong>От:</strong> {{ $item->deliveryFrom->short_address ?? 'N/A' }}</div>
+                                                        <div><strong>До:</strong> {{ $item->deliveryTo->short_address ?? 'N/A' }}</div>
+                                                        <div class='mt-2'><strong>Стоимость:</strong> {{ number_format($item->delivery_cost, 2) }} ₽</div>
+                                                    ">
+                                                <i class="fas fa-truck me-1"></i>
+                                                <span class="no-wrap">{{ number_format($item->delivery_cost, 2, '.', ' ') }} ₽</span>
+                                            </button>
+                                        </div>
+                                    @else
+                                        <span class="text-muted">Самовывоз</span>
+                                    @endif
                                 </td>
-                                <td class="text-end fw-bold">
-                                    {{ number_format($item->simple_total, 2) }} ₽
+                                <td class="text-end fw-bold no-wrap">
+                                    {{ number_format($item->simple_total, 2, '.', ' ') }} ₽
                                 </td>
                                 <td class="text-center">
                                     <span class="badge bg-{{ $itemOrder->status_color }} py-2">
@@ -159,8 +202,8 @@
             </div>
 
             <!-- Итоговая сумма -->
-            <div class="text-end p-3 bg-light fw-bold">
-                Итого: {{ number_format($simpleGrandTotal, 2) }} ₽
+            <div class="text-end p-3 bg-light fw-bold no-wrap">
+                Итого: {{ number_format($simpleGrandTotal, 2, '.', ' ') }} ₽
             </div>
         </div>
     </div>
@@ -180,7 +223,8 @@
             ]))
             <form action="{{ route('lessee.orders.cancel', $order) }}" method="POST">
                 @csrf
-                <button class="btn btn-danger px-4 py-2" onclick="return confirm('Вы уверены, что хотите отменить заказ?')">
+                <button class="btn btn-danger px-4 py-2"
+                        onclick="return confirm('Вы уверены, что хотите отменить заказ? Все связанные подзаказы будут отменены.')">
                     <i class="fas fa-times me-2"></i> Отменить заказ
                 </button>
             </form>
@@ -228,5 +272,34 @@
     </div>
 </div>
 @endif
+
+@push('styles')
+<style>
+    .no-wrap {
+        white-space: nowrap;
+    }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация тултипов Bootstrap
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function(tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Инициализация popover
+    const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    popoverTriggerList.map(function(popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl, {
+            html: true,
+            container: 'body' // Для корректного отображения
+        });
+    });
+});
+</script>
+@endpush
 
 @endsection

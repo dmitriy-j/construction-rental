@@ -46,6 +46,6 @@ class LocationsSeeder extends Seeder
         }
 
         // Создаем дополнительные случайные локации
-        Location::factory()->count(20)->create();
+        Location::factory()->count(50)->create();
     }
 }

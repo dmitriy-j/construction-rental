@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+use Illuminate\Support\Facades\DB; // Добавлено
+use Illuminate\Support\Facades\Log; // Добавлено
 
 class Order extends Model
 {
@@ -25,6 +27,8 @@ class Order extends Model
     const STATUS_EXTENSION_REQUESTED = 'extension_requested';
     const STATUS_REJECTED = 'rejected'; // Новый статус
     const STATUS_AGGREGATED = 'aggregated'; // Добавляем новый статус
+    const DELIVERY_PICKUP = 'pickup';
+    const DELIVERY_DELIVERY = 'delivery';
 
     protected $fillable = [
         'lessee_company_id',
@@ -43,6 +47,7 @@ class Order extends Model
         'platform_id',
         'base_amount',
         'platform_fee',
+        'delivery_cost',
         'discount_amount',
         'lessor_payout',
         'prepayment_amount',
@@ -57,7 +62,8 @@ class Order extends Model
         'payment_type',
         'transportation',
         'fuel_responsibility',
-        'lessor_base_amount'
+        'lessor_base_amount',
+        'delivery_type'
     ];
 
     protected $casts = [
@@ -70,7 +76,8 @@ class Order extends Model
         'extension_requested' => 'boolean',
         'prepayment_amount' => 'decimal:2',
         'confirmed_at' => 'datetime',
-        'rejected_at' => 'datetime'
+        'rejected_at' => 'datetime',
+        'delivery_cost' => 'float'
     ];
 
     public static function statuses(): array
@@ -84,7 +91,7 @@ class Order extends Model
             self::STATUS_CANCELLED,
             self::STATUS_EXTENSION_REQUESTED,
             self::STATUS_REJECTED,
-            // self::STATUS_AGGREGATED, // Добавляем новый
+            self::STATUS_AGGREGATED, // Добавляем новый
         ];
     }
 
@@ -99,7 +106,7 @@ class Order extends Model
             self::STATUS_CANCELLED => 'Отменен',
             self::STATUS_EXTENSION_REQUESTED => 'Запрос продления',
             self::STATUS_REJECTED => 'Отклонен',
-           // self::STATUS_AGGREGATED => 'Агрегированный заказ',
+            self::STATUS_AGGREGATED => 'Агрегированный заказ',
             default => $status,
         };
     }
@@ -180,17 +187,39 @@ class Order extends Model
 
     public function cancel()
     {
-        $allowedStatuses = [self::STATUS_PENDING, self::STATUS_PENDING_APPROVAL, self::STATUS_CONFIRMED];
+        $allowedStatuses = [
+            self::STATUS_PENDING,
+            self::STATUS_PENDING_APPROVAL,
+            self::STATUS_CONFIRMED,
+            self::STATUS_AGGREGATED
+        ];
+
         if (!in_array($this->status, $allowedStatuses)) {
             throw new \Exception('Невозможно отменить заказ в текущем статусе');
         }
 
-        $this->update(['status' => self::STATUS_CANCELLED]);
+        DB::beginTransaction();
 
         try {
+            $this->status = self::STATUS_CANCELLED;
+            $this->save();
+
+            // Отменяем дочерние заказы
+            if ($this->isParent()) {
+                foreach ($this->childOrders as $childOrder) {
+                    $childOrder->status = self::STATUS_CANCELLED;
+                    $childOrder->save();
+                }
+            }
+
+            // Освобождаем оборудование с отметкой "отменено"
             app(\App\Services\EquipmentAvailabilityService::class)->releaseBooking($this);
+
+            DB::commit();
         } catch (\Exception $e) {
-            Log::error('Ошибка снятия бронирования: '.$e->getMessage());
+            DB::rollBack();
+            Log::error('Ошибка при отмене заказа: ' . $e->getMessage());
+            throw $e;
         }
 
         return $this;
@@ -248,17 +277,20 @@ class Order extends Model
         return self::statusText($this->status);
     }
 
-     public function getDeliveryCostAttribute(): ?float
+     public function getDeliveryCostAttribute()
     {
-        // Исправленный метод
-        if ($this->deliveryNote) {
-            return $this->deliveryNote->calculated_cost;
+        // Если значение уже установлено - используем его
+        if (isset($this->attributes['delivery_cost'])) {
+            return $this->attributes['delivery_cost'];
         }
 
-        // Альтернативный расчет через позиции заказа
-        return $this->items->sum(function($item) {
-            return $item->deliveryNote->calculated_cost ?? 0;
-        });
+        // Для родительских заказов - суммируем дочерние
+        if ($this->isParent()) {
+            return $this->childOrders->sum('delivery_cost');
+        }
+
+        // Для дочерних заказов - суммируем позиции
+        return $this->items->sum('delivery_cost');
     }
 
     public function belongsToLessee(User $user): bool
@@ -342,6 +374,21 @@ class Order extends Model
     public function activationAvailableDate(): string
     {
         return $this->start_date->format('d.m.Y');
+    }
+
+    public function deliveryLocation()
+    {
+        return $this->belongsTo(Location::class, 'delivery_location_id');
+    }
+
+    public function deliveryFrom()
+    {
+        return $this->belongsTo(Location::class, 'delivery_from_id');
+    }
+
+    public function deliveryTo()
+    {
+        return $this->belongsTo(Location::class, 'delivery_to_id');
     }
 
 }

@@ -168,7 +168,7 @@ class OrderSeeder extends Seeder
                 'order_id' => $order->id,
                 'equipment_id' => $equipmentId,
                 'operator_id' => $operatorId,
-                'work_date' => Carbon::now()->subDays(rand(1, 30)),
+                'work_date' => Carbon::now()->subDays(rand(1, 30))->format('Y-m-d H:i:s'),
                 'hours_worked' => rand(1, 10),
                 'downtime_hours' => rand(0, 5),
                 'downtime_cause' => rand(0, 1) ? ['lessee', 'lessor', 'force_majeure'][rand(0,2)] : null,

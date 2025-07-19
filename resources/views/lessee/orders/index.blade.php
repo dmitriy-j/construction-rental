@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@php use App\Models\Order; @endphp <!-- Добавлен импорт класса Order -->
+@php use App\Models\Order; @endphp
 
 @section('content')
 <div class="container">
@@ -37,7 +37,9 @@
                         <tr>
                             <th>ID</th>
                             <th>Позиции</th>
-                            <th>Сумма</th>
+                            <th>Сумма аренды</th>
+                            <th>Доставка</th>
+                            <th>Итого</th>
                             <th>Статус</th>
                             <th>Период</th>
                             <th>Дата создания</th>
@@ -49,7 +51,17 @@
                         <tr>
                             <td>{{ $order->id }}</td>
                             <td>{{ $order->total_items_count ?? 0 }} позиция(й)</td>
-                            <td>{{ number_format($order->calculated_total, 2) }} ₽</td>
+                            <td>{{ number_format($order->rental_amount, 2, '.', ' ') }} ₽</td>
+                            <td class="text-center">
+                                @if($order->delivery_amount > 0)
+                                    <span class="badge bg-info rounded-pill px-3 py-2">
+                                        +{{ number_format($order->delivery_amount, 2, '.', ' ') }} ₽
+                                    </span>
+                                @else
+                                    <span class="text-muted">Без доставки</span>
+                                @endif
+                            </td>
+                            <td class="fw-bold">{{ number_format($order->calculated_total, 2, '.', ' ') }} ₽</td>
                             <td>
                                 <span class="badge bg-{{ $order->status_color }}">
                                     {{ $order->status_text }}
@@ -95,7 +107,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="text-center">Заказы не найдены</td>
+                            <td colspan="9" class="text-center">Заказы не найдены</td>
                         </tr>
                         @endforelse
                     </tbody>

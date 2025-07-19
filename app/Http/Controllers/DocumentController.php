@@ -90,10 +90,16 @@ class DocumentController extends Controller
 
     public function download($id, $type)
     {
+        // Для накладных используем специальный метод
+        if ($type === 'delivery_notes') {
+            $note = DeliveryNote::findOrFail($id);
+            return $this->downloadDeliveryNote($note);
+        }
+
+        // Для остальных типов документов
         $document = match($type) {
             'contracts' => Contract::findOrFail($id),
             'waybills' => Waybill::findOrFail($id),
-            'delivery_notes' => DeliveryNote::findOrFail($id),
             'completion_acts' => CompletionAct::findOrFail($id),
         };
 
@@ -105,7 +111,6 @@ class DocumentController extends Controller
         $generatorClass = match($type) {
             'contracts' => ContractPdfGenerator::class,
             'waybills' => WaybillPdfGenerator::class,
-            'delivery_notes' => DeliveryNoteGenerator::class,
             'completion_acts' => CompletionActGenerator::class,
         };
 
@@ -121,6 +126,57 @@ class DocumentController extends Controller
             'lessee' => $generator->generateForLessee($order),
             default => abort(404)
         };
+    }
+
+    public function downloadDeliveryNote(DeliveryNote $note)
+    {
+        // Если документ еще не сгенерирован или отсутствует в хранилище
+        if (!$note->document_path || !Storage::exists($note->document_path)) {
+            // Создаем новый генератор
+            $pdfGenerator = app(DeliveryNoteGenerator::class);
+
+            // Генерируем и сохраняем PDF
+            $pdfPath = $pdfGenerator->generateAndSave($note);
+
+            // Обновляем путь к документу
+            $note->update(['document_path' => $pdfPath]);
+        }
+
+        return Storage::download($note->document_path, "ТН-{$note->document_number}.pdf");
+    }
+
+    public function signDeliveryNote(DeliveryNote $note, Request $request)
+    {
+        $request->validate(['signature' => 'required|string']);
+        $signaturePath = $this->saveSignature($request->signature);
+        $user = $request->user();
+
+        // Проверка роли и типа накладной
+        if ($user->isLessor() && $note->type === DeliveryNote::TYPE_LESSOR_TO_PLATFORM) {
+            $note->update(['sender_signature_path' => $signaturePath]);
+        }
+        elseif ($user->isLessee() && $note->type === DeliveryNote::TYPE_PLATFORM_TO_LESSEE) {
+            $note->update(['receiver_signature_path' => $signaturePath]);
+        }
+        elseif ($user->isPlatformAdmin()) {
+            $note->update(['carrier_signature_path' => $signaturePath]);
+        }
+
+        // Проверка полноты подписей
+        if ($note->isFullySigned()) {
+            event(new DeliveryNoteSigned($note));
+        }
+
+        return response()->json(['status' => 'success']);
+    }
+
+
+    private function saveSignature($base64): string
+    {
+        $image = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64));
+        $fileName = 'signatures/' . Str::uuid() . '.png';
+        Storage::put($fileName, $image);
+        return $fileName;
     }
 
 

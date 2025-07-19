@@ -1,21 +1,16 @@
 <?php
 
-namespace App\Models;> $company = Company::find(first())
+namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class EquipmentStatusLog extends Model
 {
     protected $fillable = [
         'equipment_id',
-        'order_id',
         'status',
-        'notes',
-        'start_time',
-        'end_time',
-        'customer_responsible',
-        'penalty_amount'
+        'changed_by',
+        'notes'
     ];
 
     public function equipment()
@@ -23,8 +18,8 @@ class EquipmentStatusLog extends Model
         return $this->belongsTo(Equipment::class);
     }
 
-    public function order()
+    public function changedBy()
     {
-        return $this->belongsTo(Order::class);
+        return $this->belongsTo(User::class, 'changed_by');
     }
 }

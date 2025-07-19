@@ -13,6 +13,7 @@ class Company extends Model
     protected $fillable = [
         'is_lessor',
         'is_lessee',
+        'is_carrier',
         'legal_name',
         'tax_system',
         'inn',
@@ -45,6 +46,16 @@ class Company extends Model
     public function lessorOrders()
     {
         return $this->hasMany(Order::class, 'lessor_company_id');
+    }
+
+    public function isCarrier(): bool
+    {
+        return $this->is_carrier;
+    }
+
+    public function carrierDeliveryNotes()
+    {
+        return $this->hasMany(DeliveryNote::class, 'carrier_company_id');
     }
 
     public function platformMarkups()
@@ -88,5 +99,32 @@ class Company extends Model
                     ->whereHas('contract', function($query) {
                         $query->where('is_active', true);
                     });
+    }
+
+    public function getContactInfo(): array
+    {
+        $name = $this->director_name;
+        $phone = $this->phone;
+
+        // Пытаемся извлечь контактные данные из поля contacts
+        if (preg_match('/([^:]+):\s*(\+\d[\d\s\-\(\)]+)/', $this->contacts, $matches)) {
+            $name = trim($matches[1]);
+            $phone = trim($matches[2]);
+        }
+
+        return [
+            'name' => $name,
+            'phone' => $phone
+        ];
+    }
+
+    public function carrierRatings()
+    {
+        return $this->hasMany(CarrierRating::class);
+    }
+
+    public function getAverageRatingAttribute()
+    {
+        return $this->carrierRatings()->avg('rating') ?? 0;
     }
 }

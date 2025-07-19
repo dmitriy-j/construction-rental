@@ -20,7 +20,7 @@ class Equipment extends Model
     protected $fillable = [
         'title', 'slug', 'description', 'company_id', 'category_id',
         'location_id', 'brand', 'model', 'year', 'hours_worked',
-        'rating', 'is_featured', 'is_approved', 'views'
+        'rating', 'is_featured', 'is_approved', 'views',
     ];
 
     protected $casts = [
@@ -147,6 +147,19 @@ class Equipment extends Model
 
     public function getNumericSpecValue(string $key): float
     {
+        // Всегда проверяем, загружены ли спецификации
+        if (!$this->relationLoaded('specifications') || $this->specifications === null) {
+            // Явная перезагрузка отношения с нужными полями
+            $this->load(['specifications' => function ($query) {
+                $query->select('equipment_id', 'key', 'weight', 'length', 'width', 'height');
+            }]);
+        }
+
+        // Если после загрузки всё равно null - возвращаем 0
+        if ($this->specifications === null) {
+            return 0;
+        }
+
         $spec = $this->specifications->firstWhere('key', $key);
 
         if (!$spec) {
@@ -199,5 +212,27 @@ class Equipment extends Model
     {
         return $this->hasOne(EquipmentImage::class)->where('is_main', true)->withDefault();
     }
+
+    public function availabilityStatus()
+    {
+        return $this->hasOne(EquipmentAvailability::class, 'equipment_id')
+            ->where('order_id', request()->route('order')->id)
+            ->latest();
+    }
+
+   public function getDeliveryStatusAttribute()
+    {
+        $delivery = EquipmentAvailability::where('equipment_id', $this->id)
+            ->where('status', EquipmentAvailability::STATUS_DELIVERY)
+            ->where('expires_at', '>', now())
+            ->first();
+
+        if ($delivery) {
+            return 'В пути (до ' . $delivery->expires_at->format('d.m.Y') . ')';
+        }
+
+        return null;
+    }
+
 
 }
