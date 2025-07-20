@@ -10,6 +10,7 @@ use App\Notifications\OrderStatusChanged;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Models\OrderItem;
 
 class OrderController extends Controller
 {
@@ -22,7 +23,6 @@ class OrderController extends Controller
             ->paginate(10);
 
         $orders->getCollection()->transform(function ($order) {
-            // Правильный расчет стоимости аренды
             $order->rental_amount = $order->isParent()
                 ? $order->childOrders->sum('lessor_base_amount')
                 : $order->lessor_base_amount;
@@ -46,7 +46,6 @@ class OrderController extends Controller
             abort(403);
         }
 
-        // Для родительских заказов
         if ($order->isParent()) {
             $order->load([
                 'childOrders.items.equipment.availabilityStatus',
@@ -57,9 +56,7 @@ class OrderController extends Controller
                 'childOrders.items.deliveryTo',
                 'childOrders.lessorCompany'
             ]);
-        }
-        // Для дочерних заказов
-        else {
+        } else {
             $order->load([
                 'childOrders.items.equipment.availabilityStatus',
                 'items.equipment.mainImage',
@@ -72,16 +69,14 @@ class OrderController extends Controller
         }
 
         $allItems = $order->isParent()
-        ? $order->childOrders->flatMap->items
-        : $order->items;
+            ? $order->childOrders->flatMap->items
+            : $order->items;
 
-        // Пересчитываем суммы по простому принципу: (цена за час * часы) + доставка
         $allItems->each(function ($item) {
             $item->simple_rental_total = $item->price_per_unit * $item->period_count;
             $item->simple_total = $item->simple_rental_total + $item->delivery_cost;
         });
 
-        // Общая сумма заказа - сумма простых итогов по позициям
         $simpleGrandTotal = $allItems->sum('simple_total');
 
         return view('lessee.orders.show', compact(
@@ -111,7 +106,6 @@ class OrderController extends Controller
         try {
             $order->cancel();
 
-            // Отправляем уведомление только для родительского заказа
             if ($order->isParent()) {
                 $order->user->notify(new OrderStatusChanged($order));
             }
@@ -125,7 +119,6 @@ class OrderController extends Controller
 
     public function requestExtension(Order $order, Request $request)
     {
-        // Проверка прав
         if ($order->lessee_company_id !== auth()->user()->company_id) {
             return response()->json([
                 'success' => false,
@@ -133,7 +126,6 @@ class OrderController extends Controller
             ], 403);
         }
 
-        // Валидация данных
         $validator = Validator::make($request->all(), [
             'new_end_date' => 'required|date|after:'.$order->end_date->format('Y-m-d')
         ]);
@@ -149,7 +141,6 @@ class OrderController extends Controller
         $service = app(EquipmentAvailabilityService::class);
         $newEndDate = $request->new_end_date;
 
-        // Проверка доступности оборудования
         foreach ($order->items as $item) {
             if (!$service->isAvailable(
                 $item->equipment,
@@ -163,7 +154,6 @@ class OrderController extends Controller
             }
         }
 
-        // Обновление заказа
         $order->update([
             'extension_requested' => true,
             'requested_end_date' => $newEndDate,
@@ -176,14 +166,22 @@ class OrderController extends Controller
         ]);
     }
 
-    /**
-     * Создание нового заказа (добавлен метод store)
-     */
     public function store(Request $request)
     {
         $request->validate([
-            // ... другие поля ...
             'delivery_type' => 'required|in:pickup,delivery',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+            'items' => 'required|array|min:1',
+            'items.*.equipment_id' => 'required|exists:equipment,id',
+            'items.*.rental_term_id' => 'required|exists:equipment_rental_terms,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.period_count' => 'required|integer|min:1',
+            'items.*.base_price' => 'required|numeric|min:0',
+            'items.*.price_per_unit' => 'required|numeric|min:0',
+            'items.*.platform_fee' => 'required|numeric|min:0',
+            'items.*.delivery_cost' => 'required|numeric|min:0',
+            'items.*.total_price' => 'required|numeric|min:0',
         ]);
 
         DB::transaction(function() use ($request) {
@@ -191,28 +189,38 @@ class OrderController extends Controller
             $order->lessee_company_id = auth()->user()->company_id;
             $order->status = Order::STATUS_PENDING;
             $order->delivery_type = $request->delivery_type;
+            $order->start_date = $request->start_date;
+            $order->end_date = $request->end_date;
 
-            // Заполнение других полей заказа
             $order->fill($request->only([
-                'start_date',
-                'end_date',
-                'delivery_address',
                 'notes',
-                // другие поля
+                'delivery_address',
+                'total_amount',
+                'base_amount',
+                'platform_fee',
+                'delivery_cost',
+                'discount_amount',
+                'lessor_base_amount'
             ]));
 
             $order->save();
 
-            // Добавление элементов заказа
             foreach ($request->items as $itemData) {
-                $order->items()->create([
+                $orderItem = new OrderItem([
                     'equipment_id' => $itemData['equipment_id'],
+                    'rental_term_id' => $itemData['rental_term_id'],
                     'quantity' => $itemData['quantity'],
                     'period_count' => $itemData['period_count'],
+                    'base_price' => $itemData['base_price'],
+                    'price_per_unit' => $itemData['price_per_unit'],
+                    'platform_fee' => $itemData['platform_fee'],
+                    'delivery_cost' => $itemData['delivery_cost'],
+                    'total_price' => $itemData['total_price'],
                     'delivery_from_id' => $itemData['delivery_from_id'] ?? null,
                     'delivery_to_id' => $itemData['delivery_to_id'] ?? null,
-                    // другие поля элемента
                 ]);
+
+                $order->items()->save($orderItem);
             }
         });
 

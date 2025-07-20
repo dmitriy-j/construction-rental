@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Exception;
 use Carbon\Carbon;
 use App\Models\CartItem;
+use App\Models\Company;
 
 class CheckoutController extends Controller
 {
@@ -194,7 +195,10 @@ class CheckoutController extends Controller
 
    protected function createChildOrder($parentId, $companyId, $items)
     {
-        // Правильный расчет сумм
+        // Получаем условие аренды из первого элемента
+        $rentalCondition = $items->first()->rentalCondition;
+
+        // Рассчитываем суммы
         $deliveryCost = $items->sum('delivery_cost');
         $lessorBaseAmount = $items->sum(function($item) {
             return $item->base_price * $item->period_count;
@@ -204,22 +208,8 @@ class CheckoutController extends Controller
         $baseAmount = $lessorBaseAmount + $platformFee;
         $totalAmount = $baseAmount + $deliveryCost;
 
-        $discountAmount = $this->pricingService->getDiscount(
-            auth()->user()->company,
-            $baseAmount
-        );
-
-        $totalAmount -= $discountAmount;
-
-        $rentalCondition = $items->first()->rentalCondition;
-
-        Log::debug('[CHECKOUT] Creating child order', [
-            'company_id' => $companyId,
-            'delivery_cost' => $deliveryCost,
-            'lessor_base_amount' => $lessorBaseAmount,
-            'platform_fee' => $platformFee,
-            'items_count' => $items->count()
-        ]);
+        // Получаем контракт компании арендодателя
+        $contract = Company::find($companyId)->activeContract();
 
         return Order::create([
             'user_id' => auth()->id(),
@@ -231,11 +221,11 @@ class CheckoutController extends Controller
             'lessor_base_amount' => $lessorBaseAmount,
             'platform_fee' => $platformFee,
             'delivery_cost' => $deliveryCost,
-            'discount_amount' => $discountAmount,
             'total_amount' => $totalAmount,
             'start_date' => $items->min('start_date'),
             'end_date' => $items->max('end_date'),
             'platform_id' => Platform::getMain()->id,
+            'contract_id' => $contract ? $contract->id : null,
             'rental_condition_id' => $rentalCondition->id,
             'shift_hours' => $rentalCondition->shift_hours,
             'shifts_per_day' => $rentalCondition->shifts_per_day,
@@ -243,65 +233,41 @@ class CheckoutController extends Controller
             'transportation' => $rentalCondition->transportation,
             'fuel_responsibility' => $rentalCondition->fuel_responsibility,
             'delivery_location_id' => $items->first()->delivery_to_id,
-            'delivery_from_id' => $items->first()->delivery_from_id, // Исправлено: добавлена запятая
-            'delivery_to_id' => $items->first()->delivery_to_id,     // Исправлено: добавлена запятая
+            'delivery_from_id' => $items->first()->delivery_from_id,
+            'delivery_to_id' => $items->first()->delivery_to_id,
         ]);
     }
 
-    protected function createOrderItem($order, $item)
+    protected function createOrderItem($childOrder, $item)
     {
         $term = $item->rentalTerm;
         $equipment = $term->equipment;
 
         $itemTotal = ($item->base_price * $item->period_count) + $item->platform_fee;
-        $orderTotal = $order->base_amount + $order->platform_fee;
+        $orderTotal = $childOrder->base_amount + $childOrder->platform_fee;
 
-        $discountAmount = 0;
-        if ($orderTotal > 0 && $order->discount_amount > 0) {
-            $discountAmount = round(($itemTotal / $orderTotal) * $order->discount_amount, 2);
-        }
+        $discountAmount = $orderTotal > 0 ?
+            ($itemTotal / $orderTotal) * $childOrder->discount_amount : 0;
 
-        $deliveryCost = (float)$item->delivery_cost;
-
-        // Детальное логирование перед созданием
-        Log::debug('[CHECKOUT] Creating order item', [
-            'equipment_id' => $equipment->id,
-            'delivery_cost' => $deliveryCost,
-            'delivery_from_id' => $item->delivery_from_id,
-            'delivery_to_id' => $item->delivery_to_id,
-            'item_data' => $item->toArray() // Логируем все данные элемента
-        ]);
-
-        $orderItemData = [
-            'order_id' => $order->id,
+        return OrderItem::create([
+            'order_id' => $childOrder->id,
             'equipment_id' => $equipment->id,
             'rental_term_id' => $term->id,
             'rental_condition_id' => $item->rental_condition_id,
-            'period_count' => $item->period_count,
             'quantity' => 1,
+            'period_count' => $item->period_count,
             'base_price' => $item->base_price,
             'price_per_unit' => $item->base_price,
             'platform_fee' => $item->platform_fee,
             'discount_amount' => $discountAmount,
+            'delivery_cost' => $item->delivery_cost,
             'total_price' => $itemTotal - $discountAmount,
-            'delivery_cost' => $deliveryCost,
             'delivery_from_id' => $item->delivery_from_id,
             'delivery_to_id' => $item->delivery_to_id,
-        ];
-
-        // Создаем позицию заказа
-        $orderItem = \App\Models\OrderItem::create($orderItemData);
-
-        // Логирование после создания
-        Log::debug('[CHECKOUT] Order item created', [
-            'id' => $orderItem->id,
-            'delivery_from_id' => $orderItem->delivery_from_id,
-            'delivery_to_id' => $orderItem->delivery_to_id,
-            'saved_data' => $orderItem->toArray()
+            'lessor_company_id' => $childOrder->lessor_company_id,
         ]);
-
-        return $orderItem;
     }
+
     protected function bookEquipment($item, $orderId)
     {
         $equipment = $item->rentalTerm->equipment;

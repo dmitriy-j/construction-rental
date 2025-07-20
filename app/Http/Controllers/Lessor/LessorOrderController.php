@@ -34,7 +34,6 @@ class LessorOrderController extends Controller
 
     public function show(Order $order)
     {
-        // Проверка прав
         if ($order->lessor_company_id !== auth()->user()->company_id || $order->isParent()) {
             abort(403);
         }
@@ -45,7 +44,6 @@ class LessorOrderController extends Controller
             'parentOrder'
         ]);
 
-         // Исправленный расчет адреса доставки
         $deliveryAddress = 'Не указан';
         if ($order->items->isNotEmpty() && $firstItem = $order->items->first()) {
             if ($firstItem->deliveryTo) {
@@ -55,7 +53,6 @@ class LessorOrderController extends Controller
             }
         }
 
-        // Исправленный расчет сумм
         $lessorBaseAmount = $order->items->sum(function($item) {
             return $item->rentalTerm->price_per_hour * $item->period_count;
         });
@@ -68,8 +65,6 @@ class LessorOrderController extends Controller
             'transportation' => $order->transportation,
             'fuel_responsibility' => $order->fuel_responsibility,
             'delivery_address' => $deliveryAddress,
-
-            // Исправленные финансовые данные
             'lessor_base_amount' => $lessorBaseAmount,
             'delivery_cost' => $order->delivery_cost,
             'total_payout' => $lessorBaseAmount + $order->delivery_cost,
@@ -88,7 +83,6 @@ class LessorOrderController extends Controller
             abort(403);
         }
 
-        // Добавляем проверку на допустимые статусы
         $allowedStatuses = [Order::STATUS_PENDING_APPROVAL, Order::STATUS_CONFIRMED];
         if (!in_array($order->status, $allowedStatuses)) {
             return back()->withErrors('Невозможно изменить статус заказа в текущем состоянии');
@@ -151,7 +145,6 @@ class LessorOrderController extends Controller
         $service = app(EquipmentAvailabilityService::class);
 
         if ($request->action === 'approve') {
-            // Бронируем дополнительный период
             foreach ($order->items as $item) {
                 $service->bookEquipment(
                     $item->equipment,
@@ -162,7 +155,6 @@ class LessorOrderController extends Controller
                 );
             }
 
-            // Обновляем заказ
             $order->update([
                 'end_date' => $order->requested_end_date,
                 'total_amount' => $order->total_amount + ($request->price_adjustment ?? 0),
@@ -183,25 +175,21 @@ class LessorOrderController extends Controller
         }
     }
 
-    // Обновленные методы подтверждения заказа
     public function approve(Request $request, Order $order)
     {
         if ($order->lessor_company_id !== auth()->user()->company_id) {
             abort(403);
         }
 
-        // Определяем сценарий доставки (по умолчанию 'none' для самовывоза)
         $deliveryScenario = $request->input('delivery_scenario', 'none');
 
-        DB::transaction(function() use ($order, $deliveryScenario) {
-            // Обновляем статус заказа
+        DB::transaction(function() use ($order, $deliveryScenario, $request) {
             $order->update([
                 'status' => Order::STATUS_CONFIRMED,
                 'delivery_scenario' => $deliveryScenario,
                 'confirmed_at' => now()
             ]);
 
-            // Обработка доставки только для заказов с доставкой
             if ($order->delivery_type === Order::DELIVERY_DELIVERY) {
                 $scenarioService = app(\App\Services\DeliveryScenarioService::class);
 
@@ -209,7 +197,6 @@ class LessorOrderController extends Controller
                     $scenarioService->handleOrderConfirmation($item, $deliveryScenario);
                 }
 
-                // Если выбран сценарий платформы, запускаем событие
                 if ($deliveryScenario === 'platform') {
                     event(new \App\Events\PlatformDeliveryRequested($order));
                 }
@@ -218,8 +205,6 @@ class LessorOrderController extends Controller
 
         return back()->with('success', 'Заказ подтвержден');
     }
-
-
 
     public function prepareForShipment(Order $order, Request $request)
     {
@@ -240,7 +225,6 @@ class LessorOrderController extends Controller
             $service->completeDeliveryNote($note, $noteData);
         }
 
-        // Обновляем статус заказа
         $order->update(['status' => Order::STATUS_PREPARED_FOR_SHIPMENT]);
 
         return back()->with('success', 'Данные для доставки успешно сохранены');

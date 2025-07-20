@@ -127,4 +127,13 @@ class Company extends Model
     {
         return $this->carrierRatings()->avg('rating') ?? 0;
     }
+
+     public function activeContract()
+    {
+        return $this->contracts()
+            ->where('is_active', true)
+            ->where('start_date', '<=', now())
+            ->where('end_date', '>=', now())
+            ->first();
+    }
 }

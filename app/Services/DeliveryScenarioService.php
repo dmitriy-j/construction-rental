@@ -21,6 +21,11 @@ class DeliveryScenarioService
      */
     public function handleOrderConfirmation(OrderItem $item, string $scenario = 'lessor')
     {
+
+        // Не создаем документы для самовывоза
+        if ($item->order->delivery_type === Order::DELIVERY_PICKUP) {
+            return null;
+        }
         // Конвертируем текстовый сценарий в константу
         $deliveryScenario = ($scenario === 'lessor')
             ? DeliveryNote::SCENARIO_LESSOR_PLATFORM
