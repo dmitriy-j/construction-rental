@@ -3,9 +3,14 @@
 namespace App\Services;
 
 use App\Models\DeliveryNote;
+use App\Models\Order;
 use App\Models\OrderItem;
-use App\Platform;
+use App\Models\Platform; // Исправленный импорт
 use App\Services\TransportCalculatorService;
+use Illuminate\Support\Str;
+
+
+
 
 class DeliveryScenarioService
 {
@@ -19,26 +24,32 @@ class DeliveryScenarioService
     /**
      * Обработка подтверждения заказа: создание накладных по сценарию
      */
-    public function handleOrderConfirmation(OrderItem $item, string $scenario = 'lessor')
+    public function handleOrderConfirmation(OrderItem $item, string $scenario)
     {
-
-        // Не создаем документы для самовывоза
-        if ($item->order->delivery_type === Order::DELIVERY_PICKUP) {
+        // Только для сценария "Арендодатель организует доставку"
+        if ($scenario !== 'lessor') {
             return null;
         }
-        // Конвертируем текстовый сценарий в константу
-        $deliveryScenario = ($scenario === 'lessor')
-            ? DeliveryNote::SCENARIO_LESSOR_PLATFORM
-            : DeliveryNote::SCENARIO_PLATFORM_DIRECT;
 
-        $note = $this->createDeliveryNote($item, $deliveryScenario);
-
-        // Для сценария 1 создаем зеркальную накладную
-        if ($deliveryScenario === DeliveryNote::SCENARIO_LESSOR_PLATFORM) {
-            $note->createMirrorNote();
-        }
-
-        return $note;
+        return DeliveryNote::create([
+            'document_number' => null,
+            'issue_date' => now(),
+            'type' => DeliveryNote::TYPE_LESSOR_TO_PLATFORM,
+            'order_id' => $item->order_id,
+            'order_item_id' => $item->id,
+            'sender_company_id' => $item->order->lessor_company_id,
+            'receiver_company_id' => Platform::getMain()->id,
+            'delivery_from_id' => $item->delivery_from_id,
+            'delivery_to_id' => $item->delivery_to_id,
+            'cargo_description' => $item->equipment->title,
+            'cargo_weight' => $item->equipment->getNumericSpecValue('Вес'),
+            'cargo_value' => $item->total_price,
+            'transport_type' => $this->transportCalculator->calculateRequiredTransport($item->equipment),
+            'status' => DeliveryNote::STATUS_DRAFT,
+            'distance_km' => $item->distance_km ?? 0,
+            'calculated_cost' => $item->delivery_cost,
+            'is_mirror' => false
+        ]);
     }
 
     protected function assignCarrier(DeliveryNote $note)
@@ -76,9 +87,9 @@ class DeliveryScenarioService
             'order_item_id' => $item->id,
             'sender_company_id' => $scenario === DeliveryNote::SCENARIO_LESSOR_PLATFORM
                 ? $item->order->lessor_company_id
-                : Platform::main()->id,
+                : Platform::getMain()->id, // Исправлено
             'receiver_company_id' => $scenario === DeliveryNote::SCENARIO_LESSOR_PLATFORM
-                ? Platform::main()->id
+                ? Platform::getMain()->id // Исправлено
                 : $item->order->lessee_company_id,
             'delivery_from_id' => $item->delivery_from_id,
             'delivery_to_id' => $item->delivery_to_id,
@@ -86,7 +97,8 @@ class DeliveryScenarioService
             'cargo_weight' => $item->equipment->getNumericSpecValue('Вес'),
             'cargo_value' => $item->total_price,
             'transport_type' => $transportType,
-            'status' => DeliveryNote::STATUS_DRAFT
+            'status' => DeliveryNote::STATUS_DRAFT,
+            'is_mirror' => false
         ]);
     }
 }

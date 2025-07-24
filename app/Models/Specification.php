@@ -23,6 +23,22 @@ class Specification extends Model
 
     public function equipment()
     {
+        \Log::debug("Full specification", [
+            'spec' => $spec->log // используем наш аксессор
+        ]);
         return $this->belongsTo(Equipment::class);
+    }
+
+    public function getLogAttribute()
+    {
+        return [
+            'id' => $this->id,
+            'key' => $this->key,
+            'value' => $this->value,
+            'weight' => $this->weight,
+            'length' => $this->length,
+            'width' => $this->width,
+            'height' => $this->height
+        ];
     }
 }

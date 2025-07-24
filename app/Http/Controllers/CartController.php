@@ -18,6 +18,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use App\Models\CartItem;
 use App\Services\TransportCalculatorService;
+use App\Services\YandexMapsService;
 
 class CartController extends Controller
 {
@@ -56,7 +57,7 @@ class CartController extends Controller
         ]);
     }
 
-    public function add(EquipmentRentalTerm $rentalTerm, Request $request)
+   public function add(EquipmentRentalTerm $rentalTerm, Request $request)
     {
         try {
             // Преобразование чекбоксов в boolean
@@ -207,6 +208,10 @@ class CartController extends Controller
 
             // Расчет стоимости доставки
             $deliveryCost = 0;
+            $distanceKm = 0;
+            $deliveryCalculated = true;
+
+
             if ($request->delivery_required) {
                 $equipmentCompany = $rentalTerm->equipment->company;
 
@@ -235,25 +240,43 @@ class CartController extends Controller
                         ->with('error', 'Указанные локации не найдены');
                 }
 
-                $deliveryCalculator = app(DeliveryCalculatorService::class);
-                $distance = $deliveryCalculator->calculateDistance(
-                    $from->latitude,
-                    $from->longitude,
-                    $to->latitude,
-                    $to->longitude
-                );
+                try {
 
-                $equipment = Equipment::with(['specifications' => function ($query) {
-                    $query->select('equipment_id', 'key', 'weight', 'length', 'width', 'height');
-                }])->find($rentalTerm->equipment_id);
+                    $deliveryCalculator = app(DeliveryCalculatorService::class);
+                    $distanceKm = $deliveryCalculator->calculateDistance($from, $to);
 
-                if (!$equipment) {
-                    throw new \Exception("Оборудование не найдено");
+                    // Определение типа транспорта и ставки
+                    $transportService = app(TransportCalculatorService::class);
+                    $equipment = $rentalTerm->equipment;
+
+                    // Загружаем спецификации оборудования
+                    if (!$equipment->relationLoaded('specifications')) {
+                        $equipment->load('specifications');
+                    }
+
+                    $vehicleType = $transportService->calculateRequiredTransport($equipment);
+                    $ratePerKm = $transportService->getTransportRate($vehicleType);
+
+                    // Рассчитываем стоимость доставки
+                    $deliveryCost = $distanceKm * $ratePerKm;
+
+                    // ПЕРЕМЕЩЕННЫЙ БЛОК ЛОГИРОВАНИЯ - ТЕПЕРЬ ЗДЕСЬ
+                Log::debug('Calculated distance', [
+                    'distance_km' => $distanceKm,
+                    'delivery_cost' => $deliveryCost,
+                    'rate_per_km' => $rentalCondition->delivery_cost_per_km,
+                    'coefficient' => config('services.yandex_maps.coefficient', 1.3)
+                ]);
+
+                } catch (\Exception $e) {
+                    Log::error('Delivery calculation error: '.$e->getMessage());
+                    $deliveryCalculated = false;
                 }
+            }
 
-                $transportService = app(TransportCalculatorService::class);
-                $vehicleType = $transportService->calculateRequiredTransport($equipment);
-                $deliveryCost = $transportService->getTransportRate($vehicleType) * $distance;
+            // Проверка успешности расчета доставки
+            if ($request->delivery_required && !$deliveryCalculated) {
+                return back()->with('error', 'Не удалось рассчитать доставку. Попробуйте позже');
             }
 
             // Защита от нулевых цен
@@ -276,11 +299,12 @@ class CartController extends Controller
                 'period_count' => $workingHours,
                 'base_price' => $pricing['base_price_per_unit'],
                 'platform_fee' => $pricing['platform_fee'],
-                'delivery_cost' => $deliveryCost
+                'delivery_cost' => $deliveryCost,
+                'distance_km' => $distanceKm
             ]);
 
-            // Добавляем в корзину
-            $this->cartService->addItem(
+            // Добавляем в корзину и получаем созданный элемент
+            $cartItem = $this->cartService->addItem(
                 $rentalTerm->id,
                 $workingHours, // Количество рабочих часов
                 $pricing['base_price_per_unit'], // Чистая цена аренды за час
@@ -292,6 +316,14 @@ class CartController extends Controller
                 $request->delivery_required ? $request->delivery_location_id : null,
                 $deliveryCost // Сохраняем доставку отдельно
             );
+
+            // Обновляем поля расстояния (если требуется)
+            if ($request->delivery_required) {
+                $cartItem->update([
+                    'distance_km' => $distanceKm,
+                    'delivery_cost_calculated' => true
+                ]);
+            }
 
             return redirect()->route('cart.index')
                 ->with('success', 'Оборудование успешно добавлено в корзину');

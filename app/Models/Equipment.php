@@ -15,7 +15,7 @@ class Equipment extends Model
     use HasFactory;
 
 
-
+    protected $with = ['specifications']; // Автоматическая загрузка
 
     protected $fillable = [
         'title', 'slug', 'description', 'company_id', 'category_id',
@@ -102,7 +102,9 @@ class Equipment extends Model
 
     public function getCurrentStatusAttribute(): string
     {
-        return app(EquipmentAvailabilityService::class)->getCurrentStatus($this->id);
+        return $this->availabilities()
+            ->where('date', now()->format('Y-m-d'))
+            ->value('status') ?? EquipmentAvailability::STATUS_AVAILABLE;
     }
 
     public function getStatusDetailsAttribute(): array
@@ -145,45 +147,41 @@ class Equipment extends Model
         });
     }
 
-    public function getNumericSpecValue(string $key): float
+    Public function getNumericSpecValue(string $key): float
     {
-        // Всегда проверяем, загружены ли спецификации
-        if (!$this->relationLoaded('specifications') || $this->specifications === null) {
-            // Явная перезагрузка отношения с нужными полями
-            $this->load(['specifications' => function ($query) {
-                $query->select('equipment_id', 'key', 'weight', 'length', 'width', 'height');
-            }]);
-        }
+        // Получаем спецификации независимо от состояния загрузки
+        $specifications = $this->specifications ?? $this->specifications()->get();
 
-        // Если после загрузки всё равно null - возвращаем 0
-        if ($this->specifications === null) {
+        // Если спецификаций нет вообще
+        if ($specifications === null || $specifications->isEmpty()) {
             return 0;
         }
 
-        $spec = $this->specifications->firstWhere('key', $key);
+        // Находим нужную спецификацию
+        $spec = $specifications->firstWhere('key', $key);
 
         if (!$spec) {
             return 0;
         }
 
-        if ($key === 'Вес' && $spec->weight) {
-            return $spec->weight;
-        }
+        // Для веса и габаритов используем специальные поля
+        $value = match($key) {
+            'weight' => $spec->weight,
+            'length' => $spec->length,
+            'width'  => $spec->width,
+            'height' => $spec->height,
+            default  => $spec->value
+        };
 
-        if ($key === 'Длина' && $spec->length) {
-            return $spec->length;
-        }
+        // Добавим логирование для отладки
+        \Log::debug("Equipment specification value", [
+            'equipment_id' => $this->id,
+            'key' => $key,
+            'spec_id' => $spec->id,
+            'value' => $value
+        ]);
 
-        if ($key === 'Ширина' && $spec->width) {
-            return $spec->width;
-        }
-
-        if ($key === 'Высота' && $spec->height) {
-            return $spec->height;
-        }
-
-        preg_match('/(\d+[\.,]?\d*)/', $spec->value, $matches);
-        return isset($matches[1]) ? (float)str_replace(',', '.', $matches[1]) : 0;
+        return (float) $value;
     }
 
     public function getDisplayPriceAttribute()
@@ -232,6 +230,15 @@ class Equipment extends Model
         }
 
         return null;
+    }
+
+    public function getDimensionsAttribute(): string
+    {
+        return sprintf("%.2f × %.2f × %.2f м",
+            $this->getNumericSpecValue('length'),
+            $this->getNumericSpecValue('width'),
+            $this->getNumericSpecValue('height')
+        );
     }
 
 

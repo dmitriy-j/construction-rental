@@ -1,5 +1,5 @@
 <div class="tech-card card h-100">
-    
+
     @if($equipment->mainImage)
         <img src="{{ asset('storage/' . $equipment->mainImage->path) }}" class="card-img-top" alt="{{ $equipment->title }}">
     @else
@@ -8,11 +8,22 @@
         </div>
     @endif
 
-   
+
     <div class="card-body">
         <h5 class="card-title">{{ $equipment->title }}</h5>
         <p class="text-muted">{{ $equipment->category->name }}</p>
-        
+
+        <div class="specs small text-muted mt-2">
+            <div>Вес: {{ $equipment->getNumericSpecValue('weight') }} кг</div>
+            <div class="d-flex">
+                <span class="me-2">Габариты:</span>
+                <span>
+                    {{ $equipment->getNumericSpecValue('length') }}м ×
+                    {{ $equipment->getNumericSpecValue('width') }}м ×
+                    {{ $equipment->getNumericSpecValue('height') }}м
+                </span>
+            </div>
+        </div>
         <ul class="list-unstyled small">
             <li><i class="bi bi-calendar"></i> Год: {{ $equipment->year }}</li>
             <li><i class="bi bi-speedometer2"></i> Моточасы: {{ $equipment->hours_worked }}</li>

@@ -16,47 +16,31 @@ class CartService
     }
 
     public function addItem(
-        $rentalTermId,
-        $periodCount,
-        $basePrice,
-        $platformFee,
-        $startDate = null,
-        $endDate = null,
-        $rentalConditionId = null,
-        $deliveryFromId = null,
-        $deliveryToId = null,
-        $deliveryCost = 0
-    ) {
-        try {
-            $cart = $this->getCart();
+        int $rentalTermId,
+        int $periodCount,
+        float $basePrice,
+        float $platformFee,
+        string $startDate,
+        string $endDate,
+        ?int $rentalConditionId = null,
+        ?int $deliveryFromId = null,
+        ?int $deliveryToId = null,
+        float $deliveryCost = 0
+    ): CartItem { // Возвращаем созданный объект
+        $cart = $this->getCart();
 
-            CartItem::updateOrCreate(
-                [
-                    'cart_id' => $cart->id,
-                    'rental_term_id' => $rentalTermId
-                ],
-                [
-                    'period_count' => $periodCount,
-                    'base_price' => $basePrice,
-                    'platform_fee' => $platformFee,
-                    'start_date' => $startDate ? Carbon::parse($startDate) : null,
-                    'end_date' => $endDate ? Carbon::parse($endDate) : null,
-                    'rental_condition_id' => $rentalConditionId,
-                    'delivery_from_id' => $deliveryFromId,
-                    'delivery_to_id' => $deliveryToId,
-                    // Сохраняем стоимость доставки в cart_item
-                    'delivery_cost' => $deliveryCost
-                ]
-            );
-
-            $this->recalculateTotals($cart);
-
-        } catch (\Exception $e) {
-            \Log::error('Error in addItem: ' . $e->getMessage(), [
-                'exception' => $e
-            ]);
-            throw $e;
-        }
+        return $cart->items()->create([
+            'rental_term_id' => $rentalTermId,
+            'period_count' => $periodCount,
+            'base_price' => $basePrice,
+            'platform_fee' => $platformFee,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'rental_condition_id' => $rentalConditionId,
+            'delivery_from_id' => $deliveryFromId,
+            'delivery_to_id' => $deliveryToId,
+            'delivery_cost' => $deliveryCost
+        ]);
     }
 
     public function removeItem($itemId)

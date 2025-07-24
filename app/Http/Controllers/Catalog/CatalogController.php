@@ -20,10 +20,9 @@ class CatalogController extends Controller
 
     $query = Equipment::query()
         ->select('equipment.*')
-        ->selectSub($minPriceSubquery, 'min_price')
-        ->with(['category', 'rentalTerms', 'images', 'company'])
+        ->with(['category', 'rentalTerms', 'images', 'company']) // Упрощаем
         ->where('is_approved', true)
-        ->has('rentalTerms');
+        ->has('rentalTerms'); // Проверяем наличие тарифов
 
 
 
@@ -44,42 +43,33 @@ class CatalogController extends Controller
             });
         }
 
-        // Фильтр по статусу
-            if ($request->status) {
-                $query->where(function($q) use ($request) {
-                    $today = now()->format('Y-m-d');
+        // Фильтр по статусу (обновленная версия)
+        if ($request->status) {
+            $query->where(function($q) use ($request) {
+                $today = now()->format('Y-m-d');
 
-                    if ($request->status === 'available') {
-                        $q->whereDoesntHave('availabilities', function($sub) use ($today) {
-                            $sub->where('date', $today)
-                                ->where(function($query) {
-                                    $query->where('status', 'booked')
-                                        ->orWhere('status', 'maintenance')
-                                        ->orWhere(function($q) {
-                                            $q->where('status', 'temp_reserve')
-                                                ->where('expires_at', '>', now());
-                                        });
-                                });
-                        });
-                    }
-                    elseif ($request->status === 'unavailable') {
-                        $q->whereHas('availabilities', function($sub) use ($today) {
-                            $sub->where('date', $today)
-                                ->where(function($query) {
-                                    $query->where('status', 'booked')
-                                        ->orWhere('status', 'maintenance')
-                                        ->orWhere(function($q) {
-                                            $q->where('status', 'temp_reserve')
-                                                ->where('expires_at', '>', now());
-                                        });
-                                });
-                        });
-                    }
+                if ($request->status === 'available') {
+                    $q->whereDoesntHave('availabilities', function($sub) use ($today) {
+                        $sub->where('date', $today)
+                            ->whereIn('status', [
+                                EquipmentAvailability::STATUS_BOOKED,
+                                EquipmentAvailability::STATUS_MAINTENANCE
+                            ]);
+                    });
+                }
+                elseif ($request->status === 'unavailable') {
+                    $q->whereHas('availabilities', function($sub) use ($today) {
+                        $sub->where('date', $today)
+                            ->whereIn('status', [
+                                EquipmentAvailability::STATUS_BOOKED,
+                                EquipmentAvailability::STATUS_MAINTENANCE
+                            ]);
+                    });
+                }
                 elseif ($request->status === 'maintenance') {
-                    // Техника на обслуживании
-                    $q->whereHas('availabilities', function($sub) {
-                        $sub->where('date', '>=', now())
-                            ->where('status', 'maintenance');
+                    $q->whereHas('availabilities', function($sub) use ($today) {
+                        $sub->where('date', $today)
+                            ->where('status', EquipmentAvailability::STATUS_MAINTENANCE);
                     });
                 }
             });

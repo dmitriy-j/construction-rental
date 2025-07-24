@@ -47,28 +47,37 @@ class DeliveryNote extends Model
         'cargo_weight',
         'cargo_value',
         'transport_type',
+        'transport_driver_name',
+        'transport_vehicle_model',
+        'transport_vehicle_number',
         'equipment_condition',
-        'driver_name',
-        'vehicle_model',
-        'vehicle_number',
+        'departure_time',
         'driver_contact',
         'distance_km', // Добавлено
         'calculated_cost', // Добавлено
+        'departure_time',
+        'cargo_condition',
         'sender_signature_path',
         'carrier_signature_path',
         'receiver_signature_path',
         'document_path',
         'status',
         'is_mirror',
-        'original_note_id'
+        'original_note_id',
+        'delivery_date'
     ];
 
     protected $casts = [
-        'delivery_date' => 'date'
+        'issue_date' => 'datetime',
+        'delivery_date' => 'date',
+        'departure_time' => 'datetime'
     ];
 
     protected $attributes = [
-        'type' => self::TYPE_DIRECT // Значение по умолчанию
+        'type' => self::TYPE_DIRECT, // Значение по умолчанию
+        'delivery_date' => null, // Значение по умолчанию
+        'document_number' => null,
+        'issue_date' => null,
     ];
 
     public static function types(): array
@@ -147,11 +156,13 @@ class DeliveryNote extends Model
 
     public function isComplete(): bool
     {
-        return !empty($this->driver_name)
-            && !empty($this->vehicle_model)
-            && !empty($this->vehicle_number)
-            && !empty($this->driver_contact)
-            && !empty($this->departure_time);
+        return !empty($this->document_number) &&
+            !empty($this->issue_date) &&
+            !empty($this->transport_driver_name) && // Обновляем имя
+            !empty($this->transport_vehicle_model) && // Обновляем имя
+            !empty($this->transport_vehicle_number) && // Обновляем имя
+            !empty($this->driver_contact) &&
+            !empty($this->departure_time); // Добавляем новое поле
     }
 
     public function canBeClosed(): bool
@@ -184,21 +195,51 @@ class DeliveryNote extends Model
     public function createMirrorNote(): DeliveryNote
     {
         return DeliveryNote::create([
-            'original_note_id' => $this->id,
-            'delivery_scenario' => $this->delivery_scenario,
+            'document_number' => 'MIRROR-' . $this->document_number,
+            'issue_date' => now(),
             'type' => DeliveryNote::TYPE_PLATFORM_TO_LESSEE,
             'order_id' => $this->order_id,
             'order_item_id' => $this->order_item_id,
-            'sender_company_id' => Platform::main()->id,
+            'sender_company_id' => Platform::getMain()->id,
             'receiver_company_id' => $this->order->lessee_company_id,
-            'delivery_from_id' => $this->delivery_to_id, // Из склада платформы
-            'delivery_to_id' => $this->order->delivery_location_id,
+            'delivery_from_id' => $this->delivery_to_id,
+            'delivery_to_id' => $this->orderItem->delivery_to_id,
             'cargo_description' => $this->cargo_description,
             'cargo_weight' => $this->cargo_weight,
             'cargo_value' => $this->cargo_value,
             'transport_type' => $this->transport_type,
+            'equipment_condition' => $this->equipment_condition,
+            'status' => DeliveryNote::STATUS_IN_TRANSIT,
             'is_mirror' => true,
-            'status' => self::STATUS_DRAFT
+            'original_note_id' => $this->id,
+            'distance_km' => $this->distance_km,
+            'calculated_cost' => $this->calculated_cost,
+            'driver_name' => $this->driver_name,
+            'vehicle_model' => $this->vehicle_model,
+            'vehicle_number' => $this->vehicle_number,
+            'driver_contact' => $this->driver_contact,
+            'departure_time' => $this->departure_time
+        ]);
+    }
+
+    public function fillDeliveryDetails(array $data)
+    {
+        $this->update([
+            'document_number' => $data['document_number'],
+            'issue_date' => $data['issue_date'],
+            'driver_name' => $data['driver_name'],
+            'vehicle_model' => $data['vehicle_model'],
+            'vehicle_number' => $data['vehicle_number'],
+            'driver_contact' => $data['driver_contact'],
+            'status' => DeliveryNote::STATUS_IN_TRANSIT
+        ]);
+    }
+
+    public function completeDelivery(Carbon $deliveryDate)
+    {
+        $this->update([
+            'delivery_date' => $deliveryDate,
+            'status' => DeliveryNote::STATUS_DELIVERED
         ]);
     }
 }

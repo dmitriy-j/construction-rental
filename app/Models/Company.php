@@ -136,4 +136,9 @@ class Company extends Model
             ->where('end_date', '>=', now())
             ->first();
     }
+
+    public function contracts(): HasMany
+    {
+        return $this->hasMany(Contract::class);
+    }
 }

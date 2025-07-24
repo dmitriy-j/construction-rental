@@ -72,8 +72,8 @@ Route::prefix('lessor')
     ->group(function () {
         // Дашборд
         Route::get('/dashboard', [LessorDashboardController::class, 'index'])->name('lessor.dashboard');
-        Route::post('/dashboard/mark-as-viewed', [DashboardController::class, 'markAsViewed'])
-    ->name('lessor.dashboard.markAsViewed');
+         Route::post('/dashboard/mark-as-viewed', [LessorDashboardController::class, 'markAsViewed'])
+            ->name('lessor.dashboard.markAsViewed');
 
         // Оборудование
         Route::resource('equipment', \App\Http\Controllers\Lessor\EquipmentController::class)

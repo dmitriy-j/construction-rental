@@ -21,11 +21,17 @@
                             <p><strong>Категория:</strong> {{ $equipment->category->name }}</p>
                             <p><strong>Бренд:</strong> {{ $equipment->brand }}</p>
                             <p><strong>Модель:</strong> {{ $equipment->model }}</p>
+                            <p><strong>Вес:</strong> {{ $equipment->getNumericSpecValue('weight') }} кг</p>
                         </div>
                         <div class="col-md-6">
                             <p><strong>Год выпуска:</strong> {{ $equipment->year }}</p>
                             <p><strong>Наработка:</strong> {{ $equipment->hours_worked }} ч</p>
                             <p><strong>Локация:</strong> {{ $equipment->location->city }}, {{ $equipment->location->region }}</p>
+                            <p><strong>Габариты:</strong>
+                                {{ $equipment->getNumericSpecValue('length') }}м ×
+                                {{ $equipment->getNumericSpecValue('width') }}м ×
+                                {{ $equipment->getNumericSpecValue('height') }}м
+                            </p>
                         </div>
                     </div>
                     <div class="mt-3">
@@ -47,12 +53,16 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($equipment->rentalTerms as $term)
-                                <tr>
-                                    <td>{{ $term->full_period }}</td>
-                                    <td>{{ $term->formatted_price }}</td>
-                                </tr>
-                                @endforeach
+                                @if($equipment->rentalTerms->isNotEmpty())
+                                    <tr>
+                                        <td>Час</td>
+                                        <td>{{ number_format($equipment->rentalTerms->first()->price_per_hour, 2) }} ₽</td>
+                                    </tr>
+                                @else
+                                    <tr>
+                                        <td colspan="2">Тарифы не установлены</td>
+                                    </tr>
+                                @endif
                             </tbody>
                         </table>
                     </div>

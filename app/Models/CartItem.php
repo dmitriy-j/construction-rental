@@ -18,7 +18,9 @@ class CartItem extends Model
         'rental_condition_id',
         'delivery_from_id',
         'delivery_to_id',
-        'delivery_cost'
+        'delivery_cost',
+        'distance_km', // Добавляем поле
+        'delivery_cost_calculated' // Флаг успешного расчета
     ];
 
     protected $casts = [

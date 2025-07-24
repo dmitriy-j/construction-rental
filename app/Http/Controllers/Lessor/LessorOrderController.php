@@ -175,29 +175,67 @@ class LessorOrderController extends Controller
         }
     }
 
-    public function approve(Request $request, Order $order)
+   public function approve(Request $request, Order $order)
     {
+        \Log::info('[ORDER APPROVAL] Начало подтверждения заказа', [
+            'order_id' => $order->id,
+            'user_id' => auth()->id(),
+            'input' => $request->all(),
+            'delivery_type' => $order->delivery_type,
+            'items_count' => $order->items->count(),
+            'delivery_items' => $order->items->filter(fn($i) => $i->delivery_to_id)->count()
+        ]);
+
         if ($order->lessor_company_id !== auth()->user()->company_id) {
             abort(403);
         }
 
+        // Валидация сценария доставки
+        $request->validate([
+            'delivery_scenario' => 'required|in:lessor,platform,none'
+        ]);
+
         $deliveryScenario = $request->input('delivery_scenario', 'none');
 
-        DB::transaction(function() use ($order, $deliveryScenario, $request) {
+        \Log::debug('[ORDER APPROVAL] Выбранный сценарий', [
+            'scenario' => $deliveryScenario
+        ]);
+
+        DB::transaction(function() use ($order, $deliveryScenario) {
             $order->update([
                 'status' => Order::STATUS_CONFIRMED,
-                'delivery_scenario' => $deliveryScenario,
                 'confirmed_at' => now()
             ]);
 
+            \Log::info('[ORDER APPROVAL] Статус заказа обновлен');
+
+            // Только для заказов с доставкой
             if ($order->delivery_type === Order::DELIVERY_DELIVERY) {
+                \Log::debug('[ORDER APPROVAL] Обработка доставки');
+
+                 // Проверяем наличие данных для доставки
+                foreach ($order->items as $item) {
+                    if (!$item->delivery_from_id || !$item->delivery_to_id) {
+                        throw new \Exception("Для позиции #{$item->id} не указаны адреса доставки");
+                    }
+                }
+
                 $scenarioService = app(\App\Services\DeliveryScenarioService::class);
 
                 foreach ($order->items as $item) {
-                    $scenarioService->handleOrderConfirmation($item, $deliveryScenario);
+                    \Log::debug('[ORDER APPROVAL] Обработка позиции', [
+                        'item_id' => $item->id
+                    ]);
+
+                    $note = $scenarioService->handleOrderConfirmation($item, $deliveryScenario);
+
+                    \Log::info('[ORDER APPROVAL] Создана накладная', [
+                        'delivery_note_id' => $note->id ?? null
+                    ]);
                 }
 
                 if ($deliveryScenario === 'platform') {
+                    \Log::info('[ORDER APPROVAL] Инициирование поиска перевозчика');
                     event(new \App\Events\PlatformDeliveryRequested($order));
                 }
             }

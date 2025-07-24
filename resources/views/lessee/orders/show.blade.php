@@ -110,6 +110,7 @@
                             <th class="py-3 text-end">Доставка</th>
                             <th class="py-3 text-end">Итоговая стоимость</th>
                             <th class="py-3 text-center">Статус заказа</th>
+                            <th class="py-3 text-center">Статус позиции</th> <!-- Добавлено -->
                         </tr>
                     </thead>
                     <tbody>
@@ -189,6 +190,11 @@
                                 <td class="text-center">
                                     <span class="badge bg-{{ $itemOrder->status_color }} py-2">
                                         {{ $itemOrder->status_text }}
+                                    </span>
+                                </td>
+                                 <td class="text-center">
+                                    <span class="badge bg-{{ $item->status_color }} py-2">
+                                        {{ $item->status_text }}
                                     </span>
                                 </td>
                             </tr>

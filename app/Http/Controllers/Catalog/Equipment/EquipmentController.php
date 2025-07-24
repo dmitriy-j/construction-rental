@@ -176,53 +176,53 @@ class EquipmentController extends Controller
 
     protected function createRentalTerms(Equipment $equipment, $request)
     {
-        // Основной тариф за час
+        // Создаем только почасовой тариф
         $equipment->rentalTerms()->create([
-            'period' => 'час',
-            'price' => $request->price_per_hour,
+            'price_per_hour' => $request->price_per_hour,
             'currency' => 'RUB'
         ]);
-
-        // Дополнительные тарифы
-        $periods = [
-            'смена' => 'price_per_shift',
-            'сутки' => 'price_per_day',
-            'месяц' => 'price_per_month'
-        ];
-
-        foreach ($periods as $period => $field) {
-            if ($request->filled($field)) {
-                $equipment->rentalTerms()->create([
-                    'period' => $period,
-                    'price' => $request->$field,
-                    'currency' => 'RUB'
-                ]);
-            }
-        }
     }
 
    protected function updateRentalTerms(Equipment $equipment, $request)
     {
-        $periods = [
-            'час' => 'price_per_hour',
-            'смена' => 'price_per_shift',
-            'сутки' => 'price_per_day',
-            'месяц' => 'price_per_month'
-        ];
+        // Обновляем только почасовой тариф
+        $term = $equipment->rentalTerms()->first();
 
-        foreach ($periods as $period => $field) {
-            if ($request->filled($field)) {
-                try {
-                    EquipmentRentalTerm::updateOrCreate(
-                        ['equipment_id' => $equipment->id, 'period' => $period],
-                        ['price' => $request->$field, 'currency' => 'RUB']
-                    );
-                } catch (\Exception $e) {
-                    logger()->error("Ошибка создания условия аренды: " . $e->getMessage());
-                    return redirect()->back()
-                        ->withErrors(['error' => 'Не удалось сохранить условия аренды: дубликат периода']);
-                }
-            }
+        if ($term) {
+            $term->update(['price_per_hour' => $request->price_per_hour]);
+        } else {
+            $equipment->rentalTerms()->create([
+                'price_per_hour' => $request->price_per_hour,
+                'currency' => 'RUB'
+            ]);
         }
+    }
+
+    protected function createSpecifications(Equipment $equipment, $request)
+    {
+        $specs = $request->input('specifications');
+
+        $equipment->specifications()->createMany([
+            [
+                'key' => 'weight',
+                'value' => $specs['weight'],
+                'weight' => $specs['weight']
+            ],
+            [
+                'key' => 'length',
+                'value' => $specs['length'],
+                'length' => $specs['length']
+            ],
+            [
+                'key' => 'width',
+                'value' => $specs['width'],
+                'width' => $specs['width']
+            ],
+            [
+                'key' => 'height',
+                'value' => $specs['height'],
+                'height' => $specs['height']
+            ]
+        ]);
     }
 }

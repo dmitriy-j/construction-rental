@@ -7,8 +7,6 @@ use App\Services\EquipmentAvailabilityService;
 use App\Services\PricingService;
 use App\Services\TransportCalculatorService;
 use App\Services\DeliveryCalculatorService;
-use App\Models\Order;
-use App\Models\Platform;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,6 +14,10 @@ use Exception;
 use Carbon\Carbon;
 use App\Models\CartItem;
 use App\Models\Company;
+use App\Models\OrderItem;
+use App\Models\Order;
+use App\Models\Platform;
+use App\Models\EquipmentAvailability;
 
 class CheckoutController extends Controller
 {
@@ -58,6 +60,7 @@ class CheckoutController extends Controller
             ]);
 
             $cart->load([
+                'items.rentalTerm.equipment.specifications',
                 'items.rentalTerm.equipment.company',
                 'items.rentalCondition',
                 'items.deliveryFrom',
@@ -119,10 +122,31 @@ class CheckoutController extends Controller
                         'item_count' => $items->count()
                     ]);
 
-                    foreach ($items as $item) {
+                     foreach ($items as $item) {
+                        // Получаем оборудование и даты из элемента корзины
+                        $equipment = $item->rentalTerm->equipment;
+                        $startDate = Carbon::parse($item->start_date);
+                        $endDate = Carbon::parse($item->end_date);
+
                         // Создаем позиции и бронируем оборудование
-                        $this->createOrderItem($childOrder, $item);
-                        $this->bookEquipment($item, $childOrder->id);
+                        $orderItem = $this->createOrderItem($childOrder, $item);
+                        $this->bookEquipmentItem($item, $childOrder->id);
+
+                        // Обновляем статус оборудования
+                        $this->availabilityService->bookEquipment(
+                            $equipment,
+                            $startDate->format('Y-m-d'),
+                            $endDate->format('Y-m-d'),
+                            $childOrder->id,
+                            'booked'
+                        );
+
+                        // Логируем успешное бронирование
+                        Log::debug('[CHECKOUT] Оборудование забронировано', [
+                            'equipment_id' => $equipment->id,
+                            'start_date' => $startDate,
+                            'end_date' => $endDate
+                        ]);
                     }
                 }
 
@@ -178,6 +202,12 @@ class CheckoutController extends Controller
             'items_count' => $items->count()
         ]);
 
+         // Используем константы через модель Order
+        $deliveryType = $items->contains(function ($item) {
+            return $item->delivery_to_id && $item->delivery_from_id;
+        }) ? Order::DELIVERY_DELIVERY : Order::DELIVERY_PICKUP;
+
+
         return Order::create([
             'user_id' => auth()->id(),
             'lessee_company_id' => auth()->user()->company_id,
@@ -190,6 +220,7 @@ class CheckoutController extends Controller
             'delivery_cost' => $deliveryCost,
             'start_date' => $items->min('start_date'),
             'end_date' => $items->max('end_date'),
+            'delivery_type' => $deliveryType, // Добавляем тип доставки
         ]);
     }
 
@@ -197,6 +228,9 @@ class CheckoutController extends Controller
     {
         // Получаем условие аренды из первого элемента
         $rentalCondition = $items->first()->rentalCondition;
+
+        // Добавляем получение платформы
+         $platform = Platform::getMain();
 
         // Рассчитываем суммы
         $deliveryCost = $items->sum('delivery_cost');
@@ -210,6 +244,11 @@ class CheckoutController extends Controller
 
         // Получаем контракт компании арендодателя
         $contract = Company::find($companyId)->activeContract();
+
+         // Используем константы через модель Order
+        $deliveryType = $items->contains(function ($item) {
+            return $item->delivery_to_id && $item->delivery_from_id;
+        }) ? Order::DELIVERY_DELIVERY : Order::DELIVERY_PICKUP;
 
         return Order::create([
             'user_id' => auth()->id(),
@@ -235,6 +274,7 @@ class CheckoutController extends Controller
             'delivery_location_id' => $items->first()->delivery_to_id,
             'delivery_from_id' => $items->first()->delivery_from_id,
             'delivery_to_id' => $items->first()->delivery_to_id,
+            'delivery_type' => $deliveryType,
         ]);
     }
 
@@ -249,6 +289,10 @@ class CheckoutController extends Controller
         $discountAmount = $orderTotal > 0 ?
             ($itemTotal / $orderTotal) * $childOrder->discount_amount : 0;
 
+        // Сохраняем расстояние и стоимость доставки
+        $deliveryCost = $item->delivery_cost;
+        $distanceKm = $item->distance_km;
+
         return OrderItem::create([
             'order_id' => $childOrder->id,
             'equipment_id' => $equipment->id,
@@ -261,32 +305,42 @@ class CheckoutController extends Controller
             'platform_fee' => $item->platform_fee,
             'discount_amount' => $discountAmount,
             'delivery_cost' => $item->delivery_cost,
+            'distance_km' => $distanceKm, // Сохраняем расстояние
             'total_price' => $itemTotal - $discountAmount,
             'delivery_from_id' => $item->delivery_from_id,
-            'delivery_to_id' => $item->delivery_to_id,
+            'delivery_to_id' => $item->delivery_to_id, // Исправлено: delivery_to_id
             'lessor_company_id' => $childOrder->lessor_company_id,
+            'distance_km' => $item->distance_km,
+            'delivery_cost' => $item->delivery_cost,
+            'status' => OrderItem::STATUS_PENDING // Добавляем начальный статус
         ]);
     }
 
-    protected function bookEquipment($item, $orderId)
+    protected function bookEquipmentItem($cartItem, $orderId)
     {
-        $equipment = $item->rentalTerm->equipment;
-        $startDate = Carbon::parse($item->start_date);
-        $endDate = Carbon::parse($item->end_date);
+        // Проверяем наличие необходимых отношений
+        if (!$cartItem->rentalTerm || !$cartItem->rentalTerm->equipment) {
+            Log::error('Оборудование не найдено для элемента корзины', [
+                'cart_item_id' => $cartItem->id,
+                'rental_term_id' => $cartItem->rental_term_id
+            ]);
+            throw new \Exception("Оборудование для позиции #{$cartItem->id} не найдено");
+        }
 
-        if (!$this->availabilityService->isAvailable(
-            $equipment,
-            $startDate->format('Y-m-d'),
-            $endDate->format('Y-m-d')
-        )) {
+        $equipment = $cartItem->rentalTerm->equipment;
+        $startDate = Carbon::parse($cartItem->start_date);
+        $endDate = Carbon::parse($cartItem->end_date);
+
+        // Проверяем доступность
+        if (!$this->availabilityService->isAvailable($equipment, $startDate, $endDate)) {
             $nextAvailable = $this->availabilityService->calculateNextAvailableDate($equipment->id);
             $message = $nextAvailable
                 ? "Оборудование {$equipment->title} недоступно. Ближайшая доступная дата: {$nextAvailable->format('d.m.Y')}"
                 : "Оборудование {$equipment->title} недоступно на выбранные даты";
-
             throw new \Exception($message);
         }
 
+        // Бронируем оборудование
         $this->availabilityService->bookEquipment(
             $equipment,
             $startDate->format('Y-m-d'),

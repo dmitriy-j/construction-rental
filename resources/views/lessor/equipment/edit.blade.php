@@ -85,30 +85,47 @@
         <div class="card mb-4">
             <div class="card-header">Тарифы</div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3 mb-3">
+                <div class="row mb-3">
+                    <div class="col-md-12">
                         <label class="form-label">Цена за час (₽) *</label>
                         <input type="number" name="price_per_hour" class="form-control" step="0.01"
-                               value="{{ old('price_per_hour', $prices['price_per_час'] ?? '') }}" required>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <label class="form-label">Цена за смену (₽)</label>
-                        <input type="number" name="price_per_shift" class="form-control" step="0.01"
-                               value="{{ old('price_per_shift', $prices['price_per_смена'] ?? '') }}">
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <label class="form-label">Цена за сутки (₽)</label>
-                        <input type="number" name="price_per_day" class="form-control" step="0.01"
-                               value="{{ old('price_per_day', $prices['price_per_сутки'] ?? '') }}">
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <label class="form-label">Цена за месяц (₽)</label>
-                        <input type="number" name="price_per_month" class="form-control" step="0.01"
-                               value="{{ old('price_per_month', $prices['price_per_месяц'] ?? '') }}">
+                            value="{{ old('price_per_hour', $pricePerHour) }}" required>
                     </div>
                 </div>
             </div>
         </div>
+
+        <div class="card mb-4">
+    <div class="card-header">Габариты и вес (обязательно для расчета доставки)</div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Вес, кг *</label>
+                    <input type="number" name="specifications[weight]" class="form-control"
+                        value="{{ $equipment->getNumericSpecValue('weight') }}"
+                        step="0.01" min="0" required>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Длина, м *</label>
+                    <input type="number" name="specifications[length]" class="form-control"
+                        value="{{ old('specifications.length', $equipment->getNumericSpecValue('length')) }}"
+                        step="0.01" min="0" required>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Ширина, м *</label>
+                    <input type="number" name="specifications[width]" class="form-control"
+                        value="{{ old('specifications.width', $equipment->getNumericSpecValue('width')) }}"
+                        step="0.01" min="0" required>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Высота, м *</label>
+                    <input type="number" name="specifications[height]" class="form-control"
+                        value="{{ old('specifications.height', $equipment->getNumericSpecValue('height')) }}"
+                        step="0.01" min="0" required>
+                </div>
+            </div>
+        </div>
+    </div>
 
         <div class="card mb-4">
             <div class="card-header">Изображения</div>
@@ -135,9 +152,9 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Добавить изображения</label>
-                    <input type="file" name="images[]" class="form-control" multiple>
-                    <div class="form-text">Первое изображение будет использоваться как основное</div>
+                    <label class="form-label">Добавить изображения (можно несколько)</label>
+                    <input type="file" name="images[]" class="form-control" multiple accept="image/*">
+                    <div class="form-text">Максимальный размер файла: 10MB</div>
                 </div>
             </div>
         </div>

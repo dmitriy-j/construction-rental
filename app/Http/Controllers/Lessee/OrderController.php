@@ -40,7 +40,7 @@ class OrderController extends Controller
         return view('lessee.orders.index', compact('orders'));
     }
 
-    public function show(Order $order)
+     public function show(Order $order)
     {
         if ($order->lessee_company_id !== auth()->user()->company_id || $order->isChild()) {
             abort(403);
@@ -58,7 +58,6 @@ class OrderController extends Controller
             ]);
         } else {
             $order->load([
-                'childOrders.items.equipment.availabilityStatus',
                 'items.equipment.mainImage',
                 'items.equipment.company',
                 'items.deliveryNote',
@@ -75,6 +74,22 @@ class OrderController extends Controller
         $allItems->each(function ($item) {
             $item->simple_rental_total = $item->price_per_unit * $item->period_count;
             $item->simple_total = $item->simple_rental_total + $item->delivery_cost;
+
+            $item->status_text = match($item->status) {
+                OrderItem::STATUS_PENDING => 'Ожидает',
+                OrderItem::STATUS_IN_DELIVERY => 'В пути',
+                OrderItem::STATUS_ACTIVE => 'Активна',
+                OrderItem::STATUS_COMPLETED => 'Завершена',
+                default => $item->status,
+            };
+
+            $item->status_color = match($item->status) {
+                OrderItem::STATUS_PENDING => 'warning',
+                OrderItem::STATUS_IN_DELIVERY => 'info',
+                OrderItem::STATUS_ACTIVE => 'success',
+                OrderItem::STATUS_COMPLETED => 'secondary',
+                default => 'light',
+            };
         });
 
         $simpleGrandTotal = $allItems->sum('simple_total');

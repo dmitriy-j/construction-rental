@@ -30,4 +30,9 @@ class Location extends Model
         preg_match('/(ул\.|улица|проспект|пр\.|шоссе|б-р) [\w\s\.-]+,?\s*\d+/u', $this->address, $matches);
         return $matches[0] ?? $this->address;
     }
+
+    public function scopeWithoutCoordinates($query)
+    {
+        return $query->whereNull('latitude')->orWhereNull('longitude');
+    }
 }

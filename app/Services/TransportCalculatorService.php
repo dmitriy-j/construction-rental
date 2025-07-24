@@ -12,11 +12,9 @@ class TransportCalculatorService
 
     public function calculateRequiredTransport(Equipment $equipment): string
     {
-        // Гарантированная загрузка спецификаций
+        // Гарантируем загрузку спецификаций
         if (!$equipment->relationLoaded('specifications')) {
-            $equipment->load(['specifications' => function ($query) {
-                $query->select('equipment_id', 'key', 'weight', 'length', 'width', 'height');
-            }]);
+            $equipment->load('specifications');
         }
 
         // Создаем гарантированную коллекцию
@@ -24,10 +22,10 @@ class TransportCalculatorService
         $specsMap = $specs->keyBy('key');
 
         // Безопасное получение значений
-        $weight = $specsMap->get('weight')?->weight ?? 0;
-        $length = $specsMap->get('length')?->length ?? 0;
-        $width = $specsMap->get('width')?->width ?? 0;
-        $height = $specsMap->get('height')?->height ?? 0;
+        $weight = $specsMap->get('weight')?->value ?? 0;
+        $length = $specsMap->get('length')?->value ?? 0;
+        $width = $specsMap->get('width')?->value ?? 0;
+        $height = $specsMap->get('height')?->value ?? 0;
 
         // Проверка по габаритам
         if ($length > 16 || $width > 3.5 || $height > 4) {
@@ -46,7 +44,7 @@ class TransportCalculatorService
         $rates = [
             self::VEHICLE_25T => 200,
             self::VEHICLE_45T => 250,
-            self::VEHICLE_110T => 350,
+            self::VEHICLE_110T => 350
         ];
 
         return $rates[$vehicleType] ?? 200;

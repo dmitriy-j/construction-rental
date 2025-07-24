@@ -31,4 +31,9 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'yandex_maps' => [
+        'api_key' => env('YANDEX_MAPS_API_KEY'),
+        'coefficient' => env('DISTANCE_COEFFICIENT', 1.3)
+    ]
+
 ];

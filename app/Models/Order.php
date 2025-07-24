@@ -29,6 +29,7 @@ class Order extends Model
     const STATUS_AGGREGATED = 'aggregated'; // Добавляем новый статус
     const DELIVERY_PICKUP = 'pickup';
     const DELIVERY_DELIVERY = 'delivery';
+    const STATUS_IN_DELIVERY = 'in_delivery';
 
     protected $fillable = [
         'lessee_company_id',
@@ -91,7 +92,8 @@ class Order extends Model
             self::STATUS_CANCELLED,
             self::STATUS_EXTENSION_REQUESTED,
             self::STATUS_REJECTED,
-            self::STATUS_AGGREGATED, // Добавляем новый
+            self::STATUS_AGGREGATED,
+            self::STATUS_IN_DELIVERY, // Добавляем новый
         ];
     }
 
@@ -107,6 +109,7 @@ class Order extends Model
             self::STATUS_EXTENSION_REQUESTED => 'Запрос продления',
             self::STATUS_REJECTED => 'Отклонен',
             self::STATUS_AGGREGATED => 'Агрегированный заказ',
+            self::STATUS_IN_DELIVERY => 'В пути',
             default => $status,
         };
     }
@@ -253,6 +256,14 @@ class Order extends Model
 
         $statuses = $this->childOrders->pluck('status')->unique();
 
+        // Проверяем статусы доставки
+        if ($statuses->contains(Order::STATUS_IN_DELIVERY)) {
+            if ($statuses->every(fn($s) => $s === Order::STATUS_IN_DELIVERY)) {
+                return 'in_delivery';
+            }
+            return 'partially_in_delivery';
+        }
+
         if ($statuses->contains(Order::STATUS_CANCELLED)) {
             return 'partially_cancelled';
         }
@@ -391,4 +402,88 @@ class Order extends Model
         return $this->belongsTo(Location::class, 'delivery_to_id');
     }
 
+    public function checkOrderStructure(Order $order)
+    {
+        if ($order->isParent()) {
+            if ($order->lessor_company_id) {
+                throw new \Exception("Родительский заказ не должен иметь lessor_company_id");
+            }
+
+            if ($order->childOrders->isEmpty()) {
+                throw new \Exception("Родительский заказ без дочерних заказов");
+            }
+        } else {
+            if (!$order->lessor_company_id) {
+                throw new \Exception("Дочерний заказ без lessor_company_id");
+            }
+
+            if (!$order->rental_condition_id) {
+                throw new \Exception("Дочерний заказ без rental_condition_id");
+            }
+        }
+    }
+
+    public function getDeliveryScenarioAttribute()
+    {
+        if ($this->delivery_type === Order::DELIVERY_PICKUP) {
+            return 'none';
+        }
+
+        $firstNote = $this->items->first()->deliveryNote ?? null;
+        return $firstNote ? $firstNote->delivery_scenario : 'none';
+    }
+
+    public function getDeliveryTypeAttribute($value)
+    {
+        \Log::debug('Order delivery_type accessed', [
+            'order_id' => $this->id,
+            'value' => $value,
+            'is_parent' => $this->isParent(),
+            'is_child' => $this->isChild()
+        ]);
+
+        return $value;
+    }
+
+     public function updateAggregateStatus()
+    {
+        $items = $this->items;
+
+        if ($items->isEmpty()) return;
+
+        // Все ли позиции в доставке?
+        if ($items->every(fn($i) => $i->status === OrderItem::STATUS_IN_DELIVERY)) {
+            $this->status = self::STATUS_IN_DELIVERY;
+        }
+        // Все ли позиции активны?
+        elseif ($items->every(fn($i) => $i->status === OrderItem::STATUS_ACTIVE)) {
+            $this->status = self::STATUS_ACTIVE;
+        }
+        // Все ли позиции завершены?
+        elseif ($items->every(fn($i) => $i->status === OrderItem::STATUS_COMPLETED)) {
+            $this->status = self::STATUS_COMPLETED;
+        }
+        // Смешанные статусы
+        else {
+            $this->status = self::STATUS_AGGREGATED;
+        }
+
+        $this->save();
+    }
+
+    public function updateStatusBasedOnItems()
+    {
+        if ($this->items->isEmpty()) return;
+
+        // Проверяем статусы всех позиций
+        $allInDelivery = $this->items->every(
+            fn($item) => $item->status === OrderItem::STATUS_IN_DELIVERY
+        );
+
+        if ($allInDelivery) {
+            $this->status = self::STATUS_IN_DELIVERY;
+        }
+
+        $this->save();
+    }
 }

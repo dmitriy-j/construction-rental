@@ -64,9 +64,11 @@ class Platform extends Model
         return preg_replace('/[^0-9]/', '', $this->phone);
     }
 
-    public static function getMain(): self
+    public static function getMain()
     {
-        return static::firstOrFail();
+        return static::first() ?? new static([
+            'name' => 'Основная платформа'
+        ]);
     }
 
     /**

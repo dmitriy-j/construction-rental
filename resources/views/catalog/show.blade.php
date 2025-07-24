@@ -51,6 +51,12 @@
                 <li><strong>Модель:</strong> {{ $equipment->model ?? 'Не указано' }}</li>
                 <li><strong>Год выпуска:</strong> {{ $equipment->year ?? 'Не указан' }}</li>
                 <li><strong>Наработка:</strong> {{ $equipment->hours_worked ?? '0' }} моточасов</li>
+                <li><strong>Вес:</strong> {{ $equipment->getNumericSpecValue('weight') }} кг</li>
+                <li><strong>Габариты:</strong>
+                    {{ $equipment->getNumericSpecValue('length') }}м ×
+                    {{ $equipment->getNumericSpecValue('width') }}м ×
+                    {{ $equipment->getNumericSpecValue('height') }}м
+                </li>
             </ul>
 
             <h5 class="mt-4">Описание</h5>

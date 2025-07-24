@@ -12,6 +12,14 @@ use Illuminate\Support\Facades\DB;
 
 class EquipmentAvailabilityService
 {
+
+    const STATUS_BOOKED = 'booked';
+    const STATUS_ACTIVE = 'active';
+    const STATUS_COMPLETED = 'completed';
+    const STATUS_CANCELLED = 'cancelled';
+    const STATUS_AVAILABLE = 'available';
+    const STATUS_DELIVERY = 'delivery';
+
     public function getStatusDetails(Equipment $equipment): array
     {
         // Проверка глобального статуса оборудования
@@ -48,7 +56,9 @@ class EquipmentAvailabilityService
         switch ($availability->status) {
             case 'maintenance':
                 return $this->formatStatus('maintenance', 'На обслуживании', 'secondary');
-            case 'delivery': // В каталоге не показываем "В пути"
+              case 'delivery':
+                // Оборудование в пути, но доступно для заказа
+                return $this->formatStatus('available', 'Доступно (в пути к клиенту)', 'success');
             default:
                 return $this->formatStatus('available', 'Доступно', 'success');
         }
@@ -95,7 +105,7 @@ class EquipmentAvailabilityService
 
     public function isAvailable(Equipment $equipment, $startDate, $endDate): bool
     {
-        // Преобразуем даты в Carbon, если они строки
+        // Преобразуем даты, если они строки
         if (is_string($startDate)) $startDate = Carbon::parse($startDate);
         if (is_string($endDate)) $endDate = Carbon::parse($endDate);
 
@@ -113,7 +123,6 @@ class EquipmentAvailabilityService
             ->where(function($query) {
                 $query->where('status', 'booked')
                     ->orWhere('status', 'maintenance')
-                    ->orWhere('status', 'delivery') // Добавляем проверку для delivery
                     ->orWhere(function($q) {
                         $q->where('status', 'temp_reserve')
                             ->where('expires_at', '>', now());
@@ -121,11 +130,31 @@ class EquipmentAvailabilityService
             })
             ->exists();
 
-        Log::debug('[AVAILABILITY] Результат проверки', [
-            'conflicting' => $conflicting
-        ]);
-
+        Log::debug('[AVAILABILITY] Результат проверки', ['conflicting' => $conflicting]);
         return !$conflicting;
+    }
+
+    public function updateStatus(
+        int $equipmentId,
+        string $startDate,
+        string $endDate,
+        string $status,
+        int $orderId
+    ) {
+        $period = CarbonPeriod::create($startDate, $endDate);
+
+        foreach ($period as $date) {
+            EquipmentAvailability::updateOrCreate(
+                [
+                    'equipment_id' => $equipmentId,
+                    'date' => $date->format('Y-m-d'),
+                ],
+                [
+                    'status' => $status,
+                    'order_id' => $orderId
+                ]
+            );
+        }
     }
 
     public function cancelUserReserves(int $userId)
@@ -183,9 +212,23 @@ class EquipmentAvailabilityService
         return true;
     }
 
-   public function bookEquipment(Equipment $equipment, $startDate, $endDate, $orderId, $status)
+    Public function bookEquipment(Equipment $equipment, $startDate, $endDate, $orderId, $status)
     {
-        $period = CarbonPeriod::create($startDate, $endDate);
+        // Проверяем существование оборудования
+        if (!$equipment->exists) {
+            Log::error("Попытка бронирования несуществующего оборудования", [
+                'equipment_id' => $equipment->id,
+                'start_date' => $startDate,
+                'end_date' => $endDate
+            ]);
+            throw new \Exception("Оборудование не найдено");
+        }
+
+        // Преобразуем даты
+        $start = Carbon::parse($startDate);
+        $end = Carbon::parse($endDate);
+
+        $period = CarbonPeriod::create($start, $end);
 
         foreach ($period as $date) {
             EquipmentAvailability::updateOrCreate(
@@ -195,10 +238,37 @@ class EquipmentAvailabilityService
                 ],
                 [
                     'status' => $status,
-                    'order_id' => $orderId
+                    'order_id' => $orderId,
+                    'expires_at' => $status === EquipmentAvailability::STATUS_DELIVERY
+                        ? $end->endOfDay()
+                        : null
                 ]
             );
         }
+
+        Log::info("Оборудование забронировано", [
+            'equipment_id' => $equipment->id,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'status' => $status
+        ]);
+    }
+
+    public function updateEquipmentStatus(OrderItem $item, string $status)
+    {
+        $equipment = $item->equipment;
+        $order = $item->order;
+
+        $this->bookEquipment(
+            $equipment,
+            $order->start_date->format('Y-m-d'),
+            $order->end_date->format('Y-m-d'),
+            $order->id,
+            $status
+        );
+
+        // Обновляем статус в самой позиции заказа
+        $item->update(['status' => $status]);
     }
 
     public function clearExpiredReservations()
@@ -251,20 +321,11 @@ class EquipmentAvailabilityService
     private function releaseOrderEquipment(Order $order)
     {
         foreach ($order->items as $item) {
-            // Явно указываем строковое значение
-            $status = 'cancelled';
-
-            \Log::debug("Updating equipment availability", [
-                'equipment_id' => $item->equipment_id,
-                'order_id' => $order->id,
-                'status' => $status
-            ]);
-
             DB::table('equipment_availability')
                 ->where('equipment_id', $item->equipment_id)
                 ->where('order_id', $order->id)
                 ->update([
-                    'status' => $status, // Явно задаем строковое значение
+                    'status' => self::STATUS_AVAILABLE, // Возвращаем в доступные
                     'updated_at' => now()
                 ]);
         }

@@ -65,12 +65,17 @@
                             <td>
                                 <span class="badge bg-{{ $order->status_color }}">
                                     {{ $order->status_text }}
-                                    @if($order->status === Order::STATUS_REJECTED && $order->rejection_reason)
-                                        <i class="fas fa-info-circle ms-1"
-                                           title="Причина: {{ $order->rejection_reason }}"
-                                           data-bs-toggle="tooltip"></i>
-                                    @endif
                                 </span>
+                                <br>
+                                <small class="text-muted">
+                                    @if($order->isParent())
+                                        @if($order->aggregated_status === 'partially_delivered')
+                                            Частично в пути
+                                        @elseif($order->aggregated_status === 'in_delivery')
+                                            Весь заказ в пути
+                                        @endif
+                                    @endif
+                                </small>
                             </td>
                             <td>
                                 {{ $order->start_date->format('d.m.Y') }} - {{ $order->end_date->format('d.m.Y') }}
