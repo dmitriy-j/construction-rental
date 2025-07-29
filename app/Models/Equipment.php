@@ -186,22 +186,20 @@ class Equipment extends Model
 
     public function getDisplayPriceAttribute()
     {
+
         if (!$this->rentalTerms->isEmpty()) {
             $term = $this->rentalTerms->first();
             $price = $term->price_per_hour;
 
-            // Добавляем наценку платформы только для авторизованных пользователей с компанией
-            if (auth()->check() && $user = auth()->user()) {
-                $pricingService = app(PricingService::class);
-                $markup = $pricingService->getPlatformMarkup(
-                    $this,
-                    $user->company, // Используем переменную $user
-                    1
-                );
-                $priceWithMarkup = $price + $pricingService->applyMarkup($price, $markup);
-            } else {
-                $priceWithMarkup = $price; // Для неавторизованных - базовая цена
-            }
+            // Добавляем наценку платформы
+            $pricingService = app(PricingService::class);
+            $markup = $pricingService->getPlatformMarkup(
+                $this,
+                auth()->user()->company ,
+                1 // 1 час для расчета
+            );
+
+            $priceWithMarkup = $price + $pricingService->applyMarkup($price, $markup);
 
             return number_format($priceWithMarkup, 2) . ' ₽/час';
         }
