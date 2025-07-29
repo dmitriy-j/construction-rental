@@ -7,6 +7,12 @@
             <h2 class="mb-0">Редактирование транспортной накладной</h2>
         </div>
 
+        @if($note->status !== \App\Models\DeliveryNote::STATUS_DRAFT)
+            <div class="alert alert-warning">
+                <i class="fas fa-lock me-2"></i>
+                Накладная закрыта для редактирования. Вы можете только скачать документ.
+            </div>
+        @else
         <div class="card-body">
             <form method="POST" action="{{ route('lessor.delivery-notes.update', $note) }}">
                 @csrf
@@ -17,7 +23,8 @@
                         <div class="mb-3">
                             <label class="form-label fw-bold">Номер документа</label>
                             <input type="text" name="document_number" class="form-control form-control-lg"
-                                   value="{{ old('document_number', $note->document_number) }}" required>
+                                value="{{ old('document_number', $note->document_number) }}"
+                                placeholder="Введите номер транспортной накладной" required>
                         </div>
                     </div>
 
@@ -39,21 +46,22 @@
                         </div>
                     </div>
 
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Расстояние (км)</label>
-                            <input type="number" step="0.01" name="distance_km" class="form-control form-control-lg"
-                                   value="{{ old('distance_km', $note->distance_km) }}" required>
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Расстояние (км)</label>
+                                <input type="text" class="form-control form-control-lg bg-light"
+                                    value="{{ number_format($note->orderItem->distance_km, 2) }}" readonly>
+                                <input type="hidden" name="distance_km" value="{{ $note->orderItem->distance_km }}">
+                            </div>
                         </div>
-                    </div>
-                </div>
-
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Стоимость перевозки (руб)</label>
-                            <input type="number" step="0.01" name="calculated_cost" class="form-control form-control-lg"
-                                   value="{{ old('calculated_cost', $note->calculated_cost) }}" required>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Стоимость перевозки (руб)</label>
+                                <input type="text" class="form-control form-control-lg bg-light"
+                                    value="{{ number_format($note->orderItem->delivery_cost, 2) }}" readonly>
+                                <input type="hidden" name="calculated_cost" value="{{ $note->orderItem->delivery_cost }}">
+                            </div>
                         </div>
                     </div>
 
@@ -73,24 +81,24 @@
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Водитель</label>
-                                <input type="text" name="driver_name" class="form-control"
-                                       value="{{ old('driver_name', $note->driver_name) }}" required>
+                                <input type="text" name="transport_driver_name" class="form-control"
+                                       value="{{ old('transport_driver_name', $note->transport_driver_name) }}" required>
                             </div>
                         </div>
 
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Модель ТС</label>
-                                <input type="text" name="vehicle_model" class="form-control"
-                                       value="{{ old('vehicle_model', $note->vehicle_model) }}" required>
+                                <input type="text" name="transport_vehicle_model" class="form-control"
+                                       value="{{ old('transport_vehicle_model', $note->transport_vehicle_model) }}" required>
                             </div>
                         </div>
 
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Гос. номер</label>
-                                <input type="text" name="vehicle_number" class="form-control"
-                                       value="{{ old('vehicle_number', $note->vehicle_number) }}" required>
+                                <input type="text" name="transport_vehicle_number" class="form-control"
+                                       value="{{ old('transport_vehicle_number', $note->transport_vehicle_number) }}" required>
                             </div>
                         </div>
                     </div>
@@ -107,7 +115,9 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label fw-bold">Состояние груза</label>
-                                <textarea name="cargo_condition" class="form-control" rows="2" required>{{ old('cargo_condition', $note->cargo_condition) }}</textarea>
+                                  <textarea name="equipment_condition" class="form-control" rows="2" required>
+                                        {{ old('equipment_condition', $note->equipment_condition) }}
+                                </textarea>
                             </div>
                         </div>
                     </div>
@@ -158,4 +168,5 @@
         </div>
     </div>
 </div>
+@endif
 @endsection

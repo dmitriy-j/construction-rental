@@ -37,6 +37,7 @@ class Platform extends Model
         'notes',
         'signature_image_path',
         'stamp_image_path',
+        'company_id',
     ];
 
     protected $casts = [
@@ -66,9 +67,14 @@ class Platform extends Model
 
     public static function getMain()
     {
-        return static::first() ?? new static([
+        return static::with('company')->first() ?? new static([
             'name' => 'Основная платформа'
         ]);
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
     }
 
     /**
@@ -111,5 +117,10 @@ class Platform extends Model
             ],
             'certificate' => $this->certificate_number
         ];
+    }
+
+    public function getLegalNameAttribute()
+    {
+        return $this->company->legal_name ?? $this->name;
     }
 }

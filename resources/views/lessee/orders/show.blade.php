@@ -147,9 +147,9 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="d-flex flex-column">
-                                        <span>{{ $itemOrder->start_date->format('d.m.Y') }}</span>
+                                        <span>{{ $item->order->start_date->format('d.m.Y') }}</span>
                                         <span class="text-muted small">по</span>
-                                        <span>{{ $itemOrder->end_date->format('d.m.Y') }}</span>
+                                        <span>{{ $item->order->end_date->format('d.m.Y') }}</span>
                                     </div>
                                 </td>
                                 <td class="text-center">

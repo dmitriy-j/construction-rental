@@ -190,7 +190,6 @@ class LessorOrderController extends Controller
             abort(403);
         }
 
-        // Валидация сценария доставки
         $request->validate([
             'delivery_scenario' => 'required|in:lessor,platform,none'
         ]);
@@ -209,29 +208,34 @@ class LessorOrderController extends Controller
 
             \Log::info('[ORDER APPROVAL] Статус заказа обновлен');
 
-            // Только для заказов с доставкой
             if ($order->delivery_type === Order::DELIVERY_DELIVERY) {
                 \Log::debug('[ORDER APPROVAL] Обработка доставки');
 
-                 // Проверяем наличие данных для доставки
                 foreach ($order->items as $item) {
                     if (!$item->delivery_from_id || !$item->delivery_to_id) {
                         throw new \Exception("Для позиции #{$item->id} не указаны адреса доставки");
                     }
                 }
 
-                $scenarioService = app(\App\Services\DeliveryScenarioService::class);
+                // Используем DeliveryNoteService вместо DeliveryScenarioService
+                $noteService = app(\App\Services\DeliveryNoteService::class);
 
                 foreach ($order->items as $item) {
                     \Log::debug('[ORDER APPROVAL] Обработка позиции', [
                         'item_id' => $item->id
                     ]);
 
-                    $note = $scenarioService->handleOrderConfirmation($item, $deliveryScenario);
+                    if ($deliveryScenario === 'lessor') {
+                        // Создаем ТН для арендодателя
+                        $note = $noteService->createForOrderItem($item, DeliveryNote::TYPE_LESSOR_TO_PLATFORM);
 
-                    \Log::info('[ORDER APPROVAL] Создана накладная', [
-                        'delivery_note_id' => $note->id ?? null
-                    ]);
+                        \Log::info('[ORDER APPROVAL] Создана накладная для арендодателя', [
+                            'delivery_note_id' => $note->id,
+                            'type' => $note->type,
+                            'sender' => $note->sender_company_id,
+                            'receiver' => $note->receiver_company_id
+                        ]);
+                    }
                 }
 
                 if ($deliveryScenario === 'platform') {

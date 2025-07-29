@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\View\View;
 use Illuminate\Validation\ValidationException;
 use App\Models\Company;
+use App\Providers\RouteServiceProvider;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -23,7 +24,7 @@ class AuthenticatedSessionController extends Controller
     public function store(Request $request): RedirectResponse
     {
         Log::debug('Login attempt', ['email' => $request->email]);
-        
+
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],

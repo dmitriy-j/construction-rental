@@ -14,6 +14,7 @@ class Company extends Model
         'is_lessor',
         'is_lessee',
         'is_carrier',
+        'is_platform',
         'legal_name',
         'tax_system',
         'inn',
@@ -33,6 +34,17 @@ class Company extends Model
         'rejection_reason',
         'verified_at'
     ];
+
+    protected $casts = [
+        // ... другие приведения типов ...
+        'is_platform' => 'boolean',
+    ];
+
+    // Добавляем scope для быстрого поиска платформы
+    public function scopePlatform($query)
+    {
+        return $query->where('is_platform', true);
+    }
 
     public function users()
     {

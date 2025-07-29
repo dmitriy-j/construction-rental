@@ -252,6 +252,24 @@ class EquipmentAvailabilityService
             'end_date' => $endDate,
             'status' => $status
         ]);
+
+          // Для статуса "В пути" устанавливаем expires_at
+            $expiresAt = null;
+            if ($status === self::STATUS_DELIVERY) {
+                $expiresAt = Carbon::parse($endDate)->endOfDay();
+            }
+
+            foreach ($period as $date) {
+                EquipmentAvailability::updateOrCreate(
+                    ['equipment_id' => $equipment->id, 'date' => $date->format('Y-m-d')],
+                    [
+                        'status' => $status,
+                        'order_id' => $orderId,
+                        'expires_at' => $expiresAt
+                    ]
+                );
+            }
+
     }
 
     public function updateEquipmentStatus(OrderItem $item, string $status)

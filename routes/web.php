@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\OrdersController;
 use App\Http\Controllers\RentalConditionController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Lessee\OrderController;
+use App\Http\Controllers\DeliveryNoteExportController;
 
 
 // Главная страница
@@ -135,6 +136,14 @@ Route::prefix('lessee')
         // Документы
         Route::get('/documents', [DocumentController::class, 'index'])->name('lessee.documents');
         Route::get('/documents/download/{id}/{type}', [DocumentController::class, 'download'])->name('lessee.documents.download');
+
+        Route::group(['middleware' => 'auth'], function() {
+            Route::get('/delivery-notes/{note}/export-excel', [DeliveryNoteExportController::class, 'exportExcel'])
+                ->name('delivery-notes.export.excel');
+
+            Route::get('/delivery-notes/{note}/export-pdf', [DeliveryNoteExportController::class, 'exportPdf'])
+                ->name('delivery-notes.export.pdf');
+        });
 
         // Управление условиями аренды
         Route::get('/rental-conditions', [RentalConditionController::class, 'index'])

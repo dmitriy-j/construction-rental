@@ -48,7 +48,8 @@ class DeliveryScenarioService
             'status' => DeliveryNote::STATUS_DRAFT,
             'distance_km' => $item->distance_km ?? 0,
             'calculated_cost' => $item->delivery_cost,
-            'is_mirror' => false
+            'is_mirror' => false,
+            'visible_to_lessee' => false
         ]);
     }
 

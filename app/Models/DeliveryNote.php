@@ -64,13 +64,15 @@ class DeliveryNote extends Model
         'status',
         'is_mirror',
         'original_note_id',
-        'delivery_date'
+        'delivery_date',
+        'visible_to_lessee',
     ];
 
     protected $casts = [
         'issue_date' => 'datetime',
         'delivery_date' => 'date',
-        'departure_time' => 'datetime'
+        'departure_time' => 'datetime',
+        'visible_to_lessee' => 'boolean',
     ];
 
     protected $attributes = [
@@ -109,6 +111,11 @@ class DeliveryNote extends Model
         ];
     }
 
+    public function getStatusTextAttribute(): string
+    {
+        return self::statuses()[$this->status] ?? $this->status;
+    }
+
     public function senderCompany(): BelongsTo
     {
         return $this->belongsTo(Company::class, 'sender_company_id');
@@ -132,6 +139,11 @@ class DeliveryNote extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function parentOrder(): BelongsTo
+    {
+        return $this->belongsTo(Order::class, 'order_id');
     }
 
     public function orderItem(): BelongsTo
@@ -158,11 +170,11 @@ class DeliveryNote extends Model
     {
         return !empty($this->document_number) &&
             !empty($this->issue_date) &&
-            !empty($this->transport_driver_name) && // Обновляем имя
-            !empty($this->transport_vehicle_model) && // Обновляем имя
-            !empty($this->transport_vehicle_number) && // Обновляем имя
+            !empty($this->transport_driver_name) &&
+            !empty($this->transport_vehicle_model) &&
+            !empty($this->transport_vehicle_number) &&
             !empty($this->driver_contact) &&
-            !empty($this->departure_time); // Добавляем новое поле
+            !empty($this->departure_time);
     }
 
     public function canBeClosed(): bool
@@ -194,16 +206,19 @@ class DeliveryNote extends Model
 
     public function createMirrorNote(): DeliveryNote
     {
+        $platform = Platform::getMain();
+
         return DeliveryNote::create([
-            'document_number' => 'MIRROR-' . $this->document_number,
+            'document_number' => app(DeliveryNoteService::class)->generateDocumentNumber(),
             'issue_date' => now(),
             'type' => DeliveryNote::TYPE_PLATFORM_TO_LESSEE,
             'order_id' => $this->order_id,
             'order_item_id' => $this->order_item_id,
-            'sender_company_id' => Platform::getMain()->id,
-            'receiver_company_id' => $this->order->lessee_company_id,
-            'delivery_from_id' => $this->delivery_to_id,
-            'delivery_to_id' => $this->orderItem->delivery_to_id,
+            'sender_company_id' => $platform->id, // Платформа как юр. отправитель
+            'receiver_company_id' => $this->order->lessee_company_id, // Арендатор
+            // Физические адреса остаются теми же!
+            'delivery_from_id' => $this->delivery_from_id, // Факт. место погрузки (техника)
+            'delivery_to_id' => $this->delivery_to_id,     // Факт. место разгрузки (стройка)
             'cargo_description' => $this->cargo_description,
             'cargo_weight' => $this->cargo_weight,
             'cargo_value' => $this->cargo_value,
@@ -211,12 +226,13 @@ class DeliveryNote extends Model
             'equipment_condition' => $this->equipment_condition,
             'status' => DeliveryNote::STATUS_IN_TRANSIT,
             'is_mirror' => true,
+            'visible_to_lessee' => true,
             'original_note_id' => $this->id,
             'distance_km' => $this->distance_km,
             'calculated_cost' => $this->calculated_cost,
-            'driver_name' => $this->driver_name,
-            'vehicle_model' => $this->vehicle_model,
-            'vehicle_number' => $this->vehicle_number,
+            'transport_driver_name' => $this->transport_driver_name,
+            'transport_vehicle_model' => $this->transport_vehicle_model,
+            'transport_vehicle_number' => $this->transport_vehicle_number,
             'driver_contact' => $this->driver_contact,
             'departure_time' => $this->departure_time
         ]);
@@ -242,5 +258,6 @@ class DeliveryNote extends Model
             'status' => DeliveryNote::STATUS_DELIVERED
         ]);
     }
+
 }
 

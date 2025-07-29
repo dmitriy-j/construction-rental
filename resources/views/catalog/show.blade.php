@@ -102,20 +102,24 @@
                         @php
                             $displayPrice = $term->price_per_hour;
 
-                            if (auth()->check() && $company = auth()->user()->company) {
-                                $pricingService = app(\App\Services\PricingService::class);
-                                $markup = $pricingService->getPlatformMarkup(
-                                    $equipment,
-                                    $company,
-                                    1 // 1 час для расчета
-                                );
-                                $displayPrice += $pricingService->applyMarkup($term->price_per_hour, $markup);
-                                $displayPrice = number_format($displayPrice, 2) . ' ₽/час';
+                            // Добавляем проверку на существование пользователя
+                            if (auth()->check() && $user = auth()->user()) {
+                                if ($company = $user->company) {
+                                    $pricingService = app(\App\Services\PricingService::class);
+                                    $markup = $pricingService->getPlatformMarkup(
+                                        $equipment,
+                                        $company,
+                                        1
+                                    );
+                                    $displayPrice += $pricingService->applyMarkup($term->price_per_hour, $markup);
+                                    $displayPrice = number_format($displayPrice, 2) . ' ₽/час';
+                                } else {
+                                    $displayPrice = number_format($term->price_per_hour, 2) . ' ₽/час';
+                                }
                             } else {
                                 $displayPrice = number_format($term->price_per_hour, 2) . ' ₽/час';
                             }
                         @endphp
-
                         <h6>Почасовая аренда ({{ $displayPrice }})</h6>
                         <p>Минимальный срок: {{ $term->min_rental_hours }} часов</p>
 

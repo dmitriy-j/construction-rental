@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Illuminate\Auth\Middleware\Authenticate as Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class Authenticate extends Middleware
 {
@@ -15,15 +16,15 @@ class Authenticate extends Middleware
         if ($request->expectsJson()) {
             return null;
         }
-        
+
         // Если пользователь уже аутентифицирован, перенаправляем в ЛК
         if (Auth::check()) {
             $user = Auth::user();
-            
+
             if ($user->isPlatformAdmin()) {
                 return route('admin.dashboard');
             }
-            
+
             if ($user->company) {
                 if ($user->company->is_lessor) {
                     return route('lessor.dashboard');
@@ -33,7 +34,7 @@ class Authenticate extends Middleware
                 }
             }
         }
-        
+
         return route('login');
     }
 }

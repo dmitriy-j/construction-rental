@@ -27,12 +27,7 @@ class DeliveryNoteGenerator
 
     private function generatePdf(DeliveryNote $note)
     {
-        // Определяем путь к шаблону в зависимости от типа пользователя
-        $view = auth()->user()->isLessor()
-            ? 'lessor.documents.delivery-note'
-            : 'lessee.documents.delivery-note';
-
-        return Pdf::loadView($view, [
+        return Pdf::loadView('documents.delivery-note-lessee', [
             'note' => $note,
             'platform' => $this->platform,
             'currentDate' => now()->format('d.m.Y')

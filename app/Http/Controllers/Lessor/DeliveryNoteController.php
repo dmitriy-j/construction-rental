@@ -9,6 +9,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\EquipmentAvailabilityService;
 use App\Models\EquipmentAvailability;
+use Illuminate\Validation\Rule;
+use App\Models\OrderItem;
+use App\Services\DeliveryNoteService;
 
 class DeliveryNoteController extends Controller
 {
@@ -24,48 +27,39 @@ class DeliveryNoteController extends Controller
 
     public function update(DeliveryNote $note, Request $request)
     {
+        if ($note->status !== DeliveryNote::STATUS_DRAFT) {
+            return redirect()->back()->withErrors('Накладная уже закрыта для редактирования');
+        }
+
         $validated = $request->validate([
-            'document_number' => 'required|string|max:255',
+            'document_number' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('delivery_notes')->ignore($note->id)
+            ],
             'issue_date' => 'required|date',
             'delivery_date' => 'nullable|date',
-            // Используем корректные имена полей:
-            'driver_name' => 'required|string|max:255',
-            'vehicle_model' => 'required|string|max:255',
-            'vehicle_number' => 'required|string|max:20',
+            'transport_driver_name' => 'required|string|max:255',
+            'transport_vehicle_model' => 'required|string|max:255',
+            'transport_vehicle_number' => 'required|string|max:20',
             'driver_contact' => 'required|string|max:255',
-            'departure_time' => 'required|date', // Новое поле
-            'cargo_condition' => 'required|string|max:255',
-            'distance_km' => 'required|numeric|min:0',
-            'calculated_cost' => 'required|numeric|min:0',
+            'departure_time' => 'required|date',
+            'equipment_condition' => 'required|string|max:255',
         ]);
 
-        // Маппинг на правильные имена в БД
-        $mappedData = [
-            'document_number' => $validated['document_number'],
-            'issue_date' => $validated['issue_date'],
-            'delivery_date' => $validated['delivery_date'],
-            'transport_driver_name' => $validated['driver_name'], // Правильное имя
-            'transport_vehicle_model' => $validated['vehicle_model'], // Правильное имя
-            'transport_vehicle_number' => $validated['vehicle_number'], // Правильное имя
-            'driver_contact' => $validated['driver_contact'],
-            'departure_time' => $validated['departure_time'],
-            'equipment_condition' => $validated['cargo_condition'], // Правильное имя
-            'distance_km' => $validated['distance_km'],
-            'calculated_cost' => $validated['calculated_cost']
-        ];
+        DB::transaction(function() use ($note, $validated) {
+            $note->update($validated);
 
-        DB::transaction(function() use ($note, $mappedData) {
-            $note->update($mappedData);
-
-            if ($note->isComplete()) {
+            if ($note->type === DeliveryNote::TYPE_LESSOR_TO_PLATFORM) {
                 $note->update(['status' => DeliveryNote::STATUS_IN_TRANSIT]);
-                // Вместо обновления equipment->global_status
-                $this->updateEquipmentStatus($note);
+
+                $service = app(DeliveryNoteService::class);
+                $service->processDeliveryNote($note);
             }
         });
 
-        return redirect()->route('lessor.orders.show', $note->order)
-            ->with('success', 'Данные накладной обновлены');
+        return redirect()->back()->with('success', 'Данные накладной обновлены');
     }
 
     private function updateEquipmentStatus(DeliveryNote $note)
@@ -84,22 +78,24 @@ class DeliveryNoteController extends Controller
         }
     }
 
+
+
     public function close(DeliveryNote $note)
     {
         DB::transaction(function () use ($note) {
             $note->update(['status' => DeliveryNote::STATUS_DELIVERED]);
 
             if ($note->type === DeliveryNote::TYPE_LESSOR_TO_PLATFORM) {
+                $service = app(\App\Services\DeliveryNoteService::class);
+
                 // Создаем зеркальную ТН для арендатора
-                $mirrorNote = $note->createMirrorNote();
+                $mirrorNote = $service->createMirrorNote($note);
 
                 // Обновляем статус позиции заказа
                 $orderItem = $note->orderItem;
-                $orderItem->update([
-                    'status' => OrderItem::STATUS_IN_DELIVERY // Явное обновление статуса
-                ]);
+                $orderItem->update(['status' => OrderItem::STATUS_IN_DELIVERY]);
 
-                // Обновляем статус заказа через агрегацию
+                // Обновляем статус заказа
                 $order = $note->order;
                 $order->updateStatusBasedOnItems();
 
@@ -107,10 +103,11 @@ class DeliveryNoteController extends Controller
                 if ($order->parentOrder) {
                     $order->parentOrder->updateStatusBasedOnItems();
                 }
-
-                event(new DeliveryNoteCreated($mirrorNote));
             }
         });
+
+        return redirect()->route('lessor.orders.show', $note->order)
+            ->with('success', 'Накладная закрыта и отправлена арендатору');
     }
 
     private function completeDeliveryStatus(DeliveryNote $note)

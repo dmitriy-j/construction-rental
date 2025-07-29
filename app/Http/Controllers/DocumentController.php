@@ -70,29 +70,80 @@ class DocumentController extends Controller
             'completion_acts' => CompletionAct::query(),
         };
 
-        if ($user->isLessee()) {
-            $query->whereHas('order', fn($q) => $q->where('lessee_company_id', $user->company_id));
-        } else {
-            $query->whereHas('order', fn($q) => $q->where('lessor_company_id', $user->company_id));
+        \Log::debug('DocumentController index', [
+            'user_id' => $user->id,
+            'company_id' => $user->company_id,
+            'type' => $type,
+            'is_lessee' => $user->isLessee()
+        ]);
+
+        // Фильтрация для транспортных накладных
+        if ($type === 'delivery_notes') {
+            if ($user->isLessee()) {
+                $query->where('is_mirror', true)
+                    ->where('visible_to_lessee', true)
+                    ->where('status', DeliveryNote::STATUS_IN_TRANSIT)
+                    ->whereHas('parentOrder', fn($q) => $q->where('lessee_company_id', $user->company_id)); // Исправлено!
+
+                \Log::debug('Delivery notes filter for lessee', [
+                    'conditions' => [
+                        'is_mirror' => true,
+                        'visible_to_lessee' => true,
+                        'status' => DeliveryNote::STATUS_IN_TRANSIT,
+                        'lessee_company_id' => $user->company_id
+                    ]
+                ]);
+            }
+            elseif ($user->isLessor()) {
+                $query->where('is_mirror', false)
+                    ->whereHas('order', fn($q) => $q->where('lessor_company_id', $user->company_id));
+            }
+        }
+        else {
+            // Для других типов документов применяем общий фильтр
+            if ($user->isLessee()) {
+                $query->whereHas('order', fn($q) => $q->where('lessee_company_id', $user->company_id));
+            } else {
+                $query->whereHas('order', fn($q) => $q->where('lessor_company_id', $user->company_id));
+            }
         }
 
-        $documents = $query->with(['order.lesseeCompany', 'order.lessorCompany'])
-                        ->paginate(10);
+        // Применяем сортировку ПОСЛЕ всех условий фильтрации
+        $query->orderBy('created_at', 'desc');
 
-        // Определяем тип пользователя для выбора правильной папки шаблонов
-        $userType = $user->company->is_lessor ? 'lessor' : 'lessee';
-        return view("{$userType}.documents.index", [
-            'documents' => $documents,
-            'type' => $type,
-            'userType' => $userType // Добавим для использования в шаблоне
+        // Жадная загрузка отношений
+        $query->with([
+            'order.lesseeCompany',
+            'order.lessorCompany',
+            'senderCompany',
+            'receiverCompany',
+            'orderItem'
         ]);
+
+        // Для отладки
+        if (config('app.debug')) {
+            $sql = $query->toSql();
+            $bindings = $query->getBindings();
+            \Log::debug('Final SQL query', ['sql' => $sql, 'bindings' => $bindings]);
+        }
+
+        $documents = $query->paginate(10);
+        \Log::debug('Documents found', ['count' => $documents->count()]);
+
+        $userType = $user->company->is_lessor ? 'lessor' : 'lessee';
+        return view("{$userType}.documents.index", compact('documents', 'type', 'userType'));
     }
 
     public function download($id, $type)
     {
-        // Для накладных используем специальный метод
         if ($type === 'delivery_notes') {
-            $note = DeliveryNote::findOrFail($id);
+            $note = DeliveryNote::with('orderItem')->findOrFail($id); // Жадная загрузка
+
+            // Проверка прав
+            if (auth()->user()->cannot('view', $note)) {
+                abort(403);
+            }
+
             return $this->downloadDeliveryNote($note);
         }
 

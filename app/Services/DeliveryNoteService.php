@@ -11,6 +11,8 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Equipment;
+use App\Models\EquipmentAvailability;
 
 class DeliveryNoteService
 {
@@ -24,89 +26,57 @@ class DeliveryNoteService
     /**
      * Создает транспортную накладную для позиции заказа
      */
-    public function createForOrderItem(OrderItem $item): DeliveryNote
+    public function createForOrderItem(OrderItem $item, string $type): DeliveryNote
     {
-        // Добавляем детальное логирование
-        Log::debug('Creating delivery note for order item', [
-            'item_id' => $item->id,
-            'order_id' => $item->order_id,
-            'lessor_company_id' => $item->order->lessor_company_id,
-            'lessee_company_id' => $item->order->lessee_company_id,
-            'item_data' => $item->toArray(),
-            'order_data' => $item->order ? $item->order->toArray() : null
-        ]);
-
-        // Явно загружаем оборудование со спецификациями
-        $item->load([
-            'equipment.specifications' => function ($query) {
-                $query->select('equipment_id', 'key', 'weight', 'length', 'width', 'height');
-            },
-            'order'
-        ]);
-
-        // Проверяем наличие локаций доставки
-        if (!$item->delivery_from_id || !$item->delivery_to_id) {
-            throw new \Exception("Локации доставки не указаны для позиции #{$item->id}");
+        $platform = Platform::getMain();
+        $platformCompany = $platform->company;
+        if (!$platformCompany) {
+            throw new \Exception("Platform company not found");
         }
+        $order = $item->order;
 
-        $fromLocation = Location::find($item->delivery_from_id);
-        $toLocation = Location::find($item->delivery_to_id);
+        $senderId = ($type === DeliveryNote::TYPE_LESSOR_TO_PLATFORM)
+            ? $order->lessor_company_id
+            : $platform->id;
 
-        if (!$fromLocation || !$toLocation) {
-            throw new \Exception("Локации доставки не найдены");
-        }
+        $receiverId = ($type === DeliveryNote::TYPE_LESSOR_TO_PLATFORM)
+            ? $platformCompany->id  // Используем ID компании платформы
+            : $order->lessee_company_id;
 
-        // Рассчитываем расстояние
-        $distance = app(DeliveryCalculatorService::class)->calculateDistance(
-            $fromLocation->latitude,
-            $fromLocation->longitude,
-            $toLocation->latitude,
-            $toLocation->longitude
-        );
+        // Для арендодателя НЕ генерируем номер документа!
+        $documentNumber = ($type === DeliveryNote::TYPE_LESSOR_TO_PLATFORM)
+            ? null
+            : $this->generateDocumentNumber();
 
-        // Рассчитываем тип транспортного средства
-        $vehicleType = app(TransportCalculatorService::class)
-            ->calculateRequiredTransport($item->equipment);
-
-        // Рассчитываем стоимость доставки
-        $calculatedCost = $this->calculateCost($vehicleType, $distance);
-
-        // Создаем накладную
         return DeliveryNote::create([
-            'document_number' => $this->generateDocumentNumber(),
+            'document_number' => $documentNumber, // Может быть null для арендодателя
             'issue_date' => now(),
-            'type' => DeliveryNote::TYPE_DIRECT,
-            'order_id' => $item->order_id,
+            'type' => $type,
+            'order_id' => $order->id,
             'order_item_id' => $item->id,
-            'sender_company_id' => $item->order->lessor_company_id,
-            'receiver_company_id' => $item->order->lessee_company_id,
+            'sender_company_id' => $senderId,
+            'receiver_company_id' => $receiverId,
             'delivery_from_id' => $item->delivery_from_id,
             'delivery_to_id' => $item->delivery_to_id,
             'cargo_description' => $item->equipment->title,
             'cargo_weight' => $item->equipment->getNumericSpecValue('Вес'),
             'cargo_value' => $item->total_price,
-            'transport_type' => $vehicleType,
-            'equipment_condition' => 'Хорошее',
+            'transport_type' => $this->determineVehicleType($item->equipment),
             'status' => DeliveryNote::STATUS_DRAFT,
-            'distance_km' => $distance,
-            'calculated_cost' => $calculatedCost,
-            'driver_name' => null,
-            'vehicle_model' => null,
-            'vehicle_number' => null,
-            'driver_contact' => null,
-            'sender_signature_path' => null,
-            'carrier_signature_path' => null,
-            'receiver_signature_path' => null,
-            'document_path' => null
+            'is_mirror' => false,
+            'visible_to_lessee' => false,
+            // Добавляем данные из заказа
+            'distance_km' => $item->distance_km,
+            'calculated_cost' => $item->delivery_cost
         ]);
     }
 
     public function completeDeliveryNote(DeliveryNote $note, array $data): DeliveryNote
     {
         $note->update([
-            'driver_name' => $data['driver_name'],
-            'vehicle_model' => $data['vehicle_model'],
-            'vehicle_number' => $data['vehicle_number'],
+            'transport_driver_name' => $data['transport_driver_name'],
+            'transport_vehicle_model' => $data['transport_vehicle_model'],
+            'transport_vehicle_number' => $data['transport_vehicle_number'],
             'driver_contact' => $data['driver_contact'],
             'departure_time' => $data['departure_time'],
             'status' => DeliveryNote::STATUS_READY_FOR_SHIPMENT
@@ -115,62 +85,9 @@ class DeliveryNoteService
         return $note;
     }
 
-    protected function createNote(
-        OrderItem $item,
-        string $type,
-        int $senderId,
-        int $receiverId,
-        ?int $fromLocationId,
-        ?int $toLocationId
-    ): DeliveryNote {
-        // Проверяем наличие локаций
-        if (!$fromLocationId || !$toLocationId) {
-            throw new \Exception("Missing location for delivery note (type: $type)");
-        }
 
-        $from = Location::find($fromLocationId);
-        $to = Location::find($toLocationId);
-
-        if (!$from || !$to) {
-            throw new \Exception("Location not found (from: $fromLocationId, to: $toLocationId)");
-        }
-
-        $distance = app(DeliveryCalculatorService::class)->calculateDistance(
-            $from->latitude,
-            $from->longitude,
-            $to->latitude,
-            $to->longitude
-        );
-
-        $vehicleType = app(TransportCalculatorService::class)
-            ->calculateRequiredTransport($item->equipment);
-
-        return DeliveryNote::create([
-            'document_number' => $this->generateDocumentNumber(),
-            'issue_date' => now(),
-            'type' => $type,
-            'order_id' => $item->order_id,
-            'order_item_id' => $item->id,
-            'sender_company_id' => $senderId,
-            'receiver_company_id' => $receiverId,
-            'delivery_from_id' => $fromLocationId,
-            'delivery_to_id' => $toLocationId,
-            'cargo_description' => $item->equipment->title,
-            'cargo_weight' => $item->equipment->getNumericSpecValue('Вес'),
-            'cargo_value' => $item->total_price,
-            'transport_type' => $vehicleType,
-            'equipment_condition' => 'Хорошее',
-            'driver_name' => 'Водитель не назначен',
-            'vehicle_model' => $this->getVehicleModel($vehicleType),
-            'vehicle_number' => 'А000АА',
-            'driver_contact' => '+7 XXX XXX-XX-XX',
-            'distance_km' => $distance,
-            'calculated_cost' => $this->calculateCost($vehicleType, $distance),
-            'status' => DeliveryNote::STATUS_DRAFT
-        ]);
-    }
-
-    protected function generateDocumentNumber(): string
+    // ЕДИНСТВЕННЫЙ экземпляр этого метода!
+    public function generateDocumentNumber(): string
     {
         return 'TN-' . Carbon::now()->format('Ymd') . '-' . Str::upper(Str::random(6));
     }
@@ -185,9 +102,9 @@ class DeliveryNoteService
         );
     }
 
-    protected function determineVehicleType(OrderItem $item): string
+    protected function determineVehicleType(Equipment $equipment): string
     {
-        $weight = $item->equipment->getNumericSpecValue('Вес');
+        $weight = $equipment->getNumericSpecValue('Вес');
 
         if ($weight <= 25) return DeliveryNote::VEHICLE_25T;
         if ($weight <= 45) return DeliveryNote::VEHICLE_45T;
@@ -243,22 +160,56 @@ class DeliveryNoteService
         return $fileName;
     }
 
+    /**
+     * УНИФИЦИРОВАННЫЙ метод создания зеркальной накладной
+     */
+
     public function createMirrorNote(DeliveryNote $originalNote): DeliveryNote
     {
-        // Определяем тип зеркальной накладной
-        $mirrorType = match($originalNote->type) {
-            DeliveryNote::TYPE_LESSOR_TO_PLATFORM => DeliveryNote::TYPE_PLATFORM_TO_LESSEE,
-            default => DeliveryNote::TYPE_DIRECT
-        };
+        $platform = Platform::getMain();
+        $platformCompany = $platform->company;
+        $order = $originalNote->order;
 
-        return DeliveryNote::create([
-            'document_number' => 'MIRROR-' . $originalNote->document_number,
+        \Log::debug('Creating mirror note start', [
+            'original_note_id' => $originalNote->id,
+            'order_id' => $order->id
+        ]);
+
+        // Проверка наличия родительского заказа
+        if (!$parentOrder = $order->parentOrder) {
+            \Log::error('Parent order not found for delivery note', [
+                'order_id' => $order->id,
+                'original_note_id' => $originalNote->id
+            ]);
+            throw new \Exception("Parent order not found for delivery note");
+        }
+
+        // Проверка критических полей
+        if (!$originalNote->order_item_id) {
+            \Log::error('Missing order_item_id for delivery note', [
+                'note_id' => $originalNote->id
+            ]);
+            throw new \Exception("Missing order_item_id for delivery note");
+        }
+
+        if (!$originalNote->delivery_from_id || !$originalNote->delivery_to_id) {
+            \Log::error('Missing delivery addresses', [
+                'note_id' => $originalNote->id,
+                'delivery_from_id' => $originalNote->delivery_from_id,
+                'delivery_to_id' => $originalNote->delivery_to_id
+            ]);
+            throw new \Exception("Delivery addresses are required");
+        }
+
+        // Создаем экземпляр модели
+        $mirrorNote = DeliveryNote::create([
+            'document_number' => $this->generateDocumentNumber(),
             'issue_date' => now(),
-            'type' => $mirrorType,
-            'order_id' => $originalNote->order_id,
+            'type' => DeliveryNote::TYPE_PLATFORM_TO_LESSEE,
+            'order_id' => $parentOrder->id,
             'order_item_id' => $originalNote->order_item_id,
-            'sender_company_id' => $this->platform->id, // Отправитель - платформа
-            'receiver_company_id' => $originalNote->receiver_company_id,
+            'sender_company_id' => $platformCompany->id,
+            'receiver_company_id' => $parentOrder->lessee_company_id,
             'delivery_from_id' => $originalNote->delivery_from_id,
             'delivery_to_id' => $originalNote->delivery_to_id,
             'cargo_description' => $originalNote->cargo_description,
@@ -266,9 +217,88 @@ class DeliveryNoteService
             'cargo_value' => $originalNote->cargo_value,
             'transport_type' => $originalNote->transport_type,
             'equipment_condition' => $originalNote->equipment_condition,
-            'status' => DeliveryNote::STATUS_DRAFT,
+            'status' => DeliveryNote::STATUS_IN_TRANSIT,
             'is_mirror' => true,
-            'original_note_id' => $originalNote->id
+            'visible_to_lessee' => true,
+            'original_note_id' => $originalNote->id,
+            'distance_km' => $originalNote->distance_km,
+            'calculated_cost' => $originalNote->calculated_cost,
+            'transport_driver_name' => $originalNote->transport_driver_name,
+            'transport_vehicle_model' => $originalNote->transport_vehicle_model,
+            'transport_vehicle_number' => $originalNote->transport_vehicle_number,
+            'driver_contact' => $originalNote->driver_contact,
+            'departure_time' => $originalNote->departure_time
         ]);
+
+        // Логируем успешное создание
+        \Log::info('Mirror note created successfully', [
+            'id' => $mirrorNote->id,
+            'document_number' => $mirrorNote->document_number,
+            'order_id' => $parentOrder->id,
+            'lessee_company_id' => $parentOrder->lessee_company_id
+        ]);
+
+        return $mirrorNote;
+    }
+
+    public function generatePdf(DeliveryNote $note): string
+    {
+        $pdf = app('dompdf.wrapper');
+
+        // Выбираем шаблон в зависимости от типа ТН
+        $template = $note->type === DeliveryNote::TYPE_PLATFORM_TO_LESSEE
+            ? 'documents.delivery-note-lessee'
+            : 'documents.delivery-note';
+
+        $pdf->loadView($template, [
+            'note' => $note,
+            'platform' => Platform::getMain(),
+            'currentDate' => now()->format('d.m.Y')
+        ]);
+
+        return $pdf->output();
+    }
+
+    public function processDeliveryNote(DeliveryNote $note): void
+    {
+
+         \Log::debug('Creating mirror note', [
+            'original_note_id' => $note->id,
+            'order_id' => $note->order_id,
+            'order_item_id' => $note->order_item_id,
+            'status' => DeliveryNote::STATUS_IN_TRANSIT,
+            'is_mirror' => true,
+            'visible_to_lessee' => true
+        ]);
+
+        // Создаем зеркальную накладную
+        $mirrorNote = $this->createMirrorNote($note);
+
+         // Логируем результат создания
+        \Log::debug('Mirror note created', [
+            'id' => $mirrorNote->id,
+            'document_number' => $mirrorNote->document_number,
+            'status' => $mirrorNote->status
+        ]);
+
+        // Обновляем статус позиции заказа
+        $orderItem = $note->orderItem;
+        $orderItem->update(['status' => OrderItem::STATUS_IN_DELIVERY]);
+
+        // Обновляем статус оборудования
+        app(EquipmentAvailabilityService::class)->bookEquipment(
+            $orderItem->equipment,
+            $note->departure_time->format('Y-m-d'),
+            $note->delivery_date ? $note->delivery_date->format('Y-m-d') : now()->addDays(3)->format('Y-m-d'),
+            $note->order_id,
+            EquipmentAvailability::STATUS_DELIVERY
+        );
+
+        // Обновляем статус заказа
+        $note->order->updateStatusBasedOnItems();
+
+        if ($parentOrder = $note->order->parentOrder) {
+            $parentOrder->updateStatusBasedOnItems();
+        }
     }
 }

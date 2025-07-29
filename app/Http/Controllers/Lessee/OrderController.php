@@ -60,7 +60,9 @@ class OrderController extends Controller
             $order->load([
                 'items.equipment.mainImage',
                 'items.equipment.company',
-                'items.deliveryNote',
+                'items.deliveryNote' => function ($query) {
+                    $query->where('visible_to_lessee', true); // Только видимые ТН
+                },
                 'items.deliveryFrom',
                 'items.deliveryTo',
                 'lessorCompany'

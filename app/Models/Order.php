@@ -473,17 +473,50 @@ class Order extends Model
 
     public function updateStatusBasedOnItems()
     {
-        if ($this->items->isEmpty()) return;
+        // Для родительских заказов проверяем дочерние элементы
+        $allItems = $this->isParent()
+            ? $this->childOrders->flatMap->items
+            : $this->items;
 
-        // Проверяем статусы всех позиций
-        $allInDelivery = $this->items->every(
-            fn($item) => $item->status === OrderItem::STATUS_IN_DELIVERY
-        );
-
-        if ($allInDelivery) {
-            $this->status = self::STATUS_IN_DELIVERY;
+        if ($allItems->isEmpty()) {
+            \Log::debug('No items found for order status update', ['order_id' => $this->id]);
+            return;
         }
 
-        $this->save();
+        $originalStatus = $this->status;
+        $itemStatuses = $allItems->pluck('status')->unique()->toArray();
+
+        // Логируем текущие статусы позиций
+        \Log::debug('Order item statuses', [
+            'order_id' => $this->id,
+            'statuses' => $itemStatuses
+        ]);
+
+        // Определяем новый статус заказа
+        if ($allItems->every(fn($i) => $i->status === OrderItem::STATUS_IN_DELIVERY)) {
+            $newStatus = self::STATUS_IN_DELIVERY;
+        }
+        elseif ($allItems->every(fn($i) => $i->status === OrderItem::STATUS_ACTIVE)) {
+            $newStatus = self::STATUS_ACTIVE;
+        }
+        elseif ($allItems->every(fn($i) => $i->status === OrderItem::STATUS_COMPLETED)) {
+            $newStatus = self::STATUS_COMPLETED;
+        }
+        else {
+            $newStatus = $this->status;
+        }
+
+        // Обновляем статус при изменении
+        if ($newStatus !== $this->status) {
+            $this->status = $newStatus;
+            $this->save();
+
+            \Log::info('Order status updated', [
+                'order_id' => $this->id,
+                'from' => $originalStatus,
+                'to' => $newStatus,
+                'reason' => 'item_status_change'
+            ]);
+        }
     }
 }

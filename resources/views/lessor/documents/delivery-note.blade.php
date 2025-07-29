@@ -57,6 +57,7 @@
                 {{ $note->cargo_description }}<br>
                 Вес: {{ $note->cargo_weight }} т,
                 Стоимость: {{ number_format($note->cargo_value, 2) }} руб
+                Состояние: {{ $note->equipment_condition }} <!-- Добавляем состояние груза -->
             </td>
         </tr>
 
@@ -70,7 +71,7 @@
             </td>
         </tr>
 
-        <tr>
+       <tr>
             <th>Пункт погрузки</th>
             <th>Пункт разгрузки</th>
             <th>Расстояние (км)</th>

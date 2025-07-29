@@ -10,6 +10,7 @@
         "bacon/bacon-qr-code": "^3.0",
         "barryvdh/laravel-dompdf": "^3.1",
         "diglactic/laravel-breadcrumbs": "^10.0",
+        "dompdf/dompdf": "^3.1",
         "fakerphp/faker": "^1.24",
         "guzzlehttp/guzzle": "^7.2",
         "laravel/framework": "^10.0",

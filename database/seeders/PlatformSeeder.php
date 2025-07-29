@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Company;
 use App\Models\Platform;
 use Illuminate\Database\Seeder;
 
@@ -9,8 +10,17 @@ class PlatformSeeder extends Seeder
 {
     public function run()
     {
-          try {
+        // Находим компанию платформы
+        $platformCompany = Company::where('is_platform', true)->first();
+
+        if (!$platformCompany) {
+            $this->command->error("Platform company not found. Please run CompaniesSeeder first.");
+            return;
+        }
+
+        try {
             Platform::updateOrCreate(['inn' => '9723125209'], [
+                'company_id' => $platformCompany->id, // Связываем платформу с компанией
                 'name' => 'Общество с ограниченной ответственностью «АНЛИМИТ ПАРТС»',
                 'short_name' => 'ООО «АНЛИМИТ ПАРТС»',
                 'inn' => '9723125209',
@@ -44,23 +54,22 @@ class PlatformSeeder extends Seeder
 
                 'notes' => 'Для отправки корреспонденции использовать фактический адрес',
             ]);
+            $this->command->info('Платформа успешно создана и связана с компанией!');
         } catch (\Exception $e) {
-        $this->command->error("Ошибка: " . $e->getMessage());
-         // Вывести длину критичных значений
-        $accounts = [
-            'correspondent' => '30101810745374525104',
-            'settlement' => '40702810301500108320'
-        ];
+            $this->command->error("Ошибка: " . $e->getMessage());
+            // Вывести длину критичных значений
+            $accounts = [
+                'correspondent' => '30101810745374525104',
+                'settlement' => '40702810301500108320'
+            ];
 
-        $this->command->table(
-            ['Поле', 'Длина'],
-            [
-                ['correspondent_account', strlen($accounts['correspondent'])],
-                ['settlement_account', strlen($accounts['settlement'])]
-            ]
-        );
-
-            $this->command->info('Платформа успешно создана!');
+            $this->command->table(
+                ['Поле', 'Длина'],
+                [
+                    ['correspondent_account', strlen($accounts['correspondent'])],
+                    ['settlement_account', strlen($accounts['settlement'])]
+                ]
+            );
         }
     }
 }
