@@ -65,7 +65,7 @@
             <!-- Мои заказы -->
             <li class="nav-item">
                 <a class="nav-link {{ Request::is('lessee/orders*') ? 'active' : '' }}"
-                href="{{ route('lessee.orders') }}">
+                href="{{ route('lessee.orders.index') }}">
                     <i class="fas fa-list me-2"></i> Мои заказы
                 </a>
             </li>
@@ -83,7 +83,7 @@
         @endif
     @endif
 
-        <!-- Общие пункты -->
+        <!-- АДМИН ПАНЕЛЬ -->
         <li class="nav-item">
             <a class="nav-link {{ Request::is('profile') ? 'active' : '' }}"
                href="{{ route('profile.edit') }}">
@@ -96,6 +96,19 @@
        
     </a>
 </li>
+
+<li class="nav-item">
+    <a class="nav-link" href="{{ route('admin.lessees.index') }}">
+        <i class="bi bi-people"></i> Арендаторы
+    </a>
+</li>
+
+<li class="nav-item">
+    <a class="nav-link" href="{{ route('admin.lessors.index') }}">
+        <i class="bi bi-people"></i> Арендодатели
+    </a>
+</li>
+
         <li class="nav-item">
             <a class="nav-link {{ Request::is('notifications') ? 'active' : '' }}"
                href="{{ route('notifications') }}">

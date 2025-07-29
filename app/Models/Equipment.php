@@ -175,6 +175,7 @@ class Equipment extends Model
 
     public function getDisplayPriceAttribute()
     {
+        
         if (!$this->rentalTerms->isEmpty()) {
             $term = $this->rentalTerms->first();
             $price = $term->price_per_hour;
@@ -183,7 +184,7 @@ class Equipment extends Model
             $pricingService = app(PricingService::class);
             $markup = $pricingService->getPlatformMarkup(
                 $this,
-                auth()->user()->company,
+                auth()->user()->company ,
                 1 // 1 час для расчета
             );
 
