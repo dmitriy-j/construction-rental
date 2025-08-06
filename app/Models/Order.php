@@ -378,8 +378,11 @@ class Order extends Model
 
     public function canBeActivated(): bool
     {
-        return $this->status === self::STATUS_CONFIRMED &&
-            now()->gte($this->start_date);
+        // Разрешаем активацию для статусов "Подтвержден" и "В пути"
+        $allowedStatuses = [self::STATUS_CONFIRMED, self::STATUS_IN_DELIVERY];
+
+        return in_array($this->status, $allowedStatuses) &&
+            now()->gte($this->start_date->startOfDay());
     }
 
     public function activationAvailableDate(): string

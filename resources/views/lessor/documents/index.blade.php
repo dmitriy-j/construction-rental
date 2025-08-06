@@ -1,82 +1,245 @@
 @extends('layouts.app')
+@php
+    use App\Models\DeliveryNote;
+    use App\Models\Waybill;
+    use App\Models\Contract;
+    use App\Models\CompletionAct;
+@endphp
 
 @section('content')
-<div class="container">
-    <h1>Транспортные накладные</h1>
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2 mb-0">
+            <i class="fas fa-file-alt text-primary me-2"></i>Документы
+        </h1>
 
-    <div class="alert alert-info mb-4">
-        <i class="fas fa-info-circle"></i> Отображаются только накладные по вашей технике
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link {{ $type === 'delivery_notes' ? 'active' : '' }}"
+                   href="{{ route('lessor.documents', ['type' => 'delivery_notes']) }}">
+                    Транспортные накладные
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ $type === 'waybills' ? 'active' : '' }}"
+                   href="{{ route('lessor.documents', ['type' => 'waybills']) }}">
+                    Путевые листы
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ $type === 'contracts' ? 'active' : '' }}"
+                   href="{{ route('lessor.documents', ['type' => 'contracts']) }}">
+                    Договоры
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ $type === 'completion_acts' ? 'active' : '' }}"
+                   href="{{ route('lessor.documents', ['type' => 'completion_acts']) }}">
+                    Акты выполненных работ
+                </a>
+            </li>
+        </ul>
     </div>
 
-    <div class="card">
-        <div class="card-body">
-            <table class="table table-hover">
-                <thead class="thead-light">
+    <div class="alert alert-info mb-4">
+        <i class="fas fa-info-circle me-2"></i>
+        @if($type === 'delivery_notes')
+            Отображаются транспортные накладные по вашей технике
+        @elseif($type === 'waybills')
+            Отображаются путевые листы по вашим заказам
+        @elseif($type === 'contracts')
+            Отображаются договоры с арендаторами
+        @elseif($type === 'completion_acts')
+            Отображаются акты выполненных работ
+        @endif
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
                     <tr>
-                        <th>№ документа</th>
-                        <th>Дата создания</th>
-                        <th>Заказ</th>
-                        <th>Получатель</th>
-                        <th>Статус</th>
-                        <th>Действия</th>
+                        @if($type === 'delivery_notes')
+                            <th class="py-3">№ документа</th>
+                            <th class="py-3">Дата создания</th>
+                            <th class="py-3">Заказ</th>
+                            <th class="py-3">Получатель</th>
+                            <th class="py-3">Статус</th>
+                            <th class="py-3 text-end">Действия</th>
+                        @elseif($type === 'waybills')
+                            <th class="py-3">ID</th>
+                            <th class="py-3">Оборудование</th>
+                            <th class="py-3">Дата</th>
+                            <th class="py-3">Смена</th>
+                            <th class="py-3">Заказ</th>
+                            <th class="py-3">Статус</th>
+                            <th class="py-3 text-end">Действия</th>
+                        @elseif($type === 'contracts')
+                            <th class="py-3">№ договора</th>
+                            <th class="py-3">Дата заключения</th>
+                            <th class="py-3">Арендатор</th>
+                            <th class="py-3">Статус</th>
+                            <th class="py-3 text-end">Действия</th>
+                        @elseif($type === 'completion_acts')
+                            <th class="py-3">№ акта</th>
+                            <th class="py-3">Дата подписания</th>
+                            <th class="py-3">Заказ</th>
+                            <th class="py-3">Арендатор</th>
+                            <th class="py-3 text-end">Действия</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($documents as $doc)
-                    <tr>
-                        <td>{{ $doc->document_number ?? 'Черновик #'.$doc->id }}</td>
-                        <td>{{ $doc->created_at->format('d.m.Y H:i') }}</td>
-                        <td>
-                            <a href="{{ route('lessor.orders.show', $doc->order_id) }}"
-                               class="text-primary font-weight-bold">
-                                Заказ #{{ $doc->order_id }}
-                            </a>
-                        </td>
-                        <td>
-                            {{ $doc->receiverCompany->legal_name ?? 'Платформа' }}
-                        </td>
-                        <td>
-                            <span class="badge
-                                @if($doc->status === \App\Models\DeliveryNote::STATUS_DRAFT) badge-warning
-                                @elseif($doc->status === \App\Models\DeliveryNote::STATUS_IN_TRANSIT) badge-info
-                                @elseif($doc->status === \App\Models\DeliveryNote::STATUS_DELIVERED) badge-success
-                                @else badge-secondary @endif">
-                                {{ \App\Models\DeliveryNote::statuses()[$doc->status] ?? $doc->status }}
-                            </span>
-                        </td>
-                        <td class="d-flex">
-                            @if($doc->status === \App\Models\DeliveryNote::STATUS_DRAFT)
-                                <a href="{{ route('lessor.delivery-notes.edit', $doc) }}"
-                                   class="btn btn-sm btn-warning mr-2" title="Заполнить данные">
-                                    <i class="fas fa-edit"></i>
+                        @if($type === 'delivery_notes')
+                        <tr>
+                            <td>{{ $doc->document_number ?? 'Черновик #'.$doc->id }}</td>
+                            <td>{{ $doc->created_at->format('d.m.Y H:i') }}</td>
+                            <td>
+                                <a href="{{ route('lessor.orders.show', $doc->order_id) }}"
+                                   class="text-primary fw-bold text-decoration-none">
+                                    Заказ #{{ $doc->order_id }}
                                 </a>
-                            @endif
+                            </td>
+                            <td>{{ $doc->receiverCompany->legal_name ?? 'Платформа' }}</td>
+                            <td>
+                                <span class="badge
+                                    @if($doc->status === DeliveryNote::STATUS_DRAFT) bg-warning
+                                    @elseif($doc->status === DeliveryNote::STATUS_IN_TRANSIT) bg-info
+                                    @elseif($doc->status === DeliveryNote::STATUS_DELIVERED) bg-success
+                                    @else bg-secondary @endif py-2 px-3 rounded-pill">
+                                    {{ DeliveryNote::statuses()[$doc->status] ?? $doc->status }}
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex justify-content-end gap-2">
+                                    @if($doc->status === DeliveryNote::STATUS_DRAFT)
+                                        <a href="{{ route('lessor.delivery-notes.edit', $doc) }}"
+                                           class="btn btn-sm btn-warning" title="Заполнить данные">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    @endif
 
-                            @if($doc->status !== \App\Models\DeliveryNote::STATUS_DRAFT)
-                                <div class="btn-group mr-2">
-                                    <a href="{{ route('delivery-notes.export.excel', $doc) }}"
-                                    class="btn btn-sm btn-success" title="Excel">
-                                        <i class="fas fa-file-excel"></i>
-                                    </a>
-                                    <a href="{{ route('delivery-notes.export.pdf', $doc) }}"
-                                    class="btn btn-sm btn-danger" title="PDF">
-                                        <i class="fas fa-file-pdf"></i>
+                                    @if($doc->status !== DeliveryNote::STATUS_DRAFT)
+                                        <div class="btn-group">
+                                            <a href="{{ route('delivery-notes.export.excel', $doc) }}"
+                                            class="btn btn-sm btn-success" title="Excel">
+                                                <i class="fas fa-file-excel"></i>
+                                            </a>
+                                            <a href="{{ route('delivery-notes.export.pdf', $doc) }}"
+                                            class="btn btn-sm btn-danger" title="PDF">
+                                                <i class="fas fa-file-pdf"></i>
+                                            </a>
+                                        </div>
+                                    @endif
+
+                                    <a href="{{ route('lessor.orders.show', $doc->order_id) }}"
+                                       class="btn btn-sm btn-outline-secondary" title="Перейти к заказу">
+                                        <i class="fas fa-external-link-alt"></i>
                                     </a>
                                 </div>
-                            @endif
+                            </td>
+                        </tr>
+                        @elseif($type === 'waybills')
+                        <tr>
+                            <td>#{{ $doc->id }}</td>
+                            <td>
+                                {{ $doc->equipment->title ?? 'Удаленное оборудование' }}
+                                @if($doc->equipment)
+                                    <div class="text-muted small">
+                                        {{ $doc->equipment->brand }} {{ $doc->equipment->model }}
+                                    </div>
+                                @endif
+                            </td>
+                            <td>{{ $doc->work_date->format('d.m.Y') }}</td>
+                            <td>
+                                @if($doc->shift === Waybill::SHIFT_DAY)
+                                    <span class="badge bg-info py-2 px-3 rounded-pill">Дневная</span>
+                                @else
+                                    <span class="badge bg-dark py-2 px-3 rounded-pill">Ночная</span>
+                                @endif
+                            </td>
+                            <td>
+                                <a href="{{ route('lessor.orders.show', $doc->order_id) }}"
+                                   class="text-primary fw-bold text-decoration-none">
+                                    Заказ #{{ $doc->order_id }}
+                                </a>
+                            </td>
+                            <td>
+                                @if($doc->status === Waybill::STATUS_COMPLETED)
+                                    <span class="badge bg-success py-2 px-3 rounded-pill">Завершен</span>
+                                @else
+                                    <span class="badge bg-warning py-2 px-3 rounded-pill">Активен</span>
+                                @endif
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex justify-content-end gap-2">
+                                    <a href="{{ route('lessor.waybills.show', $doc) }}"
+                                       class="btn btn-sm btn-outline-primary"
+                                       title="Просмотреть детали">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
 
-                            <a href="{{ route('lessor.orders.show', $doc->order_id) }}"
-                               class="btn btn-sm btn-outline-secondary" title="Перейти к заказу">
-                                <i class="fas fa-external-link-alt"></i>
-                            </a>
-                        </td>
-                    </tr>
+                                    <a href="{{ route('lessor.orders.show', $doc->order_id) }}"
+                                       class="btn btn-sm btn-outline-secondary"
+                                       title="Перейти к заказу">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        @elseif($type === 'contracts')
+                        <tr>
+                            <td>{{ $doc->contract_number }}</td>
+                            <td>{{ $doc->created_at->format('d.m.Y') }}</td>
+                            <td>{{ $doc->lesseeCompany->legal_name ?? 'Нет данных' }}</td>
+                            <td>
+                                <span class="badge bg-{{ $doc->is_active ? 'success' : 'secondary' }} py-2 px-3 rounded-pill">
+                                    {{ $doc->is_active ? 'Активен' : 'Завершен' }}
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <a href="{{ route('documents.download', ['id' => $doc->id, 'type' => 'contracts']) }}"
+                                   class="btn btn-sm btn-outline-primary">
+                                   <i class="fas fa-download"></i> Скачать
+                                </a>
+                            </td>
+                        </tr>
+                        @elseif($type === 'completion_acts')
+                        <tr>
+                            <td>АВР-{{ $doc->id }}</td>
+                            <td>{{ $doc->signed_at?->format('d.m.Y') ?? 'Не подписан' }}</td>
+                            <td>
+                                <a href="{{ route('lessor.orders.show', $doc->order_id) }}"
+                                   class="text-primary fw-bold text-decoration-none">
+                                    Заказ #{{ $doc->order_id }}
+                                </a>
+                            </td>
+                            <td>{{ $doc->order->lesseeCompany->legal_name ?? 'Нет данных' }}</td>
+                            <td class="text-end">
+                                <a href="{{ route('documents.download', ['id' => $doc->id, 'type' => 'completion_acts']) }}"
+                                   class="btn btn-sm btn-outline-primary">
+                                   <i class="fas fa-download"></i> Скачать
+                                </a>
+                            </td>
+                        </tr>
+                        @endif
                     @empty
                     <tr>
-                        <td colspan="6" class="text-center py-4">
+                        <td colspan="{{ $type === 'completion_acts' ? 5 : 7 }}" class="text-center py-5">
                             <div class="text-muted">
-                                <i class="fas fa-file-alt fa-2x mb-3"></i>
-                                <p>Накладные отсутствуют</p>
+                                <i class="fas fa-file-alt fa-3x mb-3"></i>
+                                <p class="h5">
+                                    @if($type === 'delivery_notes')
+                                        Транспортные накладные отсутствуют
+                                    @elseif($type === 'waybills')
+                                        Путевые листы отсутствуют
+                                    @elseif($type === 'contracts')
+                                        Договоры отсутствуют
+                                    @else
+                                        Акты выполненных работ отсутствуют
+                                    @endif
+                                </p>
                             </div>
                         </td>
                     </tr>
@@ -84,11 +247,70 @@
                 </tbody>
             </table>
         </div>
+
         @if($documents->hasPages())
-        <div class="card-footer bg-white">
-            {{ $documents->appends(['type' => request('type')])->links() }}
+        <div class="card-footer bg-white border-0">
+            <div class="d-flex justify-content-center">
+                {{ $documents->appends(['type' => $type])->links() }}
+            </div>
         </div>
         @endif
     </div>
 </div>
 @endsection
+
+@push('styles')
+<style>
+    .table th {
+        font-weight: 600;
+        background-color: #f8f9fa;
+    }
+    .card {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .nav-tabs .nav-link {
+        border: 1px solid transparent;
+        border-bottom: none;
+        border-top-left-radius: 0.25rem;
+        border-top-right-radius: 0.25rem;
+        padding: 0.75rem 1.25rem;
+    }
+    .nav-tabs .nav-link.active {
+        color: #0d6efd;
+        background-color: #fff;
+        border-color: #dee2e6 #dee2e6 #fff;
+    }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+$(document).ready(function() {
+    // Инициализация всплывающих подсказок
+    $('[data-toggle="tooltip"]').tooltip();
+
+    // Автоматическое обновление статуса документов
+    @if(in_array($type, ['delivery_notes', 'waybills']))
+    setInterval(function() {
+        $.ajax({
+            url: "{{ route('lessor.documents.status-update') }}",
+            type: "GET",
+            data: { type: "{{ $type }}" },
+            success: function(data) {
+                // Обновляем только статусы документов
+                data.forEach(function(doc) {
+                    const badge = $(`#status-badge-${doc.id}`);
+                    if (badge.length) {
+                        badge.removeClass('bg-warning bg-info bg-success bg-secondary')
+                              .addClass('bg-' + doc.status_color)
+                              .text(doc.status_text);
+                    }
+                });
+            }
+        });
+    }, 30000); // Каждые 30 секунд
+    @endif
+});
+</script>
+@endpush

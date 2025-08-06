@@ -14,7 +14,6 @@ use App\Http\Controllers\Lessor\DashboardController as LessorDashboardController
 use App\Http\Controllers\Lessor\LessorOrderController as LessorOrders;
 use App\Http\Controllers\Lessee\DashboardController as LesseeDashboardController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\NewsController;
 use App\Http\Controllers\Admin\AdminNewsController;
 use App\Http\Controllers\Admin\AdminEquipmentController;
 use App\Http\Controllers\Admin\AdminLesseeController;
@@ -91,6 +90,22 @@ Route::prefix('lessor')
                 'destroy' => 'lessor.equipment.destroy'
             ]);
 
+            // Операторы
+        Route::prefix('operators')->name('lessor.operators.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Lessor\OperatorController::class, 'index'])
+                ->name('index');
+            Route::get('/create', [\App\Http\Controllers\Lessor\OperatorController::class, 'create'])
+                ->name('create');
+            Route::post('/', [\App\Http\Controllers\Lessor\OperatorController::class, 'store'])
+                ->name('store');
+            Route::get('/{operator}/edit', [\App\Http\Controllers\Lessor\OperatorController::class, 'edit'])
+                ->name('edit');
+            Route::put('/{operator}', [\App\Http\Controllers\Lessor\OperatorController::class, 'update'])
+                ->name('update');
+            Route::delete('/{operator}', [\App\Http\Controllers\Lessor\OperatorController::class, 'destroy'])
+                ->name('destroy');
+        });
+
         // Заказы
         Route::get('/orders', [LessorOrders::class, 'index'])->name('lessor.orders'); // Обновлено
         Route::get('/orders/{order}', [LessorOrders::class, 'show'])->name('lessor.orders.show'); // Обновлено
@@ -108,8 +123,25 @@ Route::prefix('lessor')
         Route::get('/documents', [DocumentController::class, 'index'])->name('lessor.documents');
         Route::get('/documents/download/{id}/{type}', [DocumentController::class, 'download'])->name('lessor.documents.download');
         Route::get('/documents/download/{id}/{type}', [DocumentController::class, 'download'])->name('documents.download')->middleware('auth');
+        Route::prefix('waybills')->name('lessor.waybills.')->group(function () {
+             Route::get('/order/{order}', [\App\Http\Controllers\Lessor\WaybillController::class, 'index'])
+                ->name('index'); // Теперь имя: lessor.waybills.index
 
+            Route::get('/{waybill}', [\App\Http\Controllers\Lessor\WaybillController::class, 'show'])
+                ->name('show');
 
+            Route::put('/{waybill}', [\App\Http\Controllers\Lessor\WaybillController::class, 'update'])
+                ->name('update');
+
+            Route::post('/{waybill}/sign', [\App\Http\Controllers\Lessor\WaybillController::class, 'sign'])
+                ->name('sign');
+
+            Route::get('/{waybill}/download', [\App\Http\Controllers\Lessor\WaybillController::class, 'download'])
+                ->name('download');
+        });
+
+        Route::get('/lessor/documents/status-update', [DocumentController::class, 'statusUpdate'])
+         ->name('lessor.documents.status-update');
 
         // Документы для заказов
         Route::post('/orders/{order}/delivery-note', [DocumentController::class, 'createDeliveryNote'])->name('lessor.orders.createDeliveryNote');
@@ -173,8 +205,8 @@ Route::prefix('lessee')
         Route::post('/checkout', [CheckoutController::class, 'checkout'])->name('checkout');
     });
 
-// Загрузка УПД (общий доступ)
-Route::get('/orders/{order}/upd/{type}', [OrderController::class, 'downloadUPDF']);
+    // Загрузка УПД (общий доступ)
+    Route::get('/orders/{order}/upd/{type}', [OrderController::class, 'downloadUPDF']);
 
 
     //Для перевозчика
@@ -203,7 +235,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/lessors/{lessor}/orders/{order}', [AdminLessorController::class, 'showOrder'])->name('admin.lessors.orders.show');
     Route::put('/equipment/{equipment}', [AdminEquipmentController::class, 'update'])->name('admin.equipment.update');
     Route::resource('orders', OrdersController::class);
-    Route::resource('news', AdminNewsController::class)->names([
+    Route::resource('news', \App\Http\Controllers\Admin\AdminNewsController::class)->names([
         'index' => 'admin.news.index',
         'create' => 'admin.news.create',
         'store' => 'admin.news.store',

@@ -108,23 +108,24 @@
                                     </td>
                                     <td class="text-end">{{ number_format($item->base_price, 2) }} ₽</td>
                                     <td class="text-end">{{ number_format($item->base_price * $item->period_count, 2) }} ₽</td>
-                                    <td class="text-center">
-                                        @if($item->delivery_cost > 0)
-                                            <button type="button" class="btn btn-sm btn-outline-primary"
-                                                    data-bs-toggle="popover"
-                                                    data-bs-title="Детали доставки"
-                                                    data-bs-content="
-                                                        <div><strong>От:</strong> {{ $item->deliveryFrom->short_address ?? 'N/A' }}</div>
-                                                        <div><strong>До:</strong> {{ $item->deliveryTo->short_address ?? 'N/A' }}</div>
-                                                        <div class='mt-2'><strong>Стоимость:</strong> {{ number_format($item->delivery_cost, 2) }} ₽</div>
-                                                    ">
+                                        <td class="text-center">
+                                            @if($item->delivery_cost > 0)
+                                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                                        data-bs-toggle="popover"
+                                                        data-delivery-from="{{ $item->deliveryFrom->short_address ?? 'N/A' }}"
+                                                        data-delivery-to="{{ $item->deliveryTo->short_address ?? 'N/A' }}"
+                                                        data-delivery-cost="{{ number_format($item->delivery_cost, 2) }}">
                                                 <i class="bi bi-truck"></i>
                                                 {{ number_format($item->delivery_cost, 2) }} ₽
-                                            </button>
-                                        @else
-                                            <span class="badge bg-secondary">Самовывоз</span>
-                                        @endif
-                                    </td>
+                                                </button>
+                                            @else
+                                                <span class="badge bg-secondary">Самовывоз</span>
+                                            @endif
+                                        </td>
+                                        <!-- Скрытый элемент для передачи данных в JS -->
+                                        <div id="cart-data"
+                                            data-remove-selected-route="{{ route('cart.remove-selected') }}">
+                                        </div>
                                     <td class="text-end fw-bold">
                                         {{ number_format(($item->base_price * $item->period_count) + $item->delivery_cost, 2) }} ₽
                                     </td>
@@ -183,58 +184,7 @@
         </div>
     @endif
 </div>
-
-<!-- Скрытый элемент для передачи данных в JS -->
-<div id="cart-data"
-     data-remove-selected-route="{{ route('cart.remove-selected') }}"
-     data-csrf-token="{{ csrf_token() }}">
-</div>
-
 @endsection
-
-@push('scripts')
-    @vite(['resources/js/cart/index.js'])
-
-    <script>
-        // Инициализация popover для деталей доставки
-        document.addEventListener('DOMContentLoaded', function() {
-            const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]')
-            const popoverList = [...popoverTriggerList].map(popoverTriggerEl => {
-                return new bootstrap.Popover(popoverTriggerEl, {
-                    html: true,
-                    trigger: 'hover focus'
-                })
-            });
-
-            // Обработка оформления заказа
-            const checkoutForm = document.getElementById('checkout-form');
-            if (checkoutForm) {
-                checkoutForm.addEventListener('submit', function(e) {
-                    // Собираем выбранные элементы
-                    const selectedItems = Array.from(document.querySelectorAll('.item-checkbox:checked'))
-                        .map(checkbox => checkbox.value);
-
-                    // Записываем в скрытое поле
-                    document.getElementById('selected-items').value = JSON.stringify(selectedItems);
-
-                    // Если ничего не выбрано, отменяем отправку
-                    if (selectedItems.length === 0) {
-                        e.preventDefault();
-                        alert('Пожалуйста, выберите хотя бы один элемент для оформления заказа.');
-                    }
-                });
-            }
-
-            // Обработчик для чекбокса "Выбрать все"
-            document.getElementById('select-all').addEventListener('change', function() {
-                const checkboxes = document.querySelectorAll('.item-checkbox');
-                checkboxes.forEach(checkbox => {
-                    checkbox.checked = this.checked;
-                });
-            });
-        });
-    </script>
-@endpush
 
 @push('styles')
 <style>

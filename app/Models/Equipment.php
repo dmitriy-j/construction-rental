@@ -242,5 +242,33 @@ class Equipment extends Model
         );
     }
 
+   public function activeOperator()
+    {
+        return $this->belongsTo(Operator::class, 'operator_id')
+                    ->where('is_active', true);
+    }
+
+    public function getActiveOperatorAttribute()
+    {
+        return $this->activeOperator()->first();
+    }
+
+    public function operators(): HasMany
+    {
+        return $this->hasMany(Operator::class);
+    }
+
+    public function operator()
+    {
+        return $this->belongsTo(Operator::class);
+    }
+
+    public function hasActiveOperator()
+    {
+        return $this->operator_id !== null &&
+            $this->operator &&
+            $this->operator->is_active;
+    }
+
 
 }

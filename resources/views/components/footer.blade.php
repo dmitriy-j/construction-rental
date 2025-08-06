@@ -1,40 +1,65 @@
-<footer class="bg-dark text-white py-5">
-  <div class="container">
-    <div class="row">
-      <!-- Контакты -->
-      <div class="col-md-4 mb-4">
-        <h5><i class="bi bi-geo-alt"></i> Адрес</h5>
-        <p>г. Москва, ул. Строителей, 12</p>
-        
-        <h5 class="mt-4"><i class="bi bi-telephone"></i> Телефон</h5>
-        <p>+7 (495) 123-45-67</p>
-      </div>
+<footer class="site-footer">
+    <div class="container">
+        <div class="footer-grid">
+            <div class="footer-column">
+                <div class="footer-logo">
+                    <div class="logo-main">ФАП</div>
+                    <div class="logo-subtitle">Федеральная Арендная Платформа</div>
+                </div>
+                <div class="footer-about">
+                    <p>Платформа для аренды строительной техники №1 в России</p>
+                </div>
+                <div class="footer-social">
+                    <a href="#" class="social-link"><i class="bi bi-telegram"></i></a>
+                    <a href="#" class="social-link"><i class="bi bi-whatsapp"></i></a>
+                    <a href="#" class="social-link"><i class="bi bi-vk"></i></a>
+                    <a href="#" class="social-link"><i class="bi bi-youtube"></i></a>
+                </div>
+            </div>
 
-      <!-- Соцсети -->
-      <div class="col-md-4 mb-4">
-        <h5>Мы в соцсетях</h5>
-        <div class="social-links">
-          <a href="#" class="text-white me-3"><i class="bi bi-telegram fs-4"></i></a>
-          <a href="#" class="text-white me-3"><i class="bi bi-whatsapp fs-4"></i></a>
-          <a href="#" class="text-white"><i class="bi bi-vk fs-4"></i></a>
+            <div class="footer-column">
+                <h5 class="footer-title">Разделы</h5>
+                <ul class="footer-links">
+                    <li><a href="/about">О компании</a></li>
+                    <li><a href="/catalog">Каталог техники</a></li>
+                    <li><a href="/requests">Заявки</a></li>
+                    <li><a href="/free">Свободная техника</a></li>
+                    <li><a href="/repair">Ремонт</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-column">
+                <h5 class="footer-title">Помощь</h5>
+                <ul class="footer-links">
+                    <li><a href="/faq">FAQ</a></li>
+                    <li><a href="/support">Техподдержка</a></li>
+                    <li><a href="/docs">Документация</a></li>
+                    <li><a href="/policy">Политика конфиденциальности</a></li>
+                    <li><a href="/terms">Условия использования</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-column">
+                <h5 class="footer-title">Контакты</h5>
+                <ul class="footer-contacts">
+                    <li><i class="bi bi-geo-alt"></i> г. Москва, ул. Строителей, 12</li>
+                    <li><i class="bi bi-telephone"></i> +7 (495) 123-45-67</li>
+                    <li><i class="bi bi-envelope"></i> info@fap-rental.ru</li>
+                    <li><i class="bi bi-clock"></i> Пн-Пт: 9:00-18:00</li>
+                </ul>
+            </div>
         </div>
-      </div>
 
-      <!-- Быстрые ссылки -->
-      <div class="col-md-4 mb-4">
-        <h5>Разделы</h5>
-        <ul class="list-unstyled">
-          <li><a href="/about" class="text-white text-decoration-none">О компании</a></li>
-          <li><a href="/catalog" class="text-white text-decoration-none">Каталог</a></li>
-          <li><a href="/contacts" class="text-white text-decoration-none">Контакты</a></li>
-        </ul>
-      </div>
+        <div class="footer-bottom">
+            <div class="copyright">
+                &copy; 2023 ФАП. Все права защищены.
+            </div>
+            <div class="footer-lang">
+                <select class="form-select">
+                    <option>Русский</option>
+                    <option>English</option>
+                </select>
+            </div>
+        </div>
     </div>
-
-    <hr class="my-4 bg-secondary">
-
-    <div class="text-center">
-      <small>© 2023 <strong>RentTech</strong>. Все права защищены.</small>
-    </div>
-  </div>
 </footer>

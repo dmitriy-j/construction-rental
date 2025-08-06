@@ -1,163 +1,73 @@
-document.addEventListener('DOMContentLoaded', function() {
-    const cartData = document.getElementById('cart-data');
-    if (!cartData) return;
+// Уберите импорт Modal, так как он вызывает проблемы
+export function initCart() {
+  console.log('Cart module initialization');
 
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-    const removeSelectedRoute = cartData.dataset.removeSelectedRoute;
+  // Переместите все функции выше вызова
+  const getSelectedItems = () => {
+    return [...document.querySelectorAll('.item-checkbox:checked')].map(el => el.value);
+  };
 
-    // 1. Обработка "Выбрать все"
+  function initSelectAll() {
     const selectAll = document.getElementById('select-all');
-    const checkboxes = document.querySelectorAll('.item-checkbox');
+    if (!selectAll) return;
 
-    if (selectAll) {
-        selectAll.addEventListener('change', function() {
-            checkboxes.forEach(checkbox => checkbox.checked = this.checked);
-        });
+    selectAll.addEventListener('change', function() {
+      document.querySelectorAll('.item-checkbox').forEach(checkbox => {
+        checkbox.checked = this.checked;
+      });
+    });
 
-        checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                selectAll.checked = [...checkboxes].every(cb => cb.checked);
-            });
-        });
-    }
+    document.addEventListener('change', function(e) {
+      if (e.target.classList.contains('item-checkbox')) {
+        const checkboxes = document.querySelectorAll('.item-checkbox');
+        const allChecked = checkboxes.length > 0 &&
+                          [...checkboxes].every(cb => cb.checked);
+        selectAll.checked = allChecked;
+      }
+    });
+  }
 
-    // 2. Удаление выбранных с модальным окном
+  function initRemoveSelected() {
     const removeSelectedBtn = document.getElementById('remove-selected');
-    if (removeSelectedBtn) {
-        removeSelectedBtn.addEventListener('click', function() {
-            const selected = Array.from(document.querySelectorAll('.item-checkbox:checked'))
-                .map(checkbox => checkbox.value);
+    if (!removeSelectedBtn) return;
 
-            if (selected.length === 0) {
-                alert('Выберите хотя бы один элемент');
-                return;
-            }
+    removeSelectedBtn.addEventListener('click', function() {
+      const selected = getSelectedItems();
 
-            // Создаем модальное окно
-            const modalHtml = `
-                <div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="confirmationModalLabel">Подтверждение удаления</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                            <div class="modal-body">
-                                Вы уверены, что хотите удалить ${selected.length} выбранных позиций?
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                                <button type="button" class="btn btn-danger" id="confirm-delete">Удалить</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
+      if (selected.length === 0) {
+        alert('Выберите хотя бы один элемент');
+        return;
+      }
 
-            // Добавляем модальное окно в DOM
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
-            const modal = new bootstrap.Modal(document.getElementById('confirmationModal'));
-            modal.show();
+      if (confirm(`Вы уверены, что хотите удалить ${selected.length} выбранных позиций?`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = document.getElementById('cart-data').dataset.removeSelectedRoute;
+        form.innerHTML = `
+          <input type="hidden" name="_token" value="${document.getElementById('cart-data').dataset.csrfToken}">
+          <input type="hidden" name="_method" value="DELETE">
+          <input type="hidden" name="items" value="${JSON.stringify(selected)}">
+        `;
+        document.body.appendChild(form);
+        form.submit();
+      }
+    });
+  }
 
-            // Обработчик подтверждения удаления
-            document.getElementById('confirm-delete').addEventListener('click', async function() {
-                modal.hide();
+  function initPopovers() {
+    const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+    popoverTriggerList.forEach(popoverTriggerEl => {
+      new bootstrap.Popover(popoverTriggerEl, {
+        html: true,
+        trigger: 'hover focus'
+      });
+    });
+  }
 
-                try {
-                    const response = await fetch(removeSelectedRoute, {
-                        method: 'DELETE',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken,
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify({ items: selected })
-                    });
+  // Вызов функций
+  initSelectAll();
+  initRemoveSelected();
+  initPopovers();
 
-                    const data = await response.json();
-
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        throw new Error(data.message || 'Server error');
-                    }
-                } catch (error) {
-                    console.error('Ошибка:', error);
-                    alert(`Ошибка: ${error.message}`);
-                }
-
-                // Удаляем модальное окно из DOM после использования
-                document.getElementById('confirmationModal').remove();
-            });
-
-            // Удаляем модальное окно при закрытии
-            document.getElementById('confirmationModal').addEventListener('hidden.bs.modal', function() {
-                this.remove();
-            });
-        });
-    }
-
-    // 3. Обновление дат
-    const dateForm = document.getElementById('bulk-form');
-    if (dateForm) {
-        dateForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            const selectedItems = Array.from(document.querySelectorAll('.item-checkbox:checked'))
-                .map(checkbox => checkbox.value);
-
-            const formData = new FormData(this);
-            formData.append('selected_items', JSON.stringify(selectedItems));
-
-            try {
-                const response = await fetch(this.action, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json'
-                    },
-                    body: formData
-                });
-
-                if (response.ok) {
-                    location.reload();
-                } else {
-                    const error = await response.json();
-                    throw new Error(error.message || 'Ошибка обновления дат');
-                }
-            } catch (error) {
-                console.error('Ошибка:', error);
-                alert(`Ошибка: ${error.message}`);
-            }
-        });
-    }
-
-    // 4. Оформление заказа - критически важное исправление
-    const checkoutForm = document.getElementById('checkout-form');
-    if (checkoutForm) {
-        checkoutForm.addEventListener('submit', function(e) {
-            // Собираем выбранные элементы
-            const selectedItems = Array.from(document.querySelectorAll('.item-checkbox:checked'))
-                .map(checkbox => checkbox.value);
-
-            // Создаем скрытое поле для передачи данных
-            let selectedItemsInput = document.getElementById('selected-items');
-            if (!selectedItemsInput) {
-                selectedItemsInput = document.createElement('input');
-                selectedItemsInput.type = 'hidden';
-                selectedItemsInput.name = 'selected_items';
-                selectedItemsInput.id = 'selected-items';
-                checkoutForm.appendChild(selectedItemsInput);
-            }
-
-            // Записываем значение как JSON-строку
-            selectedItemsInput.value = JSON.stringify(selectedItems);
-
-            // Если ничего не выбрано, отменяем отправку
-            if (selectedItems.length === 0) {
-                e.preventDefault();
-                alert('Пожалуйста, выберите хотя бы один элемент для оформления заказа.');
-            }
-        });
-    }
-});
+  console.log('Cart module initialized');
+}

@@ -58,80 +58,124 @@ class DocumentController extends Controller
         return response()->json($act, 201);
     }
 
-    public function index(Request $request)
+
+   public function index(Request $request)
     {
         $user = auth()->user();
-        $type = $request->query('type', 'contracts');
+        $type = $request->input('type');
 
-        $query = match($type) {
-            'contracts' => Contract::query(),
-            'waybills' => Waybill::query(),
-            'delivery_notes' => DeliveryNote::query(),
-            'completion_acts' => CompletionAct::query(),
-        };
+        // Для арендодателя: тип по умолчанию - путевые листы
+        // Для арендатора: тип по умолчанию - транспортные накладные
+        if (!$type) {
+            $type = $user->company->is_lessor ? 'waybills' : 'delivery_notes';
+        }
 
-        \Log::debug('DocumentController index', [
+        \Log::debug('Document access', [
             'user_id' => $user->id,
             'company_id' => $user->company_id,
-            'type' => $type,
-            'is_lessee' => $user->isLessee()
+            'requested_type' => $type
         ]);
 
-        // Фильтрация для транспортных накладных
-        if ($type === 'delivery_notes') {
-            if ($user->isLessee()) {
-                $query->where('is_mirror', true)
-                    ->where('visible_to_lessee', true)
-                    ->where('status', DeliveryNote::STATUS_IN_TRANSIT)
-                    ->whereHas('parentOrder', fn($q) => $q->where('lessee_company_id', $user->company_id)); // Исправлено!
-
-                \Log::debug('Delivery notes filter for lessee', [
-                    'conditions' => [
-                        'is_mirror' => true,
-                        'visible_to_lessee' => true,
-                        'status' => DeliveryNote::STATUS_IN_TRANSIT,
-                        'lessee_company_id' => $user->company_id
-                    ]
-                ]);
-            }
-            elseif ($user->isLessor()) {
-                $query->where('is_mirror', false)
-                    ->whereHas('order', fn($q) => $q->where('lessor_company_id', $user->company_id));
-            }
-        }
-        else {
-            // Для других типов документов применяем общий фильтр
-            if ($user->isLessee()) {
-                $query->whereHas('order', fn($q) => $q->where('lessee_company_id', $user->company_id));
-            } else {
-                $query->whereHas('order', fn($q) => $q->where('lessor_company_id', $user->company_id));
-            }
-        }
-
-        // Применяем сортировку ПОСЛЕ всех условий фильтрации
-        $query->orderBy('created_at', 'desc');
-
-        // Жадная загрузка отношений
-        $query->with([
-            'order.lesseeCompany',
-            'order.lessorCompany',
-            'senderCompany',
-            'receiverCompany',
-            'orderItem'
-        ]);
-
-        // Для отладки
-        if (config('app.debug')) {
-            $sql = $query->toSql();
-            $bindings = $query->getBindings();
-            \Log::debug('Final SQL query', ['sql' => $sql, 'bindings' => $bindings]);
-        }
-
-        $documents = $query->paginate(10);
-        \Log::debug('Documents found', ['count' => $documents->count()]);
-
+        $query = null;
         $userType = $user->company->is_lessor ? 'lessor' : 'lessee';
+
+        switch ($type) {
+            case 'delivery_notes':
+                $query = DeliveryNote::with([
+                    'order.lesseeCompany',
+                    'order.lessorCompany',
+                    'senderCompany',
+                    'receiverCompany',
+                    'orderItem'
+                ]);
+
+                // Фильтрация для арендатора
+                if ($userType === 'lessee') {
+                    $query->where('receiver_company_id', $user->company_id);
+                }
+                // Фильтрация для арендодателя
+                else {
+                    $query->where('sender_company_id', $user->company_id);
+                }
+                break;
+
+            case 'waybills':
+                // Только для арендодателей!
+                if ($userType !== 'lessor') {
+                    abort(403, 'Доступ запрещен');
+                }
+
+                $query = Waybill::with([
+                    'order.lesseeCompany',
+                    'order.lessorCompany',
+                    'operator',
+                    'equipment'
+                ])->whereHas('order', function($q) use ($user) {
+                    $q->where('lessor_company_id', $user->company_id);
+                });
+                break;
+
+            case 'contracts':
+                // Только для арендодателей!
+                if ($userType !== 'lessor') {
+                    abort(403, 'Доступ запрещен');
+                }
+
+                $query = Contract::with(['lesseeCompany', 'lessorCompany'])
+                    ->where('lessor_company_id', $user->company_id);
+                break;
+
+            case 'completion_acts':
+                // Только для арендодателей!
+                if ($userType !== 'lessor') {
+                    abort(403, 'Доступ запрещен');
+                }
+
+                $query = CompletionAct::with('order.lesseeCompany')
+                    ->whereHas('order', function($q) use ($user) {
+                        $q->where('lessor_company_id', $user->company_id);
+                    });
+                break;
+
+            default:
+                abort(404, 'Неизвестный тип документов');
+        }
+
+        // Пагинация
+        $documents = $query->paginate(10);
+
+        \Log::debug('Documents loaded', [
+            'type' => $type,
+            'count' => $documents->count(),
+            'userType' => $userType
+        ]);
+
         return view("{$userType}.documents.index", compact('documents', 'type', 'userType'));
+    }
+
+    public function statusUpdate(Request $request)
+    {
+        $type = $request->input('type');
+        $user = auth()->user();
+
+        $documents = match($type) {
+            'delivery_notes' => DeliveryNote::whereHas('order', fn($q) => $q->where('lessor_company_id', $user->company_id))
+                                ->whereIn('status', [DeliveryNote::STATUS_DRAFT, DeliveryNote::STATUS_IN_TRANSIT])
+                                ->get(),
+            'waybills' => Waybill::whereHas('order', fn($q) => $q->where('lessor_company_id', $user->company_id))
+                        ->whereIn('status', [Waybill::STATUS_CREATED, Waybill::STATUS_IN_PROGRESS])
+                        ->get(),
+            default => collect(),
+        };
+
+        return response()->json($documents->map(function($doc) {
+            return [
+                'id' => $doc->id,
+                'status' => $doc->status,
+                'status_text' => $doc->status_text,
+                'status_color' => $doc->status_color,
+            ];
+        }));
     }
 
     public function download($id, $type)

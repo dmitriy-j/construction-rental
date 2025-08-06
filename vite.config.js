@@ -1,31 +1,22 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
-import path from 'path';
 
 export default defineConfig({
     plugins: [
         laravel({
             input: [
-                'resources/css/app.css',
+                'resources/sass/app.scss',
+                'resources/sass/sidebar.scss',
+                'resources/sass/footer.scss',
+                'resources/sass/navbar.scss',
                 'resources/js/app.js',
-
+                'resources/js/sidebar.js',
+                'resources/js/theme.js',
+                'resources/js/ripple.js',
+                'resources/js/cart/index.js'
+                /*'resources/js/catalog/show.js'*/
             ],
             refresh: true,
         }),
     ],
-    resolve: {
-        alias: {
-            '@': path.resolve(__dirname, 'resources/js'),
-        }
-    },
-    build: {
-        manifest: true,
-        rollupOptions: {
-            output: {
-                entryFileNames: `assets/[name].js`,
-                chunkFileNames: `assets/[name].js`,
-                assetFileNames: `assets/[name].[ext]`
-            }
-        }
-    }
 });

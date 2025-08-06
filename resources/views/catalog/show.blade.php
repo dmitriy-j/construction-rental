@@ -1,5 +1,21 @@
 @extends('layouts.app')
 
+@section('body-class', 'catalog-show-page')
+
+@php
+use Illuminate\Support\Str;
+
+// Исправление путей к изображениям
+$equipment->images->transform(function($image) {
+    if (Str::startsWith($image->path, 'http')) {
+        $image->storage_path = $image->path;
+    } else {
+        $image->storage_path = asset('storage/' . $image->path);
+    }
+    return $image;
+});
+@endphp
+
 @section('content')
 <div class="container py-5">
     <div class="row">
@@ -7,7 +23,7 @@
         <div class="col-md-6">
             <div class="mb-3">
                 @if($equipment->images->first())
-                    <img src="{{ asset('storage/' . $equipment->images->first()->path) }}"
+                    <img src="{{ $equipment->images->first()->storage_path }}"
                          class="img-fluid rounded"
                          style="max-height: 400px; width: 100%; object-fit: cover;">
                 @endif
@@ -15,7 +31,7 @@
             <div class="row">
                 @foreach($equipment->images as $image)
                     <div class="col-3 mb-3">
-                        <img src="{{ asset('storage/' . $image->path) }}"
+                        <img src="{{ $image->storage_path }}"
                              class="img-thumbnail"
                              style="height: 100px; width: 100%; object-fit: cover;">
                     </div>
@@ -93,16 +109,15 @@
                 </div>
             @endif
 
-            <!-- Форма добавления в корзину -->
-            @if($equipment->rentalTerms->isNotEmpty())
-                <h5>Условия аренды</h5>
-                @foreach($equipment->rentalTerms as $term)
-                <div class="card mb-3">
-                    <div class="card-body">
+             <!-- Форма добавления в корзину -->
+                @if($equipment->rentalTerms->isNotEmpty())
+                    <h5>Условия аренды</h5>
+                    @foreach($equipment->rentalTerms as $term)
+                    <div class="card mb-3">
+                        <div class="card-body">
                         @php
                             $displayPrice = $term->price_per_hour;
 
-                            // Добавляем проверку на существование пользователя
                             if (auth()->check() && $user = auth()->user()) {
                                 if ($company = $user->company) {
                                     $pricingService = app(\App\Services\PricingService::class);
@@ -142,7 +157,7 @@
                             </div>
 
                             <!-- Блок доставки -->
-                            <div class="card mb-3">
+                             <div class="card mb-3">
                                 <div class="card-header">
                                     <h6>Доставка техники</h6>
                                 </div>
@@ -150,16 +165,18 @@
                                     <div class="form-check form-switch mb-3">
                                         <input type="hidden" name="delivery_required" value="0">
                                         <input class="form-check-input delivery-toggle"
-                                               type="checkbox"
-                                               id="delivery_required_{{ $term->id }}"
-                                               name="delivery_required"
-                                               value="1">
+                                            type="checkbox"
+                                            id="delivery_required_{{ $term->id }}"
+                                            data-term-id="{{ $term->id }}"
+                                            name="delivery_required"
+                                            value="1"
+                                            {{ old('delivery_required', false) ? 'checked' : '' }}>
                                         <label class="form-check-label" for="delivery_required_{{ $term->id }}">
                                             Требуется доставка на объект
                                         </label>
                                     </div>
 
-                                    <div id="deliveryFields_{{ $term->id }}" style="display: none;">
+                                    <div id="deliveryFields_{{ $term->id }}" class="delivery-fields" style="display: {{ old('delivery_required', false) ? 'block' : 'none' }};">
                                         <div class="row mb-3">
                                             <div class="col-md-6">
                                                 <label class="form-label">Откуда (база техники)</label>
@@ -190,23 +207,24 @@
                             </div>
 
                             <!-- Форма условий аренды -->
-                            <div class="card mb-3">
+                             <div class="card mb-3">
                                 <div class="card-header">
                                     <h6>Настройки аренды</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="form-group form-check">
-                                        <input type="checkbox"
-                                            class="form-check-input use-default-conditions"
-                                            id="use_default_conditions_{{ $term->id }}"
-                                            name="use_default_conditions"
-                                            checked>
+                                        <input class="form-check-input use-default-conditions"
+                                                type="checkbox"
+                                                id="use_default_conditions_{{ $term->id }}"
+                                                data-term-id="{{ $term->id }}"
+                                                name="use_default_conditions"
+                                                {{ old('use_default_conditions', true) ? 'checked' : '' }}>
                                         <label class="form-check-label" for="use_default_conditions_{{ $term->id }}">
                                             Использовать условия по умолчанию
                                         </label>
                                     </div>
 
-                                    <div class="custom-conditions" id="custom-conditions_{{ $term->id }}" style="display: none;">
+                                    <div class="custom-conditions" id="custom-conditions_{{ $term->id }}" style="display: {{ old('use_default_conditions', true) ? 'none' : 'block' }}">
                                         <div class="form-group mb-3">
                                             <label class="form-label">Тип оплаты:</label>
                                             <select name="payment_type" class="form-select">
@@ -280,13 +298,58 @@
 @endsection
 
 @push('scripts')
-  @vite(['resources/js/catalog/show.js'])
-@endpush
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('Catalog page inline script loaded');
 
-<style>
-.custom-conditions, .delivery-fields {
-    display: none;
-    opacity: 0;
-    transition: opacity 0.3s ease-in-out;
-}
-</style>
+  // Функция для переключения блоков
+  function toggleBlock(block, show) {
+    if (!block) return;
+    block.style.display = show ? 'block' : 'none';
+  }
+
+  // Обработчик для всех чекбоксов
+  function handleCheckboxChange(event) {
+    const target = event.target;
+    const termId = target.dataset.termId;
+
+    // Для доставки
+    if (target.classList.contains('delivery-toggle')) {
+      const block = document.getElementById(`deliveryFields_${termId}`);
+      toggleBlock(block, target.checked);
+    }
+
+    // Для условий аренды
+    if (target.classList.contains('use-default-conditions')) {
+      const block = document.getElementById(`custom-conditions_${termId}`);
+      toggleBlock(block, !target.checked);
+    }
+  }
+
+  // Находим все чекбоксы
+  const deliveryToggles = document.querySelectorAll('.delivery-toggle');
+  const conditionToggles = document.querySelectorAll('.use-default-conditions');
+
+  // Вешаем обработчики и инициализируем состояние
+  deliveryToggles.forEach(toggle => {
+    toggle.addEventListener('change', handleCheckboxChange);
+
+    // Инициализация начального состояния
+    const termId = toggle.dataset.termId;
+    const block = document.getElementById(`deliveryFields_${termId}`);
+    toggleBlock(block, toggle.checked);
+  });
+
+  conditionToggles.forEach(toggle => {
+    toggle.addEventListener('change', handleCheckboxChange);
+
+    // Инициализация начального состояния
+    const termId = toggle.dataset.termId;
+    const block = document.getElementById(`custom-conditions_${termId}`);
+    toggleBlock(block, !toggle.checked);
+  });
+
+  console.log(`Initialized ${deliveryToggles.length} delivery toggles and ${conditionToggles.length} condition toggles`);
+});
+</script>
+@endpush

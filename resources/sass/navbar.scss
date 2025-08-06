@@ -1,0 +1,222 @@
+// Переменные
+$navbar-height: 80px; // Увеличена высота
+$navbar-zindex: 1100;
+$navbar-bg: linear-gradient(135deg, #0b5ed7, #0d6efd);
+$navbar-dark-bg: linear-gradient(135deg, #0a4cb5, #0b5ed7);
+$navbar-accent: #00d2ff;
+$navbar-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+$navbar-divider: rgba(255, 255, 255, 0.1);
+
+.navbar {
+    height: $navbar-height;
+    padding: 0;
+    background: $navbar-bg;
+    backdrop-filter: blur(10px);
+    box-shadow: $navbar-shadow;
+    position: sticky;
+    top: 0;
+    z-index: $navbar-zindex;
+    border-bottom: 1px solid $navbar-divider;
+
+    [data-theme="dark"] & {
+        background: $navbar-dark-bg;
+    }
+}
+
+.logo-container {
+  position: relative;
+  overflow: hidden;
+  padding: 1rem 1.2rem;
+  height: 100%; // Добавлено
+  display: flex; // Добавлено
+  flex-direction: column; // Добавлено
+  justify-content: center; // Добавлено
+
+  &::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 4px; // Уменьшена высота
+    background: $navbar-accent;
+    transform: translateX(-100%);
+    transition: transform 0.4s ease;
+  }
+
+    &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(
+            to right,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.3) 100%
+        );
+        transform: skewX(-25deg);
+        transition: left 0.6s ease;
+    }
+
+    &:hover {
+        &::before {
+            transform: translateX(0);
+        }
+
+        &::after {
+            left: 150%;
+        }
+    }
+}
+
+.logo-main {
+    font-size: 1.8rem; // Увеличен размер
+    font-weight: 700;
+    color: white;
+}
+
+.logo-subtitle {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+// Остальные стили без изменений..
+.nav-link {
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: $navbar-accent;
+        transform: scaleX(0);
+        transform-origin: right;
+        transition: transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+
+    &:hover::before {
+        transform: scaleX(1);
+        transform-origin: left;
+    }
+}
+
+.theme-switcher {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: rotate(15deg);
+    }
+
+    i {
+        font-size: 1.2rem;
+        color: white;
+        transition: all 0.3s ease;
+    }
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+            45deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.1) 50%,
+            transparent 100%
+        );
+        transform: translateX(-100%);
+        transition: transform 0.6s ease;
+    }
+
+    &:hover::before {
+        transform: translateX(100%);
+    }
+}
+
+.notification-badge {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+    70% { box-shadow: 0 0 0 8px rgba(255, 71, 87, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+}
+
+// Адаптивность
+@media (max-width: 992px) {
+    .navbar-collapse {
+        background: rgba(10, 30, 50, 0.95);
+        backdrop-filter: blur(20px);
+    }
+}
+
+// Добавляем контейнер для позиционирования dropdown
+.navbar-nav {
+  position: relative; // Для корректного позиционирования дочерних элементов
+}
+
+// Исправление позиционирования dropdown-меню
+.dropdown-menu {
+  position: absolute;
+  right: 0; // Фиксируем позицию справа
+  left: auto; // Отменяем автоматическое выравнивание по левому краю
+  z-index: 1100;
+
+  // Для мобильных устройств - полная ширина
+  @media (max-width: 992px) {
+    position: static;
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+}
+
+// Уточнение для меню пользователя
+.user-dropdown {
+  .dropdown-menu {
+    min-width: 220px;
+    right: 0;
+    left: auto;
+    z-index: 1100;
+
+    @media (max-width: 992px) {
+      position: static;
+      width: 100%;
+      margin-top: 0.5rem;
+    }
+  }
+
+  .dropdown-content {
+    padding: 0.5rem 0;
+  }
+
+  .dropdown-item {
+    position: relative;
+    padding: 0.5rem 1.5rem;
+
+    .badge {
+      top: 50%;
+      transform: translateY(-50%);
+    }
+  }
+}

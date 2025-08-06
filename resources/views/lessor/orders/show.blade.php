@@ -261,8 +261,9 @@
 
     @if(in_array($order->status, [
         \App\Models\Order::STATUS_CONFIRMED,
+        \App\Models\Order::STATUS_IN_DELIVERY, // Добавлен статус "В пути"
         \App\Models\Order::STATUS_ACTIVE,
-        \App\Models\Order::STATUS_EXTENSION_REQUESTED
+        \App\Models\Order::STATUS_EXTENSION_REQUESTED,
     ]))
     <div class="card border-0 shadow-sm rounded-3 mb-5">
         <div class="card-header bg-white border-0 py-3">
@@ -270,7 +271,10 @@
         </div>
         <div class="card-body">
             <div class="d-grid gap-3">
-                @if($order->status === \App\Models\Order::STATUS_CONFIRMED)
+                @if(in_array($order->status, [
+                    \App\Models\Order::STATUS_CONFIRMED,
+                    \App\Models\Order::STATUS_IN_DELIVERY // Разрешено для "В пути"
+                ]))
                     <form action="{{ route('lessor.orders.markActive', $order) }}" method="POST">
                         @csrf
                         <button type="submit"
@@ -304,6 +308,16 @@
                         Обработать запрос
                     </button>
                 </div>
+                @endif
+
+                <!-- Ссылка на путевые листы, если они созданы -->
+                @if($order->waybills()->exists())
+                    <div class="mt-3">
+                        <a href="{{ route('lessor.waybills.index', ['order' => $order]) }}"
+                        class="btn btn-outline-secondary d-flex align-items-center">
+                            <i class="fas fa-file-alt me-2"></i> Перейти к путевым листам
+                        </a>
+                    </div>
                 @endif
             </div>
         </div>

@@ -24,6 +24,9 @@ class EventServiceProvider extends ServiceProvider
         PlatformDeliveryRequested::class => [
             PlatformDeliveryHandler::class,
         ],
+         OperatorMissing::class => [
+            HandleOperatorMissing::class,
+        ],
     ];
 
     /**

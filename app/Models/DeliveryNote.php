@@ -151,6 +151,14 @@ class DeliveryNote extends Model
         return $this->belongsTo(OrderItem::class);
     }
 
+    public function scopeForCompany($query, $companyId)
+    {
+        return $query->where(function($q) use ($companyId) {
+            $q->where('sender_company_id', $companyId)
+            ->orWhere('receiver_company_id', $companyId);
+        });
+    }
+
     public function isFullySigned(): bool
     {
         return match($this->type) {

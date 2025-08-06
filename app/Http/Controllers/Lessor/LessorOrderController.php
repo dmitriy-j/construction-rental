@@ -12,6 +12,12 @@ use App\Services\DeliveryScenarioService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Events\PlatformDeliveryRequested;
+use App\Models\Waybill;
+use App\Models\Equipment;
+use App\Models\RentalCondition;
+use App\Models\OrderStatusHistory;
+use App\Notifications\OrderActivatedNotification;
+use App\Notifications\OrderActivatedAdminNotification;
 
 class LessorOrderController extends Controller
 {
@@ -41,6 +47,7 @@ class LessorOrderController extends Controller
         $order->load([
             'items.equipment',
             'items.deliveryNote.deliveryTo',
+            'items.equipment.activeOperator',
             'parentOrder'
         ]);
 
@@ -101,25 +108,74 @@ class LessorOrderController extends Controller
 
     public function markAsActive(Order $order)
     {
+        // Проверка прав и статуса
         if ($order->lessor_company_id !== auth()->user()->company_id) {
             abort(403);
         }
 
-        if (!$order->canBeActivated()) {
-            $error = $order->status !== Order::STATUS_CONFIRMED
-                ? 'Заказ должен быть в статусе "Подтвержден"'
-                : 'Нельзя начать аренду раньше '. $order->activationAvailableDate();
-
-            return back()->withErrors($error);
+        $allowedStatuses = [Order::STATUS_CONFIRMED, Order::STATUS_IN_DELIVERY];
+        if (!in_array($order->status, $allowedStatuses)) {
+            return back()->withErrors('Невозможно начать аренду в текущем статусе');
         }
 
-        $order->update([
-            'status' => Order::STATUS_ACTIVE,
-            'service_start_date' => now()
-        ]);
+        // Проверка даты
+        if (now()->lt($order->start_date)) {
+            return back()->withErrors(
+                'Нельзя начать аренду раньше '. $order->start_date->format('d.m.Y')
+            );
+        }
 
-        return back()->with('success', 'Аренда успешно начата');
+        DB::transaction(function () use ($order) {
+            // Обновление статуса заказа
+            $order->update([
+                'status' => Order::STATUS_ACTIVE,
+                'service_start_date' => now()
+            ]);
+
+        \Log::debug('Checking operators for order', ['order_id' => $order->id]);
+
+        // Проверка операторов с жадной загрузкой
+        $order->load('items.equipment.operator');
+
+        $missingOperators = [];
+        foreach ($order->items as $item) {
+
+             \Log::debug('Equipment operator check', [
+                'equipment_id' => $item->equipment_id,
+                'operator_id' => $item->equipment->operator_id,
+                'operator_active' => $item->equipment->operator ? $item->equipment->operator->is_active : null,
+                'has_active' => $item->equipment->hasActiveOperator()
+            ]);
+
+            if (!$item->equipment->operator_id ||
+                !$item->equipment->operator ||
+                !$item->equipment->operator->is_active)
+            {
+                $missingOperators[] = $item->equipment->title;
+            }
+        }
+
+        if (!empty($missingOperators)) {
+            throw new \Exception('Для оборудования не назначены активные операторы: ' . implode(', ', $missingOperators));
+        }
+
+            // Создание путевых листов
+            $this->createWaybills($order);
+
+            // Запись в историю
+            OrderStatusHistory::create([
+                'order_id' => $order->id,
+                'status' => Order::STATUS_ACTIVE,
+                'changed_by' => auth()->id()
+            ]);
+
+            // Уведомления
+            $this->sendActivationNotifications($order);
+        });
+
+        return back()->with('success', 'Аренда успешно начата. Созданы путевые листы.');
     }
+
 
     public function markAsCompleted(Order $order)
     {
@@ -297,5 +353,92 @@ class LessorOrderController extends Controller
         ]);
 
         return back()->with('success', 'Заказ отклонен');
+    }
+
+    protected function createWaybills(Order $order)
+    {
+        $rentalCondition = $order->rentalCondition;
+        if (!$rentalCondition) {
+            Log::error('Rental condition not found', ['order_id' => $order->id]);
+            return;
+        }
+
+        $waybills = [];
+        $now = now();
+
+        foreach ($order->items as $item) {
+            $equipment = $item->equipment;
+            $equipment->load('operator');
+            $operator = $equipment->operator;
+
+            if (!$operator) {
+                Log::warning("No operator assigned for equipment", [
+                    'equipment_id' => $equipment->id,
+                    'order_id' => $order->id
+                ]);
+                event(new OperatorMissing($equipment, $order));
+                continue;
+            }
+
+            // Рассчитываем стандартное потребление топлива
+            $fuelConsumption = $this->calculateFuelConsumption($equipment, $rentalCondition);
+
+            for ($shift = 0; $shift < $rentalCondition->shifts_per_day; $shift++) {
+                $waybills[] = [
+                    'order_id' => $order->id,
+                    'equipment_id' => $equipment->id,
+                    'operator_id' => $operator->id,
+                    'rental_condition_id' => $rentalCondition->id,
+                    'work_date' => $now,
+                    'shift' => $shift == 0 ? Waybill::SHIFT_DAY : Waybill::SHIFT_NIGHT,
+                    'status' => Waybill::STATUS_CREATED,
+
+                    // Обязательные поля со значениями по умолчанию
+                    'hours_worked' => 0,
+                    'odometer_start' => 0,
+                    'odometer_end' => 0,
+                    'fuel_start' => 0,
+                    'fuel_end' => 0,
+                    'fuel_consumption_standard' => $fuelConsumption,
+                    'fuel_consumption_actual' => 0,
+
+                    'created_at' => $now,
+                    'updated_at' => $now
+                ];
+            }
+        }
+
+        if (!empty($waybills)) {
+            Waybill::insert($waybills);
+        }
+    }
+
+
+    private function calculateFuelConsumption(Equipment $equipment, RentalCondition $condition): float
+    {
+        // Приоритет: спецификация оборудования > условие аренды > значение по умолчанию
+        $fuelRate = $equipment->getNumericSpecValue('fuel_consumption')
+                    ?? $condition->fuel_consumption_rate
+                    ?? 10; // Л/час по умолчанию
+
+        $shiftHours = $condition->shift_hours ?? 8; // Часов в смену по умолчанию
+
+        return $fuelRate * $shiftHours;
+    }
+
+    protected function sendActivationNotifications(Order $order)
+    {
+        // Уведомление арендатору
+        $order->user->notify(new OrderActivatedNotification($order));
+
+        // Уведомление администратору платформы
+        $adminUsers = \App\Models\User::whereHas('roles', function($q) {
+            $q->where('name', 'admin');
+        })->get();
+
+        \Illuminate\Support\Facades\Notification::send(
+            $adminUsers,
+            new OrderActivatedAdminNotification($order)
+        );
     }
 }
