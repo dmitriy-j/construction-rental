@@ -1,14 +1,5 @@
 @auth
 <aside class="sidebar-container" id="sidebarContainer">
-    <div class="sidebar-controls">
-        <button class="sidebar-collapse-btn ripple d-lg-none" id="sidebarCollapse" aria-label="Закрыть меню">
-            <i class="bi bi-x-lg"></i>
-        </button>
-        <button class="sidebar-minify-btn ripple d-none d-lg-block" id="sidebarMinify" aria-label="Свернуть меню">
-            <i class="bi bi-chevron-left transition-transform"></i>
-        </button>
-    </div>
-
     <div class="user-profile-card">
         <div class="avatar-container">
             <div class="avatar">
@@ -33,6 +24,14 @@
                 </div>
             </div>
         </div>
+    </div>
+    <div class="sidebar-controls">
+        <button class="sidebar-collapse-btn ripple d-lg-none" id="sidebarCollapse" aria-label="Закрыть меню">
+            <i class="bi bi-x-lg"></i>
+        </button>
+        <button class="sidebar-minify-btn ripple d-none d-lg-block" id="sidebarMinify" aria-label="Свернуть меню">
+            <i class="bi bi-chevron-left transition-transform"></i>
+        </button>
     </div>
 
     <nav class="sidebar-navigation">

@@ -10,30 +10,14 @@ export function initRipple() {
         });
     });
 
-    function createRipple(event, element) {
-        // Remove existing ripples
-        const existingRipples = element.querySelectorAll('.ripple-animation');
-        existingRipples.forEach(ripple => ripple.remove());
+   function initRipple() {
+    document.addEventListener('click', (e) => {
+        const rippleBtn = e.target.closest('.ripple');
+        if (!rippleBtn) return;
 
-        // Create new ripple
-        const ripple = document.createElement('span');
-        ripple.classList.add('ripple-animation');
-
-        // Position ripple
-        const rect = element.getBoundingClientRect();
-        const size = Math.max(rect.width, rect.height);
-        const x = event.clientX - rect.left - size / 2;
-        const y = event.clientY - rect.top - size / 2;
-
-        ripple.style.width = ripple.style.height = `${size}px`;
-        ripple.style.left = `${x}px`;
-        ripple.style.top = `${y}px`;
-
-        element.appendChild(ripple);
-
-        // Remove ripple after animation
-        setTimeout(() => {
-            ripple.remove();
-        }, 600);
+        // Только добавление класса, анимация в CSS
+        rippleBtn.classList.add('ripple-active');
+        setTimeout(() => rippleBtn.classList.remove('ripple-active'), 600);
+    });
     }
 }

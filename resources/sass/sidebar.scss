@@ -63,13 +63,11 @@ $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
   width: var(--sidebar-width);
   background: $md-sys-color-surface-container-lowest;
   color: $md-sys-color-on-surface;
-  border-right: 1px solid rgba($md-sys-color-on-surface, 0.12);
   z-index: 990;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
+  transition: width 0.3s cubic-bezier(0.33, 1, 0.68, 1);
   box-shadow: $md-sys-elevation-1;
-  border-bottom: none;
   overflow-y: auto;
   overflow-x: hidden;
 
@@ -90,6 +88,11 @@ $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
         inset 1px 0 0 rgba($md-sys-color-primary, 0.2);
   }
 
+  // Только для развернутого состояния
+  &:not(.sidebar-mini) {
+    border-right: 1px solid var(--divider);
+  }
+
   // Mobile adaptation
   @media (max-width: 992px) {
     transform: translateX(-100%);
@@ -103,50 +106,12 @@ $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
       transform: translateX(0);
     }
   }
-
-  // Mini mode
-  &.sidebar-mini {
-    width: var(--sidebar-mini-width);
-    border-right: 1px solid rgba($md-sys-color-on-surface, 0.1);
-
-    .nav-text,
-    .section-header h4,
-    .app-version,
-    .session-time span {
-      display: none;
-    }
-
-    .section-header {
-      justify-content: center;
-      padding: 0;
-      border: none;
-
-      i {
-        margin-right: 0;
-        font-size: 1.4rem;
-      }
-    }
-
-    // Исправление для мини-режима
-    .nav-menu .nav-link {
-      justify-content: center;
-      padding: 1rem 0.5rem !important; // Увеличен padding
-
-      .nav-icon {
-        margin-right: 0;
-        transform: scale(1.3); // Увеличен размер иконок
-        display: block;
-        margin: 0 auto;
-      }
-    }
-  }
 }
-
 
 // Controls
 .sidebar-controls {
   position: absolute;
-  top: 12px;
+  top: 20px; // Опущена ниже для избежания перекрытия
   right: 12px;
   z-index: 20;
   display: flex;
@@ -154,8 +119,8 @@ $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
 
   .sidebar-collapse-btn,
   .sidebar-minify-btn {
-    width: 36px;
-    height: 36px;
+    width: 32px; // Уменьшен размер
+    height: 32px; // Уменьшен размер
     border-radius: 50%;
     background: $md-sys-color-surface-container;
     display: flex;
@@ -180,7 +145,8 @@ $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
     }
 
     i {
-      transition: transform $md-sys-motion-duration-medium $md-sys-motion-easing;
+      transition: all 0.3s ease;
+      font-size: 1rem; // Уменьшен размер иконки
     }
   }
 }
@@ -502,86 +468,24 @@ $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
 
 // Mini mode adaptation
 .sidebar-mini {
-  .nav-item {
-    position: relative;
+  width: var(--sidebar-mini-width) !important;
+  border-right: none;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+  opacity: 1 !important;
+  background: $md-sys-color-surface-container-lowest !important;
 
-    .nav-link {
-      .nav-icon {
-        transform: scale(1.3); // Увеличен размер иконок
-        transition: transform $md-sys-motion-duration-medium $md-sys-motion-easing;
-        display: block;
-        margin: 0 auto;
-        background: rgba($md-sys-color-primary, 0.15);
-        padding: 0.5rem;
-      }
-
-      &::after {
-        content: attr(data-tooltip);
-        position: absolute;
-        left: calc(100% + 12px);
-        top: 50%;
-        transform: translateY(-50%);
-        background: $md-sys-color-surface-container;
-        color: $md-sys-color-on-surface;
-        padding: 8px 12px;
-        border-radius: $md-sys-shape-corner-sm;
-        font-size: 0.85rem;
-        white-space: nowrap;
-        opacity: 0;
-        visibility: hidden;
-        transition: all $md-sys-motion-duration-short $md-sys-motion-easing;
-        box-shadow: $md-sys-elevation-1;
-        z-index: 100;
-        border: 1px solid rgba($md-sys-color-on-surface, 0.1);
-      }
-
-      &:hover::after {
-        opacity: 1;
-        visibility: visible;
-        left: calc(100% + 16px);
-      }
-    }
-  }
-}
-
-// Mobile adaptation
-@media (max-width: 768px) {
-  .sidebar-container {
-    width: 85vw;
-    max-width: 320px;
-    border-radius: 0 $md-sys-shape-corner-lg $md-sys-shape-corner-lg 0;
-  }
-}
-
-// Специфичные стили для мини-режима
-.sidebar-mini {
-  .nav-link {
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 1.2rem 0.5rem !important;
-    margin: 0.3rem 0.3rem !important;
-    border-radius: $md-sys-shape-corner-md !important;
-
-    .nav-icon {
-      margin: 0 0 5px 0 !important;
-      font-size: 1.4rem !important;
-      transform: scale(1.3) !important; // Увеличен размер иконок
-      padding: 0.5rem !important;
-    }
-
-    .badge {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      margin: 0;
-      transform: scale(0.8);
-    }
+  .nav-text,
+  .section-header h4,
+  .app-version,
+  .session-time span,
+  .user-info {
+    display: none !important;
   }
 
   .section-header {
     padding: 1rem 0 !important;
     margin: 0.5rem 0.3rem 0.5rem !important;
+    justify-content: center;
 
     i {
       font-size: 1.4rem !important;
@@ -601,10 +505,6 @@ $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
       height: 40px !important;
       margin: 0 auto;
     }
-
-    .user-info {
-      display: none;
-    }
   }
 
   .sidebar-footer {
@@ -618,25 +518,66 @@ $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
       text-align: center;
     }
   }
-}
 
-// Десктопные стили
-@media (min-width: 992px) {
-  .sidebar-mini {
-    width: var(--sidebar-mini-width) !important;
+  .nav-menu .nav-link {
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 1.2rem 0 !important;
+    margin: 0.3rem 0.3rem !important;
+    border-radius: $md-sys-shape-corner-md !important;
 
-    .nav-text,
-    .section-header h4,
-    .app-version,
-    .session-time span {
-      display: none !important;
+    .nav-icon {
+      margin: 0 0 5px 0 !important;
+      font-size: 1.4rem !important;
+      transform: scale(1.3) !important;
+      padding: 0.5rem !important;
+      background: rgba($md-sys-color-primary, 0.15);
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
+
+    .badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      margin: 0;
+      transform: scale(0.8);
+    }
+  }
+
+  .sidebar-controls {
+    top: 10px;
+    right: 10px;
+
+    .sidebar-minify-btn {
+      width: 32px;
+      height: 32px;
+
+      i {
+        font-size: 0.9rem;
+      }
+    }
+  }
+
+  .nav-item .dropdown-menu {
+    position: absolute;
+    left: calc(100% + 5px);
+    top: 0;
   }
 }
 
-.sidebar-container {
-  transition: width 0.3s cubic-bezier(0.4, 0.0, 0.2, 1),
-              transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+// Mobile adaptation
+@media (max-width: 768px) {
+  .sidebar-container {
+    width: 85vw;
+    max-width: 320px;
+    border-radius: 0 $md-sys-shape-corner-lg $md-sys-shape-corner-lg 0;
+  }
 }
 
 // Фиксация футера
@@ -675,4 +616,17 @@ $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
       margin-top: 5px;
     }
   }
+}
+
+// Микроанимация иконок
+.nav-icon {
+  transition: transform 0.2s ease;
+}
+.nav-link:hover .nav-icon {
+  transform: translateY(-3px);
+}
+
+// Задержка для тултипов
+.nav-link::after {
+  transition-delay: 300ms;
 }
