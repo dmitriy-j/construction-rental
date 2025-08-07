@@ -186,3 +186,12 @@
     </div>
 </aside>
 @endauth
+<script>
+  document.getElementById('sidebarMinify').addEventListener('click', () => {
+    const isMini = localStorage.getItem('sidebarMini') === 'true';
+    document.documentElement.style.setProperty(
+      '--sidebar-width',
+      isMini ? 'var(--sidebar-mini-width)' : 'var(--sidebar-width)'
+    );
+  });
+</script>

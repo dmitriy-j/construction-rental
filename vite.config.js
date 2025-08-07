@@ -13,10 +13,21 @@ export default defineConfig({
                 'resources/js/sidebar.js',
                 'resources/js/theme.js',
                 'resources/js/ripple.js',
-                'resources/js/cart/index.js'
+                'resources/js/cart/index.js',
+                'resources/js/navbar.js'
                 /*'resources/js/catalog/show.js'*/
             ],
             refresh: true,
         }),
     ],
+     build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          bootstrap: ['bootstrap'],
+          sweetalert: ['sweetalert2']
+        }
+      }
+    }
+  }
 });

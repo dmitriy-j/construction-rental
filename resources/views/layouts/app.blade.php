@@ -47,6 +47,18 @@
             --sidebar-mini-width: 80px; // Важно для иконок
             --footer-height: 250px; // Добавьте при необходимости
         }
+
+         :root {
+    scroll-behavior: smooth;
+    scroll-padding-top: var(--navbar-height);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
     </style>
 
      <script>
@@ -55,32 +67,34 @@
     </script>
 
 </head>
-<body class="@yield('body-class', '')">
-    <div id="app">
-        <!-- Навбар -->
-        @include('components.navbar')
+<body class="@yield('body-class', 'd-flex flex-column min-vh-100')">
+  <div id="app" class="d-flex flex-column flex-grow-1">
+    <!-- Навбар -->
+    @include('components.navbar')
 
-        <div class="main-container">
-            <!-- Сайдбар -->
-            @auth
-            <aside class="sidebar-container" id="sidebarContainer">
-                @include('partials.sidebar')
-            </aside>
-            @endauth
+    <div class="main-container d-flex flex-grow-1">
+      <!-- Сайдбар -->
+      @auth
+      <aside class="sidebar-container flex-shrink-0" id="sidebarContainer">
+        @include('partials.sidebar')
+      </aside>
+      @endauth
 
-            <!-- Основной контент -->
-            <div class="content-area">
-                <main class="main-content">
-                    @yield('content')
-                </main>
-            </div>
-        </div>
-
-        <!-- Футер сайта -->
-        <footer class="site-footer">
-            @include('components.footer')
-        </footer>
+      <!-- Основной контент -->
+      <div class="content-area flex-grow-1 d-flex flex-column">
+        <main class="main-content flex-grow-1">
+          <div class="content-container py-4 px-3 px-lg-4">
+            @yield('content')
+          </div>
+        </main>
+      </div>
     </div>
+
+    <!-- Футер сайта -->
+    <footer class="site-footer mt-auto">
+      @include('components.footer')
+    </footer>
+  </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Bootstrap JS -->

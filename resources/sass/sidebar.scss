@@ -33,19 +33,21 @@ $md-sys-motion-duration-medium: 300ms;
 $md-sys-motion-duration-long: 400ms;
 $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
 
-// Dark theme variables
+// Dark theme variables - Градиентная версия
 [data-theme="dark"] {
-  $md-sys-color-primary: #0d6efd;
-  $md-sys-color-on-primary: #003063;
+  $md-sys-color-primary: #3d8bfd;
+  $md-sys-color-on-primary: #d6e3ff;
   $md-sys-color-primary-container: #00468e;
   $md-sys-color-on-primary-container: #d6e3ff;
   $md-sys-color-secondary: #bcc7db;
   $md-sys-color-on-secondary: #273141;
   $md-sys-color-secondary-container: #3e4758;
   $md-sys-color-on-secondary-container: #d8e3f8;
+
+  // Градиентный фон для темной темы
   $md-sys-color-surface: #1a1d21;
   $md-sys-color-surface-dim: #111418;
-  $md-sys-color-surface-bright: #36393e;
+  $md-sys-color-surface-bright: #23262b;
   $md-sys-color-surface-container-lowest: #0c0e11;
   $md-sys-color-surface-container-low: #191c20;
   $md-sys-color-surface-container: #1d2025;
@@ -55,37 +57,37 @@ $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
   $md-sys-color-on-surface-variant: #c2c7cf;
 }
 
-// Sidebar structure
+// Sidebar structure - Fixed positioning
 .sidebar-container {
+ .sidebar-container {
+  position: fixed;
   top: var(--navbar-height);
   left: 0;
-  height: calc(100vh - var(--navbar-height));
+  bottom: 0;
   width: var(--sidebar-width);
-  background: $md-sys-color-surface-container-lowest;
-  color: $md-sys-color-on-surface;
+  height: calc(100vh - var(--navbar-height));
+  transition: top 0.4s cubic-bezier(0.25, 0.8, 0.5, 1);
   z-index: 990;
-  display: flex;
-  flex-direction: column;
-  transition: width 0.3s cubic-bezier(0.33, 1, 0.68, 1);
-  box-shadow: $md-sys-elevation-1;
-  overflow-y: auto;
-  overflow-x: hidden;
 
-  // Красивые градиенты
-  background: linear-gradient(135deg,
-              rgba($md-sys-color-primary, 0.05) 0%,
-              rgba($md-sys-color-surface-container-lowest, 1) 100%);
+  .navbar--hidden ~ & {
+    top: 0;
+    height: 100vh;
+  }
   box-shadow:
     0 4px 20px rgba(0, 0, 0, 0.08),
     inset 1px 0 0 rgba($md-sys-color-primary, 0.1);
+  overflow-y: auto;
 
+  // Градиент для темной темы
   [data-theme="dark"] & {
-    background: linear-gradient(135deg,
-                rgba($md-sys-color-primary, 0.1) 0%,
-                rgba($md-sys-color-surface-container-lowest, 1) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(61, 139, 253, 0.1) 0%,
+      #1a1d21 100%
+    );
     box-shadow:
       0 4px 20px rgba(0, 0, 0, 0.2),
-        inset 1px 0 0 rgba($md-sys-color-primary, 0.2);
+      inset 1px 0 0 rgba(61, 139, 253, 0.2);
   }
 
   // Только для развернутого состояния
@@ -94,24 +96,23 @@ $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
   }
 
   // Mobile adaptation
-  @media (max-width: 992px) {
-    transform: translateX(-100%);
+ @media (max-width: 992px) {
+  .sidebar-container {
     top: var(--navbar-height);
     height: calc(100vh - var(--navbar-height));
-    z-index: 1050;
-    border-radius: 0 $md-sys-shape-corner-lg $md-sys-shape-corner-lg 0;
-    box-shadow: $md-sys-elevation-3;
 
-    &.mobile-open {
-      transform: translateX(0);
+    .navbar--hidden ~ & {
+      top: 0;
+      height: 100vh;
     }
   }
 }
-
+ }
+}
 // Controls
 .sidebar-controls {
   position: absolute;
-  top: 20px; // Опущена ниже для избежания перекрытия
+  top: 20px;
   right: 12px;
   z-index: 20;
   display: flex;
@@ -119,8 +120,8 @@ $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
 
   .sidebar-collapse-btn,
   .sidebar-minify-btn {
-    width: 32px; // Уменьшен размер
-    height: 32px; // Уменьшен размер
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: $md-sys-color-surface-container;
     display: flex;
@@ -146,7 +147,7 @@ $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
 
     i {
       transition: all 0.3s ease;
-      font-size: 1rem; // Уменьшен размер иконки
+      font-size: 1rem;
     }
   }
 }
@@ -224,8 +225,7 @@ $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
 .sidebar-navigation {
   flex: 1;
   padding: 1rem 0.5rem;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: visible;
 
   .section-header {
     display: flex;
@@ -469,6 +469,7 @@ $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
 // Mini mode adaptation
 .sidebar-mini {
   width: var(--sidebar-mini-width) !important;
+  bottom: 0;
   border-right: none;
   box-shadow: 2px 0 10px rgba(0,0,0,0.1);
   opacity: 1 !important;
@@ -584,11 +585,10 @@ $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
 .sidebar-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - var(--navbar-height));
+  height: auto;
 
   .sidebar-navigation {
     flex: 1;
-    overflow-y: auto;
   }
 
   .sidebar-footer {
@@ -629,4 +629,64 @@ $md-sys-motion-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
 // Задержка для тултипов
 .nav-link::after {
   transition-delay: 300ms;
+}
+
+.sidebar-mini {
+  .nav-menu .nav-link {
+    padding: 1rem 0 !important; /* Единые отступы */
+    .nav-icon {
+      margin: 0 !important; /* Убрать лишние отступы */
+      transform: scale(1.2) !important; /* Чуть увеличить иконки */
+    }
+  }
+
+  .user-profile-card {
+    padding: 0.5rem !important;
+    .avatar {
+      width: 36px !important;
+      height: 36px !important;
+    }
+  }
+
+  .sidebar-controls {
+    top: 8px;
+    right: 8px;
+
+    .sidebar-minify-btn {
+      width: 28px;
+      height: 28px;
+      background: rgba(var(--primary-rgb), 0.1);
+
+      i {
+        font-size: 0.8rem;
+      }
+    }
+  }
+}
+
+// Новый градиент для темной темы
+[data-theme="dark"] {
+  .sidebar-container {
+    background: linear-gradient(
+      135deg,
+      rgba(25, 55, 109, 0.3) 0%,
+      #1a1c23 100%
+    );
+  }
+
+  .user-profile-card {
+    background: linear-gradient(
+      to right,
+      rgba(25, 55, 109, 0.2) 0%,
+      rgba(25, 55, 109, 0.1) 100%
+    );
+  }
+
+  .nav-link.active {
+    background: linear-gradient(
+      to right,
+      rgba(61, 139, 253, 0.2) 0%,
+      rgba(61, 139, 253, 0.1) 100%
+    );
+  }
 }

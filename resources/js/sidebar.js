@@ -1,5 +1,21 @@
 export function initSidebar() {
   const sidebar = document.getElementById('sidebarContainer');
+  if (!sidebar) return;
+
+  const calculateHeight = () => {
+    const navbarHeight = document.querySelector('.navbar')?.offsetHeight || 0;
+    const isMobile = window.innerWidth < 992;
+
+    sidebar.style.height = isMobile
+      ? '100vh'
+      : `calc(100vh - ${navbarHeight}px)`;
+
+    sidebar.style.top = isMobile ? '0' : `${navbarHeight}px`;
+  };
+
+  calculateHeight();
+  window.addEventListener('resize', calculateHeight);
+
   const minifyBtn = document.getElementById('sidebarMinify');
   const collapseBtn = document.getElementById('sidebarCollapse');
   const mobileToggler = document.getElementById('mobileSidebarToggler');

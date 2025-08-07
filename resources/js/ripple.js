@@ -1,23 +1,24 @@
-// Ripple effect implementation
 export function initRipple() {
-    document.addEventListener('click', function(e) {
-        const rippleElements = document.querySelectorAll('.ripple');
+  document.addEventListener('click', function(e) {
+    const rippleBtn = e.target.closest('.ripple');
+    if (!rippleBtn) return;
 
-        rippleElements.forEach(element => {
-            if (element.contains(e.target)) {
-                createRipple(e, element);
-            }
-        });
-    });
+    const rect = rippleBtn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const x = e.clientX - rect.left - size / 2;
+    const y = e.clientY - rect.top - size / 2;
 
-   function initRipple() {
-    document.addEventListener('click', (e) => {
-        const rippleBtn = e.target.closest('.ripple');
-        if (!rippleBtn) return;
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple-effect';
+    ripple.style.width = `${size}px`;
+    ripple.style.height = `${size}px`;
+    ripple.style.left = `${x}px`;
+    ripple.style.top = `${y}px`;
 
-        // Только добавление класса, анимация в CSS
-        rippleBtn.classList.add('ripple-active');
-        setTimeout(() => rippleBtn.classList.remove('ripple-active'), 600);
-    });
-    }
+    rippleBtn.appendChild(ripple);
+
+    setTimeout(() => {
+      ripple.remove();
+    }, 600);
+  });
 }

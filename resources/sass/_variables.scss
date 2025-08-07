@@ -6,3 +6,17 @@ $font-family-sans-serif: 'Nunito', sans-serif;
 $font-size-base: 0.9rem;
 $line-height-base: 1.6;
 $md-sys-color-primary: #0b5ed7;
+
+$footer-height: 250px;
+$sidebar-width: 280px;
+$sidebar-mini-width: 80px;
+$navbar-height: 80px;
+$content-padding: 1.5rem;
+
+:root {
+  --footer-height: clamp(180px, 25vh, 250px);
+  --sidebar-width: clamp(240px, 20vw, 280px);
+  --sidebar-mini-width: 70px;
+  --navbar-height: 70px;
+  --content-padding: clamp(1rem, 2vw, 1.5rem);
+}

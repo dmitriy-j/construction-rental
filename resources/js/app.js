@@ -1,6 +1,7 @@
 import { initRipple } from './ripple';
 import { initTheme } from './theme';
 import { initSidebar } from './sidebar';
+import { initSmartNavbar } from './navbar';
 
 // Функция для инициализации каталога
 function initCatalog() {
@@ -129,7 +130,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initRipple();
   initTheme();
-  initSidebar();
+  initSmartNavbar();
+
+
+ // Инициализируем сайдбар после полной загрузки страницы
+  window.addEventListener('load', () => {
+    initSidebar();
+
+    // Пересчет высоты при изменении контента
+    new MutationObserver(initSidebar).observe(
+      document.body,
+      { childList: true, subtree: true }
+    );
+  });
 
   if (document.querySelector('.catalog-show-page')) {
     console.log('Initializing catalog');
@@ -141,4 +154,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initCart();
   }
 });
+
 
