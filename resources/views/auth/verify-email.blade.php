@@ -1,36 +1,42 @@
-<x-auth-layout title="Подтверждение email">
-    <div class="alert alert-info mb-4">
-        <i class="bi bi-envelope-check me-2"></i>
-        Спасибо за регистрацию! Прежде чем начать, подтвердите ваш email, перейдя по ссылке в письме.
-        Если вы не получили письмо, мы с радостью отправим его снова.
-    </div>
+@extends('layouts.auth')
 
-    @if (session('status') == 'verification-link-sent')
-        <div class="alert alert-success mb-4">
-            <i class="bi bi-check-circle me-2"></i>
-            Новое письмо с подтверждением было отправлено на указанный email.
+@section('title', 'Подтверждение email')
+@section('page-title', 'Подтвердите ваш email')
+@section('background-text', 'Проверьте вашу электронную почту и перейдите по ссылке для подтверждения.')
+
+@section('content')
+<div class="text-center">
+    <div class="auth-form-group">
+        <i class="bi bi-envelope-check fs-1 text-primary mb-3"></i>
+        <h3 class="mb-3">Подтвердите ваш email</h3>
+
+        <p class="mb-4">
+            На ваш email <span class="fw-bold">{{ auth()->user()->email }}</span>
+            была отправлена ссылка для подтверждения. Пожалуйста, проверьте вашу почту и перейдите по ссылке.
+        </p>
+
+        @if (session('status') == 'verification-link-sent')
+            <div class="alert alert-success mb-4">
+                <i class="bi bi-check-circle me-2"></i>
+                Новая ссылка подтверждения была отправлена на ваш email!
+            </div>
+        @endif
+
+        <div class="d-flex flex-column gap-3">
+            <form method="POST" action="{{ route('verification.send') }}">
+                @csrf
+                <button type="submit" class="auth-btn w-100">
+                    <i class="bi bi-envelope-arrow-up"></i> Отправить ссылку повторно
+                </button>
+            </form>
+
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-box-arrow-left me-1"></i> Выйти
+                </button>
+            </form>
         </div>
-    @endif
-
-    <div class="d-flex justify-content-between align-items-center mt-4">
-        <form method="POST" action="{{ route('verification.send') }}">
-            @csrf
-            <button type="submit" class="btn btn-primary btn-auth">
-                <i class="bi bi-envelope-arrow-up me-2"></i> Отправить письмо повторно
-            </button>
-        </form>
-
-        <form method="POST" action="{{ route('logout') }}">
-            @csrf
-            <button type="submit" class="btn btn-outline-secondary">
-                <i class="bi bi-box-arrow-right me-2"></i> Выйти
-            </button>
-        </form>
     </div>
-
-    <div class="text-center mt-5">
-        <img src="https://cdn-icons-png.flaticon.com/512/3178/3178283.png" 
-             alt="Письмо" 
-             style="max-width: 200px; opacity: 0.8;">
-    </div>
-</x-auth-layout>
+</div>
+@endsection

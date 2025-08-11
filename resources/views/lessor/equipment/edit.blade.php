@@ -67,16 +67,15 @@
                                value="{{ old('hours_worked', $equipment->hours_worked) }}" required>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Локация *</label>
-                        <select name="location_id" class="form-select" required>
-                            <option value="">Выберите локацию</option>
-                            @foreach($locations as $location)
-                                <option value="{{ $location->id }}"
-                                    {{ old('location_id', $equipment->location_id) == $location->id ? 'selected' : '' }}>
-                                    {{ $location->city }}, {{ $location->region }}
-                                </option>
-                            @endforeach
-                        </select>
+                        <label class="form-label">Название локации *</label>
+                        <input type="text" name="location_name" class="form-control"
+                            value="{{ old('location_name', $equipment->location->name ?? '') }}" required>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Адрес локации *</label>
+                        <input type="text" name="location_address" class="form-control"
+                            value="{{ old('location_address', $equipment->location->address ?? '') }}" required>
                     </div>
                 </div>
             </div>
@@ -89,7 +88,7 @@
                     <div class="col-md-12">
                         <label class="form-label">Цена за час (₽) *</label>
                         <input type="number" name="price_per_hour" class="form-control" step="0.01"
-                            value="{{ old('price_per_hour', $pricePerHour) }}" required>
+                            value="{{ old('price_per_hour', $pricePerHour ?? '') }}" required>
                     </div>
                 </div>
             </div>

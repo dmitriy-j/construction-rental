@@ -16,8 +16,13 @@ class Operator extends Model
         'phone',
         'license_number',
         'qualification',
-        'is_active'
+        'is_active',
+        'shift_type'
     ];
+
+    // Добавляем константы для типов смен
+    const SHIFT_DAY = 'day';
+    const SHIFT_NIGHT = 'night';
 
     public function company()
     {
@@ -27,5 +32,20 @@ class Operator extends Model
     public function equipment()
     {
         return $this->belongsTo(Equipment::class, 'equipment_id');
+    }
+
+    public function getShiftTypeTextAttribute(): string
+    {
+        return $this->shift_type === self::SHIFT_DAY ? 'Дневная' : 'Ночная';
+    }
+
+    public function scopeDayOperators($query)
+    {
+        return $query->where('shift_type', self::SHIFT_DAY);
+    }
+
+    public function scopeNightOperators($query)
+    {
+        return $query->where('shift_type', self::SHIFT_NIGHT);
     }
 }

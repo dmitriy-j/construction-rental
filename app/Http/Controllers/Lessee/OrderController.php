@@ -73,26 +73,32 @@ class OrderController extends Controller
             ? $order->childOrders->flatMap->items
             : $order->items;
 
-        $allItems->each(function ($item) {
-            $item->simple_rental_total = $item->price_per_unit * $item->period_count;
-            $item->simple_total = $item->simple_rental_total + $item->delivery_cost;
+          $allItems->each(function ($item) {
+        // Заменяем price_per_unit на фиксированную стоимость
+        $item->price_per_unit = $item->fixed_customer_price ?? $item->price_per_unit;
 
-            $item->status_text = match($item->status) {
-                OrderItem::STATUS_PENDING => 'Ожидает',
-                OrderItem::STATUS_IN_DELIVERY => 'В пути',
-                OrderItem::STATUS_ACTIVE => 'Активна',
-                OrderItem::STATUS_COMPLETED => 'Завершена',
-                default => $item->status,
-            };
+        // Пересчитываем суммы
+        $item->simple_rental_total = $item->price_per_unit * $item->period_count;
+        $item->simple_total = $item->simple_rental_total + $item->delivery_cost;
 
-            $item->status_color = match($item->status) {
-                OrderItem::STATUS_PENDING => 'warning',
-                OrderItem::STATUS_IN_DELIVERY => 'info',
-                OrderItem::STATUS_ACTIVE => 'success',
-                OrderItem::STATUS_COMPLETED => 'secondary',
-                default => 'light',
-            };
-        });
+        // Перенесено внутрь callback-функции!
+        $item->status_text = match($item->status) {
+            OrderItem::STATUS_PENDING => 'Ожидает',
+            OrderItem::STATUS_IN_DELIVERY => 'В пути',
+            OrderItem::STATUS_ACTIVE => 'Активна',
+            OrderItem::STATUS_COMPLETED => 'Завершена',
+            default => $item->status,
+        };
+
+        $item->status_color = match($item->status) {
+            OrderItem::STATUS_PENDING => 'warning',
+            OrderItem::STATUS_IN_DELIVERY => 'info',
+            OrderItem::STATUS_ACTIVE => 'success',
+            OrderItem::STATUS_COMPLETED => 'secondary',
+            default => 'light',
+        };
+    });
+
 
         $simpleGrandTotal = $allItems->sum('simple_total');
 

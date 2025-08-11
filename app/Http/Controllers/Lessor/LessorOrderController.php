@@ -16,8 +16,11 @@ use App\Models\Waybill;
 use App\Models\Equipment;
 use App\Models\RentalCondition;
 use App\Models\OrderStatusHistory;
+use App\Models\Operator;
 use App\Notifications\OrderActivatedNotification;
 use App\Notifications\OrderActivatedAdminNotification;
+use App\Services\WaybillCreationService;
+use App\Models\CompletionAct;
 
 class LessorOrderController extends Controller
 {
@@ -46,6 +49,7 @@ class LessorOrderController extends Controller
 
         $order->load([
             'items.equipment',
+            'items.rentalTerm',
             'items.deliveryNote.deliveryTo',
             'items.equipment.activeOperator',
             'parentOrder'
@@ -60,8 +64,9 @@ class LessorOrderController extends Controller
             }
         }
 
+         // Рассчитываем суммы с фиксированными ставками
         $lessorBaseAmount = $order->items->sum(function($item) {
-            return $item->rentalTerm->price_per_hour * $item->period_count;
+            return ($item->fixed_lessor_price ?? $item->rentalTerm->price_per_hour) * $item->period_count;
         });
 
         $orderDetails = [
@@ -75,6 +80,7 @@ class LessorOrderController extends Controller
             'lessor_base_amount' => $lessorBaseAmount,
             'delivery_cost' => $order->delivery_cost,
             'total_payout' => $lessorBaseAmount + $order->delivery_cost,
+
         ];
 
         return view('lessor.orders.show', compact('order', 'orderDetails'));
@@ -108,17 +114,18 @@ class LessorOrderController extends Controller
 
     public function markAsActive(Order $order)
     {
-        // Проверка прав и статуса
+        // Проверка прав доступа
         if ($order->lessor_company_id !== auth()->user()->company_id) {
             abort(403);
         }
 
+        // Разрешенные статусы для активации
         $allowedStatuses = [Order::STATUS_CONFIRMED, Order::STATUS_IN_DELIVERY];
         if (!in_array($order->status, $allowedStatuses)) {
             return back()->withErrors('Невозможно начать аренду в текущем статусе');
         }
 
-        // Проверка даты
+        // Проверка даты начала аренды
         if (now()->lt($order->start_date)) {
             return back()->withErrors(
                 'Нельзя начать аренду раньше '. $order->start_date->format('d.m.Y')
@@ -126,51 +133,86 @@ class LessorOrderController extends Controller
         }
 
         DB::transaction(function () use ($order) {
+            $rentalCondition = $order->rentalCondition;
+            $shiftsPerDay = $rentalCondition->shifts_per_day ?? 1;
+            $missingOperators = [];
+
+            // Явная загрузка операторов с фильтрацией по активности
+            $order->load(['items.equipment' => function ($query) {
+                $query->with([
+                    'operators' => fn($q) => $q->where('is_active', true)
+                ]);
+            }]);
+
+            foreach ($order->items as $item) {
+                $equipment = $item->equipment;
+
+                // Проверяем наличие активного дневного оператора
+                $hasDayOperator = $equipment->operators
+                    ->where('shift_type', Operator::SHIFT_DAY)
+                    ->isNotEmpty();
+
+                if (!$hasDayOperator) {
+                    $missingOperators[] = $equipment->title . ' (дневная смена)';
+                }
+
+                // Проверяем ночную смену только если требуется
+                if ($shiftsPerDay > 1) {
+                    $hasNightOperator = $equipment->operators
+                        ->where('shift_type', Operator::SHIFT_NIGHT)
+                        ->isNotEmpty();
+
+                    if (!$hasNightOperator) {
+                        $missingOperators[] = $equipment->title . ' (ночная смена)';
+                    }
+                }
+            }
+
+            if (!empty($missingOperators)) {
+                throw new \Exception('Для оборудования не назначены активные операторы: ' . implode(', ', $missingOperators));
+            }
+
             // Обновление статуса заказа
             $order->update([
                 'status' => Order::STATUS_ACTIVE,
                 'service_start_date' => now()
             ]);
 
-        \Log::debug('Checking operators for order', ['order_id' => $order->id]);
+            // Создание путевых листов через сервис
+            $waybillService = new WaybillCreationService();
+            $waybillService->createForOrder($order);
 
-        // Проверка операторов с жадной загрузкой
-        $order->load('items.equipment.operator');
+            // Активация первого путевого листа для каждого оборудования
+            $firstWaybills = Waybill::whereIn('id', function ($query) use ($order) {
+                $query->select(DB::raw('MIN(id)'))
+                    ->from('waybills')
+                    ->where('order_id', $order->id)
+                    ->groupBy('equipment_id', 'shift_type');
+            })->get();
 
-        $missingOperators = [];
-        foreach ($order->items as $item) {
-
-             \Log::debug('Equipment operator check', [
-                'equipment_id' => $item->equipment_id,
-                'operator_id' => $item->equipment->operator_id,
-                'operator_active' => $item->equipment->operator ? $item->equipment->operator->is_active : null,
-                'has_active' => $item->equipment->hasActiveOperator()
-            ]);
-
-            if (!$item->equipment->operator_id ||
-                !$item->equipment->operator ||
-                !$item->equipment->operator->is_active)
-            {
-                $missingOperators[] = $item->equipment->title;
+            foreach ($firstWaybills as $waybill) {
+                // Активируем только если дата начала в прошлом или сегодня
+                if ($waybill->start_date <= now()) {
+                    $waybill->update(['status' => Waybill::STATUS_ACTIVE]);
+                }
             }
-        }
 
-        if (!empty($missingOperators)) {
-            throw new \Exception('Для оборудования не назначены активные операторы: ' . implode(', ', $missingOperators));
-        }
-
-            // Создание путевых листов
-            $this->createWaybills($order);
-
-            // Запись в историю
+            // Запись в историю статусов
             OrderStatusHistory::create([
                 'order_id' => $order->id,
                 'status' => Order::STATUS_ACTIVE,
-                'changed_by' => auth()->id()
+                'changed_by' => auth()->id(),
+                'notes' => 'Аренда активирована, созданы путевые листы'
             ]);
 
-            // Уведомления
+            // Отправка уведомлений
             $this->sendActivationNotifications($order);
+
+            Log::info('Order activated with waybills', [
+                'order_id' => $order->id,
+                'waybill_count' => $order->waybills()->count(),
+                'first_waybills' => $firstWaybills->pluck('id')
+            ]);
         });
 
         return back()->with('success', 'Аренда успешно начата. Созданы путевые листы.');

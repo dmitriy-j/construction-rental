@@ -48,11 +48,31 @@
                     </select>
                 </div>
 
-                <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="is_active" name="is_active" value="1"
-                        {{ $operator->is_active ? 'checked' : '' }}>
-                    <label class="form-check-label" for="is_active">Активен</label>
+                 <!-- Добавлен выбор смены -->
+                <div class="mb-3">
+                    <label class="form-label">Тип смены</label>
+                    <select class="form-select" name="shift_type" required>
+                        <option value="day" {{ $operator->shift_type == 'day' ? 'selected' : '' }}>Дневная</option>
+                        <option value="night" {{ $operator->shift_type == 'night' ? 'selected' : '' }}>Ночная</option>
+                    </select>
                 </div>
+
+                <!-- Поле активности -->
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_active"
+                            id="is_active" value="1"
+                            {{ $operator->is_active ? 'checked' : '' }}>
+                        <label class="form-check-label" for="is_active">
+                            Активен
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Явное поле для неактивного состояния -->
+                <input type="hidden" name="is_active_fallback" value="0">
+
+
 
                 <button type="submit" class="btn btn-primary">Сохранить</button>
             </form>

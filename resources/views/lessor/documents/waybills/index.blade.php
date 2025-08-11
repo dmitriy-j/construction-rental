@@ -18,6 +18,7 @@
                     <tr>
                         <th class="py-3">ID</th>
                         <th class="py-3">Оборудование</th>
+                        <th class="py-3">Оператор</th>
                         <th class="py-3">Дата</th>
                         <th class="py-3">Смена</th>
                         <th class="py-3">Статус</th>
@@ -36,9 +37,25 @@
                                 </div>
                             @endif
                         </td>
-                        <td>{{ $waybill->work_date->format('d.m.Y') }}</td>
+                        <td> <!-- Информация об операторе -->
+                            @if($waybill->operator)
+                                {{ $waybill->operator->full_name }}
+                                <div class="text-muted small">
+                                    {{ $waybill->operator->license_number }}
+                                </div>
+                            @else
+                                <span class="text-danger">Не назначен</span>
+                            @endif
+                        </td>
                         <td>
-                            @if($waybill->shift === \App\Models\Waybill::SHIFT_DAY)
+                            @if($waybill->start_date)
+                                {{ $waybill->start_date->format('d.m.Y') }} - {{ $waybill->end_date->format('d.m.Y') }}
+                            @else
+                                Дата не указана
+                            @endif
+                        </td>
+                        <td>
+                            @if($waybill->shift_type === 'day')
                                 <span class="badge bg-info py-2 px-3 rounded-pill">Дневная</span>
                             @else
                                 <span class="badge bg-dark py-2 px-3 rounded-pill">Ночная</span>
@@ -61,7 +78,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="text-center py-5">
+                        <td colspan="7" class="text-center py-5"> <!-- Исправлен colspan с 6 на 7 -->
                             <div class="text-muted">
                                 <i class="fas fa-file-alt fa-3x mb-3"></i>
                                 <p class="h5">Путевые листы отсутствуют</p>

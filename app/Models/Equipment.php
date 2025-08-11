@@ -263,12 +263,59 @@ class Equipment extends Model
         return $this->belongsTo(Operator::class);
     }
 
-    public function hasActiveOperator()
+    public function activeOperators()
     {
-        return $this->operator_id !== null &&
-            $this->operator &&
-            $this->operator->is_active;
+        return $this->hasMany(Operator::class)->where('is_active', true);
     }
 
+    public function hasActiveOperator(string $shiftType): bool
+    {
+        return $this->operators()
+            ->where('shift_type', $shiftType)
+            ->where('is_active', true)
+            ->exists();
+    }
+
+    public function dayOperators()
+    {
+        return $this->hasMany(Operator::class)->where('shift_type', 'day');
+    }
+
+    public function nightOperators()
+    {
+        return $this->hasMany(Operator::class)->where('shift_type', 'night');
+    }
+
+    public function hasDayOperator()
+    {
+        return $this->operators()
+            ->where('shift_type', Operator::SHIFT_DAY)
+            ->where('is_active', true)
+            ->exists();
+    }
+
+    public function hasNightOperator()
+    {
+        return $this->operators()
+            ->where('shift_type', Operator::SHIFT_NIGHT)
+            ->where('is_active', true)
+            ->exists();
+    }
+
+    public function hasActiveDayOperator(): bool
+    {
+        return $this->operators()
+            ->where('shift_type', Operator::SHIFT_DAY)
+            ->where('is_active', true)
+            ->exists();
+    }
+
+    public function hasActiveNightOperator(): bool
+    {
+        return $this->operators()
+            ->where('shift_type', Operator::SHIFT_NIGHT)
+            ->where('is_active', true)
+            ->exists();
+    }
 
 }

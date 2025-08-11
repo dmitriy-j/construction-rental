@@ -6,6 +6,9 @@ use Illuminate\Support\ServiceProvider;
 use App\Services\EquipmentAvailabilityService;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Log;
+use App\Models\WaybillShift; // Добавляем импорт модели
+use App\Observers\WaybillShiftObserver; // Импорт наблюдателя
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -52,5 +55,8 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
+         WaybillShift::observe(\App\Observers\WaybillShiftObserver::class);
+
     }
+
 }

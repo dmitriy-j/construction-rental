@@ -18,6 +18,8 @@ class Location extends Model
         'company_id'
     ];
 
+
+
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);

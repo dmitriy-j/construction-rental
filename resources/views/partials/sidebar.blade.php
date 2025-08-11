@@ -40,8 +40,8 @@
         <h4 class="sidebar-section-title">Основное меню</h4>
         </div>
          <ul class="nav-menu">
-                @if(auth()->check() && auth()->user()->company)
-                    @if(auth()->user()->company->is_lessor)
+            @if(auth()->check() && auth()->user()->company)
+                @if(auth()->user()->company->is_lessor)
                     <!-- Меню для арендодателя -->
                     <li class="nav-item">
                         <a class="nav-link {{ Request::is('lessor/dashboard') ? 'active' : '' }}"
@@ -54,35 +54,53 @@
 
                     <li class="nav-item">
                         <a class="nav-link {{ Request::is('lessor/equipment*') ? 'active' : '' }}" href="{{ route('lessor.equipment.index') }}" data-tooltip="Моя техника">
-                            <i class="nav-icon bi bi-cogs"></i>
+                            <i class="nav-icon bi bi-wrench-adjustable-circle"></i> <!-- Измененная иконка -->
                             <span class="nav-text">Моя техника</span>
                         </a>
                     </li>
 
+                    <!-- Исправлено: добавлен тег li -->
                     <li class="nav-item">
-                        <a class="nav-link {{ Request::is('lessor/orders*') ? 'active' : '' }}" href="{{ route('lessor.orders') }}" data-tooltip="Заказы">
-                            <i class="nav-icon bi bi-list-task"></i>
-                            <span class="nav-text">Заказы</span>
-                            <span class="badge bg-primary rounded-pill pulse">5</span>
+                        <a class="nav-link {{ Request::is('lessor/operators*') ? 'active' : '' }}" href="{{ route('lessor.operators.index') }}" data-tooltip="Операторы">
+                            <i class="nav-icon bi bi-people"></i>
+                            <span class="nav-text">Операторы</span>
                         </a>
                     </li>
 
-                   <div class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#"
-                            data-bs-toggle="dropdown" aria-expanded="false">
-                                <div class="nav-icon">
-                                    <i class="bi bi-files"></i>
-                                </div>
-                                <span class="nav-text">Документы</span>
-                            </a>
-                        <ul class="dropdown-menu" aria-labelledby="documentsDropdown">
-                            <li><a class="dropdown-item {{ Request::is('lessor/documents/contracts') ? 'active' : '' }}" href="{{ route('lessor.documents', ['type' => 'contracts']) }}">Договоры</a></li>
-                            <li><a class="dropdown-item {{ Request::is('lessor/documents/waybills') ? 'active' : '' }}" href="{{ route('lessor.documents', ['type' => 'waybills']) }}">Путевые листы</a></li>
-                            <li><a class="dropdown-item {{ Request::is('lessor/documents/delivery_notes') ? 'active' : '' }}" href="{{ route('lessor.documents', ['type' => 'delivery_notes']) }}">Накладные</a></li>
-                            <li><a class="dropdown-item {{ Request::is('lessor/documents/completion_acts') ? 'active' : '' }}" href="{{ route('lessor.documents', ['type' => 'completion_acts']) }}">Акты выполненных работ</a></li>
-                        </ul>
-                    </li>
-                @else
+                    @php
+                        // Устанавливаем значение по умолчанию
+                        $newOrdersCount = $newOrdersCount ?? 0;
+                    @endphp
+
+                    <li class="nav-item">
+                        <a class="nav-link {{ Request::is('lessor/orders*') ? 'active' : '' }}"
+                        href="{{ route('lessor.orders.index') }}"
+                        data-tooltip="Заказы">
+                            <i class="nav-icon bi bi-list-task"></i>
+                            <span class="nav-text">Заказы</span>
+                            @if($newOrdersCount > 0)
+                                <span class="badge bg-primary rounded-pill pulse">{{ $newOrdersCount }}</span>
+                @endif
+            </a>
+        </li>
+
+        <!-- Исправлено: добавлен тег li -->
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#"
+            data-bs-toggle="dropdown" aria-expanded="false">
+                <div class="nav-icon">
+                    <i class="bi bi-files"></i>
+                </div>
+                <span class="nav-text">Документы</span>
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="documentsDropdown">
+                <li><a class="dropdown-item {{ Request::is('lessor/documents/contracts') ? 'active' : '' }}" href="{{ route('lessor.documents.index', ['type' => 'contracts']) }}">Договоры</a></li>
+                <li><a class="dropdown-item {{ Request::is('lessor/documents/waybills') ? 'active' : '' }}" href="{{ route('lessor.documents.index', ['type' => 'waybills']) }}">Путевые листы</a></li>
+                <li><a class="dropdown-item {{ Request::is('lessor/documents/delivery_notes') ? 'active' : '' }}" href="{{ route('lessor.documents.index', ['type' => 'delivery_notes']) }}">Накладные</a></li>
+                <li><a class="dropdown-item {{ Request::is('lessor/documents/completion_acts') ? 'active' : '' }}" href="{{ route('lessor.documents.index', ['type' => 'completion_acts']) }}">Акты выполненных работ</a></li>
+            </ul>
+        </li>
+        @else
                     <!-- Меню для арендатора -->
                     <li class="nav-item">
                         <a class="nav-link {{ Request::is('lessee/dashboard') ? 'active' : '' }}" href="{{ route('lessee.dashboard') }}" data-tooltip="Главная">
@@ -181,7 +199,7 @@
         <div class="app-version">v1.2.5</div>
         <div class="session-time">
             <i class="bi bi-clock-history"></i>
-            <span>12:45:32</span>
+            <span>{{ now()->format('d.m.Y H:i') }}</span>
         </div>
     </div>
 </aside>

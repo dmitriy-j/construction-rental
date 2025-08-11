@@ -289,10 +289,6 @@ class CheckoutController extends Controller
         $discountAmount = $orderTotal > 0 ?
             ($itemTotal / $orderTotal) * $childOrder->discount_amount : 0;
 
-        // Сохраняем расстояние и стоимость доставки
-        $deliveryCost = $item->delivery_cost;
-        $distanceKm = $item->distance_km;
-
         return OrderItem::create([
             'order_id' => $childOrder->id,
             'equipment_id' => $equipment->id,
@@ -305,14 +301,16 @@ class CheckoutController extends Controller
             'platform_fee' => $item->platform_fee,
             'discount_amount' => $discountAmount,
             'delivery_cost' => $item->delivery_cost,
-            'distance_km' => $distanceKm, // Сохраняем расстояние
+            'distance_km' => $item->distance_km ?? 0,
             'total_price' => $itemTotal - $discountAmount,
             'delivery_from_id' => $item->delivery_from_id,
             'delivery_to_id' => $item->delivery_to_id, // Исправлено: delivery_to_id
             'lessor_company_id' => $childOrder->lessor_company_id,
             'distance_km' => $item->distance_km,
             'delivery_cost' => $item->delivery_cost,
-            'status' => OrderItem::STATUS_PENDING // Добавляем начальный статус
+            'status' => OrderItem::STATUS_PENDING, // Добавляем начальный статус
+            'fixed_lessor_price' => $term->price_per_hour, // Фиксируем ставку арендодателя
+            'fixed_customer_price' => $item->base_price, // Фиксируем ставку для арендатора
         ]);
     }
 

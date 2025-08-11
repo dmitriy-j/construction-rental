@@ -7,9 +7,9 @@
 
         <div class="col-md-3">
             <select class="form-select" onchange="window.location.href = this.value">
-                <option value="{{ route('lessor.orders') }}">Все статусы</option>
+                <option value="{{ route('lessor.orders.index') }}">Все статусы</option>
                 @foreach(\App\Models\Order::statuses() as $status)
-                <option value="{{ route('lessor.orders', ['status' => $status]) }}"
+                <option value="{{ route('lessor.orders.index', ['status' => $status]) }}"
                     {{ request('status') == $status ? 'selected' : '' }}>
                     {{ \App\Models\Order::statusText($status) }}
                 </option>

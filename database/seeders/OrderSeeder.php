@@ -15,10 +15,17 @@ use App\Models\Operator;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
+use Faker\Factory as Faker;
 
 class OrderSeeder extends Seeder
 {
+    protected $faker;
+
+    public function __construct()
+    {
+        $this->faker = Faker::create();
+    }
+
     // Статические кэши для данных
     private static $equipmentIds;
     private static $rentalConditions;
@@ -101,8 +108,6 @@ class OrderSeeder extends Seeder
 
     protected function createDocuments(Order $order)
     {
-        // Удалено создание контракта - теперь контракты создаются отдельно
-
         // Создаем элементы заказа
         $items = [];
         $itemsCount = rand(1, 3);
@@ -138,67 +143,164 @@ class OrderSeeder extends Seeder
 
         DB::table('order_items')->insert($items);
 
-        // Создаем путевые листы
-        $waybills = [];
-        $waybillCount = rand(2, 5);
+    // Создаем путевые листы
+    $waybills = [];
+    $waybillCount = rand(2, 5);
 
-        for ($i = 0; $i < $waybillCount; $i++) {
-            $randomItem = $items[array_rand($items)];
-            $equipmentId = $randomItem['equipment_id'];
+    for ($i = 0; $i < $waybillCount; $i++) {
+        // Генерация значений для путевых листов
+        $randomItem = $items[array_rand($items)];
+        $equipmentId = $randomItem['equipment_id'];
 
-            $operatorId = null;
-            if (!empty(self::$operatorsByEquipment[$equipmentId])) {
-                $operatorId = self::$operatorsByEquipment[$equipmentId][array_rand(self::$operatorsByEquipment[$equipmentId])];
+        $operatorId = null;
+        if (!empty(self::$operatorsByEquipment[$equipmentId])) {
+            $operatorId = self::$operatorsByEquipment[$equipmentId][array_rand(self::$operatorsByEquipment[$equipmentId])];
+        } else {
+            $equipment = Equipment::find($equipmentId);
+            $operator = Operator::create([
+                'company_id' => $equipment->company_id,
+                'equipment_id' => $equipment->id,
+                'full_name' => fake()->lastName() . ' ' . fake()->firstName(),
+                'phone' => fake()->phoneNumber(),
+                'license_number' => 'LN-' . rand(1000, 9999),
+                'qualification' => fake()->randomElement(['Экскаваторщик', 'Крановщик', 'Бульдозерист', 'Погрузчик']),
+                'is_active' => true
+            ]);
+            $operatorId = $operator->id;
+            self::$operatorsByEquipment[$equipmentId][] = $operatorId;
+        }
+
+        $startDate = Carbon::now()->subDays(rand(1, 30));
+        $endDate = (clone $startDate)->addDays(rand(1, 10));
+
+        $waybillNumber = $this->generateUniqueWaybillNumber(); // Генерация уникального номера
+
+        // Генерация departure_time
+        $departureTime = $this->faker->dateTimeBetween($startDate, $endDate);
+
+        $waybill = Waybill::create([
+            'order_id' => $order->id,
+            'equipment_id' => $equipmentId,
+            'operator_id' => $operatorId,
+            'start_date' => $startDate->format('Y-m-d'),
+            'end_date' => $endDate->format('Y-m-d'),
+            'status' => $this->faker->randomElement([
+                Waybill::STATUS_FUTURE,
+                Waybill::STATUS_ACTIVE,
+                Waybill::STATUS_COMPLETED
+            ]),
+            'notes' => $i === 0 ? 'Путевой лист' : null,
+            'created_at' => $now,
+            'updated_at' => $now,
+            'number' => $waybillNumber
+
+        ]);
+
+        $waybills[] = $waybill; // Сохраняем путевые листы в массив
+    }
+
+    // Вставляем все путевые листы в базу данных
+    foreach ($waybills as $waybill) {
+        $waybill->save();
+    }
+
+    // Для каждого waybill создаем смены
+    foreach ($waybills as $waybill) {
+        $shifts = [];
+        $daysCount = $waybill->start_date->diffInDays($waybill->end_date);
+
+        for ($day = 0; $day <= $daysCount; $day++) {
+            $shiftDate = (clone $waybill->start_date)->addDays($day);
+
+            // Инициализация переменных
+            $downtimeCause = $this->faker->randomElement(['?', 'lessor', 'force_majeure']);
+            $downtimeHours = rand(0, 10);
+            $fuelEnd = rand(30, 100);
+            $fuelRefilledLiters = rand(0, 50);
+            $fuelStart = rand(30, 100);
+            $hourlyRate = rand(100, 200);
+            $hoursWorked = rand(1, 12);
+            $mechanicSignaturePath = '/signatures/mechanic_' . $day . '.png';
+            $odometerEnd = rand(5000, 10000);
+            $odometerStart = rand(1000, 5000);
+            $operatorId = 147; // Пример ID оператора
+            $operatorSignaturePath = '/signatures/operator_' . $day . '.png';
+            $shiftType = $day % 2 === 0 ? 'day' : 'night';
+            $returnTime = null; // Инициализация переменной
+            $totalAmount = $this->faker->randomFloat(2, 100, 1000);
+
+            // Пример генерации return_time, если это необходимо
+            if ($shiftType === 'day') {
+                $returnTime = $this->faker->dateTimeBetween($departureTime, $endDate);
             } else {
-                $equipment = Equipment::find($equipmentId);
-                $operator = Operator::create([
-                    'company_id' => $equipment->company_id,
-                    'equipment_id' => $equipmentId,
-                    'full_name' => fake()->lastName() . ' ' . fake()->firstName(),
-                    'phone' => fake()->phoneNumber(),
-                    'license_number' => 'LN-' . rand(1000, 9999),
-                    'qualification' => fake()->randomElement(['Экскаваторщик', 'Крановщик', 'Бульдозерист', 'Погрузчик']),
-                    'is_active' => true
-                ]);
-                $operatorId = $operator->id;
-                self::$operatorsByEquipment[$equipmentId][] = $operatorId;
+                $returnTime = $this->faker->dateTimeBetween($departureTime, $endDate);
             }
 
-            $waybills[] = [
-                'order_id' => $order->id,
-                'equipment_id' => $equipmentId,
+            // Добавление записи в массив
+            $shifts[] = [
+                'downtime_cause' => $downtimeCause,
+                'downtime_hours' => $downtimeHours,
+                'fuel_end' => $fuelEnd,
+                'fuel_refilled_liters' => $fuelRefilledLiters,
+                'fuel_start' => $fuelStart,
+                'hourly_rate' => $hourlyRate,
+                'hours_worked' => $hoursWorked,
+                'mechanic_signature_path' => $mechanicSignaturePath,
+                'odometer_end' => $odometerEnd,
+                'odometer_start' => $odometerStart,
                 'operator_id' => $operatorId,
-                'work_date' => Carbon::now()->subDays(rand(1, 30))->format('Y-m-d H:i:s'),
-                'hours_worked' => rand(1, 10),
-                'downtime_hours' => rand(0, 5),
-                'downtime_cause' => rand(0, 1) ? ['lessee', 'lessor', 'force_majeure'][rand(0,2)] : null,
-                'operator_signature_path' => '/signatures/operator_'.$order->id.'_'.$i.'.png',
-                'customer_signature_path' => '/signatures/customer_'.$order->id.'_'.$i.'.png',
-                'notes' => $i === 0 ? 'Путевой лист' : null,
-                'created_at' => $now,
-                'updated_at' => $now
+                'operator_signature_path' => $operatorSignaturePath,
+                'shift_date' => $shiftDate,
+                'shift_type' => $shiftType,
+                'waybill_id' => $waybill->id,
+                'object_address' => 'Адрес объекта',
+                'created_at' => now(),
+                'updated_at' => now(),
+                'departure_time' => $departureTime, // Добавляем departure_time
+                'return_time' => $returnTime,
+                'total_amount' => $totalAmount,
             ];
         }
 
-        DB::table('waybills')->insert($waybills);
+        DB::table('waybill_shifts')->insert($shifts);
+    }
 
-        // Для завершенных заказов создаем акт
-        if ($order->status === 'completed') {
-            CompletionAct::create([
-                'order_id' => $order->id,
-                'act_date' => now(),
-                'service_start_date' => $order->service_start_date ?? $order->start_date,
-                'service_end_date' => $order->service_end_date ?? $order->end_date,
-                'total_hours' => rand(10, 100),
-                'total_downtime' => rand(0, 10),
-                'penalty_amount' => 0,
-                'total_amount' => $order->total_amount,
-                'prepayment_amount' => $order->prepayment_amount,
-                'final_amount' => $order->total_amount - $order->prepayment_amount,
-                'act_file_path' => '/completion_acts/act_'.$order->id.'.pdf',
-                'status' => 'draft'
-            ]);
+    // Получаем все завершенные заказы
+        $completedOrders = Order::where('status', 'completed')->get();
+
+        foreach ($completedOrders as $order) {
+            // Проверяем, есть ли waybill_id
+            if ($order->waybill_id) {
+                CompletionAct::create([
+                    'order_id' => $order->id,
+                    'waybill_id' => $order->waybill_id,
+                    'act_date' => now(),
+                    'total_hours' => rand(10, 100),
+                    'total_downtime' => rand(0, 10),
+                    'hourly_rate' => $order->hourly_rate ?? 0, // Если hourly_rate есть в модели Order
+                    'total_amount' => $order->total_amount,
+                    'notes' => $order->notes ?? '', // Если notes есть в модели Order
+                    'document_path' => '/completion_acts/act_' . $order->id . '.pdf',
+                    'status' => 'draft',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
+    }
+
+    protected function generateUniqueWaybillNumber()
+    {
+        // Генерация уникального номера
+        $baseNumber = 'ЭСМ-2-' . date('Ymd');
+        $uniqueNumber = $baseNumber;
+        $count = 1;
+
+        while (Waybill::where('number', $uniqueNumber)->exists()) {
+            $uniqueNumber = $baseNumber . '-' . str_pad($count++, 5, '0', STR_PAD_LEFT);
+        }
+
+        return $uniqueNumber;
     }
 
     protected function createTestOrders()

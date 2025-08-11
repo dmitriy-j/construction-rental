@@ -21,6 +21,7 @@ class Kernel extends HttpKernel
     'company.lessee' => \App\Http\Middleware\CheckCompanyLessee::class,
     'company.lessor' => \App\Http\Middleware\CheckCompanyLessor::class,
     'company.verified' => \App\Http\Middleware\CheckCompanyVerified::class, // Добавь эту строку
+    'shift.status' => \App\Http\Middleware\CheckShiftStatus::class,
 ];
 
     protected $middlewareGroups = [

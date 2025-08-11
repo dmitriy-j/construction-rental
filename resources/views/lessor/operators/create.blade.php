@@ -44,6 +44,15 @@
                     </select>
                 </div>
 
+                 <!-- Добавлен выбор смены -->
+                <div class="mb-3">
+                    <label for="shift_type" class="form-label">Тип смены</label>
+                    <select class="form-select" id="shift_type" name="shift_type" required>
+                        <option value="day">Дневная</option>
+                        <option value="night">Ночная</option>
+                    </select>
+                </div>
+
                 <div class="mb-3 form-check">
                     <input type="checkbox" class="form-check-input" id="is_active" name="is_active" value="1" checked>
                     <label class="form-check-label" for="is_active">Активен</label>

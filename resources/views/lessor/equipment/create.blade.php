@@ -60,15 +60,15 @@
                         <input type="number" name="hours_worked" class="form-control" step="0.1" value="{{ old('hours_worked') }}" required>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Локация *</label>
-                        <select name="location_id" class="form-select" required>
-                            <option value="">Выберите локацию</option>
-                            @foreach($locations as $location)
-                                <option value="{{ $location->id }}" {{ old('location_id') == $location->id ? 'selected' : '' }}>
-                                    {{ $location->city }}, {{ $location->region }}
-                                </option>
-                            @endforeach
-                        </select>
+                        <label class="form-label">Название локации *</label>
+                        <input type="text" name="location_name" class="form-control"
+                            value="{{ old('location_name', $equipment->location->name ?? '') }}" required>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Адрес локации *</label>
+                        <input type="text" name="location_address" class="form-control"
+                            value="{{ old('location_address', $equipment->location->address ?? '') }}" required>
                     </div>
                 </div>
 
@@ -87,25 +87,25 @@
                 <div class="col-md-3 mb-3">
                     <label class="form-label">Вес, кг *</label>
                     <input type="number" name="specifications[weight]" class="form-control"
-                        value="{{ $equipment->getNumericSpecValue('weight') }}"
+                        value="{{ old('specifications.weight', 0) }}"
                         step="0.01" min="0" required>
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label">Длина, м *</label>
                     <input type="number" name="specifications[length]" class="form-control"
-                        value="{{ old('specifications.length', $equipment->getNumericSpecValue('length')) }}"
+                        value="{{ old('specifications.length', 0) }}"
                         step="0.01" min="0" required>
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label">Ширина, м *</label>
                     <input type="number" name="specifications[width]" class="form-control"
-                        value="{{ old('specifications.width', $equipment->getNumericSpecValue('width')) }}"
+                        value="{{ old('specifications.width', 0) }}"
                         step="0.01" min="0" required>
                 </div>
                 <div class="col-md-3 mb-3">
                     <label class="form-label">Высота, м *</label>
                     <input type="number" name="specifications[height]" class="form-control"
-                        value="{{ old('specifications.height', $equipment->getNumericSpecValue('height')) }}"
+                        value="{{ old('specifications.height', 0) }}"
                         step="0.01" min="0" required>
                 </div>
             </div>

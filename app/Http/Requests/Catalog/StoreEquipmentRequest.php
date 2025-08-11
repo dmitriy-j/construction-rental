@@ -21,7 +21,6 @@ class StoreEquipmentRequest extends FormRequest
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'category_id' => 'required|exists:equipment_categories,id',
-            'location_id' => 'required|exists:locations,id',
             'brand' => 'required|string|max:100',
             'model' => 'required|string|max:100',
             'year' => 'required|integer|min:1900|max:'.(date('Y')+1),
@@ -29,7 +28,9 @@ class StoreEquipmentRequest extends FormRequest
             'price_per_hour' => 'required|numeric|min:0',
             'images' => 'required|array|min:1',
             //'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif'
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif',
+            'location_name' => 'required|string|max:255',
+             'location_address' => 'required|string|max:500',
         ];
     }
 }

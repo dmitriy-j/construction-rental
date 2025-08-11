@@ -314,7 +314,7 @@ class CartController extends Controller
                 $rentalCondition->id,
                 $request->delivery_required ? $request->delivery_from_id : null,
                 $request->delivery_required ? $request->delivery_location_id : null,
-                $deliveryCost // Сохраняем доставку отдельно
+                $deliveryCost, // Сохраняем доставку отдельно
             );
 
             // Обновляем поля расстояния (если требуется)

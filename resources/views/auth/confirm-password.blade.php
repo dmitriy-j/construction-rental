@@ -1,55 +1,46 @@
-<x-auth-layout title="Подтверждение пароля">
-    <div class="alert alert-warning mb-4">
-        <i class="bi bi-shield-lock me-2"></i>
-        Это защищенная зона приложения. Пожалуйста, подтвердите ваш пароль.
+@extends('layouts.auth')
+
+@section('title', 'Подтверждение пароля')
+@section('page-title', 'Подтверждение пароля')
+@section('background-text', 'Пожалуйста, подтвердите ваш пароль для продолжения.')
+
+@section('content')
+<form method="POST" action="{{ route('password.confirm') }}">
+    @csrf
+
+    <div class="auth-form-group mb-4">
+        <p class="text-center">
+            <i class="bi bi-shield-check fs-2 text-primary mb-3 d-block"></i>
+            Это защищенная зона. Пожалуйста, подтвердите ваш пароль для продолжения.
+        </p>
     </div>
 
-    <form method="POST" action="{{ route('password.confirm') }}">
-        @csrf
-
-        <!-- Password -->
-        <div class="mb-4">
-            <label for="password" class="form-label">Пароль</label>
-            <div class="input-group">
-                <input id="password" 
-                       type="password"
-                       class="form-control @error('password') is-invalid @enderror"
-                       name="password"
-                       required
-                       autocomplete="current-password"
-                       placeholder="Введите ваш пароль">
-                <button class="btn btn-outline-secondary toggle-password" type="button">
-                    <i class="bi bi-eye"></i>
-                </button>
-            </div>
-            @error('password')
-            <div class="invalid-feedback d-block">
-                <i class="bi bi-exclamation-circle me-1"></i> {{ $message }}
-            </div>
-            @enderror
+    <!-- Password -->
+    <div class="auth-form-group">
+        <label for="password" class="form-label small mb-1">Ваш пароль</label>
+        <div class="auth-input-group">
+            <i class="bi bi-lock auth-input-icon"></i>
+            <input id="password" type="password"
+                class="auth-input @error('password') is-invalid @enderror"
+                name="password" required placeholder="••••••••">
         </div>
+        @error('password')
+            <div class="invalid-feedback d-block mt-2">{{ $message }}</div>
+        @enderror
+    </div>
 
-        <div class="d-flex justify-content-end">
-            <button type="submit" class="btn btn-primary btn-auth">
-                <i class="bi bi-check-circle me-2"></i> Подтвердить
-            </button>
-        </div>
-    </form>
+    <!-- Submit Button -->
+    <div class="auth-form-group">
+        <button type="submit" class="auth-btn">
+            <i class="bi bi-check-circle"></i> Подтвердить
+        </button>
+    </div>
 
-    @section('scripts')
-    <script>
-        document.querySelector('.toggle-password').addEventListener('click', function() {
-            const passwordInput = document.getElementById('password');
-            const icon = this.querySelector('i');
-            
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                icon.classList.replace('bi-eye', 'bi-eye-slash');
-            } else {
-                passwordInput.type = 'password';
-                icon.classList.replace('bi-eye-slash', 'bi-eye');
-            }
-        });
-    </script>
-    @endsection
-</x-auth-layout>
+    <!-- Forgot Password Link -->
+    <div class="text-center mt-4 pt-3">
+        <a href="{{ route('password.request') }}" class="text-decoration-none small">
+            Забыли пароль?
+        </a>
+    </div>
+</form>
+@endsection

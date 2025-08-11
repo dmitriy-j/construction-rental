@@ -26,6 +26,12 @@ use App\Http\Controllers\RentalConditionController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Lessee\OrderController;
 use App\Http\Controllers\DeliveryNoteExportController;
+use App\Http\Controllers\Lessor\WaybillController;
+use App\Http\Controllers\Lessor\ShiftController;
+use App\Http\Controllers\Lessor\OperatorController;
+use App\Http\Controllers\Lessor\DeliveryNoteController;
+
+
 
 
 // Главная страница
@@ -72,87 +78,84 @@ Route::prefix('/company')
 // Для арендодателя
 Route::prefix('lessor')
     ->middleware(['auth', 'company.verified', 'company.lessor'])
+    ->name('lessor.')
     ->group(function () {
+
         // Дашборд
-        Route::get('/dashboard', [LessorDashboardController::class, 'index'])->name('lessor.dashboard');
-         Route::post('/dashboard/mark-as-viewed', [LessorDashboardController::class, 'markAsViewed'])
-            ->name('lessor.dashboard.markAsViewed');
+        Route::get('dashboard', [LessorDashboardController::class, 'index'])->name('dashboard');
+        Route::post('dashboard/mark-as-viewed', [LessorDashboardController::class, 'markAsViewed'])
+            ->name('dashboard.markAsViewed');
 
         // Оборудование
-        Route::resource('equipment', \App\Http\Controllers\Lessor\EquipmentController::class)
+        Route::resource('equipment', EquipmentController::class)
             ->names([
-                'index' => 'lessor.equipment.index',
-                'create' => 'lessor.equipment.create',
-                'store' => 'lessor.equipment.store',
-                'show' => 'lessor.equipment.show',
-                'edit' => 'lessor.equipment.edit',
-                'update' => 'lessor.equipment.update',
-                'destroy' => 'lessor.equipment.destroy'
+                'index' => 'equipment.index',
+                'create' => 'equipment.create',
+                'store' => 'equipment.store',
+                'show' => 'equipment.show',
+                'edit' => 'equipment.edit',
+                'update' => 'equipment.update',
+                'destroy' => 'equipment.destroy'
             ]);
 
-            // Операторы
-        Route::prefix('operators')->name('lessor.operators.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Lessor\OperatorController::class, 'index'])
-                ->name('index');
-            Route::get('/create', [\App\Http\Controllers\Lessor\OperatorController::class, 'create'])
-                ->name('create');
-            Route::post('/', [\App\Http\Controllers\Lessor\OperatorController::class, 'store'])
-                ->name('store');
-            Route::get('/{operator}/edit', [\App\Http\Controllers\Lessor\OperatorController::class, 'edit'])
-                ->name('edit');
-            Route::put('/{operator}', [\App\Http\Controllers\Lessor\OperatorController::class, 'update'])
-                ->name('update');
-            Route::delete('/{operator}', [\App\Http\Controllers\Lessor\OperatorController::class, 'destroy'])
-                ->name('destroy');
+        // Операторы
+        Route::prefix('operators')->name('operators.')->group(function () {
+            Route::get('/', [OperatorController::class, 'index'])->name('index');
+            Route::get('create', [OperatorController::class, 'create'])->name('create');
+            Route::post('/', [OperatorController::class, 'store'])->name('store');
+            Route::get('{operator}/edit', [OperatorController::class, 'edit'])->name('edit');
+            Route::put('{operator}', [OperatorController::class, 'update'])->name('update');
+            Route::delete('{operator}', [OperatorController::class, 'destroy'])->name('destroy');
         });
 
         // Заказы
-        Route::get('/orders', [LessorOrders::class, 'index'])->name('lessor.orders'); // Обновлено
-        Route::get('/orders/{order}', [LessorOrders::class, 'show'])->name('lessor.orders.show'); // Обновлено
-        Route::post('/orders/{order}/update-status', [LessorOrders::class, 'updateStatus'])->name('lessor.orders.updateStatus');
-        Route::post('/orders/{order}/mark-active', [LessorOrders::class, 'markAsActive'])->name('lessor.orders.markActive');
-        Route::post('/orders/{order}/mark-completed', [LessorOrders::class, 'markAsCompleted'])->name('lessor.orders.markCompleted');
-        Route::post('/orders/{order}/handle-extension', [LessorOrders::class, 'handleExtension'])->name('lessor.orders.handleExtension');
-        Route::post('/orders/{order}/prepare-shipment', [LessorOrderController::class, 'prepareForShipment'])->name('lessor.orders.prepare-shipment');
-
-        // Новые роуты для подтверждения/отклонения заказов
-        Route::post('/orders/{order}/approve', [LessorOrders::class, 'approve'])->name('lessor.orders.approve');
-        Route::post('/orders/{order}/reject', [LessorOrders::class, 'reject'])->name('lessor.orders.reject');
+        Route::prefix('orders')->name('orders.')->group(function () {
+            Route::get('/', [LessorOrders::class, 'index'])->name('index');
+            Route::get('{order}', [LessorOrders::class, 'show'])->name('show');
+            Route::post('{order}/update-status', [LessorOrders::class, 'updateStatus'])->name('updateStatus');
+            Route::post('{order}/mark-active', [LessorOrders::class, 'markAsActive'])->name('markActive');
+            Route::post('{order}/mark-completed', [LessorOrders::class, 'markAsCompleted'])->name('markCompleted');
+            Route::post('{order}/handle-extension', [LessorOrders::class, 'handleExtension'])->name('handleExtension');
+            Route::post('{order}/prepare-shipment', [LessorOrderController::class, 'prepareForShipment'])->name('prepare-shipment');
+            Route::post('{order}/approve', [LessorOrders::class, 'approve'])->name('approve');
+            Route::post('{order}/reject', [LessorOrders::class, 'reject'])->name('reject');
+            Route::post('{order}/delivery-note', [DocumentController::class, 'createDeliveryNote'])->name('createDeliveryNote');
+            Route::post('{order}/waybill', [DocumentController::class, 'createWaybill'])->name('createWaybill');
+            Route::post('{order}/completion-act', [DocumentController::class, 'generateCompletionAct'])->name('generateCompletionAct');
+        });
 
         // Документы
-        Route::get('/documents', [DocumentController::class, 'index'])->name('lessor.documents');
-        Route::get('/documents/download/{id}/{type}', [DocumentController::class, 'download'])->name('lessor.documents.download');
-        Route::get('/documents/download/{id}/{type}', [DocumentController::class, 'download'])->name('documents.download')->middleware('auth');
-        Route::prefix('waybills')->name('lessor.waybills.')->group(function () {
-             Route::get('/order/{order}', [\App\Http\Controllers\Lessor\WaybillController::class, 'index'])
-                ->name('index'); // Теперь имя: lessor.waybills.index
-
-            Route::get('/{waybill}', [\App\Http\Controllers\Lessor\WaybillController::class, 'show'])
-                ->name('show');
-
-            Route::put('/{waybill}', [\App\Http\Controllers\Lessor\WaybillController::class, 'update'])
-                ->name('update');
-
-            Route::post('/{waybill}/sign', [\App\Http\Controllers\Lessor\WaybillController::class, 'sign'])
-                ->name('sign');
-
-            Route::get('/{waybill}/download', [\App\Http\Controllers\Lessor\WaybillController::class, 'download'])
-                ->name('download');
+        Route::prefix('documents')->name('documents.')->group(function () {
+            Route::get('/', [DocumentController::class, 'index'])->name('index');
+            Route::get('download/{id}/{type}', [DocumentController::class, 'download'])->name('download');
+            Route::get('status-update', [DocumentController::class, 'statusUpdate'])->name('status-update');
         });
 
-        Route::get('/lessor/documents/status-update', [DocumentController::class, 'statusUpdate'])
-         ->name('lessor.documents.status-update');
+        // Накладные
+        Route::prefix('delivery-notes')->name('delivery-notes.')->group(function() {
+            Route::get('{note}/edit', [DeliveryNoteController::class, 'edit'])->name('edit');
+            Route::put('{note}', [DeliveryNoteController::class, 'update'])->name('update');
+            Route::post('{note}/close', [DeliveryNoteController::class, 'close'])->name('close');
+        });
 
-        // Документы для заказов
-        Route::post('/orders/{order}/delivery-note', [DocumentController::class, 'createDeliveryNote'])->name('lessor.orders.createDeliveryNote');
-        Route::post('/orders/{order}/waybill', [DocumentController::class, 'createWaybill'])->name('lessor.orders.createWaybill');
-        Route::post('/orders/{order}/completion-act', [DocumentController::class, 'generateCompletionAct'])->name('lessor.orders.generateCompletionAct');
-        Route::prefix('lessor/delivery-notes')->group(function() {
-        Route::get('/{note}/edit', [\App\Http\Controllers\Lessor\DeliveryNoteController::class, 'edit'])->name('lessor.delivery-notes.edit');
-        Route::put('/{note}', [\App\Http\Controllers\Lessor\DeliveryNoteController::class, 'update'])->name('lessor.delivery-notes.update');
-        Route::post('/{note}/close', [\App\Http\Controllers\Lessor\DeliveryNoteController::class, 'close'])->name('lessor.delivery-notes.close');
+        // Путевые листы
+        Route::prefix('waybills')->name('waybills.')->group(function () {
+            Route::get('order/{order}', [WaybillController::class, 'index'])->name('index');
+            Route::get('{waybill}', [WaybillController::class, 'show'])->name('show');
+            Route::put('{waybill}', [WaybillController::class, 'update'])->name('update');
+            Route::post('{waybill}/sign', [WaybillController::class, 'sign'])->name('sign');
+            Route::get('{waybill}/download', [WaybillController::class, 'download'])->name('download');
+            Route::post('{waybill}/add-shift', [WaybillController::class, 'addShift'])->name('add-shift');
+            Route::post('{waybill}/close', [WaybillController::class, 'close'])->name('close');
+        });
+
+        // Смены
+        Route::prefix('shifts')->name('shifts.')->group(function () {
+            Route::put('{shift}', [ShiftController::class, 'update'])->name('update');
+            Route::delete('{shift}', [ShiftController::class, 'destroy'])->name('destroy');
         });
     });
+
 
 // Для арендатора
 Route::prefix('lessee')

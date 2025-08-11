@@ -16,25 +16,25 @@
         <ul class="nav nav-tabs">
             <li class="nav-item">
                 <a class="nav-link {{ $type === 'delivery_notes' ? 'active' : '' }}"
-                   href="{{ route('lessor.documents', ['type' => 'delivery_notes']) }}">
+                   href="{{ route('lessor.documents.index', ['type' => 'delivery_notes']) }}">
                     Транспортные накладные
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link {{ $type === 'waybills' ? 'active' : '' }}"
-                   href="{{ route('lessor.documents', ['type' => 'waybills']) }}">
+                   href="{{ route('lessor.documents.index', ['type' => 'waybills']) }}">
                     Путевые листы
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link {{ $type === 'contracts' ? 'active' : '' }}"
-                   href="{{ route('lessor.documents', ['type' => 'contracts']) }}">
+                   href="{{ route('lessor.documents.index', ['type' => 'contracts']) }}">
                     Договоры
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link {{ $type === 'completion_acts' ? 'active' : '' }}"
-                   href="{{ route('lessor.documents', ['type' => 'completion_acts']) }}">
+                   href="{{ route('lessor.documents.index', ['type' => 'completion_acts']) }}">
                     Акты выполненных работ
                 </a>
             </li>
@@ -151,39 +151,54 @@
                                     </div>
                                 @endif
                             </td>
-                            <td>{{ $doc->work_date->format('d.m.Y') }}</td>
+
+                            {{-- Безопасная обработка даты --}}
                             <td>
-                                @if($doc->shift === Waybill::SHIFT_DAY)
-                                    <span class="badge bg-info py-2 px-3 rounded-pill">Дневная</span>
+                                @if($doc->start_date)
+                                    {{ $doc->start_date->format('d.m.Y') }}
                                 @else
-                                    <span class="badge bg-dark py-2 px-3 rounded-pill">Ночная</span>
+                                    <span class="text-muted">Нет данных</span>
                                 @endif
                             </td>
+
+                            <td>
+                                @if($doc->end_date)
+                                    {{ $doc->end_date->format('d.m.Y') }}
+                                @else
+                                    <span class="text-muted">Нет данных</span>
+                                @endif
+                            </td>
+
+                            <td>
+                                @if($doc->shift)
+                                    @if($doc->shift === 'day')
+                                        <span class="badge bg-info py-2 px-3 rounded-pill">Дневная</span>
+                                    @else
+                                        <span class="badge bg-dark py-2 px-3 rounded-pill">Ночная</span>
+                                    @endif
+                                @else
+                                    <span class="text-muted">Не указана</span>
+                                @endif
+                            </td>
+
                             <td>
                                 <a href="{{ route('lessor.orders.show', $doc->order_id) }}"
-                                   class="text-primary fw-bold text-decoration-none">
+                                class="text-primary fw-bold text-decoration-none">
                                     Заказ #{{ $doc->order_id }}
                                 </a>
                             </td>
+
                             <td>
-                                @if($doc->status === Waybill::STATUS_COMPLETED)
-                                    <span class="badge bg-success py-2 px-3 rounded-pill">Завершен</span>
-                                @else
-                                    <span class="badge bg-warning py-2 px-3 rounded-pill">Активен</span>
-                                @endif
-                            </td>
-                            <td class="text-end">
-                                <div class="d-flex justify-content-end gap-2">
+                                <div class="d-flex gap-2">
                                     <a href="{{ route('lessor.waybills.show', $doc) }}"
-                                       class="btn btn-sm btn-outline-primary"
-                                       title="Просмотреть детали">
+                                    class="btn btn-sm btn-outline-primary"
+                                    title="Просмотреть">
                                         <i class="fas fa-eye"></i>
                                     </a>
-
-                                    <a href="{{ route('lessor.orders.show', $doc->order_id) }}"
-                                       class="btn btn-sm btn-outline-secondary"
-                                       title="Перейти к заказу">
-                                        <i class="fas fa-external-link-alt"></i>
+                                    <a href="{{ route('lessor.waybills.download', $doc) }}"
+                                    class="btn btn-sm btn-outline-secondary"
+                                    title="Скачать PDF">
+                                        <i class="fas fa-file-pdf"></i>
                                     </a>
                                 </div>
                             </td>
@@ -251,7 +266,7 @@
         @if($documents->hasPages())
         <div class="card-footer bg-white border-0">
             <div class="d-flex justify-content-center">
-                {{ $documents->appends(['type' => $type])->links() }}
+                {{ $documents->appends(['type' => request('type')])->links() }}
             </div>
         </div>
         @endif

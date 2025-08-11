@@ -156,3 +156,38 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
+// Добавьте в конец файла
+function protectSidebarIcons() {
+  const sidebar = document.getElementById('sidebarContainer');
+  if (!sidebar) return;
+
+  // Замораживаем стили иконок
+  const icons = sidebar.querySelectorAll('.nav-icon');
+  icons.forEach(icon => {
+    const originalSize = {
+      width: icon.offsetWidth,
+      height: icon.offsetHeight,
+      fontSize: window.getComputedStyle(icon).fontSize
+    };
+
+    // Защита от изменений
+    const observer = new MutationObserver(() => {
+      if (icon.offsetWidth !== originalSize.width ||
+          icon.offsetHeight !== originalSize.height) {
+        icon.style.width = `${originalSize.width}px`;
+        icon.style.height = `${originalSize.height}px`;
+        icon.style.fontSize = originalSize.fontSize;
+      }
+    });
+
+    observer.observe(icon, {
+      attributes: true,
+      attributeFilter: ['style', 'class']
+    });
+  });
+}
+
+// Инициализируем при загрузке и после изменений DOM
+document.addEventListener('DOMContentLoaded', protectSidebarIcons);
+const sidebarObserver = new MutationObserver(protectSidebarIcons);
+sidebarObserver.observe(document.body, { childList: true, subtree: true });

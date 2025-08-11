@@ -26,7 +26,14 @@
                         <div class="col-md-6">
                             <p><strong>Год выпуска:</strong> {{ $equipment->year }}</p>
                             <p><strong>Наработка:</strong> {{ $equipment->hours_worked }} ч</p>
-                            <p><strong>Локация:</strong> {{ $equipment->location->city }}, {{ $equipment->location->region }}</p>
+                            <p><strong>Адрес:</strong>
+                                @if($equipment->location)
+                                    {{ $equipment->location->name }}<br>
+                                    <small>{{ $equipment->location->address }}</small>
+                                @else
+                                    Локация не указана
+                                @endif
+                            </p>
                             <p><strong>Габариты:</strong>
                                 {{ $equipment->getNumericSpecValue('length') }}м ×
                                 {{ $equipment->getNumericSpecValue('width') }}м ×

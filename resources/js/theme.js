@@ -11,7 +11,8 @@ export function initTheme() {
     '--text-secondary': '#495057',
     '--bg-surface': '#ffffff',
     '--bg-secondary': '#f8f9fa',
-    '--divider': '#e9ecef'
+    '--divider': '#e9ecef',
+    '--bg-gradient': 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)'
   };
 
   // CSS-переменные для темной темы
@@ -23,10 +24,13 @@ export function initTheme() {
   '--text-secondary': '#E2E8F0',
   '--bg-surface': '#1E293B',
   '--bg-secondary': '#0F172A',
-  '--divider': '#475569'
+  '--divider': '#475569',
+  '--bg-gradient': 'linear-gradient(135deg, #1a1c23 0%, #232630 50%, #1a1c23 100%)'
 };
 
   function applyTheme(theme) {
+
+
     // Добавляем плавное переключение
     html.style.transition = 'background-color 0.3s ease, color 0.3s ease';
 
@@ -45,6 +49,8 @@ export function initTheme() {
     setTimeout(() => {
       html.style.transition = '';
     }, 300);
+
+
   }
 
   function updateIcons(theme) {

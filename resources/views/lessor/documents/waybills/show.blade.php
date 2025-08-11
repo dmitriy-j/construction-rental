@@ -1,21 +1,50 @@
 @extends('layouts.app')
 
-@php
-use App\Models\Waybill; // Добавьте эту строку
-@endphp
+@section('body-class', 'waybill-page')
 
 @section('content')
-<div class="container py-5">
+<div class="waybill-container py-5">
+
+      @php
+        $minDate = $waybill->orderItem->start_date ?? $waybill->order->start_date;
+        $maxDate = $waybill->orderItem->end_date ?? $waybill->order->end_date;
+    @endphp
+    <div class="alert alert-{{ $waybill->status === \App\Models\Waybill::STATUS_COMPLETED ? 'danger' : 'info' }} mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Статус путевого листа:</strong>
+                <span class="badge bg-{{ $waybill->status_color }}">
+                    {{ $waybill->status_text }}
+                </span>
+            </div>
+
+            <div>
+                <strong>Период:</strong>
+                {{ $waybill->start_date->format('d.m.Y') }} - {{ $waybill->end_date->format('d.m.Y') }}
+            </div>
+        </div>
+
+        @if($waybill->status === \App\Models\Waybill::STATUS_COMPLETED)
+        <div class="mt-2 text-danger">
+            <i class="fas fa-exclamation-triangle me-1"></i>
+            Путевой лист завершен. Добавление новых смен невозможно.
+        </div>
+        @endif
+    </div>
+
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-primary text-white py-3">
             <div class="d-flex justify-content-between align-items-center">
                 <h1 class="h4 mb-0">
-                    <i class="fas fa-file-alt me-2"></i>Путевой лист ЭСМ-2 #{{ $waybill->id }}
+                    <i class="fas fa-file-alt me-2"></i>Путевой лист ЭСМ-2 #{{ $waybill->number }}
+                    <span class="badge bg-white text-primary ms-2">
+                        {{ $waybill->shift_type_text }} смена
+                    </span>
                 </h1>
                 <div>
                     <span class="badge bg-white text-primary fs-6 py-2 px-3">
-                        {{ $waybill->work_date->format('d.m.Y') }} |
-                        {{ $waybill->shift === 'day' ? 'Дневная смена' : 'Ночная смена' }}
+                        {{ $waybill->start_date->format('d.m.Y') }} - {{ $waybill->end_date->format('d.m.Y') }}
                     </span>
                 </div>
             </div>
@@ -25,81 +54,245 @@ use App\Models\Waybill; // Добавьте эту строку
             <!-- Информация о заказе и технике -->
             <div class="row mb-4">
                 <div class="col-md-4 border-end">
-                    <h5 class="text-muted">Заказ</h5>
-                    <p class="mb-1">#{{ $waybill->order->id }}</p>
-                    <p class="mb-1">Арендатор: {{ $waybill->order->lesseeCompany->legal_name ?? 'Нет данных' }}</p>
-                    <p>Статус:
-                        <span class="badge bg-{{ $waybill->status_color }}">{{ $waybill->status_text }}</span>
-                    </p>
+                    <h5 class="text-muted">Арендатор</h5>
+                    <p class="mb-1">{{ $waybill->order->lesseeCompany->legal_name ?? 'Платформа' }}</p>
                 </div>
 
                 <div class="col-md-4 border-end">
                     <h5 class="text-muted">Техника</h5>
-                    <p class="mb-1">{{ $waybill->equipment->title }}</p>
-                    <p class="mb-1">Модель: {{ $waybill->equipment->model }}</p>
-                    <p>Гос. номер: {{ $waybill->equipment->license_plate ?? 'не указан' }}</p>
+                    <p class="mb-1">{{ $waybill->equipment->title }} ({{ $waybill->equipment->model }})</p>
+                    <div class="d-flex align-items-center">
+                        <span class="me-2">Гос. номер:</span>
+                        <input type="text" class="form-control form-control-sm w-auto"
+                            id="license_plate" value="{{ $waybill->license_plate }}"
+                            @if($waybill->status !== \App\Models\Waybill::STATUS_ACTIVE) disabled @endif>
+                    </div>
+                    <p class="mb-0">Ставка: {{ number_format($waybill->lessor_hourly_rate, 2) }} ₽/час</p>
                 </div>
 
                 <div class="col-md-4">
                     <h5 class="text-muted">Оператор</h5>
-                    @if($waybill->operator)
-                        <p class="mb-1">{{ $waybill->operator->full_name }}</p>
-                        <p class="mb-1">Лицензия: {{ $waybill->operator->license_number }}</p>
-                        <p>Телефон: {{ $waybill->operator->phone }}</p>
-                    @else
-                        <p class="text-danger">Оператор не назначен</p>
+                    <select class="form-select form-select-sm" id="operator_id"
+                            @if($waybill->status !== \App\Models\Waybill::STATUS_ACTIVE) disabled @endif>
+                        @foreach($operators as $operator)
+                            <option value="{{ $operator->id }}"
+                                {{ $waybill->operator_id == $operator->id ? 'selected' : '' }}>
+                                {{ $operator->full_name }} ({{ $operator->license_number }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <!-- Единая кнопка сохранения для всех полей шапки -->
+            <div class="d-flex justify-content-end mb-4">
+                <button class="btn btn-sm btn-primary" id="save-waybill-header">
+                    <i class="fas fa-save me-1"></i> Сохранить
+                </button>
+            </div>
+
+            <!-- Статус заполнения -->
+            <div class="alert alert-info mb-4">
+                <div class="d-flex flex-wrap justify-content-between">
+                    <div class="mb-1 mb-md-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Заполнено: <strong>{{ $filledShifts }}/{{ $totalShifts }}</strong> смен
+                    </div>
+                    <div class="mb-1 mb-md-0">
+                        Отработано: <strong>{{ $totalHours }}</strong> часов
+                    </div>
+                    <div>
+                        Итоговая сумма: <strong>{{ number_format($totalHours * $baseHourlyRate, 2) }} ₽</strong>
+                    </div>
+                </div>
+
+                 <div class="progress mt-2" style="height: 8px;">
+                    <div class="progress-bar bg-success"
+                        role="progressbar"
+                        style="width: {{ $totalShifts > 0 ? ($filledShifts / $totalShifts) * 100 : 0 }}%"
+                        aria-valuenow="{{ $totalShifts > 0 ? ($filledShifts / $totalShifts) * 100 : 0 }}"
+                        aria-valuemin="0"
+                        aria-valuemax="100">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Карточка добавления смены -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Добавить смену</h5>
+                </div>
+                <div class="card-body">
+                    <form id="add-shift-form" data-waybill-id="{{ $waybill->id }}">
+                        @csrf
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label">Дата смены</label>
+                                <input type="date"
+                                    name="shift_date"
+                                    class="form-control"
+                                    @if($minDate) min="{{ $minDate->format('Y-m-d') }}" @endif
+                                    @if($maxDate) max="{{ $maxDate->format('Y-m-d') }}" @endif
+                                    value="{{ now()->format('Y-m-d') }}">
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-plus me-2"></i>Добавить смену
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    @if($waybill->shifts()->count() >= 10)
+                        <div class="alert alert-warning mt-3">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Достигнут лимит в 10 смен. Для добавления новых смен создайте новый путевой лист.
+                        </div>
                     @endif
                 </div>
             </div>
 
+            <!-- Таблица заполненных смен -->
+            <div class="card border mb-4">
+               <div class="card border mb-4">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Заполненные смены</h5>
+                    </div>
+                    <div id="shifts-table-container">
+                        @include('lessor.documents.waybills.partials.shifts_table', ['waybill' => $waybill])
+                    </div>
+                </div>
+
+            <!-- Форма выбора смены -->
+            <div class="card border mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Выбор смены для заполнения</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Дата смены</label>
+                                <select class="form-select" id="shift-date-select">
+                                    @foreach($waybill->shifts as $shiftItem)
+                                        <option value="{{ $shiftItem->id }}"
+                                            {{ $selectedShift->id == $shiftItem->id ? 'selected' : '' }}
+                                            data-shift="{{ json_encode($shiftItem) }}">
+                                            {{ $shiftItem->shift_date->format('d.m.Y') }}
+                                            ({{ $waybill->shift_type_text }})
+                                            @if($shiftItem->hours_worked)
+                                                - {{ $shiftItem->hours_worked }} ч.
+                                            @endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Тип смены</label>
+                                <div class="form-control bg-light">
+                                    {{ $waybill->shift_type_text }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Форма ввода данных -->
-            <form method="POST" action="{{ route('lessor.waybills.update', $waybill) }}">
+            <form method="POST" action="{{ route('lessor.shifts.update', $selectedShift) }}" id="shift-form">
                 @csrf
                 @method('PUT')
 
                 <div class="card border mb-4">
                     <div class="card-header bg-light">
-                        <h5 class="mb-0">Параметры работы</h5>
+                        <h5 class="mb-0">Параметры работ для {{ $selectedShift->shift_date->format('d.m.Y') }}</h5>
                     </div>
                     <div class="card-body">
+                        <div class="alert alert-info mb-4">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Для ночных смен, переходящих через полночь, указывайте фактическое время окончания
+                            (например: 22:00 - 06:00). Система автоматически рассчитает продолжительность смены.
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Наименование объекта работ</label>
+                                    <input type="text" class="form-control" name="object_name"
+                                        value="{{ $selectedShift->object_name ?? '' }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                @if(empty($selectedShift->object_address))
+                                <div class="alert alert-warning">
+                                    Требуется указать адрес объекта для смены #{{ $selectedShift->id }}
+                                </div>
+                                @endif
+                                <div class="mb-3">
+                                    <label class="form-label">Адрес объекта</label>
+                                    <input type="text" class="form-control" name="object_address"
+                                        value="{{ $selectedShift->object_address ?? '' }}" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Время начала работы</label>
+                                    <input type="text" class="form-control time-mask" name="work_start_time"
+                                        value="{{ $selectedShift->work_start_time ? substr($selectedShift->work_start_time, 0, 5) : '00:00' }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Время окончания работы</label>
+                                    <input type="text" class="form-control time-mask" name="work_end_time"
+                                        value="{{ $selectedShift->work_end_time ? substr($selectedShift->work_end_time, 0, 5) : '00:00' }}" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Отработано часов</label>
+                            <div class="form-control bg-light" id="hours-display">
+                                {{ $selectedShift->hours_worked ?? '0' }} ч.
+                            </div>
+                        </div>
+
+                        <input type="hidden" name="hours_worked" value="{{ $selectedShift->hours_worked ?? 0 }}">
+
                         <div class="row">
                             <div class="col-md-3">
                                 <div class="mb-3">
                                     <label class="form-label">Показания одометра (начало), км</label>
-                                    <input type="number" name="odometer_start"
-                                           class="form-control"
-                                           value="{{ $waybill->odometer_start ?? '' }}"
-                                           required>
+                                    <input type="number" name="odometer_start" class="form-control"
+                                           value="{{ $selectedShift->odometer_start }}" required>
                                 </div>
                             </div>
 
                             <div class="col-md-3">
                                 <div class="mb-3">
                                     <label class="form-label">Показания одометра (конец), км</label>
-                                    <input type="number" name="odometer_end"
-                                           class="form-control"
-                                           value="{{ $waybill->odometer_end ?? '' }}"
-                                           required>
+                                    <input type="number" name="odometer_end" class="form-control"
+                                           value="{{ $selectedShift->odometer_end }}" required>
                                 </div>
                             </div>
 
                             <div class="col-md-3">
                                 <div class="mb-3">
                                     <label class="form-label">Топливо (начало), л</label>
-                                    <input type="number" step="0.01" name="fuel_start"
-                                           class="form-control"
-                                           value="{{ $waybill->fuel_start ?? '' }}"
-                                           required>
+                                    <input type="number" step="0.01" name="fuel_start" class="form-control"
+                                           value="{{ $selectedShift->fuel_start }}" required>
                                 </div>
                             </div>
 
                             <div class="col-md-3">
                                 <div class="mb-3">
                                     <label class="form-label">Топливо (конец), л</label>
-                                    <input type="number" step="0.01" name="fuel_end"
-                                           class="form-control"
-                                           value="{{ $waybill->fuel_end ?? '' }}"
-                                           required>
+                                    <input type="number" step="0.01" name="fuel_end" class="form-control"
+                                           value="{{ $selectedShift->fuel_end }}" required>
                                 </div>
                             </div>
                         </div>
@@ -107,171 +300,530 @@ use App\Models\Waybill; // Добавьте эту строку
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label class="form-label">Отработано часов</label>
-                                    <input type="number" step="0.5" name="hours_worked"
-                                           class="form-control"
-                                           value="{{ $waybill->hours_worked ?? '' }}"
-                                           required>
+                                    <label class="form-label">Заправлено топлива, л</label>
+                                    <input type="number" step="0.01" name="fuel_refilled_liters" class="form-control"
+                                           value="{{ $selectedShift->fuel_refilled_liters }}">
                                 </div>
                             </div>
 
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label class="form-label">Простой, часов</label>
-                                    <input type="number" step="0.5" name="downtime_hours"
-                                           class="form-control"
-                                           value="{{ $waybill->downtime_hours ?? '' }}">
+                                    <input type="number" step="0.5" name="downtime_hours" class="form-control"
+                                           value="{{ $selectedShift->downtime_hours }}">
                                 </div>
                             </div>
+                        </div>
 
-                            <div class="col-md-4">
+                        <div class="row">
+                            <div class="col-md-6">
                                 <div class="mb-3">
                                     <label class="form-label">Причина простоя</label>
-                                    <input type="text" name="downtime_cause"
-                                           class="form-control"
-                                           value="{{ $waybill->downtime_cause ?? '' }}">
+                                    <input type="text" name="downtime_cause" class="form-control"
+                                           value="{{ $selectedShift->downtime_cause }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Тип заправленного топлива</label>
+                                    <input type="text" name="fuel_refilled_type" class="form-control"
+                                           value="{{ $selectedShift->fuel_refilled_type ?? 'ДТ' }}">
                                 </div>
                             </div>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">Описание выполненных работ</label>
-                            <textarea name="work_description" class="form-control" rows="3">{{ $waybill->work_description ?? '' }}</textarea>
+                            <textarea name="work_description" class="form-control" rows="2">{{ $selectedShift->work_description }}</textarea>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">Примечания</label>
-                            <textarea name="notes" class="form-control" rows="2">{{ $waybill->notes ?? '' }}</textarea>
+                            <textarea name="notes" class="form-control" rows="2">{{ $selectedShift->notes }}</textarea>
                         </div>
                     </div>
                 </div>
 
-                <div class="d-flex justify-content-between">
-                    <a href="{{ route('lessor.waybills.index', $waybill->order) }}"
-                       class="btn btn-outline-secondary">
-                       <i class="fas fa-arrow-left me-2"></i>Назад к списку
+                <div class="d-flex justify-content-between mt-4 mb-4">
+                    <a href="{{ route('lessor.waybills.index', $waybill->order) }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Назад к списку
                     </a>
 
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Сохранить данные
-                    </button>
+                    <div>
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-save me-2"></i>Сохранить данные
+                        </button>
+
+                        <button type="button" class="btn btn-success" id="save-and-next">
+                            <i class="fas fa-forward me-2"></i>Сохранить и следующая
+                        </button>
+                    </div>
                 </div>
             </form>
 
             <!-- Блок подписания -->
-            @if(in_array($waybill->status, [Waybill::STATUS_CREATED, Waybill::STATUS_IN_PROGRESS]))
-            <div class="card border-primary mt-5">
+            @if($waybill->status === \App\Models\Waybill::STATUS_ACTIVE)
+            <div class="card border-primary mt-4">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">Подписание путевого листа</h5>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted">
-                        После заполнения всех данных укажите подпись ответственного лица.
-                        После подписания путевой лист будет считаться завершенным.
-                    </p>
+                    <!-- Убедитесь, что это canvas-элемент -->
+                    <canvas id="signature-pad" class="border rounded bg-white" style="height: 150px; cursor: crosshair;"></canvas>
 
-                    <div class="mb-3">
-                        <div id="signature-pad" class="border rounded bg-white" style="height: 200px; cursor: crosshair;"></div>
-                        <div class="mt-2">
-                            <button id="clear-signature" class="btn btn-sm btn-outline-danger">
-                                <i class="fas fa-eraser me-1"></i>Очистить
-                            </button>
-                        </div>
+                    <div class="mt-2">
+                        <button id="clear-signature" class="btn btn-sm btn-outline-danger">
+                            <i class="fas fa-eraser me-1"></i>Очистить
+                        </button>
                     </div>
 
-                    <button id="sign-button" class="btn btn-success px-4 py-2">
-                        <i class="fas fa-signature me-2"></i>Подписать путевой лист
-                    </button>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button id="sign-button" class="btn btn-success flex-grow-1">
+                            <i class="fas fa-signature me-2"></i>Подписать
+                        </button>
+                        <button id="close-waybill" class="btn btn-danger flex-grow-1">
+                            <i class="fas fa-lock me-2"></i>Закрыть
+                        </button>
+                    </div>
                 </div>
             </div>
             @endif
 
             <!-- Скачивание PDF -->
             <div class="mt-4 border-top pt-3">
-                <a href="{{ route('lessor.waybills.download', $waybill) }}"
-                   class="btn btn-outline-primary">
-                   <i class="fas fa-file-pdf me-2"></i>Скачать PDF
+                <a href="{{ route('lessor.waybills.download', $waybill) }}" class="btn btn-outline-primary">
+                    <i class="fas fa-file-pdf me-2"></i>Скачать PDF
                 </a>
+
+                <button class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#shiftSummaryModal">
+                    <i class="fas fa-list me-2"></i>Сводка по сменам
+                </button>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Модальное окно сводки -->
+<div class="modal fade" id="shiftSummaryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Сводка по сменам</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Тип смены</th>
+                            <th>Начало</th>
+                            <th>Окончание</th>
+                            <th>Отработано</th>
+                            <th>Простой</th>
+                            <th>Оператор</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($waybill->shifts as $shiftItem)
+                        <tr>
+                            <td>{{ $shiftItem->shift_date->format('d.m.Y') }}</td>
+                            <td>{{ $waybill->shift_type_text }}</td>
+                            <td>{{ $shiftItem->work_start_time ?? '-' }}</td>
+                            <td>{{ $shiftItem->work_end_time ?? '-' }}</td>
+                            <td>{{ $shiftItem->hours_worked ?? '0' }} ч.</td>
+                            <td>{{ $shiftItem->downtime_hours ?? '0' }} ч.</td>
+                            <td>{{ $waybill->operator->full_name }}</td>
+                            <td>
+                                @if($shiftItem->hours_worked > 0)
+                                    <span class="badge bg-success">Заполнена</span>
+                                @else
+                                    <span class="badge bg-warning">Ожидает</span>
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('styles')
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.css">
-<style>
-    #signature-pad {
-        touch-action: none; /* Для поддержки мобильных устройств */
-    }
-    .signature-help {
-        font-size: 0.9rem;
-        color: #6c757d;
-    }
-</style>
+<link href="https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/src/toastify.min.css" rel="stylesheet">
 @endpush
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/toastify-js@1.12.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/inputmask@5.0.6/dist/inputmask.min.js"></script>
+
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const canvas = document.getElementById('signature-pad');
-        const signaturePad = new SignaturePad(canvas, {
-            minWidth: 1,
-            maxWidth: 3,
-            penColor: "rgb(0, 0, 0)",
-            backgroundColor: "rgb(255, 255, 255)"
-        });
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Функция расчета часов работы
+    function calculateHours() {
+        const startInput = document.querySelector('input[name="work_start_time"]');
+        const endInput = document.querySelector('input[name="work_end_time"]');
 
-        // Очистка подписи
-        document.getElementById('clear-signature').addEventListener('click', function() {
-            signaturePad.clear();
-        });
+        if (!startInput || !endInput) return;
 
-        // Подписание документа
-        document.getElementById('sign-button').addEventListener('click', function() {
-            if (signaturePad.isEmpty()) {
-                alert('Пожалуйста, поставьте подпись');
-                return;
+        const start = startInput.value;
+        const end = endInput.value;
+
+        if (!start || !end) return;
+
+        const startTime = new Date(`1970-01-01T${start}:00`);
+        let endTime = new Date(`1970-01-01T${end}:00`);
+
+        if (endTime < startTime) {
+            endTime.setDate(endTime.getDate() + 1);
+        }
+
+        const diffMs = endTime - startTime;
+        const hours = Math.round((diffMs / (1000 * 60 * 60)) * 2) / 2;
+
+        const hoursWorkedInput = document.querySelector('input[name="hours_worked"]');
+        const hoursDisplay = document.getElementById('hours-display');
+
+        if (hoursWorkedInput) hoursWorkedInput.value = hours;
+        if (hoursDisplay) hoursDisplay.textContent = hours + ' ч.';
+    }
+
+    // Инициализация расчета часов
+    const startInput = document.querySelector('input[name="work_start_time"]');
+    const endInput = document.querySelector('input[name="work_end_time"]');
+
+    if (startInput) startInput.addEventListener('change', calculateHours);
+    if (endInput) endInput.addEventListener('change', calculateHours);
+    calculateHours();
+
+    // 2. Функция для показа уведомлений
+    function showAlert(message, type = 'error') {
+        const background = type === 'success' ? '#4CAF50' : '#F44336';
+        Toastify({
+            text: message,
+            duration: 5000,
+            gravity: "top",
+            position: "right",
+            style: { background },
+            className: "custom-toast",
+        }).showToast();
+    }
+
+    // 3. Обработчик добавления смены
+    const addShiftForm = document.getElementById('add-shift-form');
+    if (addShiftForm) {
+        addShiftForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const form = e.target;
+            const waybillId = form.dataset.waybillId;
+            const formData = new FormData(form);
+
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalHtml = submitBtn.innerHTML;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Добавление...';
+
+            try {
+                const response = await fetch(`/lessor/waybills/${waybillId}/add-shift`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('Смена успешно добавлена', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    let errorMessage = result.message || 'Ошибка при добавлении смены';
+                    if (result.errors?.shift_date) {
+                        errorMessage += ': ' + result.errors.shift_date[0];
+                    }
+                    showAlert(errorMessage);
+                }
+            } catch (error) {
+                showAlert('Сетевая ошибка: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
+            }
+        });
+    }
+
+    // 4. Маскировка времени
+    const timeInputs = document.querySelectorAll('.time-mask');
+    if (timeInputs.length > 0) {
+        Inputmask("99:99", {
+            placeholder: "HH:MM",
+            insertMode: false,
+            showMaskOnHover: false
+        }).mask(timeInputs);
+    }
+
+    // 5. Оптимизированный обработчик формы
+    function initFormDebugger() {
+        const shiftForm = document.getElementById('shift-form');
+        if (!shiftForm) return;
+
+        shiftForm.addEventListener('submit', function(e) {
+            const formData = new FormData(this);
+            let debugInfo = "Данные формы перед отправкой:\n";
+
+            for (const [key, value] of formData.entries()) {
+                debugInfo += `${key}: ${value}\n`;
             }
 
-            const signature = signaturePad.toDataURL('image/svg+xml');
+            console.debug(debugInfo);
+        });
+    }
+    initFormDebugger();
 
-            fetch("{{ route('lessor.waybills.sign', $waybill) }}", {
+    // 6. Обработчик кнопки "Сохранить и следующая"
+    const saveAndNextBtn = document.getElementById('save-and-next');
+    if (saveAndNextBtn) {
+        saveAndNextBtn.addEventListener('click', function() {
+            const shiftForm = document.getElementById('shift-form');
+            if (shiftForm) {
+                // Добавляем скрытое поле для действия
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'save_and_next';
+                input.value = '1';
+                shiftForm.appendChild(input);
+
+                // Отправляем форму
+                shiftForm.submit();
+            }
+        });
+    }
+});
+
+// 7. Сохранение шапки путевого листа (оператор и гос. номер)
+document.addEventListener('DOMContentLoaded', function() {
+    const saveHeaderBtn = document.getElementById('save-waybill-header');
+
+    if (saveHeaderBtn) {
+        saveHeaderBtn.addEventListener('click', async function() {
+            const operatorId = document.getElementById('operator_id').value;
+            const licensePlate = document.getElementById('license_plate').value;
+            const waybillId = {{ $waybill->id }};
+
+            console.log('Данные для сохранения:', {
+                operator_id: operatorId,
+                license_plate: licensePlate
+            });
+
+            const btnOriginal = saveHeaderBtn.innerHTML;
+            saveHeaderBtn.disabled = true;
+            saveHeaderBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Сохранение...';
+
+            try {
+                const response = await fetch(`/lessor/waybills/${waybillId}/update-header`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        operator_id: operatorId,
+                        license_plate: licensePlate
+                    })
+                });
+
+                const result = await response.json();
+                console.log('Ответ сервера:', result);
+
+                if (response.ok && result.success) {
+                    showAlert('Данные успешно сохранены', 'success');
+                } else {
+                    const errorMsg = result.message || 'Ошибка при сохранении данных';
+                    showAlert(errorMsg);
+                }
+            } catch (error) {
+                console.error('Ошибка при сохранении:', error);
+                showAlert('Сетевая ошибка: ' + error.message);
+            } finally {
+                saveHeaderBtn.disabled = false;
+                saveHeaderBtn.innerHTML = btnOriginal;
+            }
+        });
+    }
+});
+
+// 8. Подписание путевого листа
+const canvas = document.getElementById('signature-pad');
+if (canvas) {
+    // Увеличьте разрешение canvas
+    canvas.width = canvas.offsetWidth * 2;
+    canvas.height = canvas.offsetHeight * 2;
+    canvas.style.width = '100%';
+    canvas.style.height = '150px';
+
+    const ctx = canvas.getContext('2d');
+    ctx.scale(2, 2);
+
+    let drawing = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    // Обработчики событий для рисования
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('touchstart', startDrawing);
+
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('touchmove', draw);
+
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('touchend', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+
+    // Очистка подписи
+    document.getElementById('clear-signature').addEventListener('click', function() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    // Подписание
+    document.getElementById('sign-button').addEventListener('click', function() {
+        if (isCanvasBlank(canvas)) {
+            showAlert('Пожалуйста, поставьте подпись', 'error');
+            return;
+        }
+
+        const signatureData = canvas.toDataURL('image/png');
+        // Отправка подписи на сервер
+        saveSignature(signatureData);
+    });
+
+    // Закрытие путевого листа
+    document.getElementById('close-waybill').addEventListener('click', function() {
+        if (confirm('Вы уверены, что хотите закрыть путевой лист? После закрытия добавление новых смен будет невозможно.')) {
+            closeWaybill();
+        }
+    });
+
+    function startDrawing(e) {
+        drawing = true;
+        const coords = getCoordinates(e);
+        [lastX, lastY] = [coords.x, coords.y];
+    }
+
+    function draw(e) {
+        if (!drawing) return;
+        e.preventDefault();
+
+        const coords = getCoordinates(e);
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(coords.x, coords.y);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        [lastX, lastY] = [coords.x, coords.y];
+    }
+
+    function stopDrawing() {
+        drawing = false;
+    }
+
+    function getCoordinates(e) {
+        if (e.type.includes('touch')) {
+            const touch = e.touches[0] || e.changedTouches[0];
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: touch.clientX - rect.left,
+                y: touch.clientY - rect.top
+            };
+        } else {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+    }
+
+    function isCanvasBlank(canvas) {
+        const context = canvas.getContext('2d');
+        const pixelBuffer = new Uint32Array(
+            context.getImageData(0, 0, canvas.width, canvas.height).data.buffer
+        );
+        return !pixelBuffer.some(color => color !== 0);
+    }
+
+    async function saveSignature(signatureData) {
+        const btn = document.getElementById('sign-button');
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Сохранение...';
+
+        try {
+            const response = await fetch(`/lessor/waybills/{{ $waybill->id }}/sign`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ signature })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    alert('Путевой лист успешно подписан!');
-                    location.reload();
-                } else {
-                    alert('Ошибка при подписании: ' + (data.message || 'Попробуйте еще раз'));
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Произошла ошибка при отправке подписи');
+                body: JSON.stringify({ signature: signatureData })
             });
-        });
 
-        // Адаптация размера канваса при изменении окна
-        function resizeCanvas() {
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = canvas.offsetWidth * ratio;
-            canvas.height = canvas.offsetHeight * ratio;
-            canvas.getContext("2d").scale(ratio, ratio);
-            signaturePad.clear(); // Очистка при ресайзе
+            const result = await response.json();
+            if (result.success) {
+                showAlert('Путевой лист успешно подписан!', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showAlert(result.message || 'Ошибка при сохранении подписи');
+            }
+        } catch (error) {
+            showAlert('Сетевая ошибка: ' + error.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
         }
+    }
 
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-    });
+    async function closeWaybill() {
+        const btn = document.getElementById('close-waybill');
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Закрытие...';
+
+        try {
+            const response = await fetch(`/lessor/waybills/{{ $waybill->id }}/close`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showAlert('Путевой лист успешно закрыт!', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showAlert(result.message || 'Ошибка при закрытии путевого листа');
+            }
+        } catch (error) {
+            showAlert('Сетевая ошибка: ' + error.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    }
+}
 </script>
 @endpush

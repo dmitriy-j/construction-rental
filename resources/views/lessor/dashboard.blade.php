@@ -19,7 +19,7 @@
 
         <!-- Карточка "Новые заказы" с миганием -->
         <div class="col-md-3 mb-3">
-            <a href="{{ route('lessor.orders', ['status' => \App\Models\Order::STATUS_PENDING_APPROVAL]) }}"
+            <a href="{{ route('lessor.orders.index', ['status' => \App\Models\Order::STATUS_PENDING_APPROVAL]) }}"
                class="text-decoration-none"
                id="pending-orders-card">
                 <div class="card text-white bg-warning h-100 {{ $stats['pending_orders'] > 0 ? 'blinking' : '' }}">
@@ -33,7 +33,7 @@
 
         <!-- Карточка "Активные заказы" -->
         <div class="col-md-3 mb-3">
-            <a href="{{ route('lessor.orders', ['status' => \App\Models\Order::STATUS_ACTIVE]) }}"
+            <a href="{{ route('lessor.orders.index', ['status' => \App\Models\Order::STATUS_ACTIVE]) }}"
                class="text-decoration-none">
                 <div class="card text-white bg-success h-100">
                     <div class="card-body d-flex flex-column">
@@ -59,7 +59,7 @@
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Последние заказы</h5>
-            <a href="{{ route('lessor.orders') }}" class="btn btn-sm btn-outline-primary">Все заказы</a>
+            <a href="{{ route('lessor.orders.index') }}" class="btn btn-sm btn-outline-primary">Все заказы</a>
         </div>
         <div class="card-body">
             <div class="table-responsive">

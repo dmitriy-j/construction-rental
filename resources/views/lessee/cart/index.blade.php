@@ -108,24 +108,20 @@
                                     </td>
                                     <td class="text-end">{{ number_format($item->base_price, 2) }} ₽</td>
                                     <td class="text-end">{{ number_format($item->base_price * $item->period_count, 2) }} ₽</td>
-                                        <td class="text-center">
-                                            @if($item->delivery_cost > 0)
-                                                <button type="button" class="btn btn-sm btn-outline-primary"
-                                                        data-bs-toggle="popover"
-                                                        data-delivery-from="{{ $item->deliveryFrom->short_address ?? 'N/A' }}"
-                                                        data-delivery-to="{{ $item->deliveryTo->short_address ?? 'N/A' }}"
-                                                        data-delivery-cost="{{ number_format($item->delivery_cost, 2) }}">
-                                                <i class="bi bi-truck"></i>
-                                                {{ number_format($item->delivery_cost, 2) }} ₽
-                                                </button>
-                                            @else
-                                                <span class="badge bg-secondary">Самовывоз</span>
-                                            @endif
-                                        </td>
-                                        <!-- Скрытый элемент для передачи данных в JS -->
-                                        <div id="cart-data"
-                                            data-remove-selected-route="{{ route('cart.remove-selected') }}">
-                                        </div>
+                                    <td class="text-center">
+                                        @if($item->delivery_cost > 0)
+                                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                                    data-bs-toggle="popover"
+                                                    data-delivery-from="{{ $item->deliveryFrom->short_address ?? 'N/A' }}"
+                                                    data-delivery-to="{{ $item->deliveryTo->short_address ?? 'N/A' }}"
+                                                    data-delivery-cost="{{ number_format($item->delivery_cost, 2) }}">
+                                            <i class="bi bi-truck"></i>
+                                            {{ number_format($item->delivery_cost, 2) }} ₽
+                                            </button>
+                                        @else
+                                            <span class="badge bg-secondary">Самовывоз</span>
+                                        @endif
+                                    </td>
                                     <td class="text-end fw-bold">
                                         {{ number_format(($item->base_price * $item->period_count) + $item->delivery_cost, 2) }} ₽
                                     </td>
@@ -184,6 +180,12 @@
         </div>
     @endif
 </div>
+
+<!-- Контейнер для передачи данных в JS -->
+<div id="cart-data"
+     data-remove-selected-route="{{ route('cart.remove-selected') }}"
+     data-csrf-token="{{ csrf_token() }}">
+</div>
 @endsection
 
 @push('styles')
@@ -206,5 +208,170 @@
         background-color: #f8f9fa;
         border-left: 4px solid #0d6efd;
     }
+</style>
+@endpush
+
+@push('scripts')
+<!-- Подключение SweetAlert -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Функция для получения выбранных элементов
+    const getSelectedItems = () => {
+        return [...document.querySelectorAll('.item-checkbox:checked')].map(el => el.value);
+    };
+
+    // Функция обновления скрытых полей
+    function updateSelectedItems() {
+        const selectedItems = getSelectedItems();
+        const selectedItemsJSON = JSON.stringify(selectedItems);
+
+        // Обновляем поле в форме оформления заказа
+        const checkoutInput = document.getElementById('selected-items');
+        if (checkoutInput) {
+            checkoutInput.value = selectedItemsJSON;
+        }
+
+        // Обновляем поле в форме массовых действий
+        const bulkFormInput = document.getElementById('selected-items-input');
+        if (bulkFormInput) {
+            bulkFormInput.value = selectedItemsJSON;
+        }
+    }
+
+    // Инициализация "Выбрать все"
+    function initSelectAll() {
+        const selectAll = document.getElementById('select-all');
+        if (!selectAll) return;
+
+        selectAll.addEventListener('change', function() {
+            document.querySelectorAll('.item-checkbox').forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateSelectedItems(); // Обновляем скрытые поля
+        });
+
+        // Обработчик изменений для отдельных чекбоксов
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('item-checkbox')) {
+                const checkboxes = document.querySelectorAll('.item-checkbox');
+                const allChecked = [...checkboxes].every(cb => cb.checked);
+                selectAll.checked = allChecked;
+                updateSelectedItems(); // Обновляем скрытые поля
+            }
+        });
+    }
+
+    // Инициализация кнопки удаления с SweetAlert
+    function initRemoveSelected() {
+        const removeSelectedBtn = document.getElementById('remove-selected');
+        if (!removeSelectedBtn) return;
+
+        removeSelectedBtn.addEventListener('click', async function() {
+            const selected = getSelectedItems();
+
+            if (selected.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Не выбраны элементы',
+                    text: 'Пожалуйста, выберите хотя бы один элемент для удаления',
+                });
+                return;
+            }
+
+            // Используем SweetAlert для подтверждения
+            const result = await Swal.fire({
+                title: 'Вы уверены?',
+                html: `Вы собираетесь удалить <strong>${selected.length}</strong> выбранных позиций`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Да, удалить!',
+                cancelButtonText: 'Отмена',
+                customClass: {
+                    popup: 'sweetalert-lg'
+                }
+            });
+
+            if (result.isConfirmed) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = document.getElementById('cart-data').dataset.removeSelectedRoute;
+                form.innerHTML = `
+                    <input type="hidden" name="_token" value="${document.getElementById('cart-data').dataset.csrfToken}">
+                    <input type="hidden" name="_method" value="DELETE">
+                    <input type="hidden" name="items" value="${JSON.stringify(selected)}">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+
+    // Инициализация оформления заказа
+    function initCheckoutValidation() {
+        const checkoutForm = document.getElementById('checkout-form');
+        if (!checkoutForm) return;
+
+        checkoutForm.addEventListener('submit', function(e) {
+            const selectedItems = getSelectedItems();
+            if (selectedItems.length === 0) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Не выбраны элементы',
+                    text: 'Пожалуйста, выберите хотя бы один элемент для оформления заказа',
+                });
+            }
+        });
+    }
+
+    // Инициализация всплывающих подсказок
+    function initPopovers() {
+        const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+        popoverTriggerList.forEach(popoverTriggerEl => {
+            const from = popoverTriggerEl.dataset.deliveryFrom || 'N/A';
+            const to = popoverTriggerEl.dataset.deliveryTo || 'N/A';
+            const cost = popoverTriggerEl.dataset.deliveryCost || '0.00';
+
+            new bootstrap.Popover(popoverTriggerEl, {
+                html: true,
+                title: 'Детали доставки',
+                content: `
+                    <div class="popover-delivery-details">
+                        <div><strong>Откуда:</strong> ${from}</div>
+                        <div><strong>Куда:</strong> ${to}</div>
+                        <div><strong>Стоимость:</strong> ${cost} ₽</div>
+                    </div>
+                `,
+                trigger: 'hover focus'
+            });
+        });
+    }
+
+    // Инициализация всех компонентов
+    function initCart() {
+        console.log('Cart module initialization');
+        initSelectAll();
+        initRemoveSelected();
+        initCheckoutValidation();
+        initPopovers();
+        updateSelectedItems(); // Инициализация при загрузке
+        console.log('Cart module initialized');
+    }
+
+    // Запуск инициализации
+    initCart();
+});
+</script>
+
+<style>
+/* Стили для увеличенного окна SweetAlert */
+.sweetalert-lg .swal2-popup {
+    font-size: 1.1rem;
+    width: 32em;
+}
 </style>
 @endpush

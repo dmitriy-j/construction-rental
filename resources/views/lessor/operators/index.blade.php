@@ -28,6 +28,35 @@
                         <td>{{ $operator->full_name }}</td>
                         <td>{{ $operator->phone }}</td>
                         <td>{{ $operator->license_number }}</td>
+                        <td> <!-- Отображение типа смены -->
+                            @if($operator->shift_type === 'day')
+                                <span class="badge bg-info">Дневная</span>
+                            @else
+                                <span class="badge bg-dark">Ночная</span>
+                            @endif
+                        </td>
+                        @if($equipmentWithoutOperators->isNotEmpty())
+                        <div class="alert alert-warning mb-4">
+                            <h5><i class="fas fa-exclamation-triangle me-2"></i> Внимание!</h5>
+                            <p>Следующее оборудование не имеет назначенных операторов:</p>
+                            <ul>
+                                @foreach($equipmentWithoutOperators as $equipment)
+                                    <li>
+                                        {{ $equipment->title }}
+                                        @if(!$equipment->activeOperators->contains('shift_type', \App\Models\Operator::SHIFT_DAY))
+                                            <span class="badge bg-danger ms-2">Нет дневного оператора</span>
+                                        @endif
+                                        @if(!$equipment->activeOperators->contains('shift_type', \App\Models\Operator::SHIFT_NIGHT))
+                                            <span class="badge bg-dark ms-2">Нет ночного оператора</span>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                            <a href="{{ route('lessor.operators.create') }}" class="btn btn-sm btn-warning mt-2">
+                                Назначить операторов
+                            </a>
+                        </div>
+                        @endif
                         <td>
                             @if($operator->equipment)
                                 {{ $operator->equipment->title }}

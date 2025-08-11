@@ -2,32 +2,31 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\Facades\View; // Добавьте этот импорт
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use App\Models\Order;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class ViewComposerServiceProvider extends ServiceProvider
 {
-    public function register(): void
-    {
-        //
-    }
-
-   public function boot()
+    public function boot()
     {
         View::composer('partials.sidebar', function ($view) {
-            $cartCount = 0;
+            $newOrdersCount = 0;
+            $user = Auth::user();
 
-            try {
-                if (auth()->check()) {
-                    $cart = auth()->user()->cart;
-                    $cartCount = $cart ? $cart->items()->count() : 0;
-                }
-            } catch (\Exception $e) {
-                // Логирование ошибки при необходимости
-                $cartCount = 0;
+            if ($user && $user->company) {
+                $cacheKey = 'new_orders_count_' . $user->company_id;
+
+                $newOrdersCount = Cache::remember($cacheKey, now()->addMinutes(15), function () use ($user) {
+                    return Order::where('lessor_company_id', $user->company_id)
+                        ->where('status', Order::STATUS_PENDING_APPROVAL)
+                        ->count();
+                });
             }
 
-            $view->with('cartCount', $cartCount);
+            $view->with('newOrdersCount', $newOrdersCount);
         });
     }
 }

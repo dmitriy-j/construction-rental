@@ -17,7 +17,7 @@
                 </span>
             </div>
         </div>
-        <a href="{{ route('lessor.orders') }}" class="btn btn-outline-primary">
+        <a href="{{ route('lessor.orders.index') }}" class="btn btn-outline-primary">
             <i class="fas fa-arrow-left me-2"></i>К списку заказов
         </a>
     </div>
@@ -206,7 +206,7 @@
                                 </div>
                             </td>
                             <td class="text-center">
-                                {{ number_format($item->rentalTerm->price_per_hour, 2) }} ₽
+                                {{ number_format($item->fixed_lessor_price ?? $item->rentalTerm->price_per_hour, 2) }} ₽
                             </td>
                             <td class="text-center">
                                 <span class="badge bg-primary rounded-pill px-3 py-2">
@@ -214,7 +214,7 @@
                                 </span>
                             </td>
                             <td class="text-end fw-bold">
-                                {{ number_format($item->rentalTerm->price_per_hour * $item->period_count, 2) }} ₽
+                                {{ number_format(($item->fixed_lessor_price ?? $item->rentalTerm->price_per_hour) * $item->period_count, 2) }} ₽
                             </td>
                         </tr>
                         @endforeach
@@ -260,70 +260,74 @@
     @endif
 
     @if(in_array($order->status, [
-        \App\Models\Order::STATUS_CONFIRMED,
-        \App\Models\Order::STATUS_IN_DELIVERY, // Добавлен статус "В пути"
-        \App\Models\Order::STATUS_ACTIVE,
-        \App\Models\Order::STATUS_EXTENSION_REQUESTED,
-    ]))
-    <div class="card border-0 shadow-sm rounded-3 mb-5">
-        <div class="card-header bg-white border-0 py-3">
-            <h5 class="mb-0">Управление заказом</h5>
-        </div>
-        <div class="card-body">
-            <div class="d-grid gap-3">
-                @if(in_array($order->status, [
-                    \App\Models\Order::STATUS_CONFIRMED,
-                    \App\Models\Order::STATUS_IN_DELIVERY // Разрешено для "В пути"
-                ]))
-                    <form action="{{ route('lessor.orders.markActive', $order) }}" method="POST">
-                        @csrf
-                        <button type="submit"
-                                class="btn btn-primary py-2"
-                                @if(!$order->canBeActivated())
-                                    disabled
-                                    title="Аренду можно начать не ранее {{ $order->activationAvailableDate() }}"
-                                @endif>
-                            <i class="fas fa-play-circle me-2"></i> Начать аренду
-                        </button>
+    \App\Models\Order::STATUS_CONFIRMED,
+    \App\Models\Order::STATUS_IN_DELIVERY,
+    \App\Models\Order::STATUS_ACTIVE,
+    \App\Models\Order::STATUS_EXTENSION_REQUESTED,
+]))
+<div class="card border-0 shadow-sm rounded-3 mb-5">
+    <div class="card-header bg-white border-0 py-3">
+        <h5 class="mb-0">Управление заказом</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-grid gap-3">
+            @if(in_array($order->status, [
+                \App\Models\Order::STATUS_CONFIRMED,
+                \App\Models\Order::STATUS_IN_DELIVERY
+            ]))
+                @php
+                    $activationErrors = $order->getActivationErrors();
+                @endphp
+
+                <form action="{{ route('lessor.orders.markActive', $order) }}" method="POST">
+                    @csrf
+                    <button type="submit"
+                            class="btn btn-primary py-2 position-relative"
+                            @if(!$order->canBeActivated())
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                title="Есть проблемы с активацией"
+                            @endif>
+                        <i class="fas fa-play-circle me-2"></i> Начать аренду
 
                         @if(!$order->canBeActivated())
-                            <div class="mt-2 text-center text-muted small">
-                                Доступно с {{ $order->activationAvailableDate() }}
-                            </div>
+                            <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle">
+                                <span class="visually-hidden">Ошибки активации</span>
+                            </span>
                         @endif
-                    </form>
-                @endif
-
-                @if($order->status === \App\Models\Order::STATUS_EXTENSION_REQUESTED)
-                <div class="border rounded p-3 bg-light">
-                    <h3 class="h5 mb-3">Запрос на продление аренды</h3>
-                    <p class="mb-3">
-                        Арендатор запросил продление аренды до:
-                        <strong>
-                            {{ $order->requested_end_date ? $order->requested_end_date->format('d.m.Y') : 'Дата не указана' }}
-                        </strong>
-                    </p>
-
-                    <button type="button" class="btn btn-primary py-2" id="handleExtensionBtn">
-                        Обработать запрос
                     </button>
-                </div>
-                @endif
 
-                <!-- Ссылка на путевые листы, если они созданы -->
-                @if($order->waybills()->exists())
-                    <div class="mt-3">
-                        <a href="{{ route('lessor.waybills.index', ['order' => $order]) }}"
-                        class="btn btn-outline-secondary d-flex align-items-center">
-                            <i class="fas fa-file-alt me-2"></i> Перейти к путевым листам
-                        </a>
-                    </div>
-                @endif
-            </div>
+                    @if(!$order->canBeActivated())
+                        <div class="mt-3 alert alert-warning">
+                            <h6 class="fw-bold mb-2">Аренду можно начать с {{ $order->activationAvailableDate() }}</h6>
+
+                            @if(count($activationErrors) > 0)
+                                <ul class="mb-0">
+                                    @foreach($activationErrors as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        </div>
+                    @endif
+                </form>
+            @endif
+
+            <!-- Ссылка на путевые листы, если они созданы -->
+            @if($order->waybills()->exists())
+                <div class="mt-3">
+                    <a href="{{ route('lessor.waybills.index', ['order' => $order]) }}"
+                    class="btn btn-outline-secondary d-flex align-items-center">
+                        <i class="fas fa-file-alt me-2"></i> Перейти к путевым листам
+                    </a>
+                </div>
+            @endif
         </div>
     </div>
-    @endif
 </div>
+@endif <!-- Закрывающий тег для внешнего условия -->
+
+@endsection
 
 @push('styles')
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -478,4 +482,4 @@
     });
 </script>
 @endpush
-@endsection
+

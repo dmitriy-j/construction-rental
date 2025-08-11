@@ -378,16 +378,68 @@ class Order extends Model
 
     public function canBeActivated(): bool
     {
-        // Разрешаем активацию для статусов "Подтвержден" и "В пути"
+        // Проверка статуса
         $allowedStatuses = [self::STATUS_CONFIRMED, self::STATUS_IN_DELIVERY];
+        if (!in_array($this->status, $allowedStatuses)) {
+            return false;
+        }
 
-        return in_array($this->status, $allowedStatuses) &&
-            now()->gte($this->start_date->startOfDay());
+        // Проверка даты
+        if (now()->lt($this->start_date)) {
+            return false;
+        }
+
+        // Проверка операторов
+        foreach ($this->items as $item) {
+            if (!$item->equipment->hasActiveDayOperator()) {
+                return false;
+            }
+            if ($this->rentalCondition->shifts_per_day > 1 &&
+                !$item->equipment->hasActiveNightOperator()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function activationAvailableDate(): string
     {
         return $this->start_date->format('d.m.Y');
+    }
+
+    public function getActivationErrors(): array
+    {
+        $errors = [];
+
+        // Проверка статуса
+        $allowedStatuses = [self::STATUS_CONFIRMED, self::STATUS_IN_DELIVERY];
+        if (!in_array($this->status, $allowedStatuses)) {
+            $errors[] = 'Невозможно начать аренду в текущем статусе: '.$this->status_text;
+        }
+
+        // Проверка даты
+        if (now()->lt($this->start_date)) {
+            $errors[] = 'Нельзя начать аренду раньше '.$this->start_date->format('d.m.Y');
+        }
+
+        // Проверка операторов
+        $rentalCondition = $this->rentalCondition;
+        $shiftsPerDay = $rentalCondition->shifts_per_day ?? 1;
+
+        foreach ($this->items as $item) {
+            $equipment = $item->equipment;
+
+            if (!$equipment->hasActiveDayOperator()) {
+                $errors[] = "Для {$equipment->title} не назначен активный дневной оператор";
+            }
+
+            if ($shiftsPerDay > 1 && !$equipment->hasActiveNightOperator()) {
+                $errors[] = "Для {$equipment->title} не назначен активный ночной оператор";
+            }
+        }
+
+        return $errors;
     }
 
     public function deliveryLocation()

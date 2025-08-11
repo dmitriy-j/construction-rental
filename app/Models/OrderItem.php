@@ -33,7 +33,9 @@ class OrderItem extends Model
         'delivery_to_id',
         'lessor_company_id',
         'distance_km',
-        'status' // Добавляем новое поле
+        'status', // Добавляем новое поле
+        'fixed_lessor_price', // Добавляем
+        'fixed_customer_price' // Добавляем
 
 
     ];
@@ -41,6 +43,10 @@ class OrderItem extends Model
     protected $casts = [
     'delivery_cost' => 'float',
     'status' => 'string',
+    ];
+
+     protected $attributes = [
+        'distance_km' => 0, // Значение по умолчанию
     ];
 
     protected $guarded = ['id'];
@@ -131,6 +137,21 @@ class OrderItem extends Model
             self::STATUS_COMPLETED => 'secondary',
             default => 'light',
         };
+    }
+
+    public function getPricePerUnitAttribute($value)
+    {
+        return $this->fixed_customer_price ?? $value;
+    }
+
+    public function getBasePriceAttribute($value)
+    {
+        return $this->fixed_customer_price ?? $value;
+    }
+
+    public function getLessorPriceAttribute()
+    {
+        return $this->fixed_lessor_price ?? $this->rentalTerm->price_per_hour;
     }
 
 

@@ -4,53 +4,68 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Waybill extends Model
 {
     use HasFactory;
 
-    // Типы смен
+    const STATUS_FUTURE = 'future';
+    const STATUS_ACTIVE = 'active';
+    const STATUS_COMPLETED = 'completed';
     const SHIFT_DAY = 'day';
     const SHIFT_NIGHT = 'night';
 
-    // Статусы путевого листа
-    const STATUS_CREATED = 'created';
-    const STATUS_IN_PROGRESS = 'in_progress';
-    const STATUS_COMPLETED = 'completed';
-
     protected $fillable = [
+        'number',
         'order_id',
+        'order_item_id',
         'equipment_id',
         'operator_id',
-        'work_date',
-        'shift',
-        'hours_worked',
-        'downtime_hours',
-        'downtime_cause',
-        'operator_signature_path',
-        'customer_signature_path',
-        'notes',
-        'odometer_start',
-        'odometer_end',
-        'fuel_start',
-        'fuel_end',
-        'fuel_consumption_standard',
-        'fuel_consumption_actual',
-        'mechanic_signature_path',
-        'work_description',
+        'license_plate',
+        'start_date',
+        'end_date',
         'status',
+        'notes',
+        'operator_notes',
+        'foreman_signature_path',
+        'supervisor_signature_path',
         'rental_condition_id',
-
+        'hourly_rate',
+        'shift_type',
+        'lessor_hourly_rate'
     ];
 
     protected $casts = [
-        'work_date' => 'date',
-        'fuel_start' => 'decimal:2',
-        'fuel_end' => 'decimal:2',
-        'fuel_consumption_standard' => 'decimal:2',
-        'fuel_consumption_actual' => 'decimal:2',
+        'start_date' => 'date',
+        'end_date' => 'date',
     ];
+
+    public static function booted()
+    {
+        static::creating(function ($model) {
+            // 1. Генерация номера
+            $model->number = 'ЭСМ-2-' . date('Ymd') . '-' . str_pad(static::count() + 1, 5, '0', STR_PAD_LEFT);
+
+            // 2. Проверка соответствия оператора
+            if ($model->operator && $model->operator->shift_type !== $model->shift_type) {
+                throw new \Exception("Оператор {$model->operator->full_name} не соответствует типу смены. Ожидается: {$model->shift_type}, фактически: {$model->operator->shift_type}");
+            }
+        });
+
+        static::updating(function ($model) {
+            // 3. Логирование изменений статуса
+            if ($model->isDirty('status')) {
+                WaybillStatusHistory::create([
+                    'waybill_id' => $model->id,
+                    'old_status' => $model->getOriginal('status'),
+                    'new_status' => $model->status,
+                    'changed_by' => auth()->id()
+                ]);
+            }
+        });
+    }
 
     public function order(): BelongsTo
     {
@@ -72,54 +87,137 @@ class Waybill extends Model
         return $this->belongsTo(RentalCondition::class);
     }
 
-    // Новые методы для статусов
-    public function isCreated(): bool
+    public function shifts(): HasMany
     {
-        return $this->status === self::STATUS_CREATED;
+        return $this->hasMany(WaybillShift::class);
     }
 
-    public function isInProgress(): bool
+    public function isFuture(): bool
     {
-        return $this->status === self::STATUS_IN_PROGRESS;
+        return $this->status === self::STATUS_FUTURE;
     }
 
-    public function markAsInProgress(): void
+    public function isActive(): bool
     {
-        $this->update(['status' => self::STATUS_IN_PROGRESS]);
+        return $this->status === self::STATUS_ACTIVE;
     }
 
-    public function complete(array $data): void
+    public function isCompleted(): bool
     {
-        $this->update([
-            'status' => self::STATUS_COMPLETED,
-            'odometer_end' => $data['odometer_end'],
-            'fuel_end' => $data['fuel_end'],
-            'fuel_consumption_actual' => $this->fuel_start - $data['fuel_end'],
-            'hours_worked' => $data['hours_worked'],
-            'downtime_hours' => $data['downtime_hours'],
-            'downtime_cause' => $data['downtime_cause'],
-            'work_description' => $data['work_description'],
-            'completed_at' => now()
-        ]);
+        return $this->status === self::STATUS_COMPLETED;
     }
 
-    public function getStatusTextAttribute()
+    public function markAsActive(): void
+    {
+        $this->update(['status' => self::STATUS_ACTIVE]);
+    }
+
+    public function complete(): void
+    {
+        $this->update(['status' => self::STATUS_COMPLETED]);
+    }
+
+    public function getStatusTextAttribute(): string
     {
         return match($this->status) {
-            self::STATUS_CREATED => 'Создан',
-            self::STATUS_IN_PROGRESS => 'В работе',
+            self::STATUS_FUTURE => 'Будущий',
+            self::STATUS_ACTIVE => 'Активный',
             self::STATUS_COMPLETED => 'Завершен',
             default => $this->status,
         };
     }
 
-    public function getStatusColorAttribute()
+   public function getStatusColorAttribute(): string
     {
         return match($this->status) {
-            self::STATUS_CREATED => 'warning',
-            self::STATUS_IN_PROGRESS => 'info',
-            self::STATUS_COMPLETED => 'success',
-            default => 'secondary',
+            self::STATUS_FUTURE => 'warning',
+            self::STATUS_ACTIVE => 'success',
+            self::STATUS_COMPLETED => 'secondary',
+            default => 'light',
         };
     }
+
+    public function getTotalHoursAttribute()
+    {
+        return $this->shifts->sum('hours_worked');
+    }
+
+    public function getTotalAmountAttribute()
+    {
+        return $this->shifts->sum('total_amount');
+    }
+
+    public function getFirstShiftDateAttribute()
+    {
+        return $this->shifts()->orderBy('shift_date')->first()->shift_date ?? null;
+    }
+
+    public function completionAct()
+    {
+        return $this->hasOne(CompletionAct::class);
+    }
+
+    public function firstShift()
+    {
+        return $this->hasOne(WaybillShift::class)->oldestOfMany('shift_date');
+    }
+
+    public function getShiftTypeTextAttribute(): string
+    {
+        return $this->shift_type === 'day' ? 'Дневная' : 'Ночная';
+    }
+
+    public function statusHistories(): HasMany
+    {
+        return $this->hasMany(WaybillStatusHistory::class);
+    }
+
+    public function getBaseHourlyRateAttribute()
+    {
+        // Приоритет 1: Фиксированная цена из позиции заказа
+        if ($this->orderItem && $this->orderItem->fixed_lessor_price) {
+            return $this->orderItem->fixed_lessor_price;
+        }
+
+        // Приоритет 2: Из заказа
+        if ($this->order && $this->equipment_id) {
+            $item = $this->order->items()
+                ->where('equipment_id', $this->equipment_id)
+                ->first();
+
+            return $item->fixed_lessor_price ?? $this->hourly_rate;
+        }
+
+        // Приоритет 3: Значение из путевого листа
+        return $this->hourly_rate;
+    }
+
+    public function orderItem()
+    {
+        return $this->belongsTo(OrderItem::class);
+    }
+
+    public function getDisplayHourlyRateAttribute()
+    {
+        $user = auth()->user();
+
+        if ($user->company->is_lessor) {
+            return $this->lessor_hourly_rate; // Для арендодателя - чистая ставка
+        }
+
+        return $this->hourly_rate; // Для остальных - с наценкой
+    }
+
+    public function orderItemWithFallback()
+    {
+        return $this->belongsTo(OrderItem::class, 'order_item_id')
+            ->withDefault(function ($item, $waybill) {
+                return new OrderItem([
+                    'start_date' => $waybill->start_date,
+                    'end_date' => $waybill->end_date
+                ]);
+            });
+    }
+
+
 }
