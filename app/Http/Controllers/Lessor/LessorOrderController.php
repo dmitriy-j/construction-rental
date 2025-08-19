@@ -112,7 +112,7 @@ class LessorOrderController extends Controller
         return back()->with('success', 'Статус заказа обновлен');
     }
 
-    public function markAsActive(Order $order)
+   public function markAsActive(Order $order)
     {
         // Проверка прав доступа
         if ($order->lessor_company_id !== auth()->user()->company_id) {
@@ -137,11 +137,9 @@ class LessorOrderController extends Controller
             $shiftsPerDay = $rentalCondition->shifts_per_day ?? 1;
             $missingOperators = [];
 
-            // Явная загрузка операторов с фильтрацией по активности
-            $order->load(['items.equipment' => function ($query) {
-                $query->with([
-                    'operators' => fn($q) => $q->where('is_active', true)
-                ]);
+            // Проверка наличия активных операторов
+            $order->load(['items.equipment.operators' => function ($query) {
+                $query->where('is_active', true);
             }]);
 
             foreach ($order->items as $item) {
@@ -156,7 +154,7 @@ class LessorOrderController extends Controller
                     $missingOperators[] = $equipment->title . ' (дневная смена)';
                 }
 
-                // Проверяем ночную смену только если требуется
+                // Проверяем ночную смену если требуется
                 if ($shiftsPerDay > 1) {
                     $hasNightOperator = $equipment->operators
                         ->where('shift_type', Operator::SHIFT_NIGHT)
@@ -178,44 +176,28 @@ class LessorOrderController extends Controller
                 'service_start_date' => now()
             ]);
 
-            // Создание путевых листов через сервис
-            $waybillService = new WaybillCreationService();
-            $waybillService->createForOrder($order);
-
-            // Активация первого путевого листа для каждого оборудования
-            $firstWaybills = Waybill::whereIn('id', function ($query) use ($order) {
-                $query->select(DB::raw('MIN(id)'))
-                    ->from('waybills')
-                    ->where('order_id', $order->id)
-                    ->groupBy('equipment_id', 'shift_type');
-            })->get();
-
-            foreach ($firstWaybills as $waybill) {
-                // Активируем только если дата начала в прошлом или сегодня
-                if ($waybill->start_date <= now()) {
-                    $waybill->update(['status' => Waybill::STATUS_ACTIVE]);
-                }
-            }
+            // Создание ТОЛЬКО ПЕРВЫХ путевых листов
+            $service = new WaybillCreationService();
+            $service->createForOrder($order);
 
             // Запись в историю статусов
             OrderStatusHistory::create([
                 'order_id' => $order->id,
                 'status' => Order::STATUS_ACTIVE,
                 'changed_by' => auth()->id(),
-                'notes' => 'Аренда активирована, созданы путевые листы'
+                'notes' => 'Аренда активирована, созданы начальные путевые листы'
             ]);
 
             // Отправка уведомлений
             $this->sendActivationNotifications($order);
 
-            Log::info('Order activated with waybills', [
+            Log::info('Order activated with initial waybills', [
                 'order_id' => $order->id,
-                'waybill_count' => $order->waybills()->count(),
-                'first_waybills' => $firstWaybills->pluck('id')
+                'waybill_count' => $order->waybills()->count()
             ]);
         });
 
-        return back()->with('success', 'Аренда успешно начата. Созданы путевые листы.');
+        return back()->with('success', 'Аренда успешно начата. Созданы начальные путевые листы.');
     }
 
 

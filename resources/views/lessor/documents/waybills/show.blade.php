@@ -360,35 +360,73 @@
                     </div>
                 </div>
             </form>
-
-            <!-- Блок подписания -->
             @if($waybill->status === \App\Models\Waybill::STATUS_ACTIVE)
-            <div class="card border-primary mt-4">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">Подписание путевого листа</h5>
-                </div>
-                <div class="card-body">
-                    <!-- Убедитесь, что это canvas-элемент -->
-                    <canvas id="signature-pad" class="border rounded bg-white" style="height: 150px; cursor: crosshair;"></canvas>
-
-                    <div class="mt-2">
-                        <button id="clear-signature" class="btn btn-sm btn-outline-danger">
-                            <i class="fas fa-eraser me-1"></i>Очистить
-                        </button>
-                    </div>
-
-                    <div class="d-flex gap-2 flex-wrap">
-                        <button id="sign-button" class="btn btn-success flex-grow-1">
-                            <i class="fas fa-signature me-2"></i>Подписать
-                        </button>
-                        <button id="close-waybill" class="btn btn-danger flex-grow-1">
-                            <i class="fas fa-lock me-2"></i>Закрыть
-                        </button>
-                    </div>
-                </div>
+            <div class="mt-4 border-top pt-3">
+                <form action="{{ route('lessor.waybills.close', $waybill) }}" method="POST">
+                    @csrf
+                    <button type="submit" class="btn btn-danger" id="close-waybill">
+                        <i class="fas fa-lock me-2"></i>Закрыть путевой лист
+                    </button>
+                </form>
             </div>
             @endif
+<!-- Секция для уведомления об успешном создании Акта -->
+@if(session('success') && isset(session('success')['act_id']))
+    <div class="alert alert-success mt-4">
+        <i class="fas fa-check-circle"></i> {{ session('success')['message'] }}
+        {{-- В будущем здесь будет ссылка на просмотр акта --}}
+        {{-- <a href="{{ route('lessor.completion-acts.show', session('success')['act_id']) }}" class="btn btn-outline-primary btn-sm ms-2">Посмотреть акт</a> --}}
+    </div>
+@endif
 
+<!-- Блок истории актов для этого путевого листа -->
+
+@if($waybill->completionAct || ($waybill->completionActs && $waybill->completionActs->isNotEmpty()))
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-file-contract me-2"></i>Связанные акты выполненных работ</h5>
+    </div>
+    <div class="card-body">
+        <div class="list-group">
+            @if($waybill->completionAct)
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>Акт №{{ $waybill->completionAct->id }}</strong>
+                        <br>
+                        <small>Период: {{ $waybill->completionAct->service_start_date->format('d.m.Y') }}
+                        - {{ $waybill->completionAct->service_end_date->format('d.m.Y') }}</small>
+                        <br>
+                        <span class="badge bg-secondary">{{ $waybill->completionAct->status }}</span>
+                    </div>
+                    <div>
+                        <span class="text-nowrap">{{ number_format($waybill->completionAct->total_amount, 2) }} ₽</span>
+                        {{-- <a href="#" class="btn btn-sm btn-outline-info ms-2">PDF</a> --}}
+                    </div>
+                </div>
+            @endif
+
+            @if($waybill->completionActs && $waybill->completionActs->isNotEmpty())
+                @foreach($waybill->completionActs as $act)
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Акт №{{ $act->id }}</strong>
+                            <br>
+                            <small>Период: {{ $act->service_start_date->format('d.m.Y') }}
+                            - {{ $act->service_end_date->format('d.m.Y') }}</small>
+                            <br>
+                            <span class="badge bg-secondary">{{ $act->status }}</span>
+                        </div>
+                        <div>
+                            <span class="text-nowrap">{{ number_format($act->total_amount, 2) }} ₽</span>
+                            {{-- <a href="#" class="btn btn-sm btn-outline-info ms-2">PDF</a> --}}
+                        </div>
+                    </div>
+                @endforeach
+            @endif
+        </div>
+    </div>
+</div>
+@endif
             <!-- Скачивание PDF -->
             <div class="mt-4 border-top pt-3">
                 <a href="{{ route('lessor.waybills.download', $waybill) }}" class="btn btn-outline-primary">
@@ -516,7 +554,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }).showToast();
     }
 
-    // 3. Обработчик добавления смены
+    // 3. Обработчик добавления смены (универсальный для дневных/ночных)
     const addShiftForm = document.getElementById('add-shift-form');
     if (addShiftForm) {
         addShiftForm.addEventListener('submit', async function(e) {
@@ -545,7 +583,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (result.success) {
                     showAlert('Смена успешно добавлена', 'success');
-                    setTimeout(() => location.reload(), 1500);
+
+                    // Обновляем всю карточку путевого листа
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
                 } else {
                     let errorMessage = result.message || 'Ошибка при добавлении смены';
                     if (result.errors?.shift_date) {
@@ -561,6 +603,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
 
     // 4. Маскировка времени
     const timeInputs = document.querySelectorAll('.time-mask');
@@ -608,30 +651,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-});
 
-// 7. Сохранение шапки путевого листа (оператор и гос. номер)
-document.addEventListener('DOMContentLoaded', function() {
+
+ // 7. Сохранение шапки путевого листа (оператор и гос. номер)
     const saveHeaderBtn = document.getElementById('save-waybill-header');
-
     if (saveHeaderBtn) {
         saveHeaderBtn.addEventListener('click', async function() {
             const operatorId = document.getElementById('operator_id').value;
             const licensePlate = document.getElementById('license_plate').value;
             const waybillId = {{ $waybill->id }};
 
-            console.log('Данные для сохранения:', {
-                operator_id: operatorId,
-                license_plate: licensePlate
-            });
-
             const btnOriginal = saveHeaderBtn.innerHTML;
             saveHeaderBtn.disabled = true;
             saveHeaderBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Сохранение...';
 
             try {
-                const response = await fetch(`/lessor/waybills/${waybillId}/update-header`, {
-                    method: 'POST',
+                // Исправленный URL и метод
+                const response = await fetch(`/lessor/waybills/${waybillId}`, {
+                    method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -644,16 +681,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 const result = await response.json();
-                console.log('Ответ сервера:', result);
 
-                if (response.ok && result.success) {
+                if (result.success) {
                     showAlert('Данные успешно сохранены', 'success');
                 } else {
-                    const errorMsg = result.message || 'Ошибка при сохранении данных';
-                    showAlert(errorMsg);
+                    showAlert(result.message || 'Ошибка при сохранении');
                 }
             } catch (error) {
-                console.error('Ошибка при сохранении:', error);
                 showAlert('Сетевая ошибка: ' + error.message);
             } finally {
                 saveHeaderBtn.disabled = false;
@@ -661,169 +695,58 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-});
 
-// 8. Подписание путевого листа
-const canvas = document.getElementById('signature-pad');
-if (canvas) {
-    // Увеличьте разрешение canvas
-    canvas.width = canvas.offsetWidth * 2;
-    canvas.height = canvas.offsetHeight * 2;
-    canvas.style.width = '100%';
-    canvas.style.height = '150px';
+    // 8. Обработчик удаления смены с правильным URL
+    document.addEventListener('click', async function(e) {
+        if (e.target.closest('.delete-shift-btn')) {
+            const button = e.target.closest('.delete-shift-btn');
+            const shiftId = button.getAttribute('data-id');
 
-    const ctx = canvas.getContext('2d');
-    ctx.scale(2, 2);
-
-    let drawing = false;
-    let lastX = 0;
-    let lastY = 0;
-
-    // Обработчики событий для рисования
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('touchstart', startDrawing);
-
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('touchmove', draw);
-
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('touchend', stopDrawing);
-    canvas.addEventListener('mouseout', stopDrawing);
-
-    // Очистка подписи
-    document.getElementById('clear-signature').addEventListener('click', function() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-    });
-
-    // Подписание
-    document.getElementById('sign-button').addEventListener('click', function() {
-        if (isCanvasBlank(canvas)) {
-            showAlert('Пожалуйста, поставьте подпись', 'error');
-            return;
-        }
-
-        const signatureData = canvas.toDataURL('image/png');
-        // Отправка подписи на сервер
-        saveSignature(signatureData);
-    });
-
-    // Закрытие путевого листа
-    document.getElementById('close-waybill').addEventListener('click', function() {
-        if (confirm('Вы уверены, что хотите закрыть путевой лист? После закрытия добавление новых смен будет невозможно.')) {
-            closeWaybill();
-        }
-    });
-
-    function startDrawing(e) {
-        drawing = true;
-        const coords = getCoordinates(e);
-        [lastX, lastY] = [coords.x, coords.y];
-    }
-
-    function draw(e) {
-        if (!drawing) return;
-        e.preventDefault();
-
-        const coords = getCoordinates(e);
-        ctx.beginPath();
-        ctx.moveTo(lastX, lastY);
-        ctx.lineTo(coords.x, coords.y);
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        [lastX, lastY] = [coords.x, coords.y];
-    }
-
-    function stopDrawing() {
-        drawing = false;
-    }
-
-    function getCoordinates(e) {
-        if (e.type.includes('touch')) {
-            const touch = e.touches[0] || e.changedTouches[0];
-            const rect = canvas.getBoundingClientRect();
-            return {
-                x: touch.clientX - rect.left,
-                y: touch.clientY - rect.top
-            };
-        } else {
-            const rect = canvas.getBoundingClientRect();
-            return {
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top
-            };
-        }
-    }
-
-    function isCanvasBlank(canvas) {
-        const context = canvas.getContext('2d');
-        const pixelBuffer = new Uint32Array(
-            context.getImageData(0, 0, canvas.width, canvas.height).data.buffer
-        );
-        return !pixelBuffer.some(color => color !== 0);
-    }
-
-    async function saveSignature(signatureData) {
-        const btn = document.getElementById('sign-button');
-        const originalHtml = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Сохранение...';
-
-        try {
-            const response = await fetch(`/lessor/waybills/{{ $waybill->id }}/sign`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ signature: signatureData })
-            });
-
-            const result = await response.json();
-            if (result.success) {
-                showAlert('Путевой лист успешно подписан!', 'success');
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                showAlert(result.message || 'Ошибка при сохранении подписи');
+            if (!confirm('Вы уверены, что хотите удалить смену? Данные будут утеряны безвозвратно.')) {
+                return;
             }
-        } catch (error) {
-            showAlert('Сетевая ошибка: ' + error.message);
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-        }
-    }
 
-    async function closeWaybill() {
-        const btn = document.getElementById('close-waybill');
-        const originalHtml = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Закрытие...';
+            try {
+                // Формируем URL через именованный маршрут
+                const url = "{{ route('lessor.shifts.destroy', ['shift' => ':id']) }}".replace(':id', shiftId);
 
-        try {
-            const response = await fetch(`/lessor/waybills/{{ $waybill->id }}/close`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Accept': 'application/json'
+                const response = await fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                // Проверка статуса ответа
+                if (response.status === 404) {
+                    throw new Error('Маршрут не найден. Проверьте конфигурацию сервера.');
                 }
-            });
 
-            const result = await response.json();
-            if (result.success) {
-                showAlert('Путевой лист успешно закрыт!', 'success');
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                showAlert(result.message || 'Ошибка при закрытии путевого листа');
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('Смена успешно удалена', 'success');
+
+                    // Обновляем таблицу смен
+                    const shiftsUrl = "{{ route('lessor.waybills.shifts', ['waybill' => $waybill->id]) }}";
+                    const shiftsResponse = await fetch(shiftsUrl);
+
+                    if (!shiftsResponse.ok) {
+                        throw new Error('Ошибка при обновлении таблицы смен');
+                    }
+
+                    const shiftsHtml = await shiftsResponse.text();
+                    document.getElementById('shifts-table-container').innerHTML = shiftsHtml;
+                } else {
+                    showAlert(result.message || 'Ошибка при удалении смены');
+                }
+            } catch (error) {
+                showAlert('Ошибка: ' + error.message);
+                console.error('Ошибка удаления смены:', error);
             }
-        } catch (error) {
-            showAlert('Сетевая ошибка: ' + error.message);
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
         }
-    }
-}
+    });
+});
 </script>
 @endpush

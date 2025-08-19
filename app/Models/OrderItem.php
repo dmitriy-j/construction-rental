@@ -41,9 +41,10 @@ class OrderItem extends Model
     ];
 
     protected $casts = [
-    'delivery_cost' => 'float',
-    'status' => 'string',
-    ];
+        'delivery_cost' => 'float',
+        'status' => 'string',
+
+        ];
 
      protected $attributes = [
         'distance_km' => 0, // Значение по умолчанию
@@ -51,7 +52,7 @@ class OrderItem extends Model
 
     protected $guarded = ['id'];
 
-    public function order(): BelongsTo
+    public function order()
     {
         return $this->belongsTo(Order::class);
     }

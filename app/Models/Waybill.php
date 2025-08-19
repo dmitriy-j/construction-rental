@@ -157,6 +157,11 @@ class Waybill extends Model
         return $this->hasOne(CompletionAct::class);
     }
 
+    public function completionActs()
+    {
+        return $this->hasMany(CompletionAct::class);
+    }
+
     public function firstShift()
     {
         return $this->hasOne(WaybillShift::class)->oldestOfMany('shift_date');
@@ -194,7 +199,7 @@ class Waybill extends Model
 
     public function orderItem()
     {
-        return $this->belongsTo(OrderItem::class);
+        return $this->belongsTo(OrderItem::class)->withDefault();
     }
 
     public function getDisplayHourlyRateAttribute()
@@ -217,6 +222,14 @@ class Waybill extends Model
                     'end_date' => $waybill->end_date
                 ]);
             });
+    }
+
+    public function allShiftsFilled(): bool
+    {
+        return $this->shifts()->where(function($query) {
+            $query->whereNull('hours_worked')
+                ->orWhere('hours_worked', '<=', 0);
+        })->doesntExist();
     }
 
 

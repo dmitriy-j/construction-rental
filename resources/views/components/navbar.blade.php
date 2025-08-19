@@ -1,10 +1,17 @@
 <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
     <div class="container-fluid px-3 px-lg-4 navbar-container">
-        <!-- Логотип -->
-        <a class="navbar-brand p-0" href="{{ url('/') }}">
+        <!-- Логотип - увеличенный размер -->
+       <a class="navbar-brand p-0" href="{{ url('/') }}">
             <div class="logo-container ripple" data-tooltip="Главная страница">
-                <div class="logo-main">ФАП</div>
-                <div class="logo-subtitle">Федеральная Арендная Платформа</div>
+                <!-- Светлая версия лого -->
+                <img src="{{ asset('images/logo/fap-logo.svg') }}"
+                    alt="Федеральная Арендная Платформа"
+                    class="navbar-logo light-logo">
+
+                <!-- Темная версия лого -->
+                <img src="{{ asset('images/logo/logo.svg') }}"
+                    alt="Федеральная Арендная Платформа"
+                    class="navbar-logo dark-logo">
             </div>
         </a>
 

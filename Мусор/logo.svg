@@ -1,0 +1,19 @@
+<svg width="300" height="150" viewBox="0 0 300 150" xmlns="http://www.w3.org/2000/svg">
+  <!-- Основание платформы -->
+  <rect x="50" y="100" width="200" height="15" rx="3" fill="#0D4B9F"/>
+
+  <!-- Колонны-опоры -->
+  <rect x="80" y="70" width="15" height="30" fill="#0D4B9F" opacity="0.8"/>
+  <rect x="142.5" y="50" width="15" height="50" fill="#0D4B9F"/>
+  <rect x="205" y="60" width="15" height="40" fill="#0D4B9F" opacity="0.8"/>
+
+  <!-- Аббревиатура ФАП поверх композиции -->
+  <text x="150" y="40" font-family="Arial, sans-serif" font-weight="700" font-size="38" text-anchor="middle" fill="#0D4B9F">
+    ФАП
+  </text>
+
+  <!-- Подпись под платформой -->
+  <text x="150" y="130" font-family="Arial" font-size="12" text-anchor="middle" fill="#0D4B9F" opacity="0.8">
+    Федеральная Арендная Платформа
+  </text>
+</svg>

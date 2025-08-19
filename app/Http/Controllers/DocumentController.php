@@ -70,6 +70,8 @@ class DocumentController extends Controller
             $type = $user->company->is_lessor ? 'waybills' : 'delivery_notes';
         }
 
+
+
         \Log::debug('Document access', [
             'user_id' => $user->id,
             'company_id' => $user->company_id,
@@ -238,6 +240,23 @@ class DocumentController extends Controller
         }
 
         return Storage::download($note->document_path, "ТН-{$note->document_number}.pdf");
+    }
+
+    public function showCompletionAct(CompletionAct $act)
+    {
+        // Проверка прав доступа
+        if ($act->order->lessor_company_id !== auth()->user()->company_id) {
+            abort(403, 'Доступ запрещен');
+        }
+
+        // Загрузка связанных данных
+        $act->load([
+            'order.lesseeCompany',
+            'waybill.equipment',
+            'waybill.operator'
+        ]);
+
+        return view('lessor.documents.completion_acts.show', compact('act'));
     }
 
     public function signDeliveryNote(DeliveryNote $note, Request $request)

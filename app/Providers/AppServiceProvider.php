@@ -8,6 +8,7 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Log;
 use App\Models\WaybillShift; // Добавляем импорт модели
 use App\Observers\WaybillShiftObserver; // Импорт наблюдателя
+use App\Services\WaybillCreationService;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -31,6 +32,10 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(DeliveryNoteService::class, function ($app) {
             return new DeliveryNoteService();
+        });
+
+         $this->app->bind(WaybillCreationService::class, function ($app) {
+            return new WaybillCreationService();
         });
         //
     }

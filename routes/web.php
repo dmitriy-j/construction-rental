@@ -30,7 +30,7 @@ use App\Http\Controllers\Lessor\WaybillController;
 use App\Http\Controllers\Lessor\ShiftController;
 use App\Http\Controllers\Lessor\OperatorController;
 use App\Http\Controllers\Lessor\DeliveryNoteController;
-
+use App\Http\Controllers\Lessor\EquipmentController as LessorEquipmentController;
 
 
 
@@ -86,8 +86,8 @@ Route::prefix('lessor')
         Route::post('dashboard/mark-as-viewed', [LessorDashboardController::class, 'markAsViewed'])
             ->name('dashboard.markAsViewed');
 
-        // Оборудование
-        Route::resource('equipment', EquipmentController::class)
+           // Оборудование (ИСПРАВЛЕНО: используем контроллер из Lessor)
+        Route::resource('equipment', LessorEquipmentController::class)
             ->names([
                 'index' => 'equipment.index',
                 'create' => 'equipment.create',
@@ -129,6 +129,7 @@ Route::prefix('lessor')
             Route::get('/', [DocumentController::class, 'index'])->name('index');
             Route::get('download/{id}/{type}', [DocumentController::class, 'download'])->name('download');
             Route::get('status-update', [DocumentController::class, 'statusUpdate'])->name('status-update');
+            Route::get('completion_acts/{act}', [DocumentController::class, 'showCompletionAct'])->name('completion_acts.show');
         });
 
         // Накладные
@@ -147,7 +148,10 @@ Route::prefix('lessor')
             Route::get('{waybill}/download', [WaybillController::class, 'download'])->name('download');
             Route::post('{waybill}/add-shift', [WaybillController::class, 'addShift'])->name('add-shift');
             Route::post('{waybill}/close', [WaybillController::class, 'close'])->name('close');
+            Route::get('{waybill}/shifts', [WaybillController::class, 'getShifts']) ->name('shifts');
+
         });
+
 
         // Смены
         Route::prefix('shifts')->name('shifts.')->group(function () {

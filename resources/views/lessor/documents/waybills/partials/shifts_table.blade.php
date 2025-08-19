@@ -2,7 +2,7 @@
     <div class="card-header bg-light d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Список смен</h5>
         <div class="text-muted small">
-            Заполнено: {{ $waybill->shifts->whereNotNull('hours_worked')->count() }}/{{ $waybill->shifts->count() }}
+            Заполнено: {{ $filledShifts }}/{{ $totalShifts }}
         </div>
     </div>
 
@@ -20,19 +20,24 @@
             </thead>
             <tbody>
                 @foreach($waybill->shifts as $shift)
-                <tr class="{{ is_null($shift->hours_worked) ? 'table-warning' : '' }}">
+                <tr class="{{ $shift->hours_worked == 0 ? 'table-warning' : '' }}">
                     <td>{{ $loop->iteration }}</td>
-                    <td>{{ $shift->shift_date->format('d.m.Y') }}</td>
-                    <td>{{ $shift->hours_worked ?? '0' }} ч</td>
                     <td>
-                        @if($shift->hours_worked)
+                        {{ $shift->shift_date->format('d.m.Y') }}
+                        @if($waybill->shift_type === 'night')
+                            <span class="badge bg-dark">Ночная</span>
+                        @endif
+                    </td>
+                    <td>{{ $shift->hours_worked }} ч</td>
+                    <td>
+                        @if($shift->hours_worked > 0)
                             {{ number_format($shift->hours_worked * $shift->hourly_rate, 2) }} ₽
                         @else
                             -
                         @endif
                     </td>
                     <td>
-                        @if(is_null($shift->hours_worked))
+                        @if($shift->hours_worked == 0)
                             <span class="badge bg-warning">Не заполнена</span>
                         @else
                             <span class="badge bg-success">Заполнена</span>
@@ -40,10 +45,12 @@
                     </td>
                     <td>
                         <a href="{{ route('lessor.waybills.show', $waybill) }}?shift_id={{ $shift->id }}"
-                           class="btn btn-sm btn-outline-primary"
-                           title="Редактировать">
-                           <i class="fas fa-edit"></i>
+                        class="btn btn-sm btn-outline-primary"
+                        title="Редактировать">
+                        <i class="fas fa-edit"></i>
                         </a>
+
+                        {{-- Исправляем класс кнопки --}}
                         <button class="btn btn-sm btn-outline-danger delete-shift-btn"
                                 data-id="{{ $shift->id }}"
                                 title="Удалить">

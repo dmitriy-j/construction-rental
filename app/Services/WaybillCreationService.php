@@ -2,153 +2,165 @@
 
 namespace App\Services;
 
-use App\Models\Order;
-use App\Models\Waybill;
+use App\Models\{Order, OrderItem, Waybill, Equipment, Operator};
 use App\Models\WaybillShift;
-use App\Models\RentalCondition;
-use App\Models\Equipment;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class WaybillCreationService
 {
-    /**
-     * Создает путевые листы для всего заказа
-     */
     public function createForOrder(Order $order)
     {
-        $rentalCondition = $order->rentalCondition;
+        try {
+            $rentalCondition = $order->rentalCondition;
+            $shiftsPerDay = $rentalCondition->shifts_per_day ?? 1;
 
-        if (!$rentalCondition) {
-            Log::error('Rental condition not found for order', ['order_id' => $order->id]);
-            throw new \Exception('Условия аренды не найдены для заказа');
-        }
-
-        $maxDays = $rentalCondition->max_waybill_days ?? 10;
-        $shiftsPerDay = $rentalCondition->shifts_per_day ?? 1;
-
-        foreach ($order->items as $item) {
-            try {
-                $this->createForOrderItem($item, $rentalCondition, $maxDays, $shiftsPerDay);
-            } catch (\Exception $e) {
-                Log::error('Error creating waybills for order item', [
-                    'order_item_id' => $item->id,
-                    'error' => $e->getMessage()
-                ]);
-                throw $e;
+            foreach ($order->items as $item) {
+                $this->createFirstWaybillForItem($item, $shiftsPerDay);
             }
+
+            return true;
+
+        } catch (\Exception $e) {
+            Log::error("Ошибка создания путевых листов для заказа #{$order->id}: " . $e->getMessage(), [
+                'order_id' => $order->id,
+                'exception' => $e
+            ]);
+            throw $e;
         }
     }
 
-    /**
-     * Создает путевые листы для позиции заказа
-     */
-    protected function createForOrderItem($item, RentalCondition $rentalCondition, int $maxDays, int $shiftsPerDay)
+    protected function createFirstWaybillForItem(OrderItem $item, int $shiftsPerDay)
     {
-        $equipment = $item->equipment;
+        try {
+            $equipment = $item->equipment;
+            $shiftTypes = $shiftsPerDay == 2 ? ['day', 'night'] : ['day'];
 
-        // Определяем тип смен ВНЕ цикла
-        $shiftTypes = $shiftsPerDay == 2 ? ['day', 'night'] : ['day'];
+            // Проверяем и преобразуем даты с использованием заказа как fallback
+            $startDate = $this->ensureCarbon($item->start_date) ?? $this->ensureCarbon($item->order->start_date);
+            $endDate = $this->ensureCarbon($item->end_date) ?? $this->ensureCarbon($item->order->end_date);
 
-        foreach ($shiftTypes as $shiftType) {
-            $operatorId = $this->getOperatorId($equipment, $shiftType);
-
-            if (!$operatorId) {
-                // Добавляем лог вместо исключения
-                Log::error("No active operator for shift", [
-                    'equipment_id' => $equipment->id,
-                    'shift_type' => $shiftType
-                ]);
-                continue; // Пропускаем смену, но не прерываем
+            // Если даты все равно отсутствуют, используем текущую дату как fallback
+            if (!$startDate) {
+                $startDate = now();
+                Log::warning("Использована текущая дата как start_date для item #{$item->id}");
             }
 
-            $periods = $this->splitPeriod($item->start_date, $item->end_date, $maxDays);
+            if (!$endDate) {
+                $endDate = $startDate->copy()->addDay();
+                Log::warning("Использована start_date + 1 день как end_date для item #{$item->id}");
+            }
 
-            foreach ($periods as $index => $period) {
-                $this->createWaybillForPeriod(
+            foreach ($shiftTypes as $shiftType) {
+                $operator = $this->getOperatorForShift($equipment, $shiftType);
+                $this->createWaybill(
                     $item,
-                    $period,
+                    $startDate,
+                    $this->calculateEndDate($startDate, $endDate),
                     $shiftType,
-                    $operatorId,
-                    $rentalCondition->shift_hours,
-                    $index
+                    $operator
                 );
             }
+
+        } catch (\Exception $e) {
+            Log::error("Ошибка создания путевого листа для item #{$item->id}: " . $e->getMessage(), [
+                'item_data' => $item->toArray(),
+                'shifts_per_day' => $shiftsPerDay
+            ]);
+            throw new \Exception("Не удалось создать путевой лист для позиции #{$item->id}: " . $e->getMessage());
         }
     }
 
-    /**
-     * Получаем ID оператора для типа смены
-     */
-    protected function getOperatorId($equipment, $shiftType)
+    protected function ensureCarbon($date): ?Carbon
     {
-        return $equipment->operators()
+        if ($date instanceof Carbon) {
+            return $date;
+        }
+
+        if (is_string($date)) {
+            try {
+                return Carbon::parse($date);
+            } catch (\Exception $e) {
+                Log::warning("Ошибка преобразования строки в дату: '$date'", [
+                    'error' => $e->getMessage()
+                ]);
+                return null;
+            }
+        }
+
+        if ($date instanceof \DateTimeInterface) {
+            return Carbon::instance($date);
+        }
+
+        return null;
+    }
+
+    protected function getOperatorForShift(Equipment $equipment, string $shiftType): Operator
+    {
+        $operator = $equipment->operators()
             ->where('shift_type', $shiftType)
             ->where('is_active', true)
-            ->value('id');
-    }
-    /**
-     * Создаем путевой лист для периода
-     */
-    protected function createWaybillForPeriod(
-        $item,
-        $period,
-        $shiftType,
-        $operatorId,
-        $shiftHours,
-        $index
-    ) {
-        $startDate = Carbon::parse($period['start']);
-        $endDate = Carbon::parse($period['end']);
+            ->first();
 
-        // Статус: если период начинается сегодня или раньше - активный, иначе будущий
+        if (!$operator) {
+            $error = "Отсутствует активный оператор для смены: $shiftType";
+            Log::error($error, ['equipment_id' => $equipment->id]);
+            throw new \Exception($error);
+        }
+
+        return $operator;
+    }
+
+    protected function calculateEndDate(Carbon $startDate, Carbon $endDate): Carbon
+    {
+        $firstPeriodEnd = $startDate->copy()->addDays(9);
+        return $firstPeriodEnd->min($endDate);
+    }
+
+    protected function createWaybill(
+        OrderItem $item,
+        Carbon $startDate,
+        Carbon $endDate,
+        string $shiftType,
+        Operator $operator
+    ): Waybill {
+        // Дополнительная проверка периода
+        if ($endDate < $startDate) {
+            Log::warning("Корректировка дат: end_date < start_date", [
+                'item_id' => $item->id,
+                'original_start' => $startDate,
+                'original_end' => $endDate
+            ]);
+
+            // Автоматическая корректировка
+            $endDate = $startDate->copy()->addDay();
+        }
+
         $status = $startDate <= now()
             ? Waybill::STATUS_ACTIVE
             : Waybill::STATUS_FUTURE;
 
-        // Если это первый путевой лист и статус FUTURE, но период уже начался - делаем активным
-        if ($index === 0 && $status === Waybill::STATUS_FUTURE && $startDate <= now()) {
-            $status = Waybill::STATUS_ACTIVE;
-        }
-
-        // Получаем ставки с приоритетом для фиксированных цен
-        $customerRate = $item->fixed_customer_price ?? $item->rentalTerm->price_per_hour;
-        $lessorRate = $item->fixed_lessor_price ?? $item->rentalTerm->price_per_hour;
-
         $waybill = Waybill::create([
             'order_id' => $item->order_id,
+            'order_item_id' => $item->id,
             'equipment_id' => $item->equipment_id,
-            'operator_id' => $operatorId,
+            'operator_id' => $operator->id,
             'shift_type' => $shiftType,
             'start_date' => $startDate,
             'end_date' => $endDate,
             'status' => $status,
-            'hourly_rate' => $customerRate, // Ставка с наценкой
-            'lessor_hourly_rate' => $lessorRate, // Чистая ставка
+            'hourly_rate' => $item->rentalTerm->price_per_hour,
+            'lessor_hourly_rate' => $item->fixed_lessor_price ?? $item->rentalTerm->lessor_price,
             'notes' => "Автоматически создан при активации заказа",
-            'order_item_id' => $item->id // Ссылка на позицию заказа
         ]);
 
-        // Передаем lessorRate как явный параметр
-        $this->createShiftsForPeriod(
-            $waybill,
-            $startDate,
-            $endDate,
-            $shiftHours,
-            $lessorRate // Важно: передаем значение явно
-        );
+        $this->createShifts($waybill, $startDate, $endDate);
+
+        return $waybill;
     }
 
-    /**
-     * Создает смены для периода путевого листа
-     */
-    protected function createShiftsForPeriod(
-        Waybill $waybill,
-        Carbon $startDate,
-        Carbon $endDate,
-        int $shiftHours,
-        float $lessorRate // Добавлен недостающий параметр
-    ) {
+    protected function createShifts(Waybill $waybill, Carbon $startDate, Carbon $endDate)
+    {
         $currentDate = $startDate->copy();
 
         while ($currentDate <= $endDate) {
@@ -156,68 +168,67 @@ class WaybillCreationService
                 'waybill_id' => $waybill->id,
                 'shift_date' => $currentDate->format('Y-m-d'),
                 'operator_id' => $waybill->operator_id,
-                'hourly_rate' => $lessorRate, // Используем переданное значение
-                'fuel_consumption_standard' => $this->calculateFuelConsumption(
-                    $waybill->equipment_id,
-                    $shiftHours
-                )
+                'hourly_rate' => $waybill->lessor_hourly_rate,
             ]);
 
             $currentDate->addDay();
         }
     }
-    /**
-     * Разбивает период на части по указанному количеству дней
-     */
-    protected function splitPeriod($startDate, $endDate, int $maxDays): array
+
+   public function createNextWaybill(Waybill $currentWaybill): ?Waybill
     {
+        $nextStart = $currentWaybill->end_date->copy()->addDay();
 
-        // Добавьте проверку
-        if ($startDate > $endDate) {
-            throw new \Exception("Дата начала периода не может быть позже даты окончания");
+        // Используем связь через orderItem для получения конечной даты аренды
+        $orderItem = $currentWaybill->orderItem()->with('order')->first();
+
+        if (!$orderItem || !$orderItem->order) {
+            Log::error('Order item or parent order missing', ['waybill_id' => $currentWaybill->id]);
+            return null;
         }
 
-        $periods = [];
-        $start = Carbon::parse($startDate);
-        $end = Carbon::parse($endDate);
+        // Определяем реальную дату окончания аренды для этой позиции заказа
+        $rentalEndDate = $this->ensureCarbon($orderItem->end_date ?? $orderItem->order->end_date);
 
-        // Рассчитываем общее количество дней аренды
-        $totalDays = $start->diffInDays($end) + 1;
-
-        // Если весь период <= 10 дней - один путевой лист
-        if ($totalDays <= $maxDays) {
-            return [['start' => $start, 'end' => $end]];
+        // Если следующая дата начала уже позже даты окончания аренды - новый путевой лист не нужен
+        if ($nextStart >= $rentalEndDate) {
+            Log::info('Rental period is over, no next waybill needed.', [
+                'waybill_id' => $currentWaybill->id,
+                'next_start' => $nextStart,
+                'rental_end' => $rentalEndDate
+            ]);
+            return null;
         }
 
-        // Разбиваем на периоды по maxDays дней
-        $currentStart = $start->copy();
+        // Рассчитываем дату окончания для нового путевого листа: минимум из (+10 дней) и (даты окончания аренды)
+        $proposedEndDate = $nextStart->copy()->addDays(9); // 10 дней включительно: 11.08 - 20.08 = 10 дней
+        $nextEnd = $proposedEndDate->min($rentalEndDate);
 
-        while ($currentStart <= $end) {
-            $currentEnd = $currentStart->copy()->addDays($maxDays - 1);
+        Log::debug('Creating next waybill', [
+            'current_waybill_id' => $currentWaybill->id,
+            'next_start' => $nextStart,
+            'proposed_end' => $proposedEndDate,
+            'rental_end' => $rentalEndDate,
+            'final_end' => $nextEnd
+        ]);
 
-            // Корректируем последний период
-            if ($currentEnd > $end) {
-                $currentEnd = $end;
-            }
-
-            $periods[] = [
-                'start' => $currentStart->format('Y-m-d'),
-                'end' => $currentEnd->format('Y-m-d'),
-            ];
-
-            // Переход к следующему периоду
-            $currentStart = $currentEnd->copy()->addDay();
-        }
-
-        return $periods;
+        return Waybill::create([
+            'order_id' => $currentWaybill->order_id,
+            'order_item_id' => $currentWaybill->order_item_id,
+            'equipment_id' => $currentWaybill->equipment_id,
+            'operator_id' => $currentWaybill->operator_id,
+            'shift_type' => $currentWaybill->shift_type,
+            'start_date' => $nextStart,
+            'end_date' => $nextEnd,
+            'status' => Waybill::STATUS_FUTURE,
+            'hourly_rate' => $currentWaybill->hourly_rate,
+            'lessor_hourly_rate' => $currentWaybill->lessor_hourly_rate,
+            'notes' => 'Автоматически создан при закрытии предыдущего путевого листа'
+        ]);
     }
 
-    /**
-     * Рассчитывает нормативный расход топлива
-     */
-    protected function calculateFuelConsumption(int $equipmentId, int $hours): float
+    public function createShiftsForWaybill(Waybill $waybill)
     {
-        $equipment = Equipment::find($equipmentId);
-        return $equipment->fuel_consumption_rate * $hours;
+        return $this->createShifts($waybill, $waybill->start_date, $waybill->end_date);
     }
 }

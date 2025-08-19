@@ -67,13 +67,97 @@
                             <th class="py-3">Статус</th>
                             <th class="py-3 text-end">Действия</th>
                         @elseif($type === 'waybills')
-                            <th class="py-3">ID</th>
-                            <th class="py-3">Оборудование</th>
-                            <th class="py-3">Дата</th>
-                            <th class="py-3">Смена</th>
-                            <th class="py-3">Заказ</th>
-                            <th class="py-3">Статус</th>
-                            <th class="py-3 text-end">Действия</th>
+<thead class="table-light">
+    <tr>
+        <th class="py-3">ID</th>
+        <th class="py-3">Оборудование</th>
+        <th class="py-3">Оператор</th>
+        <th class="py-3">Период смен</th>
+        <th class="py-3">Тип смены</th>
+        <th class="py-3">Статус</th>
+        <th class="py-3 text-end">Действия</th>
+    </tr>
+</thead>
+<tbody>
+    @forelse($documents as $doc)
+    <tr>
+        <td>#{{ $doc->id }}</td>
+        <td>
+            <div class="d-flex align-items-center">
+                @if($doc->equipment?->mainImage)
+                    <img src="{{ $doc->equipment->mainImage->url }}"
+                         alt="{{ $doc->equipment->title }}"
+                         class="rounded me-3"
+                         style="width: 50px; height: 50px; object-fit: cover">
+                @endif
+                <div>
+                    <div>{{ $doc->equipment->title ?? 'Удаленное оборудование' }}</div>
+                    <div class="text-muted small">
+                        {{ $doc->equipment->brand ?? '' }} {{ $doc->equipment->model ?? '' }}
+                    </div>
+                </div>
+            </div>
+        </td>
+        <td>
+            @if($doc->operator)
+                <div>{{ $doc->operator->full_name }}</div>
+                <div class="text-muted small">
+                    {{ $doc->operator->license_number }}
+                </div>
+            @else
+                <span class="text-danger">Не назначен</span>
+            @endif
+        </td>
+        <td>
+            @if($doc->start_date)
+                <div class="fw-medium">
+                    {{ $doc->start_date->format('d.m.Y') }} - {{ $doc->end_date->format('d.m.Y') }}
+                </div>
+                <div class="text-muted small">
+                    {{ $doc->created_at->format('d.m.Y H:i') }}
+                </div>
+            @else
+                <span class="text-danger">Дата не указана</span>
+            @endif
+        </td>
+        <td>
+            @if($doc->shift_type === 'day')
+                <span class="badge bg-info py-2 px-3 rounded-pill">Дневная</span>
+            @else
+                <span class="badge bg-dark py-2 px-3 rounded-pill">Ночная</span>
+            @endif
+        </td>
+        <td>
+            <span class="badge bg-{{ $doc->status_color }} py-2 px-3 rounded-pill">
+                {{ $doc->status_text }}
+            </span>
+        </td>
+        <td class="text-end">
+            <div class="d-flex gap-2 justify-content-end">
+                <a href="{{ route('lessor.waybills.show', $doc) }}"
+                   class="btn btn-sm btn-outline-primary"
+                   title="Просмотреть">
+                    <i class="fas fa-eye"></i>
+                </a>
+                <a href="{{ route('lessor.waybills.download', $doc) }}"
+                   class="btn btn-sm btn-outline-secondary"
+                   title="Скачать PDF">
+                    <i class="fas fa-file-pdf"></i>
+                </a>
+            </div>
+        </td>
+    </tr>
+    @empty
+    <tr>
+        <td colspan="7" class="text-center py-5">
+            <div class="text-muted">
+                <i class="fas fa-file-alt fa-3x mb-3"></i>
+                <p class="h5">Путевые листы отсутствуют</p>
+            </div>
+        </td>
+    </tr>
+    @endforelse
+</tbody>
                         @elseif($type === 'contracts')
                             <th class="py-3">№ договора</th>
                             <th class="py-3">Дата заключения</th>
@@ -226,16 +310,26 @@
                             <td>{{ $doc->signed_at?->format('d.m.Y') ?? 'Не подписан' }}</td>
                             <td>
                                 <a href="{{ route('lessor.orders.show', $doc->order_id) }}"
-                                   class="text-primary fw-bold text-decoration-none">
+                                class="text-primary fw-bold text-decoration-none">
                                     Заказ #{{ $doc->order_id }}
                                 </a>
                             </td>
                             <td>{{ $doc->order->lesseeCompany->legal_name ?? 'Нет данных' }}</td>
                             <td class="text-end">
-                                <a href="{{ route('documents.download', ['id' => $doc->id, 'type' => 'completion_acts']) }}"
-                                   class="btn btn-sm btn-outline-primary">
-                                   <i class="fas fa-download"></i> Скачать
-                                </a>
+                                <div class="btn-group">
+                                    <!-- Кнопка просмотра -->
+                                    <a href="{{ route('lessor.documents.completion_acts.show', $doc) }}"
+                                    class="btn btn-sm btn-info"
+                                    title="Просмотреть акт">
+                                    <i class="fas fa-eye"></i>
+                                    </a>
+                                    <!-- Кнопка скачивания -->
+                                    <a href="{{ route('lessor.documents.download', ['id' => $doc->id, 'type' => 'completion_acts']) }}"
+                                    class="btn btn-sm btn-outline-primary"
+                                    title="Скачать PDF">
+                                    <i class="fas fa-download"></i>
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                         @endif

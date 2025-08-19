@@ -49,9 +49,8 @@ class ShiftController extends Controller
                 'work_end_time' => $request->work_end_time ? substr($request->work_end_time, 0, 5) : null
             ]);
 
-            // Валидация (временно без object_name)
+            // Валидация
             $validated = $request->validate([
-                // 'object_name' => 'required|string|max:255', // Раскомментировать после миграции
                 'object_address' => 'required|string|max:255',
                 'work_start_time' => 'required|regex:/^\d{2}:\d{2}$/',
                 'work_end_time' => 'required|regex:/^\d{2}:\d{2}$/',
@@ -66,11 +65,6 @@ class ShiftController extends Controller
                 'work_description' => 'nullable|string',
                 'notes' => 'nullable|string|max:1000',
             ]);
-
-            // Временно: удаляем object_name до миграции
-            if (array_key_exists('object_name', $validated)) {
-                unset($validated['object_name']);
-            }
 
             Log::debug('Shift data validated', $validated);
 
@@ -125,6 +119,20 @@ class ShiftController extends Controller
                 'changes' => $shift->getChanges()
             ]);
 
+            // Обработка кнопки "Сохранить и следующая"
+            if ($request->has('save_and_next')) {
+                $nextShift = $this->findNextShift($shift);
+
+                if ($nextShift) {
+                    return redirect()->route('lessor.waybills.show', [
+                        'waybill' => $shift->waybill_id,
+                        'shift_id' => $nextShift->id
+                    ])->with('success', 'Данные сохранены. Переходим к следующей смене.');
+                }
+
+                return back()->with('success', 'Данные сохранены. Это последняя смена в путевом листе.');
+            }
+
             return back()
                 ->with('success', 'Данные смены успешно обновлены')
                 ->with('updated_fields', array_keys($validated));
@@ -148,29 +156,103 @@ class ShiftController extends Controller
         }
     }
 
-
-
-     public function destroy(WaybillShift $shift)
+    protected function findNextShift(WaybillShift $currentShift): ?WaybillShift
     {
-        // Проверка прав доступа
-        if ($shift->waybill->order->lessor_company_id !== auth()->user()->company_id) {
-            abort(403, 'Доступ запрещен');
+        $waybill = $currentShift->waybill;
+
+        // Сначала ищем смены с той же датой, но большим ID
+        $nextShift = $waybill->shifts()
+            ->where('shift_date', $currentShift->shift_date)
+            ->where('id', '>', $currentShift->id)
+            ->where(function($query) {
+                $query->whereNull('hours_worked')
+                    ->orWhere('hours_worked', 0);
+            })
+            ->orderBy('id')
+            ->first();
+
+        if ($nextShift) {
+            return $nextShift;
+        }
+
+        // Затем ищем смены с более поздней датой
+        return $waybill->shifts()
+            ->where('shift_date', '>', $currentShift->shift_date)
+            ->where(function($query) {
+                $query->whereNull('hours_worked')
+                    ->orWhere('hours_worked', 0);
+            })
+            ->orderBy('shift_date')
+            ->orderBy('id')
+            ->first();
+    }
+
+
+
+    public function destroy(WaybillShift $shift)
+    {
+        // Логирование начала операции
+        Log::info('Delete shift initiated', [
+            'shift_id' => $shift->id,
+            'waybill_id' => $shift->waybill_id,
+            'user_id' => auth()->id()
+        ]);
+
+        // Усиленная проверка прав
+        $user = auth()->user();
+        $companyId = $user->company_id;
+
+        if (!$shift->waybill || $shift->waybill->order->lessor_company_id !== $companyId) {
+            Log::warning('Unauthorized shift delete attempt', [
+                'user_id' => $user->id,
+                'shift_id' => $shift->id,
+                'company_id' => $companyId,
+                'order_company' => $shift->waybill->order->lessor_company_id ?? 'null'
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Доступ запрещен'
+            ], 403);
         }
 
         // Проверка статуса
         if ($shift->waybill->status !== Waybill::STATUS_ACTIVE) {
+            Log::warning('Attempt to delete shift from inactive waybill', [
+                'waybill_status' => $shift->waybill->status,
+                'waybill_id' => $shift->waybill->id
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Можно удалять смены только из активного путевого листа'
-            ]);
+            ], 400);
         }
 
-        $shift->delete();
+        try {
+            DB::transaction(function () use ($shift) {
+                $shift->delete();
+                Log::info('Shift deleted successfully', [
+                    'shift_id' => $shift->id,
+                    'waybill_id' => $shift->waybill_id
+                ]);
+            });
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Смена удалена'
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Смена удалена'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Shift deletion failed', [
+                'shift_id' => $shift->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка сервера: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
 }
