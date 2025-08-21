@@ -33,15 +33,6 @@ class ShiftController extends Controller
             abort(403, 'Доступ запрещен');
         }
 
-        // Проверка статуса путевого листа
-        if ($shift->waybill->status !== Waybill::STATUS_ACTIVE) {
-            Log::warning('Attempt to update shift in non-active waybill', [
-                'shift_id' => $shift->id,
-                'waybill_status' => $shift->waybill->status
-            ]);
-            return back()->withErrors('Редактирование возможно только для активных путевых листов');
-        }
-
         try {
             // Нормализация времени (удаление секунд)
             $request->merge([
@@ -51,6 +42,7 @@ class ShiftController extends Controller
 
             // Валидация
             $validated = $request->validate([
+                'object_name' => 'required|string|max:255',
                 'object_address' => 'required|string|max:255',
                 'work_start_time' => 'required|regex:/^\d{2}:\d{2}$/',
                 'work_end_time' => 'required|regex:/^\d{2}:\d{2}$/',
@@ -104,15 +96,32 @@ class ShiftController extends Controller
                 'data' => $validated
             ]);
 
-            // Временное отключение observer
-            $shift->withoutEvents(function () use ($shift, $validated) {
-                $shift->update($validated);
-            });
+            DB::transaction(function () use ($shift, $validated, $hoursWorked) {
+                // Временное отключение observer
+                $shift->withoutEvents(function () use ($shift, $validated) {
+                    $shift->update($validated);
+                });
 
-            // Пересчет суммы смены
-            $shift->update([
-                'total_amount' => $hoursWorked * $shift->hourly_rate
-            ]);
+                // Пересчет суммы смены
+                $shift->update([
+                    'total_amount' => $hoursWorked * $shift->hourly_rate
+                ]);
+
+                // Автоматическое изменение статуса путевого листа
+                $waybill = $shift->waybill;
+                if ($waybill->status === Waybill::STATUS_FUTURE && $hoursWorked > 0) {
+                    $waybill->update(['status' => Waybill::STATUS_ACTIVE]);
+
+                    Log::info('Waybill status updated to active', [
+                        'waybill_id' => $waybill->id,
+                        'shift_id' => $shift->id,
+                        'hours_worked' => $hoursWorked
+                    ]);
+                }
+
+                // Пересчитываем общие показатели путевого листа
+                $this->recalculateWaybillTotals($waybill);
+            });
 
             Log::info('Shift successfully updated', [
                 'shift_id' => $shift->id,
@@ -154,6 +163,13 @@ class ShiftController extends Controller
 
             return back()->withErrors('Критическая ошибка при сохранении: ' . $e->getMessage());
         }
+    }
+
+    private function recalculateWaybillTotals(Waybill $waybill)
+    {
+        $waybill->load('shifts');
+        $totalHours = $waybill->shifts->sum('hours_worked');
+        $totalAmount = $totalHours * $waybill->lessor_hourly_rate;
     }
 
     protected function findNextShift(WaybillShift $currentShift): ?WaybillShift

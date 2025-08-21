@@ -205,7 +205,7 @@
                                     @endif
 
                                     @if($doc->status !== DeliveryNote::STATUS_DRAFT)
-                                        <div class="btn-group">
+                                        {{--<div class="btn-group">
                                             <a href="{{ route('delivery-notes.export.excel', $doc) }}"
                                             class="btn btn-sm btn-success" title="Excel">
                                                 <i class="fas fa-file-excel"></i>
@@ -214,7 +214,7 @@
                                             class="btn btn-sm btn-danger" title="PDF">
                                                 <i class="fas fa-file-pdf"></i>
                                             </a>
-                                        </div>
+                                        </div>--}}
                                     @endif
 
                                     <a href="{{ route('lessor.orders.show', $doc->order_id) }}"

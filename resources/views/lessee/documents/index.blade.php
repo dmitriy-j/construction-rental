@@ -7,19 +7,19 @@
     <ul class="nav nav-tabs mb-4">
         <li class="nav-item">
             <a class="nav-link {{ request('type') === 'contracts' ? 'active' : '' }}"
-               href="?type=contracts">Договоры</a>
+               href="{{ route('documents.index', ['type' => 'contracts']) }}">Договоры</a>
         </li>
         <li class="nav-item">
             <a class="nav-link {{ request('type') === 'waybills' ? 'active' : '' }}"
-               href="?type=waybills">Путевые листы</a>
+               href="{{ route('documents.index', ['type' => 'waybills']) }}">Путевые листы</a>
         </li>
         <li class="nav-item">
             <a class="nav-link {{ request('type') === 'delivery_notes' ? 'active' : '' }}"
-               href="?type=delivery_notes">Накладные</a>
+               href="{{ route('documents.index', ['type' => 'delivery_notes']) }}">Накладные</a>
         </li>
         <li class="nav-item">
             <a class="nav-link {{ request('type') === 'completion_acts' ? 'active' : '' }}"
-               href="?type=completion_acts">Акты выполненных работ</a>
+               href="{{ route('documents.index', ['type' => 'completion_acts']) }}">Акты выполненных работ</a>
         </li>
     </ul>
 
@@ -31,7 +31,19 @@
                 </div>
             @endif
 
-            <table class="table">
+            @if(request('type') === 'waybills')
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle"></i> Путевые листы
+                </div>
+            @endif
+
+            @if(request('type') === 'completion_acts')
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle"></i> Акты выполненных работ
+                </div>
+            @endif
+
+           <table class="table">
                 <thead>
                     <tr>
                         <th>№ документа</th>
@@ -45,31 +57,39 @@
                 <tbody>
                     @forelse($documents as $doc)
                     <tr>
-                        <td>{{ $doc->document_number ?? 'Черновик' }}</td>
+                        <td>
+                            {{ $doc->number }}
+                        </td>
                         <td>{{ $doc->created_at->format('d.m.Y H:i') }}</td>
-                        <td>Заказ #{{ $doc->order_id }}</td>
-                        <td>{{ $doc->senderCompany->legal_name ?? 'Платформа' }}</td>
+                        <td>Заказ #{{ $doc->parent_order_id }}</td> <!-- Используем родительский заказ -->
+                        <td>
+                            {{ $doc->parentOrder->lessorCompany->legal_name ?? 'Нет данных' }}
+                        </td>
                         <td>
                             <span class="badge bg-info">
-                              {{ $doc->status_text }}
+                                {{ $doc->status_text }}
                             </span>
                         </td>
                         <td>
-                            {{-- Изменяем условие: показываем для всех статусов кроме черновика --}}
-                            @if($doc->status !== \App\Models\DeliveryNote::STATUS_DRAFT)
-                                <div class="btn-group">
-                                    <a href="{{ route('delivery-notes.export.excel', $doc) }}"
-                                    class="btn btn-sm btn-success" title="Excel">
-                                        <i class="fas fa-file-excel"></i>
-                                    </a>
-                                    <a href="{{ route('delivery-notes.export.pdf', $doc) }}"
-                                    class="btn btn-sm btn-danger" title="PDF">
-                                        <i class="fas fa-file-pdf"></i>
-                                    </a>
-                                </div>
+                            <!-- Кнопки просмотра и скачивания -->
+                            @if(request('type') === 'waybills')
+                                <a href="{{ route('documents.waybills.show', $doc->id) }}"
+                                class="btn btn-sm btn-outline-primary" title="Просмотреть">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            @elseif(request('type') === 'completion_acts')
+                                <a href="{{ route('documents.completion-acts.show', $doc->id) }}"
+                                class="btn btn-sm btn-outline-primary" title="Просмотреть">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            @elseif(request('type') === 'delivery_notes')
+                                <a href="{{ route('documents.delivery-notes.show', $doc->id) }}"
+                                class="btn btn-sm btn-outline-primary" title="Просмотреть">
+                                    <i class="fas fa-eye"></i>
+                                </a>
                             @endif
 
-                            <a href="{{ route('lessee.orders.show', $doc->order_id) }}"
+                            <a href="{{ url('/lessee/orders/' . $doc->parent_order_id) }}"
                             class="btn btn-sm btn-outline-secondary" title="Перейти к заказу">
                                 <i class="fas fa-external-link-alt"></i>
                             </a>
@@ -78,11 +98,7 @@
                     @empty
                     <tr>
                         <td colspan="6" class="text-center py-4">
-                            @if(request('type') === 'delivery_notes')
-                                Активные транспортные накладные отсутствуют
-                            @else
-                                Документы не найдены
-                            @endif
+                            Документы не найдены
                         </td>
                     </tr>
                     @endforelse

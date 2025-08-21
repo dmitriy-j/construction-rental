@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Log;
 
 class Waybill extends Model
 {
@@ -34,7 +35,11 @@ class Waybill extends Model
         'rental_condition_id',
         'hourly_rate',
         'shift_type',
-        'lessor_hourly_rate'
+        'lessor_hourly_rate',
+        'perspective',
+        'related_waybill_id',
+        'parent_order_id',
+
     ];
 
     protected $casts = [
@@ -42,11 +47,25 @@ class Waybill extends Model
         'end_date' => 'date',
     ];
 
-    public static function booted()
+    public function relatedWaybill()
     {
-        static::creating(function ($model) {
-            // 1. Генерация номера
-            $model->number = 'ЭСМ-2-' . date('Ymd') . '-' . str_pad(static::count() + 1, 5, '0', STR_PAD_LEFT);
+        return $this->belongsTo(Waybill::class, 'related_waybill_id');
+    }
+
+    public function parentOrder()
+    {
+        return $this->belongsTo(Order::class, 'parent_order_id');
+    }
+
+    protected static function booted()
+    {
+         static::creating(function ($model) {
+            // Генерация номера в зависимости от перспективы
+            if ($model->perspective === 'lessor') {
+                $model->number = 'ЭСМ-2-' . date('Ymd') . '-' . str_pad(static::where('perspective', 'lessor')->count() + 1, 5, '0', STR_PAD_LEFT);
+            } else {
+                $model->number = 'ПЛ-АР-' . date('Ymd') . '-' . str_pad(static::where('perspective', 'lessee')->count() + 1, 5, '0', STR_PAD_LEFT);
+            }
 
             // 2. Проверка соответствия оператора
             if ($model->operator && $model->operator->shift_type !== $model->shift_type) {
@@ -63,6 +82,16 @@ class Waybill extends Model
                     'new_status' => $model->status,
                     'changed_by' => auth()->id()
                 ]);
+            }
+        });
+
+        static::updated(function ($model) {
+            // 4. Автоматическое обновление статуса при наличии отработанных часов
+            if ($model->status === self::STATUS_FUTURE) {
+                $hasWorkedShifts = $model->shifts()->where('hours_worked', '>', 0)->exists();
+                if ($hasWorkedShifts) {
+                    $model->update(['status' => self::STATUS_ACTIVE]);
+                }
             }
         });
     }
@@ -127,7 +156,7 @@ class Waybill extends Model
         };
     }
 
-   public function getStatusColorAttribute(): string
+    public function getStatusColorAttribute(): string
     {
         return match($this->status) {
             self::STATUS_FUTURE => 'warning',
@@ -230,6 +259,45 @@ class Waybill extends Model
             $query->whereNull('hours_worked')
                 ->orWhere('hours_worked', '<=', 0);
         })->doesntExist();
+    }
+
+    public function forLessor()
+    {
+        return [
+            'id' => $this->id,
+            'number' => $this->number,
+            'period' => $this->start_date->format('d.m.Y') . ' - ' . $this->end_date->format('d.m.Y'),
+            'equipment' => $this->equipment->title,
+            'operator' => $this->operator->full_name,
+            'total_hours' => $this->total_hours,
+            'hourly_rate' => $this->lessor_hourly_rate,
+            'total_amount' => $this->total_hours * $this->lessor_hourly_rate,
+            'status' => $this->status_text,
+            'perspective' => 'lessor'
+        ];
+    }
+
+    public function forLessee()
+    {
+        $orderItem = $this->orderItem;
+        $customerHourlyRate = $orderItem->price_per_unit;
+
+        return [
+            'id' => $this->id,
+            'number' => $this->number,
+            'period' => $this->start_date->format('d.m.Y') . ' - ' . $this->end_date->format('d.m.Y'),
+            'equipment' => $this->equipment->title,
+            'operator' => 'Оператор платформы', // Скрываем реальное имя оператора
+            'total_hours' => $this->total_hours,
+            'hourly_rate' => $customerHourlyRate,
+            'total_amount' => $this->total_hours * $customerHourlyRate,
+            'status' => $this->status_text,
+            'perspective' => 'lessee',
+            'lessor_name' => 'Платформа', // Заменяем на нейтральное название
+            'order_id' => $this->order_id,
+            'parent_order_id' => $this->parent_order_id,
+            'created_at' => $this->created_at
+        ];
     }
 
 

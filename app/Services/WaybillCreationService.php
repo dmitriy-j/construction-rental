@@ -28,6 +28,11 @@ class WaybillCreationService
             ]);
             throw $e;
         }
+        foreach ($order->waybills as $waybill) {
+            $order->lesseeCompany->notify(
+                new \App\Notifications\NewDocumentAvailable($waybill, 'путевой лист')
+            );
+        }
     }
 
     protected function createFirstWaybillForItem(OrderItem $item, int $shiftsPerDay)
@@ -117,7 +122,7 @@ class WaybillCreationService
         return $firstPeriodEnd->min($endDate);
     }
 
-    protected function createWaybill(
+   protected function createWaybill(
         OrderItem $item,
         Carbon $startDate,
         Carbon $endDate,
@@ -136,12 +141,23 @@ class WaybillCreationService
             $endDate = $startDate->copy()->addDay();
         }
 
+        // Валидация периода (после корректировки)
+        if ($endDate < $startDate) {
+            Log::error("Invalid date range for waybill after correction", [
+                'item_id' => $item->id,
+                'start' => $startDate,
+                'end' => $endDate
+            ]);
+            throw new \Exception("Дата окончания не может быть раньше даты начала даже после корректировки");
+        }
+
         $status = $startDate <= now()
             ? Waybill::STATUS_ACTIVE
             : Waybill::STATUS_FUTURE;
 
         $waybill = Waybill::create([
             'order_id' => $item->order_id,
+            'parent_order_id' => $item->order->parent_order_id, // Добавляем привязку к родительскому заказу
             'order_item_id' => $item->id,
             'equipment_id' => $item->equipment_id,
             'operator_id' => $operator->id,
@@ -152,6 +168,7 @@ class WaybillCreationService
             'hourly_rate' => $item->rentalTerm->price_per_hour,
             'lessor_hourly_rate' => $item->fixed_lessor_price ?? $item->rentalTerm->lessor_price,
             'notes' => "Автоматически создан при активации заказа",
+            'perspective' => 'lessor', // По умолчанию создаем для арендодателя
         ]);
 
         $this->createShifts($waybill, $startDate, $endDate);

@@ -175,17 +175,26 @@ Route::prefix('lessee')
             Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('lessee.orders.cancel');
             Route::post('/{order}/request-extension', [\App\Http\Controllers\Lessee\OrderController::class, 'requestExtension'])->name('lessee.orders.requestExtension');
         });
-        // Документы
-        Route::get('/documents', [DocumentController::class, 'index'])->name('lessee.documents');
-        Route::get('/documents/download/{id}/{type}', [DocumentController::class, 'download'])->name('lessee.documents.download');
 
-        Route::group(['middleware' => 'auth'], function() {
-            Route::get('/delivery-notes/{note}/export-excel', [DeliveryNoteExportController::class, 'exportExcel'])
-                ->name('delivery-notes.export.excel');
+       // Документы - общий маршрут
+    Route::get('documents', [\App\Http\Controllers\Lessee\DocumentController::class, 'index'])
+        ->name('documents.index');
 
-            Route::get('/delivery-notes/{note}/export-pdf', [DeliveryNoteExportController::class, 'exportPdf'])
-                ->name('delivery-notes.export.pdf');
-        });
+    // Специфические маршруты документов
+    Route::prefix('documents')->name('documents.')->group(function () {
+        Route::get('orders/{order}/waybills', [\App\Http\Controllers\Lessee\DocumentController::class, 'waybills'])
+            ->name('waybills.index');
+        Route::get('orders/{order}/completion-acts', [\App\Http\Controllers\Lessee\DocumentController::class, 'completionActs'])
+            ->name('completion-acts.index');
+        Route::get('waybills/{waybill}/download', [\App\Http\Controllers\Lessee\DocumentController::class, 'downloadWaybill'])
+            ->name('waybill.download');
+        Route::get('completion-acts/{completionAct}/download', [\App\Http\Controllers\Lessee\DocumentController::class, 'downloadCompletionAct'])
+            ->name('completion-act.download');
+        Route::get('waybills/{waybill}', [\App\Http\Controllers\Lessee\DocumentController::class, 'showWaybill'])->name('waybills.show');
+        Route::get('completion-acts/{completionAct}', [\App\Http\Controllers\Lessee\DocumentController::class, 'showCompletionAct'])->name('completion-acts.show');
+        Route::get('delivery-notes/{deliveryNote}', [\App\Http\Controllers\Lessee\DocumentController::class, 'showDeliveryNote'])->name('delivery-notes.show');
+    });
+
 
         // Управление условиями аренды
         Route::get('/rental-conditions', [RentalConditionController::class, 'index'])

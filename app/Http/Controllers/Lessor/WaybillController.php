@@ -21,12 +21,13 @@ use App\Services\WaybillCreationService;
 class WaybillController extends Controller
 {
    public function index(Order $order = null)
-{
-     $query = Waybill::with(['equipment.mainImage', 'operator'])
+    {
+      $query = Waybill::with(['equipment.mainImage', 'operator'])
+        ->where('perspective', 'lessor') // Добавляем фильтр по перспективе
         ->whereHas('order', function($q) {
             $q->where('lessor_company_id', auth()->user()->company_id);
         })
-        ->orderBy('created_at', 'desc'); // Добавляем сортировк
+        ->orderBy('created_at', 'desc');
 
     // Фильтр по заказу
     if ($order && $order->exists) {
@@ -241,47 +242,133 @@ class WaybillController extends Controller
         }
 
         try {
-            $act = null;
+        $lessorAct = null;
+        $lesseeAct = null;
+        $nextWaybill = null;
 
-            DB::transaction(function () use ($waybill, &$act) {
-                // 1. Закрываем путевой лист
-                $waybill->update(['status' => Waybill::STATUS_COMPLETED]);
+        DB::transaction(function () use ($waybill, &$lessorAct, &$lesseeAct, &$nextWaybill) {
+            // 1. Закрытие текущего путевого листа
+            $waybill->update(['status' => Waybill::STATUS_COMPLETED]);
 
-                // 2. Создаем акт
-                $act = CompletionAct::create([
-                    'order_id' => $waybill->order_id,
-                    'waybill_id' => $waybill->id,
-                    'act_date' => now(),
-                    'service_start_date' => $waybill->start_date,
-                    'service_end_date' => $waybill->end_date,
-                    'total_hours' => $waybill->shifts->sum('hours_worked'),
-                    'total_downtime' => $waybill->shifts->sum('downtime_hours'),
-                    'hourly_rate' => $waybill->lessor_hourly_rate,
-                    'total_amount' => $waybill->shifts->sum(function($shift) use ($waybill) {
-                        return $shift->hours_worked * $waybill->lessor_hourly_rate;
-                    }),
-                    'status' => 'generated'
+            // 2. Создание акта выполненных работ для арендодателя
+            $lessorAct = CompletionAct::create([
+                'order_id' => $waybill->order_id,
+                'parent_order_id' => $waybill->parent_order_id,
+                'waybill_id' => $waybill->id,
+                'act_date' => now(),
+                'service_start_date' => $waybill->start_date,
+                'service_end_date' => $waybill->end_date,
+                'total_hours' => $waybill->shifts->sum('hours_worked'),
+                'total_downtime' => $waybill->shifts->sum('downtime_hours'),
+                'hourly_rate' => $waybill->lessor_hourly_rate,
+                'total_amount' => $waybill->shifts->sum(function($shift) use ($waybill) {
+                    return $shift->hours_worked * $waybill->lessor_hourly_rate;
+                }),
+                'status' => 'generated',
+                'perspective' => 'lessor',
+            ]);
+
+            // 3. Создание зеркального путевого листа для арендатора
+            $lesseeWaybill = Waybill::create([
+                'order_id' => $waybill->order_id,
+                'parent_order_id' => $waybill->parent_order_id,
+                'related_waybill_id' => $waybill->id,
+                'order_item_id' => $waybill->order_item_id,
+                'equipment_id' => $waybill->equipment_id,
+                'operator_id' => $waybill->operator_id,
+                'shift_type' => $waybill->shift_type,
+                'start_date' => $waybill->start_date,
+                'end_date' => $waybill->end_date,
+                'status' => Waybill::STATUS_COMPLETED,
+                'hourly_rate' => $waybill->hourly_rate,
+                'lessor_hourly_rate' => $waybill->lessor_hourly_rate,
+                'notes' => 'Зеркальный путевой лист для арендатора',
+                'perspective' => 'lessee',
+            ]);
+
+            // 4. Копирование смен в зеркальный путевой лист
+            foreach ($waybill->shifts as $shift) {
+                WaybillShift::create([
+                    'waybill_id' => $lesseeWaybill->id,
+                    'shift_date' => $shift->shift_date,
+                    'operator_id' => $shift->operator_id,
+                    'object_address' => $shift->object_address,
+                    'object_name' => $shift->object_name,
+                    'departure_time' => $shift->departure_time,
+                    'return_time' => $shift->return_time,
+                    'odometer_start' => $shift->odometer_start,
+                    'odometer_end' => $shift->odometer_end,
+                    'fuel_start' => $shift->fuel_start,
+                    'fuel_end' => $shift->fuel_end,
+                    'fuel_refilled_liters' => $shift->fuel_refilled_liters,
+                    'fuel_refilled_type' => $shift->fuel_refilled_type,
+                    'hours_worked' => $shift->hours_worked,
+                    'downtime_hours' => $shift->downtime_hours,
+                    'downtime_cause' => $shift->downtime_cause,
+                    'work_description' => $shift->work_description,
+                    'hourly_rate' => $shift->hourly_rate,
+                    'total_amount' => $shift->hours_worked * $waybill->hourly_rate, // Пересчет с наценкой
                 ]);
+            }
 
-                // 3. Создаем следующий путевой лист
-                $nextWaybill = app(\App\Services\WaybillCreationService::class)
-                    ->createNextWaybill($waybill);
+            // 5. Создание акта выполненных работ для арендатора
+            // Исправление: добавляем waybill_id для акта арендатора
+            $lesseeAct = CompletionAct::create([
+                'order_id' => $waybill->order_id,
+                'parent_order_id' => $waybill->parent_order_id,
+                'waybill_id' => $lesseeWaybill->id, // Добавляем привязку к зеркальному путевому листу
+                'related_completion_act_id' => $lessorAct->id,
+                'act_date' => now(),
+                'service_start_date' => $waybill->start_date,
+                'service_end_date' => $waybill->end_date,
+                'total_hours' => $waybill->shifts->sum('hours_worked'),
+                'total_downtime' => $waybill->shifts->sum('downtime_hours'),
+                'hourly_rate' => $waybill->hourly_rate, // Ставка с наценкой платформы
+                'total_amount' => $waybill->shifts->sum(function($shift) use ($waybill) {
+                    return $shift->hours_worked * $waybill->hourly_rate;
+                }),
+                'status' => 'generated',
+                'perspective' => 'lessee',
+            ]);
 
-                // 4. Исправленный вызов - используем публичный метод
-                if ($nextWaybill) {
-                    app(WaybillCreationService::class)->createShiftsForWaybill($nextWaybill);
+            // 6. Отправка уведомления арендатору
+            if ($lesseeAct && $waybill->order->parentOrder) {
+                $usersToNotify = \App\Models\User::where('company_id', $waybill->order->parentOrder->lessee_company_id)
+                    ->whereHas('roles', function($query) {
+                        $query->whereIn('name', ['company_admin', 'company_user']);
+                    })
+                    ->get();
+
+                foreach ($usersToNotify as $user) {
+                    $user->notify(
+                        new \App\Notifications\NewDocumentAvailable($lesseeAct, 'акт выполненных работ')
+                    );
                 }
+            }
 
-                Log::info('Waybill closed', [
-                    'waybill_id' => $waybill->id,
-                    'next_waybill_id' => $nextWaybill?->id,
-                    'completion_act_id' => $act->id
-                ]);
-            });
+            // 7. Создание следующего путевого листа
+            $nextWaybill = app(\App\Services\WaybillCreationService::class)
+                ->createNextWaybill($waybill);
+
+            if ($nextWaybill) {
+                app(WaybillCreationService::class)->createShiftsForWaybill($nextWaybill);
+            }
+        });
+
+            // Формирование сообщения об успехе
+            $message = 'Путевой лист закрыт. ';
+            if ($act) {
+                $message .= 'Акт №' . $act->id . ' создан. ';
+            }
+            if ($nextWaybill) {
+                $message .= 'Следующий путевой лист создан.';
+            } else {
+                $message .= 'Период аренды завершен.';
+            }
 
             return back()->with('success', [
-                'message' => 'Путевой лист закрыт. Акт №' . $act->id . ' создан',
-                'act_id' => $act->id
+                'message' => $message,
+                'act_id' => $act->id ?? null
             ]);
 
         } catch (\Exception $e) {
@@ -312,18 +399,19 @@ class WaybillController extends Controller
             return null;
         }
 
-        return Waybill::create([
+         return Waybill::create([
             'order_id' => $waybill->order_id,
             'order_item_id' => $waybill->order_item_id,
             'equipment_id' => $waybill->equipment_id,
             'operator_id' => $waybill->operator_id,
             'shift_type' => $waybill->shift_type,
             'start_date' => $nextStart,
-            'end_date' => $nextStart->copy()->addDays(9),
+            'end_date' => $nextEnd,
             'status' => Waybill::STATUS_FUTURE,
             'hourly_rate' => $waybill->hourly_rate,
             'lessor_hourly_rate' => $waybill->lessor_hourly_rate,
-            'notes' => 'Автоматически создан'
+            'notes' => 'Автоматически создан',
+            'perspective' => 'lessor' // Убедитесь, что новые путевые листы создаются для арендодателя
         ]);
     }
 

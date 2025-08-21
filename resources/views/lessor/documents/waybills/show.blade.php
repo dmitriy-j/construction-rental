@@ -10,28 +10,26 @@
         $maxDate = $waybill->orderItem->end_date ?? $waybill->order->end_date;
     @endphp
     <div class="alert alert-{{ $waybill->status === \App\Models\Waybill::STATUS_COMPLETED ? 'danger' : 'info' }} mb-4">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <i class="fas fa-info-circle me-2"></i>
-                <strong>Статус путевого листа:</strong>
-                <span class="badge bg-{{ $waybill->status_color }}">
-                    {{ $waybill->status_text }}
-                </span>
-            </div>
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Статус путевого листа:</strong>
+            <span class="badge bg-{{ $waybill->status_color }}">
+                {{ $waybill->status_text }}
+            </span>
 
-            <div>
-                <strong>Период:</strong>
-                {{ $waybill->start_date->format('d.m.Y') }} - {{ $waybill->end_date->format('d.m.Y') }}
-            </div>
+            {{-- Добавим информацию о том, что путевой лист будущий, но уже есть данные --}}
+            @if($waybill->status === \App\Models\Waybill::STATUS_FUTURE && $filledShifts > 0)
+                <span class="badge bg-warning ms-2">Есть заполненные смены</span>
+            @endif
         </div>
 
-        @if($waybill->status === \App\Models\Waybill::STATUS_COMPLETED)
-        <div class="mt-2 text-danger">
-            <i class="fas fa-exclamation-triangle me-1"></i>
-            Путевой лист завершен. Добавление новых смен невозможно.
+        <div>
+            <strong>Период:</strong>
+            {{ $waybill->start_date->format('d.m.Y') }} - {{ $waybill->end_date->format('d.m.Y') }}
         </div>
-        @endif
     </div>
+</div>
 
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-primary text-white py-3">
@@ -380,49 +378,28 @@
 @endif
 
 <!-- Блок истории актов для этого путевого листа -->
-
-@if($waybill->completionAct || ($waybill->completionActs && $waybill->completionActs->isNotEmpty()))
+@if($waybill->completionActs->count())
 <div class="card mt-4">
     <div class="card-header">
         <h5 class="mb-0"><i class="fas fa-file-contract me-2"></i>Связанные акты выполненных работ</h5>
     </div>
     <div class="card-body">
         <div class="list-group">
-            @if($waybill->completionAct)
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <div>
-                        <strong>Акт №{{ $waybill->completionAct->id }}</strong>
-                        <br>
-                        <small>Период: {{ $waybill->completionAct->service_start_date->format('d.m.Y') }}
-                        - {{ $waybill->completionAct->service_end_date->format('d.m.Y') }}</small>
-                        <br>
-                        <span class="badge bg-secondary">{{ $waybill->completionAct->status }}</span>
-                    </div>
-                    <div>
-                        <span class="text-nowrap">{{ number_format($waybill->completionAct->total_amount, 2) }} ₽</span>
-                        {{-- <a href="#" class="btn btn-sm btn-outline-info ms-2">PDF</a> --}}
-                    </div>
+            @foreach($waybill->completionActs as $act)
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>Акт №{{ $act->id }}</strong>
+                    <br>
+                    <small>Период: {{ $act->service_start_date->format('d.m.Y') }}
+                    - {{ $act->service_end_date->format('d.m.Y') }}</small>
+                    <br>
+                    <span class="badge bg-secondary">{{ $act->status }}</span>
                 </div>
-            @endif
-
-            @if($waybill->completionActs && $waybill->completionActs->isNotEmpty())
-                @foreach($waybill->completionActs as $act)
-                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>Акт №{{ $act->id }}</strong>
-                            <br>
-                            <small>Период: {{ $act->service_start_date->format('d.m.Y') }}
-                            - {{ $act->service_end_date->format('d.m.Y') }}</small>
-                            <br>
-                            <span class="badge bg-secondary">{{ $act->status }}</span>
-                        </div>
-                        <div>
-                            <span class="text-nowrap">{{ number_format($act->total_amount, 2) }} ₽</span>
-                            {{-- <a href="#" class="btn btn-sm btn-outline-info ms-2">PDF</a> --}}
-                        </div>
-                    </div>
-                @endforeach
-            @endif
+                <div>
+                    <span class="text-nowrap">{{ number_format($act->total_amount, 2) }} ₽</span>
+                </div>
+            </div>
+            @endforeach
         </div>
     </div>
 </div>

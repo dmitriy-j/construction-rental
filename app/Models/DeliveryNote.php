@@ -136,6 +136,11 @@ class DeliveryNote extends Model
         return $this->belongsTo(Location::class, 'delivery_to_id');
     }
 
+    public function equipment()
+    {
+        return $this->belongsTo(Equipment::class, 'equipment_id');
+    }
+
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);

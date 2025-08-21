@@ -140,12 +140,11 @@
                                 <span class="nav-text">Документы</span>
                             </a>
                         <ul class="dropdown-menu" aria-labelledby="documentsDropdown">
-                            <li><a class="dropdown-item {{ Request::is('lessee/documents/contracts') ? 'active' : '' }}" href="{{ route('lessee.documents', ['type' => 'contracts']) }}">Договоры</a></li>
-                            <li><a class="dropdown-item {{ Request::is('lessee/documents/waybills') ? 'active' : '' }}" href="{{ route('lessee.documents', ['type' => 'waybills']) }}">Путевые листы</a></li>
-                            <li><a class="dropdown-item {{ Request::is('lessee/documents/delivery_notes') ? 'active' : '' }}" href="{{ route('lessee.documents', ['type' => 'delivery_notes']) }}">Накладные</a></li>
-                            <li><a class="dropdown-item {{ Request::is('lessee/documents/completion_acts') ? 'active' : '' }}" href="{{ route('lessee.documents', ['type' => 'completion_acts']) }}">Акты выполненных работ</a></li>
+                            <li><a class="dropdown-item {{ Request::is('lessee/documents*') && request('type') === 'contracts' ? 'active' : '' }}" href="{{ route('documents.index', ['type' => 'contracts']) }}">Договоры</a></li>
+                            <li><a class="dropdown-item {{ Request::is('lessee/documents*') && request('type') === 'waybills' ? 'active' : '' }}" href="{{ route('documents.index', ['type' => 'waybills']) }}">Путевые листы</a></li>
+                            <li><a class="dropdown-item {{ Request::is('lessee/documents*') && request('type') === 'delivery_notes' ? 'active' : '' }}" href="{{ route('documents.index', ['type' => 'delivery_notes']) }}">Накладные</a></li>
+                            <li><a class="dropdown-item {{ Request::is('lessee/documents*') && request('type') === 'completion_acts' ? 'active' : '' }}" href="{{ route('documents.index', ['type' => 'completion_acts']) }}">Акты выполненных работ</a></li>
                         </ul>
-                    </li>
                 @endif
             @endif
 

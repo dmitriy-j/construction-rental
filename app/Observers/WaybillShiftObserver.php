@@ -24,7 +24,15 @@ class WaybillShiftObserver
             'changes' => $shift->getDirty()
         ]);
 
-        // Проверяем что путевой лист активен
+        // Автоматическая активация путевого листа при изменении смены
+        if ($shift->waybill->status === \App\Models\Waybill::STATUS_FUTURE) {
+            \App\Models\Waybill::withoutEvents(function () use ($shift) {
+                $shift->waybill->update(['status' => \App\Models\Waybill::STATUS_ACTIVE]);
+            });
+            $shift->load('waybill'); // Обновляем связь
+        }
+
+        // Проверка активности путевого листа
         if ($shift->waybill->status !== \App\Models\Waybill::STATUS_ACTIVE) {
             $error = "Невозможно обновить смену: путевой лист не активен";
             Log::error($error, [
