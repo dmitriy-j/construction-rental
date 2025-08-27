@@ -3,29 +3,29 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-
-namespace App\Http\Controllers;
-
-use Illuminate\Http\Request;
-use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Facades\Auth;
 
 class NotificationController extends Controller
 {
     public function index()
     {
-        $notifications = auth()->user()->notifications()->paginate(10);
+        $notifications = Auth::user()->notifications()->paginate(20);
+
         return view('notifications.index', compact('notifications'));
     }
 
-    public function markAsRead(DatabaseNotification $notification)
+    public function markAllAsRead(Request $request)
     {
-        $notification->markAsRead();
-        return back();
+        Auth::user()->unreadNotifications->markAsRead();
+
+        return redirect()->back()->with('success', 'Все уведомления помечены как прочитанные');
     }
 
-    public function markAllAsRead()
+    public function markAsRead(Request $request, $id)
     {
-        auth()->user()->unreadNotifications->markAsRead();
-        return back();
+        $notification = Auth::user()->notifications()->findOrFail($id);
+        $notification->markAsRead();
+
+        return redirect()->back()->with('success', 'Уведомление помечено как прочитанное');
     }
 }

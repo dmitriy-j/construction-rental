@@ -23,7 +23,7 @@ class WaybillController extends Controller
    public function index(Order $order = null)
     {
       $query = Waybill::with(['equipment.mainImage', 'operator'])
-        ->where('perspective', 'lessor') // Добавляем фильтр по перспективе
+        ->where('perspective', 'lessor') // Фильтр ДОЛЖЕН быть всегда
         ->whereHas('order', function($q) {
             $q->where('lessor_company_id', auth()->user()->company_id);
         })
@@ -69,7 +69,7 @@ class WaybillController extends Controller
 }
    public function show(Waybill $waybill, Request $request)
     {
-        if ($waybill->order->lessor_company_id !== auth()->user()->company_id) {
+         if ($waybill->order->lessor_company_id !== auth()->user()->company_id || $waybill->perspective !== 'lessor') {
             abort(403, 'Доступ запрещен');
         }
 

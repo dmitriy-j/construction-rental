@@ -406,6 +406,31 @@ body.auth-layout {
     margin: 0 auto;
 }
 
+.badge-warning {
+    color: #000 !important;
+    background-color: #ffc107 !important;
+}
+
+.badge-success {
+    color: #000 !important;
+    background-color: #28a745 !important;
+}
+
+.badge-danger {
+    color: #000 !important;
+    background-color: #dc3545 !important;
+}
+
+.badge-info {
+    color: #000 !important;
+    background-color: #17a2b8 !important;
+}
+
+.badge-secondary {
+    color: #000 !important;
+    background-color: #6c757d !important;
+}
+
 // =====================
 // Импорт компонентов
 // =====================

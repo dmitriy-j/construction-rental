@@ -21,6 +21,7 @@ use App\Notifications\OrderActivatedNotification;
 use App\Notifications\OrderActivatedAdminNotification;
 use App\Services\WaybillCreationService;
 use App\Models\CompletionAct;
+use App\Services\UpdProcessingService;
 
 class LessorOrderController extends Controller
 {
@@ -64,9 +65,10 @@ class LessorOrderController extends Controller
             }
         }
 
-         // Рассчитываем суммы с фиксированными ставками
+         // ПРАВИЛЬНЫЙ расчет: используем фиксированную цену арендодателя из позиций
         $lessorBaseAmount = $order->items->sum(function($item) {
-            return ($item->fixed_lessor_price ?? $item->rentalTerm->price_per_hour) * $item->period_count;
+            // Важно: используем fixed_lessor_price из OrderItem!
+            return $item->fixed_lessor_price * $item->period_count;
         });
 
         $orderDetails = [
@@ -465,4 +467,35 @@ class LessorOrderController extends Controller
             new OrderActivatedAdminNotification($order)
         );
     }
+
+    public function uploadUpd(Order $order, Request $request, UpdProcessingService $updService)
+    {
+        $request->validate([
+            'upd_file' => 'required|file|mimes:xlsx,xls,pdf|max:10240',
+            'number' => 'required|string',
+            'issue_date' => 'required|date',
+            'amount' => 'required|numeric|min:0',
+        ]);
+
+        try {
+            $upd = $updService->processUploadedUpd(
+                $order,
+                $request->file('upd_file'),
+                $request->only(['number', 'issue_date', 'amount'])
+            );
+
+            return redirect()->back()
+                ->with('success', 'УПД успешно загружен и ожидает проверки');
+
+        } catch (\Exception $e) {
+            Log::error('Ошибка загрузки УПД', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Ошибка загрузки УПД: ' . $e->getMessage());
+        }
+    }
+
 }

@@ -27,6 +27,10 @@ class EventServiceProvider extends ServiceProvider
          OperatorMissing::class => [
             HandleOperatorMissing::class,
         ],
+
+         OrderConfirmed::class => [
+            CreateInvoiceOnOrderConfirmation::class,
+        ],
     ];
 
     /**

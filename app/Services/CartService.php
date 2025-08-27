@@ -62,7 +62,7 @@ class CartService
     $cart->load('items.rentalTerm.equipment', 'items.rentalCondition');
 
     foreach ($cart->items as $item) {
-        $days = $startDate->diffInDays($endDate);
+        $days = $startDate->diffInDays($endDate) + 1;
 
         // Пересчет рабочих часов
         $workingHours = $days * $item->rentalCondition->shift_hours * $item->rentalCondition->shifts_per_day;
@@ -156,7 +156,7 @@ class CartService
             $item = CartItem::find($id);
             if ($item && $item->cart_id === $cart->id && $item->rentalCondition) {
                 // Правильный расчёт дней (1 день для 15-16 июля)
-                $days = $startDate->diffInDays($endDate);
+                $days = $startDate->diffInDays($endDate) + 1;
 
                 // Пересчёт рабочих часов
                 $workingHours = $days * $item->rentalCondition->shift_hours * $item->rentalCondition->shifts_per_day;
@@ -216,7 +216,7 @@ class CartService
     {
         $start = Carbon::parse($item->start_date);
         $end = Carbon::parse($item->end_date);
-        $days = $start->diffInDays($end);
+        $days = $start->diffInDays($end) + 1;
 
         return $days * $item->rentalCondition->shift_hours * $item->rentalCondition->shifts_per_day;
     }

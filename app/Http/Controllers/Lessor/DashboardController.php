@@ -7,13 +7,14 @@ use App\Models\Order;
 use App\Models\Equipment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Services\BalanceService;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(BalanceService $balanceService)
     {
         $companyId = Auth::user()->company_id;
-        $userId = Auth::id();
+        $company = Auth::user()->company;
 
         $stats = [
             'equipment_count' => Equipment::where('company_id', $companyId)->count(),
@@ -21,11 +22,11 @@ class DashboardController extends Controller
                                     ->where('status', Order::STATUS_PENDING_APPROVAL)
                                     ->count(),
             'active_orders' => Order::where('lessor_company_id', $companyId)
-                                   ->where('status', Order::STATUS_ACTIVE)
-                                   ->count(),
+                                ->where('status', Order::STATUS_ACTIVE)
+                                ->count(),
             'revenue' => Order::where('lessor_company_id', $companyId)
-                             ->where('status', Order::STATUS_COMPLETED)
-                             ->sum('total_amount')
+                            ->where('status', Order::STATUS_COMPLETED)
+                            ->sum('total_amount')
         ];
 
         // Сохраняем количество новых заказов в сессии для мигания
@@ -45,8 +46,25 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        return view('lessor.dashboard', compact('stats', 'recentOrders', 'featuredEquipment'));
+        // Финансовая информация
+        $balance = $balanceService->getCurrentBalance($company);
+        $recentTransactions = $balanceService->getTransactionHistory($company, 5);
+
+        // Данные для графика доходов
+        $incomeMonths = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн'];
+        $incomeAmounts = [250000, 300000, 280000, 320000, 350000, 380000];
+
+        return view('lessor.dashboard', compact(
+            'stats',
+            'recentOrders',
+            'featuredEquipment',
+            'balance',
+            'recentTransactions',
+            'incomeMonths',
+            'incomeAmounts'
+        ));
     }
+
     public function markAsViewed(Request $request)
     {
         $userId = Auth::id();

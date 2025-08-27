@@ -39,6 +39,7 @@ class Waybill extends Model
         'perspective',
         'related_waybill_id',
         'parent_order_id',
+        'upd_id'
 
     ];
 
@@ -50,6 +51,22 @@ class Waybill extends Model
     public function relatedWaybill()
     {
         return $this->belongsTo(Waybill::class, 'related_waybill_id');
+    }
+
+    public function upd()
+    {
+        return $this->belongsTo(Upd::class);
+    }
+
+    public function canUploadUpd(): bool
+    {
+        return $this->status === 'completed' && !$this->upd_id;
+    }
+
+    public function scopeCanUploadUpd($query)
+    {
+        return $query->where('status', 'completed')
+                    ->whereNull('upd_id');
     }
 
     public function parentOrder()
@@ -298,6 +315,11 @@ class Waybill extends Model
             'parent_order_id' => $this->parent_order_id,
             'created_at' => $this->created_at
         ];
+    }
+
+    public function scopeForLessor($query)
+    {
+        return $query->where('perspective', 'lessor');
     }
 
 

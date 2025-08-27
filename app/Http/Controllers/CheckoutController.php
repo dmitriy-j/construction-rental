@@ -86,71 +86,48 @@ class CheckoutController extends Controller
                 return redirect()->back()->with('error', 'Корзина пуста');
             }
 
-            DB::beginTransaction();
+             DB::beginTransaction();
 
             try {
-                // 1. Создаем главный заказ для арендатора
-                $parentOrder = $this->createParentOrder($cartItems);
+                // 1. Генерируем номер для родительского заказа арендатора
+                $nextOrderNumber = $this->getNextCompanyOrderNumber(
+                    auth()->user()->company_id, // lessee_company_id
+                    null                        // lessor_company_id
+                );
 
-                // 2. Группируем позиции по арендодателям
+                // 2. Создаем главный заказ для арендатора
+                $parentOrder = $this->createParentOrder($cartItems, $nextOrderNumber);
+
+                // 3. Группируем и создаем дочерние заказы
                 $groupedItems = $cartItems->groupBy(
                     fn($item) => $item->rentalTerm->equipment->company_id
                 );
 
-                $orders = [];
-
                 foreach ($groupedItems as $companyId => $items) {
-
-                    // ДОБАВЛЕНО: Логирование перед созданием дочернего заказа
-                Log::debug('[CHECKOUT] Creating child order', [
-                    'company_id' => $companyId,
-                    'delivery_cost_total' => $items->sum('delivery_cost')
-                ]);
+                    // Для каждого арендодателя генерируем свой порядковый номер
+                    // Нумерация для арендодателя должна быть уникальной в рамках его компании
+                    $lessorOrderNumber = $this->getNextCompanyOrderNumber(
+                        null,       // lessee_company_id
+                        $companyId  // lessor_company_id
+                    );
 
                     $childOrder = $this->createChildOrder(
                         $parentOrder->id,
                         $companyId,
-                        $items
+                        $items,
+                        $lessorOrderNumber // Передаем номер для арендодателя
                     );
 
                     $parentOrder->childOrders()->save($childOrder);
-                    $orders[] = $childOrder;
 
-                    Log::info('[CHECKOUT] Дочерний заказ создан', [
-                        'order_id' => $childOrder->id,
-                        'company_id' => $companyId,
-                        'item_count' => $items->count()
-                    ]);
-
-                     foreach ($items as $item) {
-                        // Получаем оборудование и даты из элемента корзины
-                        $equipment = $item->rentalTerm->equipment;
-                        $startDate = Carbon::parse($item->start_date);
-                        $endDate = Carbon::parse($item->end_date);
-
-                        // Создаем позиции и бронируем оборудование
+                    // 4. Создаем позиции заказа и бронируем оборудование
+                    foreach ($items as $item) {
                         $orderItem = $this->createOrderItem($childOrder, $item);
                         $this->bookEquipmentItem($item, $childOrder->id);
-
-                        // Обновляем статус оборудования
-                        $this->availabilityService->bookEquipment(
-                            $equipment,
-                            $startDate->format('Y-m-d'),
-                            $endDate->format('Y-m-d'),
-                            $childOrder->id,
-                            'booked'
-                        );
-
-                        // Логируем успешное бронирование
-                        Log::debug('[CHECKOUT] Оборудование забронировано', [
-                            'equipment_id' => $equipment->id,
-                            'start_date' => $startDate,
-                            'end_date' => $endDate
-                        ]);
                     }
                 }
 
-                // Удаляем элементы из корзины
+                // 5. Очищаем корзину и фиксируем изменения
                 $cart->items()->whereIn('id', $selectedItems)->delete();
                 $this->cartService->recalculateTotals($cart);
 
@@ -162,8 +139,8 @@ class CheckoutController extends Controller
                     'delivery_cost_total' => $parentOrder->delivery_cost
                 ]);
 
-                return redirect()->route('lessee.orders.show', $parentOrder)
-                    ->with('success', 'Заказы успешно оформлены! Создано подзаказов: ' . count($orders));
+                return redirect()->route('lessee.orders.show', ['order' => $parentOrder->id])
+                     ->with('success', 'Заказ #' . $parentOrder->company_order_number . ' успешно оформлен!');
 
             } catch (Exception $e) {
                 DB::rollBack();
@@ -183,69 +160,72 @@ class CheckoutController extends Controller
         }
     }
 
-   protected function createParentOrder($items)
+  protected function createParentOrder($items, $orderNumber)
     {
-        // Исправленный расчет!
+
+        if ($items->isEmpty()) {
+            throw new \Exception('Нельзя создать заказ без позиций');
+        }
+
+        // Рассчитываем суммы ИСКЛЮЧИТЕЛЬНО из фиксированных цен корзины
         $deliveryCost = $items->sum('delivery_cost');
 
-        $lessorBaseAmount = $items->sum(function($item) {
-            return $item->rentalTerm->price_per_hour * $item->period_count;
+        // Сумма, которую платит арендатор за аренду (уже включает наценку платформы)
+        $customerRentalTotal = $items->sum(function($item) {
+            return ($item->fixed_customer_price * $item->period_count);
         });
 
-        $platformFee = $items->sum('platform_fee');
-        $baseAmount = $lessorBaseAmount + $platformFee;
-        $totalAmount = $baseAmount + $deliveryCost;
+        // Заработок платформы (наценка)
+         $platformFeeTotal = $items->sum('platform_fee');
 
-        // Логирование перед созданием
-        Log::debug('[CHECKOUT] Creating parent order', [
-            'delivery_cost' => $deliveryCost,
-            'items_count' => $items->count()
-        ]);
+        // Сумма, которая уйдет арендодателям (БЕЗ наценки платформы)
+        $lessorBaseAmount = $items->sum(function($item) {
+            return ($item->fixed_lessor_price * $item->period_count);
+        });
 
-         // Используем константы через модель Order
+        // Итоговая сумма к оплате арендатором
+        $totalAmount = $customerRentalTotal + $deliveryCost;
+
         $deliveryType = $items->contains(function ($item) {
             return $item->delivery_to_id && $item->delivery_from_id;
         }) ? Order::DELIVERY_DELIVERY : Order::DELIVERY_PICKUP;
-
 
         return Order::create([
             'user_id' => auth()->id(),
             'lessee_company_id' => auth()->user()->company_id,
             'lessor_company_id' => null,
             'status' => Order::STATUS_AGGREGATED,
+            'company_order_number' => $orderNumber, // Используем переданный номер
             'total_amount' => $totalAmount,
-            'base_amount' => $baseAmount,
-            'lessor_base_amount' => $lessorBaseAmount,
-            'platform_fee' => $platformFee,
+            'base_amount' => $customerRentalTotal, // Сумма аренды с наценкой
+            'platform_fee' => $platformFeeTotal,   // Заработок платформы
+            'lessor_base_amount' => $lessorBaseAmount, // Сумма арендодателям
             'delivery_cost' => $deliveryCost,
             'start_date' => $items->min('start_date'),
             'end_date' => $items->max('end_date'),
-            'delivery_type' => $deliveryType, // Добавляем тип доставки
+            'delivery_type' => $deliveryType,
         ]);
+        if ($platformFeeTotal != $items->sum('platform_fee')) {
+            \Log::warning('Возможна ошибка в расчете платформенной комиссии', [
+                'calculated' => $platformFeeTotal,
+                'expected' => $items->sum('platform_fee')
+            ]);
+        }
     }
 
-   protected function createChildOrder($parentId, $companyId, $items)
+   protected function createChildOrder($parentId, $companyId, $items, $orderNumber)
     {
-        // Получаем условие аренды из первого элемента
         $rentalCondition = $items->first()->rentalCondition;
 
-        // Добавляем получение платформы
-         $platform = Platform::getMain();
-
-        // Рассчитываем суммы
+        // Расчеты для арендодателя: используем fixed_lessor_price!
         $deliveryCost = $items->sum('delivery_cost');
         $lessorBaseAmount = $items->sum(function($item) {
-            return $item->base_price * $item->period_count;
+            return $item->fixed_lessor_price * $item->period_count;
         });
 
-        $platformFee = $items->sum('platform_fee');
-        $baseAmount = $lessorBaseAmount + $platformFee;
-        $totalAmount = $baseAmount + $deliveryCost;
+        // Итоговая сумма к выплате арендодателю (аренда + доставка)
+        $totalPayout = $lessorBaseAmount + $deliveryCost;
 
-        // Получаем контракт компании арендодателя
-        $contract = Company::find($companyId)->activeContract();
-
-         // Используем константы через модель Order
         $deliveryType = $items->contains(function ($item) {
             return $item->delivery_to_id && $item->delivery_from_id;
         }) ? Order::DELIVERY_DELIVERY : Order::DELIVERY_PICKUP;
@@ -256,15 +236,16 @@ class CheckoutController extends Controller
             'lessor_company_id' => $companyId,
             'lessee_company_id' => auth()->user()->company_id,
             'status' => Order::STATUS_PENDING_APPROVAL,
-            'base_amount' => $baseAmount,
-            'lessor_base_amount' => $lessorBaseAmount,
-            'platform_fee' => $platformFee,
+            'company_order_number' => $orderNumber,
+            'base_amount' => $totalPayout, // Для арендодателя это его итоговая выплата
+            'lessor_base_amount' => $lessorBaseAmount, // Его часть за аренду
+            'platform_fee' => 0, // Для арендодателя платформа не начисляет fee в его заказ
             'delivery_cost' => $deliveryCost,
-            'total_amount' => $totalAmount,
+            'total_amount' => $totalPayout,
             'start_date' => $items->min('start_date'),
             'end_date' => $items->max('end_date'),
             'platform_id' => Platform::getMain()->id,
-            'contract_id' => $contract ? $contract->id : null,
+            'contract_id' => $rentalCondition->contract_id ?? null,
             'rental_condition_id' => $rentalCondition->id,
             'shift_hours' => $rentalCondition->shift_hours,
             'shifts_per_day' => $rentalCondition->shifts_per_day,
@@ -278,43 +259,47 @@ class CheckoutController extends Controller
         ]);
     }
 
-    protected function createOrderItem($childOrder, $item)
+    protected function createOrderItem($childOrder, $cartItem)
     {
-        $term = $item->rentalTerm;
+        $term = $cartItem->rentalTerm;
         $equipment = $term->equipment;
 
-        $itemTotal = ($item->base_price * $item->period_count) + $item->platform_fee;
-        $orderTotal = $childOrder->base_amount + $childOrder->platform_fee;
+        // ВСЕ данные берем из корзины! Никаких новых расчетов.
+        $customerRentalTotal = $cartItem->fixed_customer_price * $cartItem->period_count;
+        $lessorRentalTotal = $cartItem->fixed_lessor_price * $cartItem->period_count;
 
-        $discountAmount = $orderTotal > 0 ?
-            ($itemTotal / $orderTotal) * $childOrder->discount_amount : 0;
+        // Рассчитываем discount_amount
+        $itemTotal = $customerRentalTotal + $cartItem->platform_fee;
+        $orderTotal = $childOrder->base_amount + $childOrder->platform_fee;
+        $discountAmount = $orderTotal > 0 ? ($itemTotal / $orderTotal) * $childOrder->discount_amount : 0;
 
         return OrderItem::create([
             'order_id' => $childOrder->id,
             'equipment_id' => $equipment->id,
             'rental_term_id' => $term->id,
-            'rental_condition_id' => $item->rental_condition_id,
+            'rental_condition_id' => $cartItem->rental_condition_id,
             'quantity' => 1,
-            'period_count' => $item->period_count,
-            'base_price' => $item->base_price,
-            'price_per_unit' => $item->base_price,
-            'platform_fee' => $item->platform_fee,
-            'discount_amount' => $discountAmount,
-            'delivery_cost' => $item->delivery_cost,
-            'distance_km' => $item->distance_km ?? 0,
-            'total_price' => $itemTotal - $discountAmount,
-            'delivery_from_id' => $item->delivery_from_id,
-            'delivery_to_id' => $item->delivery_to_id, // Исправлено: delivery_to_id
+            'period_count' => $cartItem->period_count,
+            // Цены для арендатора:
+            'base_price' => $cartItem->fixed_customer_price,
+            'price_per_unit' => $cartItem->fixed_customer_price,
+            'fixed_customer_price' => $cartItem->fixed_customer_price,
+            'platform_fee' => $cartItem->platform_fee,
+            // Цены для арендодателя:
+            'fixed_lessor_price' => $cartItem->fixed_lessor_price,
+            // Доставка и итоги:
+            'delivery_cost' => $cartItem->delivery_cost,
+            'distance_km' => $cartItem->distance_km ?? 0,
+            'total_price' => $customerRentalTotal + $cartItem->delivery_cost - $discountAmount, // Итог с учетом скидки
+            'discount_amount' => $discountAmount, // Явно передаем скидку, даже если 0
+            'delivery_from_id' => $cartItem->delivery_from_id,
+            'delivery_to_id' => $cartItem->delivery_to_id,
             'lessor_company_id' => $childOrder->lessor_company_id,
-            'distance_km' => $item->distance_km,
-            'delivery_cost' => $item->delivery_cost,
-            'status' => OrderItem::STATUS_PENDING, // Добавляем начальный статус
-            'fixed_lessor_price' => $term->price_per_hour, // Фиксируем ставку арендодателя
-            'fixed_customer_price' => $item->base_price, // Фиксируем ставку для арендатора
+            'status' => OrderItem::STATUS_PENDING,
         ]);
     }
 
-    protected function bookEquipmentItem($cartItem, $orderId)
+    public function bookEquipmentItem($cartItem, $orderId)
     {
         // Проверяем наличие необходимых отношений
         if (!$cartItem->rentalTerm || !$cartItem->rentalTerm->equipment) {
@@ -346,5 +331,27 @@ class CheckoutController extends Controller
             $orderId,
             'booked'
         );
+    } // <-- Этой закрывающей скобки не хватало
+
+    protected function getNextCompanyOrderNumber(?int $lesseeCompanyId, ?int $lessorCompanyId): int
+    {
+        // Определяем, для какой роли генерируем номер
+        if (!is_null($lesseeCompanyId)) {
+            // Если это заказ арендатора (родительский) - ищем макс. номер по lessee_company_id
+            $lastOrder = Order::where('lessee_company_id', $lesseeCompanyId)
+                            ->orderBy('company_order_number', 'desc')
+                            ->first();
+        } elseif (!is_null($lessorCompanyId)) {
+            // Если это заказ арендодателя (дочерний) - ищем макс. номер по lessor_company_id
+            $lastOrder = Order::where('lessor_company_id', $lessorCompanyId)
+                            ->orderBy('company_order_number', 'desc')
+                            ->first();
+        } else {
+            // Если оба null (маловероятно в вашей схеме), возвращаем 1
+            return 1;
+        }
+
+        return ($lastOrder->company_order_number ?? 0) + 1;
     }
 }
+

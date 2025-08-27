@@ -12,6 +12,8 @@ class CartItem extends Model
         'rental_term_id',
         'period_count',
         'base_price',
+        'fixed_lessor_price',
+        'fixed_customer_price',
         'platform_fee',
         'start_date',
         'end_date',
@@ -20,7 +22,8 @@ class CartItem extends Model
         'delivery_to_id',
         'delivery_cost',
         'distance_km', // Добавляем поле
-        'delivery_cost_calculated' // Флаг успешного расчета
+        'delivery_cost_calculated', // Флаг успешного расчета
+
     ];
 
     protected $casts = [
@@ -61,9 +64,11 @@ class CartItem extends Model
         return $this->belongsTo(Location::class, 'delivery_to_id');
     }
 
-    public function getTotalPriceAttribute(): float
+     public function getTotalPriceAttribute(): float
     {
-        return ($this->base_price * $this->period_count) + $this->delivery_cost;
+        // Используем фиксированную цену для арендатора, если она есть
+        $rentalPrice = $this->fixed_customer_price ?? $this->base_price;
+        return ($rentalPrice * $this->period_count) + $this->delivery_cost;
     }
 
     public function getDisplayPriceAttribute(): string
@@ -73,7 +78,8 @@ class CartItem extends Model
 
     public function getTotalWithoutDeliveryAttribute(): float
     {
-        return $this->base_price * $this->period_count;
+        $rentalPrice = $this->fixed_customer_price ?? $this->base_price;
+        return $rentalPrice * $this->period_count;
     }
 
     public function getTotalWithDeliveryAttribute(): float

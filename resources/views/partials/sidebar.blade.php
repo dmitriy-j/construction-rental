@@ -52,6 +52,15 @@
                         </a>
                     </li>
 
+                     <li class="nav-item">
+                        <a class="nav-link {{ Request::is('lessor/balance*') ? 'active' : '' }}"
+                        href="{{ route('lessor.balance.index') }}"
+                        data-tooltip="Баланс">
+                            <i class="nav-icon bi bi-wallet2"></i>
+                            <span class="nav-text">Баланс</span>
+                        </a>
+                    </li>
+
                     <li class="nav-item">
                         <a class="nav-link {{ Request::is('lessor/equipment*') ? 'active' : '' }}" href="{{ route('lessor.equipment.index') }}" data-tooltip="Моя техника">
                             <i class="nav-icon bi bi-wrench-adjustable-circle"></i> <!-- Измененная иконка -->
@@ -98,6 +107,15 @@
                 <li><a class="dropdown-item {{ Request::is('lessor/documents/waybills') ? 'active' : '' }}" href="{{ route('lessor.documents.index', ['type' => 'waybills']) }}">Путевые листы</a></li>
                 <li><a class="dropdown-item {{ Request::is('lessor/documents/delivery_notes') ? 'active' : '' }}" href="{{ route('lessor.documents.index', ['type' => 'delivery_notes']) }}">Накладные</a></li>
                 <li><a class="dropdown-item {{ Request::is('lessor/documents/completion_acts') ? 'active' : '' }}" href="{{ route('lessor.documents.index', ['type' => 'completion_acts']) }}">Акты выполненных работ</a></li>
+                <!-- Добавляем пункт для УПД -->
+                <li>
+                    <a class="dropdown-item {{ Request::is('lessor/upds*') ? 'active' : '' }}" href="{{ route('lessor.upds.index') }}">
+                        <i class="bi bi-receipt me-2"></i> УПД
+                        @if($pendingUpdsCount > 0)
+                            <span class="badge bg-warning float-end">{{ $pendingUpdsCount }}</span>
+                        @endif
+                    </a>
+                </li>
             </ul>
         </li>
         @else
@@ -106,6 +124,15 @@
                         <a class="nav-link {{ Request::is('lessee/dashboard') ? 'active' : '' }}" href="{{ route('lessee.dashboard') }}" data-tooltip="Главная">
                             <i class="nav-icon bi bi-speedometer2"></i>
                             <span class="nav-text">Главная</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link {{ Request::is('lessee/balance*') ? 'active' : '' }}"
+                        href="{{ route('lessee.balance.index') }}"
+                        data-tooltip="Баланс">
+                            <i class="nav-icon bi bi-wallet2"></i>
+                            <span class="nav-text">Баланс</span>
                         </a>
                     </li>
 
@@ -171,9 +198,38 @@
                     <h4>Администрирование</h4>
                 </div>
                 <li class="nav-item">
+                    <a class="nav-link {{ Request::is('admin/dashboard') ? 'active' : '' }}" href="{{ route('admin.dashboard') }}" data-tooltip="Главная">
+                        <i class="nav-icon bi bi-speedometer2"></i>
+                        <span class="nav-text">Главная</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link {{ request()->is('admin/equipment*') ? 'active' : '' }}" href="{{ route('admin.equipment.index') }}" data-tooltip="Каталог техники">
                         <i class="nav-icon bi bi-tools"></i>
                         <span class="nav-text">Каталог техники</span>
+                    </a>
+                </li>
+
+                <!-- Финансовый раздел -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {{ request()->is('admin/finance*') || request()->is('admin/excel-mappings*') || request()->is('admin/bank-statements*') || request()->is('admin/reports*') ? 'active' : '' }}" href="#" data-bs-toggle="dropdown">
+                        <i class="nav-icon bi bi-cash-coin"></i>
+                        <span class="nav-text">Финансы</span>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item {{ request()->is('admin/finance') ? 'active' : '' }}" href="{{ route('admin.finance.dashboard') }}">Дашборд</a></li>
+                        <li><a class="dropdown-item {{ request()->is('admin/finance/transactions*') ? 'active' : '' }}" href="{{ route('admin.finance.transactions') }}">Транзакции</a></li>
+                        <li><a class="dropdown-item {{ request()->is('admin/finance/invoices*') ? 'active' : '' }}" href="{{ route('admin.finance.invoices') }}">Счета</a></li>
+                        <li><a class="dropdown-item {{ request()->is('admin/bank-statements*') ? 'active' : '' }}" href="{{ route('admin.bank-statements.index') }}">Банковские выписки</a></li>
+                        <li><a class="dropdown-item {{ request()->is('admin/reports*') ? 'active' : '' }}" href="{{ route('admin.reports.index') }}">Отчеты</a></li>
+                        <li><a class="dropdown-item {{ request()->is('admin/excel-mappings*') ? 'active' : '' }}" href="{{ route('admin.excel-mappings.index') }}">Шаблоны УПД</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link {{ Request::is('admin/documents*') ? 'active' : '' }}" href="{{ route('admin.documents.index') }}">
+                        <i class="nav-icon bi bi-files"></i>
+                        <span class="nav-text">Документы</span>
                     </a>
                 </li>
 
@@ -191,17 +247,17 @@
                     </a>
                 </li>
             @endif
-        </ul>
-    </nav>
+            </ul>
+            </nav>
 
-    <div class="sidebar-footer">
-        <div class="app-version">v1.2.5</div>
-        <div class="session-time">
-            <i class="bi bi-clock-history"></i>
-            <span>{{ now()->format('d.m.Y H:i') }}</span>
-        </div>
-    </div>
-</aside>
+            <div class="sidebar-footer">
+                <div class="app-version">v1.2.5</div>
+                <div class="session-time">
+                    <i class="bi bi-clock-history"></i>
+                    <span>{{ now()->format('d.m.Y H:i') }}</span>
+                </div>
+            </div>
+        </aside>
 @endauth
 <script>
   document.getElementById('sidebarMinify').addEventListener('click', () => {

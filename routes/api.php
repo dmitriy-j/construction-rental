@@ -36,3 +36,11 @@ Route::prefix('documents')->group(function () {
     Route::post('orders/{order}/waybills', [DocumentController::class, 'createWaybill']);
     Route::post('orders/{order}/completion-act', [DocumentController::class, 'generateCompletionAct']);
 });
+
+//Финансы
+Route::prefix('finance')->middleware('auth:api')->group(function () {
+    Route::get('/balance', [API\FinanceController::class, 'balance']);
+    Route::get('/transactions', [API\FinanceController::class, 'transactions']);
+    Route::get('/invoices', [API\FinanceController::class, 'invoices']);
+    Route::get('/reconciliation-acts', [API\FinanceController::class, 'reconciliationActs']);
+});

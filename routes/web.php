@@ -31,6 +31,10 @@ use App\Http\Controllers\Lessor\ShiftController;
 use App\Http\Controllers\Lessor\OperatorController;
 use App\Http\Controllers\Lessor\DeliveryNoteController;
 use App\Http\Controllers\Lessor\EquipmentController as LessorEquipmentController;
+use App\Http\Controllers\Admin\ReportsController;
+use App\Http\Controllers\Admin\ExcelMappingController;
+use App\Http\Controllers\Lessor\UpdController;
+use App\Http\Controllers\Admin\CompletionActController;
 
 
 
@@ -85,6 +89,9 @@ Route::prefix('lessor')
         Route::get('dashboard', [LessorDashboardController::class, 'index'])->name('dashboard');
         Route::post('dashboard/mark-as-viewed', [LessorDashboardController::class, 'markAsViewed'])
             ->name('dashboard.markAsViewed');
+
+        //Баланс
+        Route::get('/balance', [\App\Http\Controllers\Lessor\BalanceController::class, 'index'])->name('balance.index');
 
            // Оборудование (ИСПРАВЛЕНО: используем контроллер из Lessor)
         Route::resource('equipment', LessorEquipmentController::class)
@@ -152,6 +159,16 @@ Route::prefix('lessor')
 
         });
 
+        // УПД
+        Route::prefix('upds')->name('upds.')->group(function () {
+            Route::get('/', [UpdController::class, 'index'])->name('index');
+            Route::get('/create', [UpdController::class, 'create'])->name('create');
+            Route::post('/', [UpdController::class, 'store'])->name('store');
+            Route::get('/{upd}', [UpdController::class, 'show'])->name('show');
+            Route::delete('/{upd}', [UpdController::class, 'destroy'])->name('destroy');
+            Route::get('/download', [UpdController::class, 'download'])->name('download');
+        });
+
 
         // Смены
         Route::prefix('shifts')->name('shifts.')->group(function () {
@@ -167,6 +184,9 @@ Route::prefix('lessee')
     ->group(function () {
         // Дашборд
         Route::get('/dashboard', [LesseeDashboardController::class, 'index'])->name('lessee.dashboard');
+
+        //Баланс
+        Route::get('/balance', [\App\Http\Controllers\Lessee\BalanceController::class, 'index'])->name('lessee.balance.index');
 
         // Заказы
         Route::prefix('orders')->group(function () {
@@ -244,13 +264,20 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/equipment/{id}', [AdminEquipmentController::class, 'show'])->name('admin.equipment.show');
     Route::get('/lessees', [AdminLesseeController::class, 'index'])->name('admin.lessees.index');
     Route::get('/lessees/{lessee}', [AdminLesseeController::class, 'show'])->name('admin.lessees.show');
-    Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('admin.orders.show');
     Route::get('/lessees/{lessee}/orders/{order}', [AdminLesseeController::class, 'showOrder'])->name('admin.lessees.orders.show');
     Route::get('/lessors', [AdminLessorController::class, 'index'])->name('admin.lessors.index');
     Route::get('/lessors/{lessor}', [AdminLessorController::class, 'show'])->name('admin.lessors.show');
     Route::get('/lessors/{lessor}/orders/{order}', [AdminLessorController::class, 'showOrder'])->name('admin.lessors.orders.show');
     Route::put('/equipment/{equipment}', [AdminEquipmentController::class, 'update'])->name('admin.equipment.update');
-    Route::resource('orders', OrdersController::class);
+    Route::resource('orders', OrdersController::class)->names([
+        'index' => 'admin.orders.index',
+        'create' => 'admin.orders.create',
+        'store' => 'admin.orders.store',
+        'show' => 'admin.orders.show', // Добавьте это
+        'edit' => 'admin.orders.edit',
+        'update' => 'admin.orders.update',
+        'destroy' => 'admin.orders.destroy'
+    ]);
     Route::resource('news', \App\Http\Controllers\Admin\AdminNewsController::class)->names([
         'index' => 'admin.news.index',
         'create' => 'admin.news.create',
@@ -259,6 +286,86 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
         'update' => 'admin.news.update',
         'destroy' => 'admin.news.destroy'
     ]);
+
+    // Управление шаблонами Excel
+    Route::resource('excel-mappings', ExcelMappingController::class)->names([
+        'index' => 'admin.excel-mappings.index',
+        'create' => 'admin.excel-mappings.create',
+        'store' => 'admin.excel-mappings.store',
+        'show' => 'admin.excel-mappings.show',
+        'edit' => 'admin.excel-mappings.edit',
+        'update' => 'admin.excel-mappings.update',
+        'destroy' => 'admin.excel-mappings.destroy',
+    ]);
+
+    Route::get('excel-mappings/{excelMapping}/download-example', [ExcelMappingController::class, 'downloadExample'])
+        ->name('admin.excel-mappings.download-example');
+
+    // Управление УПД
+    Route::prefix('upds')->name('admin.upds.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\UpdController::class, 'index'])->name('index');
+        Route::get('/{upd}', [\App\Http\Controllers\Admin\UpdController::class, 'show'])->name('show');
+        Route::post('/{upd}/verify-paper', [\App\Http\Controllers\Admin\UpdController::class, 'verifyPaper'])->name('verify-paper');
+        Route::post('/{upd}/accept', [\App\Http\Controllers\Admin\UpdController::class, 'accept'])->name('accept');
+        Route::post('/{upd}/reject', [\App\Http\Controllers\Admin\UpdController::class, 'reject'])->name('reject');
+        Route::delete('/{upd}', [\App\Http\Controllers\Admin\UpdController::class, 'destroy'])->name('destroy');
+    });
+
+    // Документы
+    Route::prefix('admin/documents')->name('admin.documents.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\DocumentController::class, 'index'])->name('index');
+        Route::get('/{type}/{id}', [\App\Http\Controllers\Admin\DocumentController::class, 'show'])->name('show');
+
+        // Дополнительные маршруты для конкретных действий с документами
+        Route::prefix('upds')->name('upds.')->group(function () {
+            Route::post('/{upd}/verify-paper', [\App\Http\Controllers\Admin\UpdController::class, 'verifyPaper'])->name('verify-paper');
+            Route::post('/{upd}/accept', [\App\Http\Controllers\Admin\UpdController::class, 'accept'])->name('accept');
+            Route::post('/{upd}/reject', [\App\Http\Controllers\Admin\UpdController::class, 'reject'])->name('reject');
+        });
+    });
+
+    Route::prefix('completion-acts')->name('admin.completion-acts.')->group(function () {
+    Route::post('/{completionAct}/generate-upd', [CompletionActController::class, 'generateUpd'])
+        ->name('generate-upd');
+    Route::post('/generate-upd-all', [CompletionActController::class, 'generateUpdForAll'])
+        ->name('generate-upd-all');
+});
+
+    // Финансовый раздел
+    Route::prefix('finance')->name('admin.finance.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\FinanceController::class, 'dashboard'])->name('dashboard');
+        Route::get('/transactions', [\App\Http\Controllers\Admin\FinanceController::class, 'transactions'])->name('transactions');
+        Route::get('/transactions/{transaction}', [\App\Http\Controllers\Admin\FinanceController::class, 'showTransaction'])->name('transactions.show');
+        Route::post('/transactions/{transaction}/cancel', [\App\Http\Controllers\Admin\FinanceController::class, 'cancelTransaction'])->name('transactions.cancel');
+        Route::get('/invoices', [\App\Http\Controllers\Admin\FinanceController::class, 'invoices'])->name('invoices');
+        Route::get('/invoices/{invoice}', [\App\Http\Controllers\Admin\FinanceController::class, 'showInvoice'])->name('invoices.show');
+    });
+
+    // Банковские выписки
+    Route::prefix('bank-statements')->name('admin.bank-statements.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\BankStatementController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\Admin\BankStatementController::class, 'store'])->name('store');
+        Route::get('/{statement}', [\App\Http\Controllers\Admin\BankStatementController::class, 'show'])->name('show');
+        Route::delete('/{statement}', [\App\Http\Controllers\Admin\BankStatementController::class, 'destroy'])->name('destroy');
+    });
+
+    // Отчеты
+    Route::prefix('reports')->name('admin.reports.')->group(function () {
+        Route::get('/', [ReportsController::class, 'index'])->name('index');
+        Route::post('/generate', [ReportsController::class, 'generate'])->name('generate');
+        Route::get('/export', [ReportsController::class, 'export'])->name('export');
+    });
+
+    //Акты сверок
+    Route::prefix('reconciliation-acts')->name('admin.reconciliation-acts.')->group(function () {
+        Route::get('/', [ReconciliationActController::class, 'index'])->name('index');
+        Route::get('/create', [ReconciliationActController::class, 'create'])->name('create');
+        Route::post('/', [ReconciliationActController::class, 'store'])->name('store');
+        Route::get('/{reconciliationAct}', [ReconciliationActController::class, 'show'])->name('show');
+        Route::post('/{reconciliationAct}/confirm', [ReconciliationActController::class, 'confirm'])->name('confirm');
+        Route::get('/{reconciliationAct}/download', [ReconciliationActController::class, 'download'])->name('download');
+        Route::delete('/{reconciliationAct}', [ReconciliationActController::class, 'destroy'])->name('destroy');
+    });
 });
 
 // Профиль пользователя
@@ -266,11 +373,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
 
-// Уведомления
-Route::get('/notifications', [NotificationController::class, 'index'])
-    ->middleware('auth')
-    ->name('notifications');
+// Маршруты для уведомлений
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::post('/mark-all-as-read', [NotificationController::class, 'markAllAsRead'])->name('markAllAsRead');
+        Route::post('/{notification}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('markAsRead');
+    });
+
+    // Добавьте этот отдельный маршрут для совместимости со старым кодом
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications');
+});
 
 require __DIR__.'/auth.php';

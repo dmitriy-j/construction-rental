@@ -54,6 +54,16 @@ class CompletionAct extends Model
         return $this->belongsTo(Order::class);
     }
 
+    public function upd()
+    {
+        return $this->belongsTo(Upd::class);
+    }
+
+    public function scopeForLessor($query)
+    {
+        return $query->where('perspective', 'lessor');
+    }
+
     public function waybill()
     {
         return $this->belongsTo(Waybill::class);

@@ -5,6 +5,17 @@
     <h1 class="mb-4">Личный кабинет арендодателя</h1>
 
     <div class="row mb-4">
+
+         <!-- Карточка "Баланс" -->
+        <div class="col-md-3 mb-3">
+            <div class="card text-white bg-info h-100">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Текущий баланс</h5>
+                    <p class="card-text display-4 mt-auto">{{ number_format($balance, 2) }} ₽</p>
+                    <a href="{{ route('lessor.balance.index') }}" class="text-white">Подробнее →</a>
+                </div>
+            </div>
+        </div>
         <!-- Карточка "Техника" -->
         <div class="col-md-3 mb-3">
             <a href="{{ route('lessor.equipment.index') }}" class="text-decoration-none">
@@ -50,6 +61,63 @@
                 <div class="card-body d-flex flex-column">
                     <h5 class="card-title">Выручка</h5>
                     <p class="card-text display-4 mt-auto">{{ number_format($stats['revenue'], 0) }} ₽</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+     <!-- Блок с финансовой информацией -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    Последние финансовые операции
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Сумма</th>
+                                    <th>Тип</th>
+                                    <th>Описание</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($recentTransactions as $transaction)
+                                <tr>
+                                    <td>{{ $transaction->created_at->format('d.m.Y H:i') }}</td>
+                                    <td>{{ number_format($transaction->amount, 2) }} ₽</td>
+                                    <td>
+                                        <span class="badge bg-{{ $transaction->type == 'debit' ? 'success' : 'danger' }}">
+                                            {{ $transaction->type == 'debit' ? 'Поступление' : 'Списание' }}
+                                        </span>
+                                    </td>
+                                    <td>{{ $transaction->description }}</td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="4" class="text-center">Операций не найдено</td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{{ route('lessor.balance.index') }}" class="btn btn-sm btn-outline-primary mt-2">
+                        Вся история операций
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    Статистика доходов
+                </div>
+                <div class="card-body">
+                    <canvas id="incomeChart" height="200"></canvas>
                 </div>
             </div>
         </div>
@@ -185,6 +253,37 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // График доходов
+    const incomeCtx = document.getElementById('incomeChart').getContext('2d');
+    new Chart(incomeCtx, {
+        type: 'bar',
+        data: {
+            labels: {!! json_encode($incomeMonths) !!},
+            datasets: [{
+                label: 'Доходы по месяцам',
+                data: {!! json_encode($incomeAmounts) !!},
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString('ru-RU') + ' ₽';
+                        }
+                    }
+                }
+            }
+        }
+    });
 });
 </script>
 @endsection

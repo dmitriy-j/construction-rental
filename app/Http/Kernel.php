@@ -22,6 +22,8 @@ class Kernel extends HttpKernel
     'company.lessor' => \App\Http\Middleware\CheckCompanyLessor::class,
     'company.verified' => \App\Http\Middleware\CheckCompanyVerified::class, // Добавь эту строку
     'shift.status' => \App\Http\Middleware\CheckShiftStatus::class,
+    'idempotency' => \App\Http\Middleware\VerifyIdempotency::class,
+    'credit.check' => \App\Http\Middleware\CheckCreditLimit::class,
 ];
 
     protected $middlewareGroups = [

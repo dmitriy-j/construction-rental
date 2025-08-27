@@ -7,6 +7,56 @@
 <div class="container-fluid">
     <h1 class="mb-4">Панель управления</h1>
 
+     <!-- Финансовый блок -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5>Общий оборот</h5>
+                    <h2>{{ number_format($financialStats['total_turnover'] ?? 0, 2) }} ₽</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5>Комиссия платформы</h5>
+                    <h2>{{ number_format($financialStats['platform_revenue'] ?? 0, 2) }} ₽</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <h5>Ожидающие УПД</h5>
+                    <h2>{{ $financialStats['pending_upds'] ?? 0 }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5>Новые платежи</h5>
+                    <h2>{{ $financialStats['recent_payments'] ?? 0 }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Финансовый график -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    Финансовая статистика
+                </div>
+                <div class="card-body">
+                    <canvas id="financeChart" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row mb-4">
         <div class="col-md-4">
             <div class="card bg-primary text-white">
@@ -183,4 +233,38 @@
             });
         });
     </script>
+
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Финансовый график
+    const financeCtx = document.getElementById('financeChart').getContext('2d');
+    new Chart(financeCtx, {
+        type: 'line',
+        data: {
+            labels: {!! json_encode($financialStats['chart_labels'] ?? []) !!},
+            datasets: [{
+                label: 'Оборот',
+                data: {!! json_encode($financialStats['chart_data'] ?? []) !!},
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 2,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString('ru-RU') + ' ₽';
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
 @endsection

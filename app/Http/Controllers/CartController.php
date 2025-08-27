@@ -160,7 +160,7 @@ class CartController extends Controller
             // Рассчитываем количество дней аренды (с 15.07 по 16.07 = 1 день)
             $start = Carbon::parse($request->start_date);
             $end = Carbon::parse($request->end_date);
-            $days = $end->diffInDays($start); // 1 день для периода 15-16
+            $days = $end->diffInDays($start) + 1; // 1 день для периода 15-16
 
             // Рассчитываем общее количество рабочих часов
             $workingHours = $days * $rentalCondition->shift_hours * $rentalCondition->shifts_per_day;
@@ -306,24 +306,28 @@ class CartController extends Controller
             // Добавляем в корзину и получаем созданный элемент
             $cartItem = $this->cartService->addItem(
                 $rentalTerm->id,
-                $workingHours, // Количество рабочих часов
-                $pricing['base_price_per_unit'], // Чистая цена аренды за час
-                $pricing['platform_fee'], // Платформенная комиссия
+                $workingHours,
+                $pricing['base_price_per_unit'],
+                $pricing['platform_fee'],
                 $request->start_date,
                 $request->end_date,
                 $rentalCondition->id,
                 $request->delivery_required ? $request->delivery_from_id : null,
                 $request->delivery_required ? $request->delivery_location_id : null,
-                $deliveryCost, // Сохраняем доставку отдельно
+                $deliveryCost
             );
 
-            // Обновляем поля расстояния (если требуется)
+            // ОБНОВЛЕНО: Фиксируем цены сразу после создания элемента корзины
+            $updateData = [];
             if ($request->delivery_required) {
-                $cartItem->update([
-                    'distance_km' => $distanceKm,
-                    'delivery_cost_calculated' => true
-                ]);
+                $updateData['distance_km'] = $distanceKm;
+                $updateData['delivery_cost_calculated'] = true;
             }
+            // Фиксация цен ВСЕГДА должна происходить, независимо от доставки
+            $updateData['fixed_lessor_price'] = $rentalTerm->price_per_hour;
+            $updateData['fixed_customer_price'] = $pricing['base_price_per_unit'];
+
+            $cartItem->update($updateData); // Все обновления в одном запросе
 
             return redirect()->route('cart.index')
                 ->with('success', 'Оборудование успешно добавлено в корзину');

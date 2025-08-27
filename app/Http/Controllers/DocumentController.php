@@ -112,7 +112,9 @@ class DocumentController extends Controller
                     'order.lessorCompany',
                     'operator',
                     'equipment'
-                ])->whereHas('order', function($q) use ($user) {
+                ])
+                ->where('perspective', 'lessor') // ДОБАВЛЯЕМ ФИЛЬТРАЦИЮ
+                ->whereHas('order', function($q) use ($user) {
                     $q->where('lessor_company_id', $user->company_id);
                 });
                 break;
@@ -127,13 +129,14 @@ class DocumentController extends Controller
                     ->where('lessor_company_id', $user->company_id);
                 break;
 
-            case 'completion_acts':
+           case 'completion_acts':
                 // Только для арендодателей!
                 if ($userType !== 'lessor') {
                     abort(403, 'Доступ запрещен');
                 }
 
                 $query = CompletionAct::with('order.lesseeCompany')
+                    ->where('perspective', 'lessor') // ДОБАВЛЯЕМ ФИЛЬТРАЦИЮ
                     ->whereHas('order', function($q) use ($user) {
                         $q->where('lessor_company_id', $user->company_id);
                     });
@@ -191,6 +194,13 @@ class DocumentController extends Controller
             }
 
             return $this->downloadDeliveryNote($note);
+        }
+
+         // ДОБАВЛЯЕМ ПРОВЕРКУ ПЕРСПЕКТИВЫ ДЛЯ WAYBILLS И COMPLETION_ACTS
+        if (in_array($type, ['waybills', 'completion_acts'])) {
+            if ($document->perspective !== 'lessor') {
+                abort(403, 'Доступ запрещен. Неверный тип документа.');
+            }
         }
 
         // Для остальных типов документов

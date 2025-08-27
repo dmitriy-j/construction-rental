@@ -32,12 +32,19 @@ class Company extends Model
         'contacts',
         'status',
         'rejection_reason',
-        'verified_at'
+        'credit_limit',
+        'current_debt',
+        'verified_at',
+
+        // Новые поля для 1С
+        '1c_guid',
+        '1c_code',
     ];
 
     protected $casts = [
-        // ... другие приведения типов ...
         'is_platform' => 'boolean',
+        'credit_limit' => 'decimal:2',
+        'current_debt' => 'decimal:2',
     ];
 
     // Добавляем scope для быстрого поиска платформы
@@ -153,4 +160,43 @@ class Company extends Model
     {
         return $this->hasMany(Contract::class);
     }
+
+    public function get1CData(): array
+    {
+        return [
+            'name' => $this->legal_name,
+            'inn' => $this->inn,
+            'kpp' => $this->kpp,
+            'ogrn' => $this->ogrn,
+            'okpo' => $this->okpo,
+            'address' => $this->legal_address,
+            'bank_account' => $this->bank_account,
+            'bank_name' => $this->bank_name,
+            'bik' => $this->bik,
+            'correspondent_account' => $this->correspondent_account,
+            'manager_name' => $this->director_name,
+            'phone' => $this->phone,
+            'email' => $this->email,
+            '1c_guid' => $this->{'1c_guid'}, // GUID контрагента в 1С
+            '1c_code' => $this->{'1c_code'}, // Код контрагента в 1С
+        ];
+    }
+
+    public function getTaxSystemCode(): string
+    {
+        return match($this->tax_system) {
+            'osn' => 'ОСН',
+            'usn' => 'УСН',
+            'usn_income_minus_expenses' => 'УСН Доходы-Расходы',
+            'envd' => 'ЕНВД',
+            'patent' => 'Патент',
+            default => 'ОСН',
+        };
+    }
+
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(TransactionEntry::class);
+    }
+
 }

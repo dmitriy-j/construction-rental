@@ -13,6 +13,8 @@ class Contract extends Model
 
     protected $fillable = [
         'company_id',
+        'lessor_company_id', // Добавляем новое поле
+        'lessee_company_id', // Добавляем новое поле
         'number',
         'description',
         'payment_type',
@@ -33,9 +35,22 @@ class Contract extends Model
         'is_active' => 'boolean',
     ];
 
+    // Компания, создавшая договор (возможно, платформа)
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    // Арендодатель
+    public function lessorCompany(): BelongsTo
+    {
+        return $this->belongsTo(Company::class, 'lessor_company_id');
+    }
+
+    // Арендатор
+    public function lesseeCompany(): BelongsTo
+    {
+        return $this->belongsTo(Company::class, 'lessee_company_id');
     }
 
     public function orders(): HasMany

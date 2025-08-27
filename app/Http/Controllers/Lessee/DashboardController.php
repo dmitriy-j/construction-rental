@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use App\Services\BalanceService;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(BalanceService $balanceService)
     {
         $companyId = Auth::user()->company_id;
+        $company = Auth::user()->company;
 
         $stats = [
             'active_orders' => Order::where('lessee_company_id', $companyId)
@@ -41,10 +43,22 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
+        // Финансовая информация
+        $balance = $balanceService->getCurrentBalance($company);
+        $recentTransactions = $balanceService->getTransactionHistory($company, 5);
+
+        // Данные для графика расходов
+        $expenseCategories = ['Аренда техники', 'Доставка', 'Прочее'];
+        $expenseAmounts = [150000, 25000, 10000];
+
         return view('lessee.dashboard', compact(
             'stats',
             'recentOrders',
-            'upcomingReturns'
+            'upcomingReturns',
+            'balance',
+            'recentTransactions',
+            'expenseCategories',
+            'expenseAmounts'
         ));
     }
 

@@ -34,6 +34,15 @@ return [
     'yandex_maps' => [
         'api_key' => env('YANDEX_MAPS_API_KEY'),
         'coefficient' => env('DISTANCE_COEFFICIENT', 1.3)
-    ]
+    ],
+
+    '1c' => [
+        'base_url' => env('1C_BASE_URL', 'http://localhost:8080/construction_rental/ws'),
+        'login' => env('1C_LOGIN', 'admin'),
+        'password' => env('1C_PASSWORD', 'password'),
+        'timeout' => env('1C_TIMEOUT', 30),
+        'version' => env('1C_VERSION', '8.3'),
+        'export_format' => env('1C_EXPORT_FORMAT', 'xml'),
+    ],
 
 ];

@@ -64,7 +64,8 @@ class Order extends Model
         'transportation',
         'fuel_responsibility',
         'lessor_base_amount',
-        'delivery_type'
+        'delivery_type',
+        'company_order_number',
     ];
 
     protected $casts = [
@@ -573,5 +574,31 @@ class Order extends Model
                 'reason' => 'item_status_change'
             ]);
         }
+    }
+
+    protected function getNextCompanyOrderNumber($companyId)
+    {
+        $lastOrder = Order::where('lessee_company_id', $companyId)
+                        ->orWhere('lessor_company_id', $companyId)
+                        ->orderBy('company_order_number', 'desc')
+                        ->first();
+        return ($lastOrder->company_order_number ?? 0) + 1;
+    }
+
+    public function scopeNextCompanyOrderNumber($query, $companyId)
+    {
+        $lastOrder = $query->where(function($q) use ($companyId) {
+                $q->where('lessee_company_id', $companyId)
+                  ->orWhere('lessor_company_id', $companyId);
+            })
+            ->orderBy('company_order_number', 'desc')
+            ->first();
+
+        return ($lastOrder->company_order_number ?? 0) + 1;
+    }
+
+    public function getRentalDaysAttribute()
+    {
+        return $this->start_date->diffInDays($this->end_date) + 1;
     }
 }

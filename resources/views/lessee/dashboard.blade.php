@@ -5,6 +5,16 @@
     <h1>Личный кабинет арендатора</h1>
 
     <div class="row mb-4">
+         <!-- Добавляем карточку баланса -->
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <h5 class="card-title">Текущий баланс</h5>
+                    <p class="card-text display-4">{{ number_format($balance, 2) }} ₽</p>
+                    <a href="{{ route('lessee.balance.index') }}" class="text-white">Подробнее →</a>
+                </div>
+            </div>
+        </div>
         <div class="col-md-3">
             <div class="card text-white bg-primary">
                 <div class="card-body">
@@ -46,6 +56,63 @@
                 </a>
             </div>
         </div>
+
+         <!-- Блок с финансовой информацией -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    Последние финансовые операции
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Сумма</th>
+                                    <th>Тип</th>
+                                    <th>Описание</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($recentTransactions as $transaction)
+                                <tr>
+                                    <td>{{ $transaction->created_at->format('d.m.Y H:i') }}</td>
+                                    <td>{{ number_format($transaction->amount, 2) }} ₽</td>
+                                    <td>
+                                        <span class="badge bg-{{ $transaction->type == 'debit' ? 'success' : 'danger' }}">
+                                            {{ $transaction->type == 'debit' ? 'Поступление' : 'Списание' }}
+                                        </span>
+                                    </td>
+                                    <td>{{ $transaction->description }}</td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="4" class="text-center">Операций не найдено</td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{{ route('lessee.balance.index') }}" class="btn btn-sm btn-outline-primary mt-2">
+                        Вся история операций
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    Статистика расходов
+                </div>
+                <div class="card-body">
+                    <canvas id="expensesChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="card mb-4">
         <div class="card-header">Последние заказы</div>
@@ -115,4 +182,23 @@
     </div>
     @endif
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // График расходов
+    const expensesCtx = document.getElementById('expensesChart').getContext('2d');
+    new Chart(expensesCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {!! json_encode($expenseCategories) !!},
+            datasets: [{
+                data: {!! json_encode($expenseAmounts) !!},
+                backgroundColor: [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+                ]
+            }]
+        }
+    });
+});
+</script>
 @endsection

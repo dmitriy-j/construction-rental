@@ -49,7 +49,7 @@
                     <tbody>
                         @forelse($orders as $order)
                         <tr>
-                            <td>{{ $order->id }}</td>
+                            <td>{{ $order->company_order_number }}</td>
                             <td>{{ $order->total_items_count ?? 0 }} позиция(й)</td>
                             <td>{{ number_format($order->rental_amount, 2, '.', ' ') }} ₽</td>
                             <td class="text-center">

@@ -30,7 +30,7 @@
                         </div>
                         <div class="col-md-6">
                             <h5>Финансовая информация</h5>
-                            <p><strong>Ставка (с наценкой):</strong> {{ number_format($actData['hourly_rate'], 2) }} ₽</p>
+                            <p><strong>Ставка:</strong> {{ number_format($actData['hourly_rate'], 2) }} ₽</p>
                             <p><strong>Итоговая сумма:</strong> {{ number_format($actData['total_amount'], 2) }} ₽</p>
                         </div>
                     </div>

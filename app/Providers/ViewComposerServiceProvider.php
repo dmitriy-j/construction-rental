@@ -28,5 +28,7 @@ class ViewComposerServiceProvider extends ServiceProvider
 
             $view->with('newOrdersCount', $newOrdersCount);
         });
+
+
     }
 }
