@@ -7,11 +7,13 @@ use App\Models\Order;
 use App\Models\Upd;
 use App\Models\Company;
 use App\Models\Waybill;
+use App\Models\CompletionAct; // Добавьте эту строку
 use App\Services\UpdProcessingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+
 
 class UpdController extends Controller
 {
@@ -65,29 +67,25 @@ class UpdController extends Controller
     {
         $request->validate([
             'waybill_id' => 'required|exists:waybills,id',
-            'upd_file' => 'required|file|mimes:xlsx,xls|max:10240', // Максимум 10MB
+            'upd_file' => 'required|file|mimes:xlsx,xls|max:10240',
         ]);
 
-       $waybill = Waybill::with(['order', 'completionAct'])->findOrFail($request->waybill_id);
 
-        // ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА: Убеждаемся, что это документ арендодателя
-        if ($waybill->perspective !== 'lessor' ||
-            ($waybill->completionAct && $waybill->completionAct->perspective !== 'lessor')) {
-            return redirect()->back()->with('error', 'Неверный тип документа для загрузки УПД.');
-        }
+        $waybill = Waybill::with(['order', 'completionAct'])->findOrFail($request->waybill_id);
         $order = $waybill->order;
+        $completionActExists = CompletionAct::where('waybill_id', $request->waybill_id)
+            ->where('perspective', 'lessor')
+            ->exists();
 
-        // Проверяем права доступа и возможность загрузки УПД
+        if (!$completionActExists) {
+            return redirect()->back()
+                ->with('error', 'Для выбранного путевого листа отсутствует акт выполненных работ. Невозможно загрузить УПД.')
+                ->withInput();
+        }
+
+        // Проверяем права доступа
         if ($order->lessor_company_id !== Auth::user()->company_id) {
             return redirect()->back()->with('error', 'Недостаточно прав для загрузки УПД для этого путевого листа.');
-        }
-
-        if (!$waybill->canUploadUpd()) {
-            return redirect()->back()->with('error', 'Невозможно загрузить УПД для этого путевого листа.');
-        }
-
-        if (!$waybill->completionAct) {
-            return redirect()->back()->with('error', 'Для загрузки УПД необходим акт выполненных работ.');
         }
 
         try {
@@ -95,14 +93,9 @@ class UpdController extends Controller
                 $order,
                 $request->file('upd_file'),
                 [
-                    'waybill_id' => $waybill->id,
-                    'completion_act_id' => $waybill->completionAct->id
+                    'waybill_id' => $waybill->id, // Убедитесь, что передается waybill_id
                 ]
             );
-
-            // Привязываем УПД к путевому листу
-            $waybill->upd_id = $upd->id;
-            $waybill->save();
 
             return redirect()->route('lessor.upds.index')
                 ->with('success', 'УПД успешно загружен и ожидает проверки.');

@@ -48,7 +48,7 @@ class DocumentController extends Controller
                 break;
 
             case 'completion_acts':
-                $documents = CompletionAct::with(['order'])
+                $documents = CompletionAct::with(['order', 'upd']) // Добавляем загрузку отношения upd
                     ->orderBy('created_at', 'desc')
                     ->paginate(20);
                 break;

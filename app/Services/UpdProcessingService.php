@@ -8,12 +8,14 @@ use App\Models\ExcelMapping;
 use App\Models\UpdItem;
 use App\Models\Company;
 use App\Models\CompletionAct;
+use App\Models\Waybill;
 use App\Services\Parsers\UpdParserService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Jobs\ExportUpdTo1C;
+use Illuminate\Support\Facades\DB;
 
 class UpdProcessingService
 {
@@ -44,9 +46,19 @@ class UpdProcessingService
             $completionAct = CompletionAct::find($additionalData['completion_act_id']);
         }
 
-        if (!$completionAct) {
-            throw new \Exception("Акт выполненных работ не найден.");
-        }
+        $completionAct = CompletionAct::where('waybill_id', $additionalData['waybill_id'])
+        ->where('perspective', 'lessor') // Важно: ищем акт для арендодателя
+        ->first();
+
+    if (!$completionAct) {
+        // Логируем более подробную информацию для отладки
+        Log::error('Акт выполненных работ не найден для путевого листа', [
+            'waybill_id' => $additionalData['waybill_id'],
+            'user_id' => auth()->id(),
+            'existing_acts' => CompletionAct::where('waybill_id', $additionalData['waybill_id'])->get()->toArray()
+        ]);
+        throw new \Exception("Акт выполненных работ не найден для данного путевого листа.");
+    }
 
         $filePath = $file->store('temp');
         $fullPath = Storage::path($filePath);
@@ -203,26 +215,85 @@ class UpdProcessingService
         }
     }
 
-    protected function createUpdFromParsedData(Order $order, array $parsedData, UploadedFile $file, array $additionalData = []): Upd
-    {
+   protected function createUpdFromParsedData(Order $order, array $parsedData, UploadedFile $file, array $additionalData = []): Upd
+{
+    DB::beginTransaction();
+
+    try {
         $header = $parsedData['header'];
         $amounts = $parsedData['amounts'];
         $items = $parsedData['items'] ?? [];
 
-        // Преобразуем дату из русского формата
-        $issueDate = $this->parseRussianDate($header['issue_date']);
+        // Базовые проверки
+        if (!isset($additionalData['waybill_id'])) {
+            throw new \Exception("Не передан waybill_id для создания УПД.");
+        }
 
-        // Сохраняем файл УПД
+        $waybillId = $additionalData['waybill_id'];
+
+        // Проверяем, что путевой лист существует
+        $waybill = Waybill::find($waybillId);
+        if (!$waybill) {
+            throw new \Exception("Путевой лист #{$waybillId} не найден.");
+        }
+
+        // Проверяем, что путевой лист принадлежит заказу
+        if ($waybill->order_id !== $order->id) {
+            throw new \Exception("Путевой лист #{$waybillId} не принадлежит заказу #{$order->id}.");
+        }
+
+        // Проверяем, что для путевого листа еще нет УПД
+        if ($waybill->upd_id) {
+            throw new \Exception("Для путевого листа #{$waybillId} уже создан УПД #{$waybill->upd_id}.");
+        }
+
+        // Проверяем, что существует акт выполненных работ для этого путевого листа (для арендодателя)
+        $completionAct = CompletionAct::where('waybill_id', $waybillId)
+            ->where('perspective', 'lessor')
+            ->first();
+
+        if (!$completionAct) {
+            throw new \Exception("Акт выполненных работ для путевого листа #{$waybillId} не найден.");
+        }
+
+        // Проверяем, что для акта еще нет УПД
+        if ($completionAct->upd_id) {
+            throw new \Exception("Для акта выполненных работ #{$completionAct->id} уже создан УПД #{$completionAct->upd_id}.");
+        }
+
+        // Получаем шаблон для компании арендодателя
+        $mapping = ExcelMapping::where('company_id', $order->lessor_company_id)
+            ->where('type', 'upd')
+            ->where('is_active', true)
+            ->first();
+
+        if (!$mapping) {
+            throw new \Exception("Активный шаблон УПД не найден для компании арендодателя.");
+        }
+
+        $type = Upd::TYPE_INCOMING;
+        $issueDate = $this->parseRussianDate($header['issue_date']);
         $filePath = $file->store('upds', 'private');
+
+        // Проверяем уникальность номера УПД
+        $existingUpd = Upd::where('number', $header['number'])
+            ->where('issue_date', $issueDate->format('Y-m-d'))
+            ->where('lessor_company_id', $order->lessor_company_id)
+            ->first();
+
+        if ($existingUpd) {
+            throw new \Exception("УПД с номером {$header['number']} и датой {$issueDate->format('d.m.Y')} уже существует.");
+        }
 
         $updData = [
             'order_id' => $order->id,
             'lessor_company_id' => $order->lessor_company_id,
             'lessee_company_id' => $order->lessee_company_id,
+            'waybill_id' => $waybillId,
             'number' => $header['number'],
             'issue_date' => $issueDate->format('Y-m-d'),
-            'service_period_start' => $order->start_date,
-            'service_period_end' => $order->end_date,
+            'service_period_start' => $completionAct->service_start_date ?? $order->start_date,
+            'service_period_end' => $completionAct->service_end_date ?? $order->end_date,
             'amount' => $amounts['without_vat'] ?? 0,
             'tax_amount' => $amounts['vat'] ?? 0,
             'total_amount' => $amounts['total'],
@@ -231,22 +302,71 @@ class UpdProcessingService
             'contract_date' => $order->contract_date,
             'file_path' => $filePath,
             'status' => Upd::STATUS_PENDING,
+            'type' => $type,
             'idempotency_key' => 'upd_' . Str::uuid(),
             'parsed_data' => $parsedData,
         ];
 
-        // Добавляем дополнительные данные, если они есть
-        if (!empty($additionalData)) {
-            $updData = array_merge($updData, $additionalData);
-        }
-
         $upd = Upd::create($updData);
-
-        // Обрабатываем табличную часть
         $this->processUpdItems($upd, $items);
 
+        // Привязываем УПД к путевому листу
+        $waybill->upd_id = $upd->id;
+        $waybill->save();
+
+        // Привязываем УПД к акту выполненных работ
+        $completionAct->upd_id = $upd->id;
+        $completionAct->save();
+
+        DB::commit();
+
+        Log::info('УПД успешно создан', [
+            'upd_id' => $upd->id,
+            'waybill_id' => $waybillId,
+            'completion_act_id' => $completionAct->id,
+            'order_id' => $order->id
+        ]);
+
         return $upd;
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Ошибка создания УПД', [
+            'error' => $e->getMessage(),
+            'waybill_id' => $additionalData['waybill_id'] ?? null,
+            'order_id' => $order->id,
+            'trace' => $e->getTraceAsString()
+        ]);
+        throw $e;
     }
+}
+
+    protected function validateUpdForProcessing(Upd $upd): void
+    {
+        // ТОЛЬКО БАЗОВЫЕ ПРОВЕРКИ БЕЗ ПРОВЕРКИ АКТА
+
+        // 1. Проверка суммы
+        if ($upd->total_amount <= 0) {
+            throw new \Exception("Сумма УПД должна быть больше нуля.");
+        }
+
+        // 2. Проверка существования компаний
+        $upd->load(['lessorCompany', 'lesseeCompany']);
+
+        if (!$upd->lessorCompany) {
+            throw new \Exception("Компания арендодателя не найдена.");
+        }
+
+        if (!$upd->lesseeCompany) {
+            throw new \Exception("Компания арендатора не найдена.");
+        }
+
+        // 3. Проверка, чтобы компания не выставляла сама себе счет
+        if ($upd->lessor_company_id === $upd->lessee_company_id) {
+            throw new \Exception("Компания не может выставлять УПД самой себе.");
+        }
+    }
+
 
     protected function parseRussianDate(string $dateString): \Carbon\Carbon
     {

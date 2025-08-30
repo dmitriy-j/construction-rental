@@ -15,6 +15,10 @@ class Upd extends Model
     const STATUS_PENDING = 'pending';
     const STATUS_ACCEPTED = 'accepted';
     const STATUS_REJECTED = 'rejected';
+    const STATUS_PROCESSED = 'processed'; // Новый статус
+
+    const TYPE_INCOMING = 'incoming';
+    const TYPE_OUTGOING = 'outgoing';
 
     protected $fillable = [
         'order_id',
@@ -39,6 +43,8 @@ class Upd extends Model
         'accepted_at',
         'rejected_at',
         'parsed_data',
+        'type',
+        'waybill_id',
 
         // Новые поля для 1С
         '1c_guid',
@@ -70,6 +76,7 @@ class Upd extends Model
         'accepted_at' => 'datetime',
         'rejected_at' => 'datetime',
         'parsed_data' => 'array',
+        'type' => 'string', // Добавлен cast для type
 
         // Приведение типов для новых полей
         '1c_date' => 'date',
@@ -79,9 +86,9 @@ class Upd extends Model
         'lessee_sign_date' => 'datetime',
     ];
 
-    public function order(): BelongsTo
+    public function order()
     {
-        return $this->belongsTo(Order::class);
+        return $this->belongsTo(Order::class)->select('id', 'company_order_number', 'lessor_company_id', 'lessee_company_id');
     }
 
     public function lessorCompany(): BelongsTo
@@ -94,48 +101,141 @@ class Upd extends Model
         return $this->belongsTo(Company::class, 'lessee_company_id');
     }
 
+    public function getStatusDescription(): string
+    {
+        return match($this->status) {
+            self::STATUS_PENDING => 'Ожидает обработки администратором',
+            self::STATUS_ACCEPTED => 'Принят, ожидает финансового проведения',
+            self::STATUS_PROCESSED => 'Принят и финансово проведен',
+            self::STATUS_REJECTED => 'Отклонен. Причина: ' . ($this->rejection_reason ?? 'не указана'),
+            default => 'Неизвестный статус',
+        };
+    }
+
+    public function getStatusTextAttribute(): string
+    {
+        return match($this->status) {
+            self::STATUS_PENDING => 'Ожидает',
+            self::STATUS_ACCEPTED => 'Принят',
+            self::STATUS_PROCESSED => 'Принят (проведен)',
+            self::STATUS_REJECTED => 'Отклонен',
+            default => $this->status,
+        };
+    }
+
+    public function getStatusColorAttribute(): string
+    {
+        return match($this->status) {
+            self::STATUS_PENDING => 'warning',
+            self::STATUS_ACCEPTED, self::STATUS_PROCESSED => 'success',
+            self::STATUS_REJECTED => 'danger',
+            default => 'secondary',
+        };
+    }
+
     public function accept(): void
     {
-        if ($this->status !== self::STATUS_PENDING) {
+        if (!in_array($this->status, [self::STATUS_PENDING, self::STATUS_ACCEPTED])) {
             throw new \Exception('УПД уже был обработан.');
+        }
+
+       DB::beginTransaction();
+
+        try {
+            $balanceService = app(\App\Services\BalanceService::class);
+
+            if ($this->type === self::TYPE_INCOMING) {
+                // ВХОДЯЩИЙ УПД: Арендодатель -> Платформа
+                // Увеличиваем баланс арендодателя (Долг платформы перед арендодателем)
+                $balanceService->commitTransaction(
+                    $this->lessorCompany,
+                    $this->total_amount,
+                    'debit',
+                    TransactionEntry::PURPOSE_UPD_DEBT,
+                    $this,
+                    "Принят входящий УПД №{$this->number}",
+                    'upd_accept_in_' . $this->id
+                );
+            } elseif ($this->type === self::TYPE_OUTGOING) {
+                // ИСХОДЯЩИЙ УПД: Платформа -> Арендатор
+                // Уменьшаем баланс арендатора (Долг арендатора перед платформой)
+                $balanceService->commitTransaction(
+                    $this->lesseeCompany,
+                    $this->total_amount,
+                    'credit', // СПИСАНИЕ с арендатора
+                    TransactionEntry::PURPOSE_UPD_DEBT,
+                    $this,
+                    "Сформирован исходящий УПД №{$this->number}. Сформирована кредиторская задолженность арендатора перед платформой.",
+                    'upd_accept_out_' . $this->id
+                );
+            }
+
+            $this->status = self::STATUS_PROCESSED;
+            $this->accepted_at = now();
+            $this->save();
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+    }
+
+    public function waybill()
+    {
+        return $this->belongsTo(Waybill::class, 'waybill_id');
+    }
+
+    public function reject(string $reason): void
+    {
+        if (!in_array($this->status, [self::STATUS_PENDING, self::STATUS_PROCESSED])) {
+            throw new \Exception('УПД уже был отклонен.');
         }
 
         DB::beginTransaction();
 
         try {
-            $this->status = self::STATUS_ACCEPTED;
-            $this->accepted_at = now();
+            // Если УПД уже был финансово проведен, создаем обратные проводки (сторно)
+            if ($this->status === self::STATUS_PROCESSED) {
+                $balanceService = app(\App\Services\BalanceService::class);
+
+                if ($this->type === self::TYPE_INCOMING) {
+                    // Сторно для входящего УПД: уменьшаем баланс арендодателя
+                    $balanceService->commitTransaction(
+                        $this->lessorCompany,
+                        $this->total_amount,
+                        'credit', // Противоположная операция
+                        TransactionEntry::PURPOSE_CORRECTION,
+                        $this,
+                        "Сторно проводки по отклоненному входящему УПД №{$this->number}. Причина: {$reason}",
+                        'upd_reverse_in_' . $this->id
+                    );
+                } elseif ($this->type === self::TYPE_OUTGOING) {
+                    // Сторно для исходящего УПД: увеличиваем баланс арендатора
+                    $balanceService->commitTransaction(
+                        $this->lesseeCompany,
+                        $this->total_amount,
+                        'debit', // Противоположная операция
+                        TransactionEntry::PURPOSE_CORRECTION,
+                        $this,
+                        "Сторно проводки по отклоненному исходящему УПД №{$this->number}. Причина: {$reason}",
+                        'upd_reverse_out_' . $this->id
+                    );
+                }
+            }
+
+            $this->status = self::STATUS_REJECTED;
+            $this->rejection_reason = $reason;
+            $this->rejected_at = now();
             $this->save();
 
-            // Используем BalanceService для создания проводки
-            app(\App\Services\BalanceService::class)->commitTransaction(
-                $this->lessorCompany,
-                $this->total_amount,
-                'credit',
-                TransactionEntry::PURPOSE_UPD_DEBT,
-                $this,
-                "Принят УПД №{$this->number} от {$this->issue_date->format('d.m.Y')}",
-                'upd_accept_' . $this->id
-            );
-
             DB::commit();
+
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Ошибка принятия УПД', ['upd_id' => $this->id, 'error' => $e->getMessage()]);
+            Log::error('Ошибка отклонения УПД', ['upd_id' => $this->id, 'error' => $e->getMessage()]);
             throw $e;
         }
-    }
-
-    public function reject(string $reason): void
-    {
-        if ($this->status !== self::STATUS_PENDING) {
-            throw new \Exception('УПД уже был обработан.');
-        }
-
-        $this->status = self::STATUS_REJECTED;
-        $this->rejection_reason = $reason;
-        $this->rejected_at = now();
-        $this->save();
     }
 
     /**
@@ -220,19 +320,14 @@ class Upd extends Model
         })->toArray();
     }
 
-    public function waybill()
-    {
-        return $this->hasOne(Waybill::class);
-    }
-
     public function completionAct()
     {
         return $this->hasOneThrough(
             CompletionAct::class,
             Waybill::class,
-            'upd_id', // Внешний ключ в таблице waybills
+            'id', // Внешний ключ в таблице waybills
             'waybill_id', // Внешний ключ в таблице completion_acts
-            'id', // Локальный ключ в таблице upds
+            'waybill_id', // Локальный ключ в таблице upds
             'id' // Локальный ключ в таблице waybills
         );
     }

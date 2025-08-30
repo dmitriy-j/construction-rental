@@ -132,6 +132,22 @@ class CompletionAct extends Model
     // Метод для создания акта из путевого листа
     public static function createFromWaybill(Waybill $waybill)
     {
+        // Проверяем, нет ли уже акта для этого путевого листа
+        $existingAct = self::where('waybill_id', $waybill->id)->first();
+
+        if ($existingAct) {
+            \Log::warning('Попытка создать дублирующий акт для путевого листа', [
+                'waybill_id' => $waybill->id,
+                'existing_act_id' => $existingAct->id
+            ]);
+            return $existingAct;
+        }
+
+        // Проверяем, нет ли у путевого листа уже УПД
+        if ($waybill->upd_id) {
+            throw new \Exception('Для путевого листа уже создан УПД, нельзя создать акт');
+        }
+
         $order = $waybill->order;
 
         return self::create([
@@ -144,7 +160,8 @@ class CompletionAct extends Model
             'total_downtime' => $waybill->shifts->sum('downtime_hours'),
             'hourly_rate' => $waybill->hourly_rate,
             'total_amount' => $waybill->shifts->sum('total_amount'),
-            'status' => 'draft'
+            'status' => 'draft',
+            'perspective' => 'lessor' // Сначала создаем для арендодателя
         ]);
     }
 
@@ -183,4 +200,10 @@ class CompletionAct extends Model
             'created_at' => $this->created_at
         ];
     }
+
+    public function waybillWithLock()
+    {
+        return $this->belongsTo(Waybill::class)->lockForUpdate();
+    }
+
 }

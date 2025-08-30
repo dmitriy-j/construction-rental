@@ -53,8 +53,8 @@ $isIncomingUpd = $upd->lessor_company_id !== $platformCompany->id;
                         <tr>
                             <th>Статус:</th>
                             <td>
-                                <span class="badge badge-{{ $upd->status == 'pending' ? 'warning' : ($upd->status == 'accepted' ? 'success' : 'danger') }}">
-                                    {{ $upd->status == 'pending' ? 'Ожидает' : ($upd->status == 'accepted' ? 'Принят' : 'Отклонен') }}
+                                <span class="badge badge-{{ $upd->status_color }}" data-toggle="tooltip" title="{{ $upd->getStatusDescription() }}">
+                                    {{ $upd->status_text }}
                                 </span>
                             </td>
                         </tr>

@@ -90,6 +90,11 @@ class User extends Authenticatable
         return $this->company->is_lessor;
     }
 
+    public function isAdmin(): bool
+    {
+        return $this->hasRole(['platform_super', 'platform_admin']);
+    }
+
     public function cartItemsCount(): int
     {
         return $this->cart->items->count() ?? 0;
@@ -99,6 +104,11 @@ class User extends Authenticatable
     {
         return $this->morphMany(DatabaseNotification::class, 'notifiable')
                     ->orderBy('created_at', 'desc');
+    }
+
+    public function hasAnyRole(array $roles): bool
+    {
+        return $this->hasRole($roles);
     }
 
 }
