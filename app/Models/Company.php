@@ -72,6 +72,11 @@ class Company extends Model
         return $this->is_carrier;
     }
 
+    public function isRegistered(): bool
+    {
+        return !empty($this->legal_name) && !empty($this->inn) && $this->status === 'verified';
+    }
+
     public function carrierDeliveryNotes()
     {
         return $this->hasMany(DeliveryNote::class, 'carrier_company_id');

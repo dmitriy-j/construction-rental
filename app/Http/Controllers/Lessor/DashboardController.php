@@ -9,11 +9,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Services\BalanceService;
 
+
 class DashboardController extends Controller
 {
     public function index(BalanceService $balanceService)
     {
         $companyId = Auth::user()->company_id;
+        $userId = Auth::id(); // <-- ДОБАВЬТЕ ЭТУ СТРОКУ
         $company = Auth::user()->company;
 
         $stats = [

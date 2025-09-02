@@ -35,7 +35,7 @@ use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Admin\ExcelMappingController;
 use App\Http\Controllers\Lessor\UpdController;
 use App\Http\Controllers\Admin\CompletionActController;
-
+use App\Http\Controllers\Admin\BankStatementController;
 
 
 // Главная страница
@@ -343,10 +343,19 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
 
     // Банковские выписки
     Route::prefix('bank-statements')->name('admin.bank-statements.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\Admin\BankStatementController::class, 'index'])->name('index');
-        Route::post('/', [\App\Http\Controllers\Admin\BankStatementController::class, 'store'])->name('store');
-        Route::get('/{statement}', [\App\Http\Controllers\Admin\BankStatementController::class, 'show'])->name('show');
-        Route::delete('/{statement}', [\App\Http\Controllers\Admin\BankStatementController::class, 'destroy'])->name('destroy');
+        Route::get('/', [BankStatementController::class, 'index'])->name('index');
+        Route::get('/create', [BankStatementController::class, 'create'])->name('create');
+        Route::post('/', [BankStatementController::class, 'store'])->name('store');
+
+        // Маршруты без параметров должны быть ВЫШЕ маршрутов с параметрами
+        Route::get('/pending', [BankStatementController::class, 'pendingTransactions'])->name('pending');
+        Route::post('/process-refund', [BankStatementController::class, 'processRefund'])->name('process-refund');
+
+        // Маршруты с параметрами должны быть НИЖЕ
+        Route::get('/{bankStatement}', [BankStatementController::class, 'show'])->name('show');
+        Route::delete('/{bankStatement}', [BankStatementController::class, 'destroy'])->name('destroy');
+        Route::post('/pending/{pendingTransaction}/process', [BankStatementController::class, 'processPendingTransaction'])->name('process-pending');
+        Route::post('/pending-payout/{pendingPayout}/cancel', [BankStatementController::class, 'cancelPendingPayout'])->name('cancel-payout');
     });
 
     // Отчеты
