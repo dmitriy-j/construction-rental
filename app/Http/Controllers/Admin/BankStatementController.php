@@ -23,7 +23,18 @@ class BankStatementController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
-        return view('admin.finance.bank-statements.index', compact('statements'));
+        // Добавляем подсчет отложенных транзакций
+        foreach ($statements as $statement) {
+            $statement->pending_count = PendingTransaction::where('bank_statement_id', $statement->id)->count() +
+                                    PendingPayout::whereHas('transaction', function($q) use ($statement) {
+                                        $q->where('bank_statement_id', $statement->id);
+                                    })->count() +
+                                    RefundTransaction::where('bank_statement_id', $statement->id)->count();
+        }
+
+        $pendingCount = PendingTransaction::count() + PendingPayout::count() + RefundTransaction::count();
+
+        return view('admin.finance.bank-statements.index', compact('statements', 'pendingCount'));
     }
 
     public function create()
@@ -250,6 +261,13 @@ class BankStatementController extends Controller
         $refundTransactions = RefundTransaction::with('bankStatement')
             ->orderBy('created_at', 'desc')
             ->paginate(20);
+
+        // Добавьте логирование для отладки
+        \Log::debug('Pending data', [
+            'transactions' => $pendingTransactions->count(),
+            'payouts' => $pendingPayouts->count(),
+            'refunds' => $refundTransactions->count()
+        ]);
 
         return view('admin.finance.bank-statements.pending',
             compact('pendingTransactions', 'pendingPayouts', 'refundTransactions'));

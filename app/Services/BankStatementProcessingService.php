@@ -413,17 +413,28 @@ class BankStatementProcessingService
 
     protected function handleUnregisteredCompany(array $transactionData, string $type, int $bankStatementId): void
     {
-        try {
-            $inn = $type === 'incoming'
-                ? $this->cleanInn($transactionData['ПлательщикИНН'] ?? '')
-                : $this->cleanInn($transactionData['ПолучательИНН'] ?? '');
+        $inn = $type === 'incoming'
+            ? $this->cleanInn($transactionData['ПлательщикИНН'] ?? '')
+            : $this->cleanInn($transactionData['ПолучательИНН'] ?? '');
 
-            $name = $type === 'incoming'
-                ? $transactionData['Плательщик1'] ?? 'Неизвестный плательщик'
-                : $transactionData['Получатель1'] ?? 'Неизвестный получатель';
+        $name = $type === 'incoming'
+            ? $transactionData['Плательщик1'] ?? 'Неизвестный плательщик'
+            : $transactionData['Получатель1'] ?? 'Неизвестный получатель';
 
-            // Создаем запись о временном счете
-            $pendingTransaction = PendingTransaction::create([
+        // Определяем правильный тип отложенной записи
+        if ($type === 'outgoing') {
+            // Для исходящих платежей создаем PendingPayout
+            PendingPayout::create([
+                'bank_statement_id' => $bankStatementId,
+                'payee_inn' => $inn,
+                'payee_name' => $name,
+                'amount' => $this->validateAndParseAmount($transactionData['Сумма']),
+                'purpose' => $transactionData['НазначениеПлатежа'] ?? '',
+                'status' => 'pending_registration'
+            ]);
+        } else {
+            // Для входящих платежей создаем PendingTransaction
+            PendingTransaction::create([
                 'bank_statement_id' => $bankStatementId,
                 'company_inn' => $inn,
                 'company_name' => $name,
@@ -431,18 +442,6 @@ class BankStatementProcessingService
                 'type' => $type,
                 'transaction_data' => $transactionData,
                 'status' => 'pending_registration'
-            ]);
-
-            \Log::warning('Платеж от незарегистрированной компании', [
-                'inn' => $inn,
-                'name' => $name,
-                'pending_transaction_id' => $pendingTransaction->id
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('Ошибка обработки платежа незарегистрированной компании', [
-                'transaction' => $transactionData,
-                'error' => $e->getMessage()
             ]);
         }
     }

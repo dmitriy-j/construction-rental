@@ -48,9 +48,11 @@
                     <table class="table table-hover">
                         <thead class="thead-light">
                             <tr>
+                                <th>Тип</th>
                                 <th>ИНН</th>
                                 <th>Название компании</th>
                                 <th class="text-center">Сумма</th>
+                                <th>Назначение платежа</th>
                                 <th class="text-center">Дата</th>
                                 <th class="text-center">Статус</th>
                                 <th class="text-center">Действия</th>
@@ -59,10 +61,16 @@
                         <tbody>
                             @foreach($pendingTransactions as $transaction)
                             <tr>
+                                <td>
+                                    <span class="badge badge-success">Входящий</span>
+                                </td>
                                 <td><code>{{ $transaction->company_inn }}</code></td>
                                 <td>{{ $transaction->company_name }}</td>
                                 <td class="text-center text-success font-weight-bold">
                                     {{ number_format($transaction->amount, 2) }} руб.
+                                </td>
+                                <td class="text-truncate" style="max-width: 200px;" title="{{ $transaction->transaction_data['НазначениеПлатежа'] ?? 'Не указано' }}">
+                                    {{ $transaction->transaction_data['НазначениеПлатежа'] ?? 'Не указано' }}
                                 </td>
                                 <td class="text-center">{{ $transaction->created_at->format('d.m.Y H:i') }}</td>
                                 <td class="text-center">
@@ -107,10 +115,11 @@
                     <table class="table table-hover">
                         <thead class="thead-light">
                             <tr>
+                                <th>Тип</th>
                                 <th>ИНН получателя</th>
                                 <th>Название получателя</th>
                                 <th class="text-center">Сумма</th>
-                                <th>Назначение</th>
+                                <th>Назначение платежа</th>
                                 <th class="text-center">Статус</th>
                                 <th class="text-center">Действия</th>
                             </tr>
@@ -118,6 +127,9 @@
                         <tbody>
                             @foreach($pendingPayouts as $payout)
                             <tr>
+                                <td>
+                                    <span class="badge badge-info">Исходящий</span>
+                                </td>
                                 <td><code>{{ $payout->payee_inn }}</code></td>
                                 <td>{{ $payout->payee_name }}</td>
                                 <td class="text-center text-danger font-weight-bold">
@@ -174,7 +186,7 @@
                                 <th>ИНН</th>
                                 <th>Название компании</th>
                                 <th class="text-center">Сумма</th>
-                                <th>Назначение</th>
+                                <th>Назначение платежа</th>
                                 <th class="text-center">Статус</th>
                                 <th class="text-center">Действия</th>
                             </tr>
@@ -296,19 +308,52 @@
 
 @section('scripts')
 <script>
-    $('#processRefundModal').on('show.bs.modal', function (event) {
-        var button = $(event.relatedTarget);
-        var refundId = button.data('refund-id');
-        var modal = $(this);
-        modal.find('#refundId').val(refundId);
-    });
+    $(document).ready(function() {
+        // Активация табов при загрузке страницы на основе URL хэша
+        function activateTabFromHash() {
+            var hash = window.location.hash;
+            if (hash) {
+                $('.nav-pills a[href="' + hash + '"]').tab('show');
+            }
+        }
 
-    // Инициализация select2 если он подключен
-    if (typeof $.fn.select2 !== 'undefined') {
-        $('.select2').select2({
-            minimumResultsForSearch: Infinity,
-            width: '100%'
+        // Инициализация при загрузке
+        activateTabFromHash();
+
+        // Обработчик для изменения URL при переключении вкладок
+        $('.nav-pills a').on('click', function(e) {
+            e.preventDefault();
+            var target = $(this).attr('href');
+            history.pushState(null, null, target);
+            $(this).tab('show');
         });
-    }
+
+        // Обработчик для кнопок переключения вкладок
+        $('.nav-pills a[data-toggle="pill"]').on('shown.bs.tab', function(e) {
+            var target = $(e.target).attr('href");
+            history.replaceState(null, null, target);
+        });
+
+        // Обработчик изменения хэша в URL
+        $(window).on('hashchange', function() {
+            activateTabFromHash();
+        });
+
+        // Инициализация Select2 с правильным dropdownParent
+        if (typeof $.fn.select2 !== 'undefined') {
+            $('#refundAction').select2({
+                dropdownParent: $('#processRefundModal'),
+                minimumResultsForSearch: Infinity,
+                width: '100%'
+            });
+        }
+
+        // Обработчик для модального окна возвратов
+        $('#processRefundModal').on('show.bs.modal', function(event) {
+            var button = $(event.relatedTarget);
+            var refundId = button.data('refund-id');
+            $(this).find('#refundId').val(refundId);
+        });
+    });
 </script>
 @endsection

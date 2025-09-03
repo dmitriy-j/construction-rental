@@ -7,6 +7,7 @@
         <div class="card-tools d-flex gap-2">
             <a href="{{ route('admin.bank-statements.pending') }}" class="btn btn-warning">
                 <i class="fas fa-clock mr-1"></i> Отложенные транзакции
+                <span class="badge badge-light ml-1">{{ $pendingCount }}</span>
             </a>
             <a href="{{ route('admin.bank-statements.create') }}" class="btn btn-primary">
                 <i class="fas fa-upload mr-1"></i> Загрузить выписку
@@ -26,6 +27,7 @@
                         <th class="text-center">Транзакций</th>
                         <th class="text-center">Обработано</th>
                         <th class="text-center">Ошибок</th>
+                        <th class="text-center">Отложено</th>
                         <th class="text-center">Статус</th>
                         <th class="text-center">Действия</th>
                     </tr>
@@ -45,6 +47,9 @@
                         </td>
                         <td class="text-center">
                             <span class="badge badge-danger">{{ $statement->error_count }}</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge badge-warning">{{ $statement->pending_count }}</span>
                         </td>
                         <td class="text-center">
                             @php
@@ -68,7 +73,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="text-center py-4">
+                        <td colspan="10" class="text-center py-4">
                             <i class="fas fa-file-invoice-dollar fa-3x text-muted mb-3"></i>
                             <p class="text-muted">Нет загруженных выписок</p>
                         </td>
