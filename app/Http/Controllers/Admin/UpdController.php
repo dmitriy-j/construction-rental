@@ -10,6 +10,9 @@ use App\Models\Waybill;
 use App\Models\CompletionAct;
 use App\Models\Invoice;
 use App\Services\UpdProcessingService;
+use App\Services\DocumentGeneratorService;
+use App\Models\DocumentTemplate;
+use App\Models\Company;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -196,5 +199,110 @@ class UpdController extends Controller
             return redirect()->back()
                 ->with('error', 'Ошибка удаления УПД: ' . $e->getMessage());
         }
+    }
+
+    public function generateFromTemplate(Upd $upd, DocumentGeneratorService $documentGenerator)
+    {
+        try {
+            Log::info('Начало генерации УПД из шаблона', ['upd_id' => $upd->id]);
+
+            // Получаем активный шаблон УПД
+            $template = DocumentTemplate::where('type', 'упд')
+                ->where('is_active', true)
+                ->firstOrFail();
+
+            Log::info('Шаблон УПД найден', ['template_id' => $template->id, 'template_name' => $template->name]);
+
+            // Подготавливаем данные для УПД
+            $data = $this->prepareUpdData($upd);
+            Log::debug('Данные для УПД подготовлены', ['data_keys' => array_keys($data)]);
+
+            // Генерируем документ
+            Log::info('Начало генерации документа');
+            $filePath = $documentGenerator->generateDocument($template, $data);
+            Log::info('Документ сгенерирован', ['file_path' => $filePath]);
+
+            // Обновляем путь к файлу в УПД
+            $relativePath = str_replace(storage_path('app/'), '', $filePath);
+            $upd->update([
+                'file_path' => $relativePath
+            ]);
+
+            Log::info('Путь к файлу обновлен в УПД', ['new_file_path' => $relativePath]);
+
+            return response()->download($filePath, "УПД_{$upd->number}.xlsx")
+                ->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            Log::error('Ошибка генерации УПД', [
+                'upd_id' => $upd->id,
+                'error_message' => $e->getMessage(),
+                'error_trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Ошибка генерации УПД: ' . $e->getMessage());
+        }
+    }
+
+    protected function prepareUpdData(Upd $upd)
+    {
+        $platformCompany = Company::where('is_platform', true)->first();
+        $lesseeCompany = $upd->lesseeCompany;
+
+        // Проверяем наличие банковских реквизитов (исправленные названия полей)
+        if (empty($platformCompany->bank_name) || empty($platformCompany->bik) || empty($platformCompany->bank_account)) {
+            throw new \Exception('Не заполнены банковские реквизиты платформы');
+        }
+
+        if (empty($lesseeCompany->bank_name) || empty($lesseeCompany->bik) || empty($lesseeCompany->bank_account)) {
+            throw new \Exception('Не заполнены банковские реквизиты арендатора');
+        }
+
+        return [
+            'upd' => [
+                'number' => $upd->number,
+                'date' => $upd->issue_date ? $upd->issue_date->format('d.m.Y') : '',
+                'contract_number' => $upd->contract_number,
+                'contract_date' => $upd->contract_date ? $upd->contract_date->format('d.m.Y') : '',
+                'shipment_date' => $upd->service_period_start ? $upd->service_period_start->format('d.m.Y') : '',
+                'total_without_vat' => $upd->amount,
+                'total_vat' => $upd->tax_amount,
+                'total_with_vat' => $upd->total_amount,
+            ],
+            'platform' => [
+                'name' => $platformCompany->legal_name,
+                'address' => $platformCompany->legal_address,
+                'inn' => $platformCompany->inn,
+                'kpp' => $platformCompany->kpp,
+                'bank_name' => $platformCompany->bank_name,
+                'bik' => $platformCompany->bik,
+                'account_number' => $platformCompany->bank_account,
+                'correspondent_account' => $platformCompany->correspondent_account,
+            ],
+            'lessee' => [
+                'name' => $lesseeCompany->legal_name,
+                'address' => $lesseeCompany->legal_address,
+                'inn' => $lesseeCompany->inn,
+                'kpp' => $lesseeCompany->kpp,
+                'bank_name' => $lesseeCompany->bank_name,
+                'bik' => $lesseeCompany->bik,
+                'account_number' => $lesseeCompany->bank_account,
+                'correspondent_account' => $lesseeCompany->correspondent_account,
+            ],
+            'items' => $upd->items->map(function($item) {
+                return [
+                    'code' => $item->code,
+                    'name' => $item->name,
+                    'unit' => $item->unit,
+                    'quantity' => $item->quantity,
+                    'price' => $item->price,
+                    'total_without_vat' => $item->amount,
+                    'vat_rate' => $item->vat_rate,
+                    'vat_amount' => $item->vat_amount,
+                    'total_with_vat' => $item->amount + $item->vat_amount,
+                ];
+            })->toArray()
+        ];
     }
 }

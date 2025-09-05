@@ -1,7 +1,11 @@
+import Swal from 'sweetalert2';
+window.Swal = Swal;
+
 import { initRipple } from './ripple';
 import { initTheme } from './theme';
 import { initSidebar } from './sidebar';
 import { initSmartNavbar } from './navbar';
+import Chart from 'chart.js/auto';
 
 // Функция для инициализации каталога
 function initCatalog() {
@@ -191,3 +195,4 @@ function protectSidebarIcons() {
 document.addEventListener('DOMContentLoaded', protectSidebarIcons);
 const sidebarObserver = new MutationObserver(protectSidebarIcons);
 sidebarObserver.observe(document.body, { childList: true, subtree: true });
+window.Chart = Chart;

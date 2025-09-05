@@ -38,8 +38,8 @@ class FinanceController extends Controller
             ->get();
 
         $transactionTypesData = [
-            'labels' => $transactionTypes->pluck('purpose'),
-            'data' => $transactionTypes->pluck('total')
+            'labels' => $transactionTypes->pluck('purpose')->toArray(),
+            'data' => $transactionTypes->pluck('total')->toArray()
         ];
 
         $topCompanies = \App\Models\Company::withSum(['transactions' => function($query) {

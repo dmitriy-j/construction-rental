@@ -246,6 +246,18 @@
                         <span class="nav-text">Арендодатели</span>
                     </a>
                 </li>
+
+                 <!-- Новый раздел: Настройки -->
+                <div class="section-header mt-4">
+                    <i class="bi bi-gear"></i>
+                    <h4>Настройки</h4>
+                </div>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->is('admin/settings/document-templates*') ? 'active' : '' }}" href="{{ route('admin.settings.document-templates.index') }}">
+                        <i class="nav-icon bi bi-file-earmark-spreadsheet"></i>
+                        <span class="nav-text">Шаблоны документов</span>
+                    </a>
+                </li>
             @endif
             </ul>
             </nav>

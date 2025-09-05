@@ -36,6 +36,7 @@ use App\Http\Controllers\Admin\ExcelMappingController;
 use App\Http\Controllers\Lessor\UpdController;
 use App\Http\Controllers\Admin\CompletionActController;
 use App\Http\Controllers\Admin\BankStatementController;
+use App\Http\Controllers\Admin\Settings\DocumentTemplateController;
 
 
 // Главная страница
@@ -309,6 +310,8 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
         Route::post('/{upd}/accept', [\App\Http\Controllers\Admin\UpdController::class, 'accept'])->name('accept');
         Route::post('/{upd}/reject', [\App\Http\Controllers\Admin\UpdController::class, 'reject'])->name('reject');
         Route::delete('/{upd}', [\App\Http\Controllers\Admin\UpdController::class, 'destroy'])->name('destroy');
+        // Новый маршрут для генерации УПД из шаблона
+        Route::get('/{upd}/generate-from-template', [\App\Http\Controllers\Admin\UpdController::class, 'generateFromTemplate'])->name('generate-from-template');
     });
 
     // Документы
@@ -322,7 +325,36 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
             Route::post('/{upd}/accept', [\App\Http\Controllers\Admin\UpdController::class, 'accept'])->name('accept');
             Route::post('/{upd}/reject', [\App\Http\Controllers\Admin\UpdController::class, 'reject'])->name('reject');
         });
+
+
     });
+
+     // Новый раздел: Настройки
+   Route::prefix('settings')->name('admin.settings.')->group(function () {
+        Route::resource('document-templates', DocumentTemplateController::class)
+            ->names([
+                'index' => 'document-templates.index',
+                'create' => 'document-templates.create',
+                'store' => 'document-templates.store',
+                'show' => 'document-templates.show',
+                'edit' => 'document-templates.edit',
+                'update' => 'document-templates.update',
+                'destroy' => 'document-templates.destroy',
+            ]);
+
+        // Дополнительные маршруты
+        Route::get('document-templates/{documentTemplate}/download', [DocumentTemplateController::class, 'download'])
+            ->name('document-templates.download');
+        Route::get('document-templates/{documentTemplate}/preview', [DocumentTemplateController::class, 'preview'])
+            ->name('document-templates.preview');
+
+        Route::get('/{documentTemplate}/generate', [DocumentTemplateController::class, 'generateForm'])->name('generate-form');
+        Route::post('/{documentTemplate}/generate', [DocumentTemplateController::class, 'generate'])->name('generate');
+    });
+
+
+
+
 
     Route::prefix('completion-acts')->name('admin.completion-acts.')->group(function () {
     Route::post('/{completionAct}/generate-upd', [CompletionActController::class, 'generateUpd'])

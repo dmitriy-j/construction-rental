@@ -14,20 +14,20 @@ export default defineConfig({
                 'resources/js/theme.js',
                 'resources/js/ripple.js',
                 'resources/js/cart/index.js',
-                'resources/js/navbar.js'
-                /*'resources/js/catalog/show.js'*/
+                'resources/js/navbar.js',
+                'resources/js/document-editor.js',
             ],
             refresh: true,
         }),
     ],
-     build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          bootstrap: ['bootstrap'],
-          sweetalert: ['sweetalert2']
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    bootstrap: ['bootstrap']
+                    // Удалите sweetalert из manualChunks
+                }
+            }
         }
-      }
     }
-  }
 });

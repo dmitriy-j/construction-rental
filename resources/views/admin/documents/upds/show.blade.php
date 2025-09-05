@@ -1,13 +1,17 @@
-@extends('layouts.app')
-
-@section('content')
 @php
 use App\Models\Company;
+use App\Models\DocumentTemplate;
+
 $platformCompany = Company::where('is_platform', true)->first();
+$updTemplate = DocumentTemplate::where('type', 'упд')->where('is_active', true)->first();
 
 // Определяем тип УПД на основе сравнения компаний
 $isIncomingUpd = $upd->lessor_company_id !== $platformCompany->id;
 @endphp
+@extends('layouts.app')
+
+@section('content')
+
 
 <div class="container-fluid">
     <div class="row mb-4">
@@ -16,6 +20,7 @@ $isIncomingUpd = $upd->lessor_company_id !== $platformCompany->id;
         </div>
         <div class="col-md-6 text-right">
             <a href="{{ route('admin.upds.index') }}" class="btn btn-secondary">← Назад к списку</a>
+
             @if($upd->status == 'pending')
                 <form action="{{ route('admin.upds.accept', $upd) }}" method="POST" class="d-inline">
                     @csrf
@@ -26,6 +31,13 @@ $isIncomingUpd = $upd->lessor_company_id !== $platformCompany->id;
 
             @if($upd->file_path)
                 <a href="{{ Storage::url($upd->file_path) }}" class="btn btn-info" target="_blank">Скачать файл</a>
+            @endif
+
+            <!-- Новая кнопка для генерации УПД из шаблона -->
+            @if($updTemplate && !$isIncomingUpd)
+                <a href="{{ route('admin.upds.generate-from-template', $upd) }}" class="btn btn-primary">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> Сгенерировать УПД
+                </a>
             @endif
         </div>
     </div>

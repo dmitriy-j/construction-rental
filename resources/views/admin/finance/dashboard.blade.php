@@ -138,24 +138,83 @@
     </div>
 </div>
 
-@section('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Инициализация графика типов операций
-        var ctx = document.getElementById('transactionTypesChart').getContext('2d');
-        var chart = new Chart(ctx, {
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Initializing financial chart...');
+
+    // Проверяем доступность Chart.js
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js is not available');
+        return;
+    }
+
+    const ctx = document.getElementById('transactionTypesChart');
+    if (!ctx) {
+        console.error('Canvas element not found');
+        return;
+    }
+
+    // Создаем карту перевода значений purpose на русский
+    const purposeTranslations = {
+        'upd_debt': 'Долг по УПД',
+        'lessee_payment': 'Платежи арендаторов',
+        'lessor_payout': 'Выплаты арендодателям',
+        'platform_fee': 'Комиссия платформы',
+        'refund': 'Возврат средств',
+        'penalty': 'Штрафы',
+        'correction': 'Корректировка'
+        // Добавьте другие возможные значения по мере необходимости
+    };
+
+    // Переводим labels на русский
+    const originalLabels = {!! json_encode($transactionTypesData['labels']) !!};
+    const translatedLabels = originalLabels.map(label => {
+        return purposeTranslations[label] || label;
+    });
+
+    try {
+        new Chart(ctx.getContext('2d'), {
             type: 'doughnut',
             data: {
-                labels: {!! json_encode($transactionTypesData['labels']) !!},
+                labels: translatedLabels,
                 datasets: [{
                     data: {!! json_encode($transactionTypesData['data']) !!},
                     backgroundColor: [
-                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+                        '#FF6384', '#36A2EB', '#FFCE56',
+                        '#4BC0C0', '#9966FF', '#FF9F40'
                     ]
                 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            usePointStyle: true,
+                            font: {
+                                size: 14
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.formattedValue || '';
+                                return `${label}: ${value} ₽`;
+                            }
+                        }
+                    }
+                }
             }
         });
-    });
+        console.log('Financial chart initialized successfully');
+    } catch (error) {
+        console.error('Error initializing chart:', error);
+    }
+});
 </script>
-@endsection
 @endsection
