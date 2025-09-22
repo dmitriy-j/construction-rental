@@ -3,15 +3,16 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
 
 class PaymentReceivedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
     protected $amount;
+
     protected $invoice;
 
     public function __construct($amount, $invoice = null)
@@ -29,7 +30,7 @@ class PaymentReceivedNotification extends Notification implements ShouldQueue
     {
         return (new MailMessage)
             ->subject('Получен новый платеж')
-            ->line('На ваш счет поступил платеж на сумму ' . number_format($this->amount, 2) . ' ₽')
+            ->line('На ваш счет поступил платеж на сумму '.number_format($this->amount, 2).' ₽')
             ->action('Перейти к балансу', url('/balance'))
             ->line('Спасибо за использование нашей платформы!');
     }
@@ -39,7 +40,7 @@ class PaymentReceivedNotification extends Notification implements ShouldQueue
         return [
             'amount' => $this->amount,
             'invoice_id' => $this->invoice ? $this->invoice->id : null,
-            'message' => 'Получен платеж на сумму ' . number_format($this->amount, 2) . ' ₽'
+            'message' => 'Получен платеж на сумму '.number_format($this->amount, 2).' ₽',
         ];
     }
 }

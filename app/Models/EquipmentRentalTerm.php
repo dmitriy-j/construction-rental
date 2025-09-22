@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Carbon\Carbon;
 
 class EquipmentRentalTerm extends Model
 {
@@ -37,13 +36,13 @@ class EquipmentRentalTerm extends Model
 
     public function getFormattedHourlyPriceAttribute(): string
     {
-        return number_format($this->price_per_hour, 2, '.', ' ') . ' ' . $this->currency . '/час';
+        return number_format($this->price_per_hour, 2, '.', ' ').' '.$this->currency.'/час';
     }
 
     public function getFormattedKmPriceAttribute(): string
     {
         return $this->price_per_km
-            ? number_format($this->price_per_km, 2, '.', ' ') . ' ' . $this->currency . '/км'
+            ? number_format($this->price_per_km, 2, '.', ' ').' '.$this->currency.'/км'
             : 'Не применяется';
     }
 
@@ -63,6 +62,7 @@ class EquipmentRentalTerm extends Model
 
         // Минимальная стоимость аренды
         $minCost = $this->min_rental_hours * $this->price_per_hour;
+
         return max($cost, $minCost);
     }
 

@@ -2,23 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\CartService;
+use App\Models\CartItem;
 use App\Models\EquipmentRentalTerm;
-use Illuminate\Http\Request;
-use App\Services\PricingService;
-use App\Models\Equipment;
-use App\Services\EquipmentAvailabilityService;
-use App\Services\DeliveryCalculatorService;
-use App\Models\RentalCondition;
-use App\Models\Company;
 use App\Models\Location;
+use App\Models\RentalCondition;
+use App\Services\CartService;
+use App\Services\DeliveryCalculatorService;
+use App\Services\EquipmentAvailabilityService;
+use App\Services\PricingService;
+use App\Services\TransportCalculatorService;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
-use App\Models\CartItem;
-use App\Services\TransportCalculatorService;
-use App\Services\YandexMapsService;
 
 class CartController extends Controller
 {
@@ -38,7 +35,7 @@ class CartController extends Controller
             'items.rentalTerm.equipment.mainImage',
             'items.rentalCondition',
             'items.deliveryFrom',
-            'items.deliveryTo'
+            'items.deliveryTo',
         ]);
 
         // Рассчитываем итоговые суммы
@@ -53,24 +50,24 @@ class CartController extends Controller
             'cart' => $cart,
             'totalRental' => $totalRental,
             'totalDelivery' => $totalDelivery,
-            'grandTotal' => $grandTotal
+            'grandTotal' => $grandTotal,
         ]);
     }
 
-   public function add(EquipmentRentalTerm $rentalTerm, Request $request)
+    public function add(EquipmentRentalTerm $rentalTerm, Request $request)
     {
         try {
             // Преобразование чекбоксов в boolean
             $request->merge([
-                'delivery_required' => (bool)$request->input('delivery_required', false),
-                'use_default_conditions' => $request->has('use_default_conditions')
+                'delivery_required' => (bool) $request->input('delivery_required', false),
+                'use_default_conditions' => $request->has('use_default_conditions'),
             ]);
 
             \Log::debug('[CART DEBUG] Start add method', [
                 'user' => auth()->id(),
                 'equipment' => $rentalTerm->id,
                 'request' => $request->all(),
-                'locations' => auth()->user()->company->locations->pluck('id')
+                'locations' => auth()->user()->company->locations->pluck('id'),
             ]);
 
             // Основные правила валидации
@@ -86,26 +83,26 @@ class CartController extends Controller
                 $rules['delivery_location_id'] = 'required|exists:locations,id';
             }
 
-            if (!$request->input('use_default_conditions', false)) {
+            if (! $request->input('use_default_conditions', false)) {
                 $rules = array_merge($rules, [
                     'shift_hours' => 'required|integer|min:1|max:24',
                     'shifts_per_day' => 'required|integer|min:1|max:3',
                     'transportation' => [
                         'required',
-                        Rule::in(['lessor', 'lessee', 'shared'])
+                        Rule::in(['lessor', 'lessee', 'shared']),
                     ],
                     'fuel_responsibility' => [
                         'required',
-                        Rule::in(['lessor', 'lessee'])
+                        Rule::in(['lessor', 'lessee']),
                     ],
                     'extension_policy' => [
                         'required',
-                        Rule::in(['allowed', 'not_allowed', 'conditional'])
+                        Rule::in(['allowed', 'not_allowed', 'conditional']),
                     ],
                     'payment_type' => [
                         'required',
-                        Rule::in(['hourly', 'shift', 'daily', 'mileage', 'volume'])
-                    ]
+                        Rule::in(['hourly', 'shift', 'daily', 'mileage', 'volume']),
+                    ],
                 ]);
             }
 
@@ -115,6 +112,7 @@ class CartController extends Controller
 
             if ($validator->fails()) {
                 \Log::debug('[CART DEBUG] Validation failed', $validator->errors()->toArray());
+
                 return back()
                     ->withErrors($validator)
                     ->withInput()
@@ -126,8 +124,9 @@ class CartController extends Controller
             $user = auth()->user();
             $company = $user->company; // Компания арендатора
 
-            if (!$company) {
+            if (! $company) {
                 Log::error('User company not found', ['user_id' => $user->id]);
+
                 return back()->with('error', 'Ваша компания не найдена');
             }
 
@@ -137,8 +136,9 @@ class CartController extends Controller
                     ->where('is_default', true)
                     ->first();
 
-                if (!$rentalCondition) {
+                if (! $rentalCondition) {
                     Log::error('Default rental condition not found', ['company_id' => $company->id]);
+
                     return back()->with('error', 'Условия аренды по умолчанию не настроены для вашей компании');
                 }
             } else {
@@ -151,7 +151,7 @@ class CartController extends Controller
                     'extension_policy' => $request->extension_policy,
                     'payment_type' => $request->payment_type,
                     'delivery_location_id' => $request->delivery_location_id,
-                    'is_default' => false
+                    'is_default' => false,
                 ]);
             }
 
@@ -169,7 +169,7 @@ class CartController extends Controller
                 'days' => $days,
                 'shift_hours' => $rentalCondition->shift_hours,
                 'shifts_per_day' => $rentalCondition->shifts_per_day,
-                'total_hours' => $workingHours
+                'total_hours' => $workingHours,
             ]);
 
             // Проверка минимального периода аренды
@@ -181,15 +181,15 @@ class CartController extends Controller
 
             // Проверка доступности оборудования
             $availabilityService = app(EquipmentAvailabilityService::class);
-            if (!$availabilityService->isAvailable(
+            if (! $availabilityService->isAvailable(
                 $rentalTerm->equipment,
                 $start->toDateString(),
                 $end->toDateString()
             )) {
                 $nextAvailable = $rentalTerm->equipment->next_available_date;
                 $message = $nextAvailable
-                    ? "Оборудование недоступно. Ближайшая доступная дата: ".$nextAvailable->format('d.m.Y')
-                    : "Оборудование недоступно на выбранные даты";
+                    ? 'Оборудование недоступно. Ближайшая доступная дата: '.$nextAvailable->format('d.m.Y')
+                    : 'Оборудование недоступно на выбранные даты';
 
                 return back()
                     ->withInput()
@@ -211,19 +211,18 @@ class CartController extends Controller
             $distanceKm = 0;
             $deliveryCalculated = true;
 
-
             if ($request->delivery_required) {
                 $equipmentCompany = $rentalTerm->equipment->company;
 
                 // Проверка локаций арендодателя
-                if (!$equipmentCompany || !$equipmentCompany->locations->count()) {
+                if (! $equipmentCompany || ! $equipmentCompany->locations->count()) {
                     return back()
                         ->withInput()
                         ->with('error', 'У арендодателя не настроены локации техники');
                 }
 
                 // Проверка локаций арендатора
-                if (!$company->activeRentalConditions->count()) {
+                if (! $company->activeRentalConditions->count()) {
                     return back()
                         ->withInput()
                         ->with('error', 'У вашей компании не настроены строительные площадки');
@@ -234,7 +233,7 @@ class CartController extends Controller
                 $to = Location::find($request->delivery_location_id);
 
                 // Проверка существования локаций
-                if (!$from || !$to) {
+                if (! $from || ! $to) {
                     return back()
                         ->withInput()
                         ->with('error', 'Указанные локации не найдены');
@@ -250,7 +249,7 @@ class CartController extends Controller
                     $equipment = $rentalTerm->equipment;
 
                     // Загружаем спецификации оборудования
-                    if (!$equipment->relationLoaded('specifications')) {
+                    if (! $equipment->relationLoaded('specifications')) {
                         $equipment->load('specifications');
                     }
 
@@ -261,12 +260,12 @@ class CartController extends Controller
                     $deliveryCost = $distanceKm * $ratePerKm;
 
                     // ПЕРЕМЕЩЕННЫЙ БЛОК ЛОГИРОВАНИЯ - ТЕПЕРЬ ЗДЕСЬ
-                Log::debug('Calculated distance', [
-                    'distance_km' => $distanceKm,
-                    'delivery_cost' => $deliveryCost,
-                    'rate_per_km' => $rentalCondition->delivery_cost_per_km,
-                    'coefficient' => config('services.yandex_maps.coefficient', 1.3)
-                ]);
+                    Log::debug('Calculated distance', [
+                        'distance_km' => $distanceKm,
+                        'delivery_cost' => $deliveryCost,
+                        'rate_per_km' => $rentalCondition->delivery_cost_per_km,
+                        'coefficient' => config('services.yandex_maps.coefficient', 1.3),
+                    ]);
 
                 } catch (\Exception $e) {
                     Log::error('Delivery calculation error: '.$e->getMessage());
@@ -275,7 +274,7 @@ class CartController extends Controller
             }
 
             // Проверка успешности расчета доставки
-            if ($request->delivery_required && !$deliveryCalculated) {
+            if ($request->delivery_required && ! $deliveryCalculated) {
                 return back()->with('error', 'Не удалось рассчитать доставку. Попробуйте позже');
             }
 
@@ -300,7 +299,7 @@ class CartController extends Controller
                 'base_price' => $pricing['base_price_per_unit'],
                 'platform_fee' => $pricing['platform_fee'],
                 'delivery_cost' => $deliveryCost,
-                'distance_km' => $distanceKm
+                'distance_km' => $distanceKm,
             ]);
 
             // Добавляем в корзину и получаем созданный элемент
@@ -336,12 +335,12 @@ class CartController extends Controller
             \Log::debug('[CART DEBUG] Exception caught', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
-                'line' => $e->getLine()
+                'line' => $e->getLine(),
             ]);
 
             return back()
                 ->withInput()
-                ->with('error', 'Ошибка при добавлении в корзину: ' . $e->getMessage());
+                ->with('error', 'Ошибка при добавлении в корзину: '.$e->getMessage());
         }
     }
 
@@ -353,7 +352,6 @@ class CartController extends Controller
             abort(403, 'Недостаточно прав для удаления этого элемента');
         }
 
-
         $this->cartService->removeItem($itemId);
 
         return back()->with('success', 'Позиция удалена из корзины');
@@ -363,7 +361,7 @@ class CartController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'start_date' => 'required|date|after_or_equal:today',
-            'end_date' => 'required|date|after:start_date'
+            'end_date' => 'required|date|after:start_date',
         ]);
 
         if ($validator->fails()) {
@@ -384,9 +382,11 @@ class CartController extends Controller
 
         return back()->with('success', 'Даты аренды обновлены для выбранных позиций');
     }
+
     public function clear()
     {
         $this->cartService->clearCart();
+
         return back()->with('success', 'Корзина очищена');
     }
 
@@ -396,7 +396,7 @@ class CartController extends Controller
 
         $request->validate([
             'items' => 'required|array',
-            'items.*' => 'exists:cart_items,id'
+            'items.*' => 'exists:cart_items,id',
         ]);
 
         $itemIds = $request->input('items');
@@ -412,7 +412,7 @@ class CartController extends Controller
 
         return response()->json([
             'success' => true,
-            'deleted_count' => $deleted
+            'deleted_count' => $deleted,
         ]);
     }
 }

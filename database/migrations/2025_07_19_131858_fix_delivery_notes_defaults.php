@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-         Schema::table('delivery_notes', function (Blueprint $table) {
+        Schema::table('delivery_notes', function (Blueprint $table) {
             $table->float('distance_km')->default(0)->change();
             $table->decimal('calculated_cost', 10, 2)->default(0)->change();
         });

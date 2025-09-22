@@ -21,7 +21,7 @@ class EquipmentRentalTermFactory extends Factory
             'min_rental_hours' => $this->faker->numberBetween(1, 24),
             'currency' => 'RUB',
             'delivery_days' => $this->faker->numberBetween(1, 3),
-            'return_policy' => $this->faker->sentence
+            'return_policy' => $this->faker->sentence,
         ];
     }
 }

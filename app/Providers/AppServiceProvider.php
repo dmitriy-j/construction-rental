@@ -2,20 +2,18 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use App\Services\EquipmentAvailabilityService;
-use Illuminate\Pagination\Paginator;
-use Illuminate\Support\Facades\Log;
-use App\Models\WaybillShift; // Добавляем импорт модели
-use App\Observers\WaybillShiftObserver; // Импорт наблюдателя
-use App\Services\WaybillCreationService;
-use App\Services\OneCExportService;
-use App\Models\Upd;
-use App\Models\Invoice;
 use App\Jobs\ExportUpdTo1C;
+use App\Models\Invoice;
+use App\Models\Upd;
+use App\Models\WaybillShift; // Добавляем импорт модели
+// Импорт наблюдателя
+use App\Services\EquipmentAvailabilityService;
+use App\Services\OneCExportService;
+use App\Services\WaybillCreationService;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
-
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,34 +23,34 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(EquipmentAvailabilityService::class, function ($app) {
-            return new EquipmentAvailabilityService();
+            return new EquipmentAvailabilityService;
         });
 
         $this->app->bind(TransportCalculatorService::class, function () {
-            return new TransportCalculatorService();
+            return new TransportCalculatorService;
         });
 
         $this->app->bind(DeliveryCalculatorService::class, function () {
-            return new DeliveryCalculatorService();
+            return new DeliveryCalculatorService;
         });
 
         $this->app->bind(DeliveryNoteService::class, function ($app) {
-            return new DeliveryNoteService();
+            return new DeliveryNoteService;
         });
 
-         $this->app->bind(WaybillCreationService::class, function ($app) {
-            return new WaybillCreationService();
+        $this->app->bind(WaybillCreationService::class, function ($app) {
+            return new WaybillCreationService;
         });
 
-         $this->app->singleton(BalanceService::class, function ($app) {
-            return new BalanceService();
+        $this->app->singleton(BalanceService::class, function ($app) {
+            return new BalanceService;
         });
 
         $this->app->singleton(FinancialAnalyticsService::class, function ($app) {
-            return new FinancialAnalyticsService();
+            return new FinancialAnalyticsService;
         });
-         $this->app->singleton(\App\Services\Parsers\UpdParserService::class, function ($app) {
-            return new \App\Services\Parsers\UpdParserService();
+        $this->app->singleton(\App\Services\Parsers\UpdParserService::class, function ($app) {
+            return new \App\Services\Parsers\UpdParserService;
         });
 
         $this->app->singleton(UpdProcessingService::class, function ($app) {
@@ -63,11 +61,11 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(OneCIntegrationService::class, function ($app) {
-            return new OneCIntegrationService();
+            return new OneCIntegrationService;
         });
 
         $this->app->singleton(OneCExportService::class, function ($app) {
-            return new OneCExportService();
+            return new OneCExportService;
         });
 
         View::composer('partials.sidebar', function ($view) {
@@ -87,24 +85,24 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Bootstrap any application services.
      */
-   // public function boot(): void
-   // {
-        //
- //   }
+    // public function boot(): void
+    // {
+    //
+    //   }
 
     public function boot()
     {
-    Paginator::useBootstrapFive();
+        Paginator::useBootstrapFive();
 
         // Логирование всех необработанных исключений
-        register_shutdown_function(function() {
+        register_shutdown_function(function () {
             $error = error_get_last();
             if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR])) {
                 \Log::emergency('SHUTDOWN ERROR', $error);
             }
         });
 
-         WaybillShift::observe(\App\Observers\WaybillShiftObserver::class);
+        WaybillShift::observe(\App\Observers\WaybillShiftObserver::class);
 
         // Автоматическая выгрузка в 1С при принятии УПД
         Upd::updated(function ($upd) {
@@ -124,5 +122,4 @@ class AppServiceProvider extends ServiceProvider
         });
 
     }
-
 }

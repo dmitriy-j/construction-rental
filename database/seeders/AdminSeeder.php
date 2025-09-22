@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Role;
 
 class AdminSeeder extends Seeder
 {
@@ -22,7 +21,7 @@ class AdminSeeder extends Seeder
         ]);
 
         $admin->assignRole('platform_super');
-        
+
         $this->command->info('Администратор платформы создан!');
         $this->command->info('Email: admin@example.com');
         $this->command->info('Password: password');

@@ -2,14 +2,14 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\CompletionAct;
 use App\Models\Waybill;
-
+use Illuminate\Console\Command;
 
 class CheckCompletionActs extends Command
 {
     protected $signature = 'app:check-completion-acts {waybill_id}';
+
     protected $description = 'Проверка наличия акта для указанного путевого листа';
 
     public function handle()
@@ -21,7 +21,7 @@ class CheckCompletionActs extends Command
             ->first();
 
         $this->info("Поиск акта для waybill_id: {$waybillId}");
-        $this->info("Акт найден: " . ($completionAct ? 'Да' : 'Нет'));
+        $this->info('Акт найден: '.($completionAct ? 'Да' : 'Нет'));
 
         if ($completionAct) {
             $this->info("ID акта: {$completionAct->id}");
@@ -31,7 +31,7 @@ class CheckCompletionActs extends Command
 
         // Проверка существования путевого листа
         $waybill = Waybill::find($waybillId);
-        $this->info("Путевой лист найден: " . ($waybill ? 'Да' : 'Нет'));
+        $this->info('Путевой лист найден: '.($waybill ? 'Да' : 'Нет'));
 
         if ($waybill) {
             $this->info("ID заказа путевого листа: {$waybill->order_id}");

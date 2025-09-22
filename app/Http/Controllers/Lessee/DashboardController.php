@@ -4,9 +4,8 @@ namespace App\Http\Controllers\Lessee;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
 use App\Services\BalanceService;
+use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
@@ -17,17 +16,17 @@ class DashboardController extends Controller
 
         $stats = [
             'active_orders' => Order::where('lessee_company_id', $companyId)
-                                ->where('status', 'active')
-                                ->count(),
+                ->where('status', 'active')
+                ->count(),
             'pending_orders' => Order::where('lessee_company_id', $companyId)
-                                    ->where('status', 'pending')
-                                    ->count(),
+                ->where('status', 'pending')
+                ->count(),
             'completed_orders' => Order::where('lessee_company_id', $companyId)
-                                    ->where('status', 'completed')
-                                    ->count(),
+                ->where('status', 'completed')
+                ->count(),
             'total_spent' => Order::where('lessee_company_id', $companyId)
-                                ->where('status', 'completed')
-                                ->sum('total_amount')
+                ->where('status', 'completed')
+                ->sum('total_amount'),
         ];
 
         $recentOrders = Order::with('lessorCompany')

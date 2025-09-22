@@ -2,10 +2,9 @@
 
 namespace App\Services\Parsers;
 
+use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use Illuminate\Support\Facades\Log;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 class UpdParserService
 {
@@ -21,7 +20,7 @@ class UpdParserService
             $parsedData = [
                 'header' => [],
                 'amounts' => [],
-                'items' => []
+                'items' => [],
             ];
 
             // Парсим заголовок
@@ -64,7 +63,7 @@ class UpdParserService
                     $item = [];
 
                     foreach ($mappingConfig['items']['columns'] as $field => $columnConfig) {
-                        $cell = $columnConfig['cell'] . $row;
+                        $cell = $columnConfig['cell'].$row;
                         $item[$field] = $this->getCellValue($worksheet, $cell);
                     }
 
@@ -80,7 +79,7 @@ class UpdParserService
 
         } catch (\Exception $e) {
             Log::error('Ошибка парсинга УПД', ['error' => $e->getMessage()]);
-            throw new \Exception("Не удалось распарсить файл УПД: " . $e->getMessage());
+            throw new \Exception('Не удалось распарсить файл УПД: '.$e->getMessage());
         }
     }
 
@@ -142,8 +141,9 @@ class UpdParserService
         } catch (\Exception $e) {
             Log::error('Ошибка получения значения ячейки', [
                 'cell' => $cell,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -163,7 +163,7 @@ class UpdParserService
         } catch (\Exception $e) {
             Log::error('Ошибка получения значения из объединенной ячейки', [
                 'cell' => $cell,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
 
@@ -176,29 +176,30 @@ class UpdParserService
             // Разбиваем координаты на составные части
             [$cellColumn, $cellRow] = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::coordinateFromString($cell);
             $cellColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($cellColumn);
-            $cellRow = (int)$cellRow;
+            $cellRow = (int) $cellRow;
 
             [$startCellColumn, $startCellRow] = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::coordinateFromString($startCell);
             $startColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($startCellColumn);
-            $startRowIndex = (int)$startCellRow;
+            $startRowIndex = (int) $startCellRow;
 
             [$endCellColumn, $endCellRow] = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::coordinateFromString($endCell);
             $endColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($endCellColumn);
-            $endRowIndex = (int)$endCellRow;
+            $endRowIndex = (int) $endCellRow;
 
             // Проверяем, входит ли ячейка в диапазон
-            return ($cellColumnIndex >= $startColumnIndex &&
+            return $cellColumnIndex >= $startColumnIndex &&
                     $cellColumnIndex <= $endColumnIndex &&
                     $cellRow >= $startRowIndex &&
-                    $cellRow <= $endRowIndex);
+                    $cellRow <= $endRowIndex;
 
         } catch (\Exception $e) {
             Log::error('Ошибка проверки диапазона ячейки', [
                 'cell' => $cell,
                 'startCell' => $startCell,
                 'endCell' => $endCell,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
+
             return false;
         }
     }
@@ -206,14 +207,15 @@ class UpdParserService
     protected function hasItemData(Worksheet $worksheet, int $row, array $columns): bool
     {
         // Проверяем, есть ли данные в первой колонке товара
-        $firstColumn = reset($columns)['cell'] . $row;
+        $firstColumn = reset($columns)['cell'].$row;
+
         return $this->getCellValue($worksheet, $firstColumn) !== null;
     }
 
     protected function isValidItem(array $item): bool
     {
         // Проверяем, что товар имеет название и количество
-        return !empty($item['name']) && !empty($item['quantity']);
+        return ! empty($item['name']) && ! empty($item['quantity']);
     }
 
     /**
@@ -228,7 +230,7 @@ class UpdParserService
             'header.seller.inn',
             'header.buyer.name',
             'header.buyer.inn',
-            'amounts.total'
+            'amounts.total',
         ];
 
         foreach ($requiredFields as $field) {
@@ -239,16 +241,16 @@ class UpdParserService
         }
 
         // Проверка согласованности сумм
-        if (!empty($parsedData['amounts']['without_vat']) &&
-            !empty($parsedData['amounts']['vat']) &&
-            !empty($parsedData['amounts']['total'])) {
+        if (! empty($parsedData['amounts']['without_vat']) &&
+            ! empty($parsedData['amounts']['vat']) &&
+            ! empty($parsedData['amounts']['total'])) {
 
             $calculatedTotal = (float) $parsedData['amounts']['without_vat'] + (float) $parsedData['amounts']['vat'];
             $declaredTotal = (float) $parsedData['amounts']['total'];
 
             if (abs($calculatedTotal - $declaredTotal) > 0.01) {
                 throw new \InvalidArgumentException(
-                    "Суммы не сходятся: без НДС {$parsedData['amounts']['without_vat']} + " .
+                    "Суммы не сходятся: без НДС {$parsedData['amounts']['without_vat']} + ".
                     "НДС {$parsedData['amounts']['vat']} ≠ {$parsedData['amounts']['total']}"
                 );
             }

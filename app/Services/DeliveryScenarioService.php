@@ -3,14 +3,8 @@
 namespace App\Services;
 
 use App\Models\DeliveryNote;
-use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Platform; // Исправленный импорт
-use App\Services\TransportCalculatorService;
-use Illuminate\Support\Str;
-
-
-
 
 class DeliveryScenarioService
 {
@@ -49,7 +43,7 @@ class DeliveryScenarioService
             'distance_km' => $item->distance_km ?? 0,
             'calculated_cost' => $item->delivery_cost,
             'is_mirror' => false,
-            'visible_to_lessee' => false
+            'visible_to_lessee' => false,
         ]);
     }
 
@@ -67,7 +61,7 @@ class DeliveryScenarioService
                 'carrier_company_id' => $carrier->id,
                 'carrier_contact_name' => $contactInfo['name'],
                 'carrier_contact_phone' => $contactInfo['phone'],
-                'status' => DeliveryNote::STATUS_IN_TRANSIT
+                'status' => DeliveryNote::STATUS_IN_TRANSIT,
             ]);
 
             // Отправка уведомления перевозчику
@@ -99,7 +93,7 @@ class DeliveryScenarioService
             'cargo_value' => $item->total_price,
             'transport_type' => $transportType,
             'status' => DeliveryNote::STATUS_DRAFT,
-            'is_mirror' => false
+            'is_mirror' => false,
         ]);
     }
 }

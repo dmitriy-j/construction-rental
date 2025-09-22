@@ -18,14 +18,15 @@ class Specification extends Model
         'weight',
         'length',
         'width',
-        'height'
+        'height',
     ];
 
     public function equipment()
     {
-        \Log::debug("Full specification", [
-            'spec' => $spec->log // используем наш аксессор
+        \Log::debug('Full specification', [
+            'spec' => $spec->log, // используем наш аксессор
         ]);
+
         return $this->belongsTo(Equipment::class);
     }
 
@@ -38,7 +39,7 @@ class Specification extends Model
             'weight' => $this->weight,
             'length' => $this->length,
             'width' => $this->width,
-            'height' => $this->height
+            'height' => $this->height,
         ];
     }
 }

@@ -2,10 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Models\Company;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
-use App\Models\Company;
 
 class UserFactory extends Factory
 {

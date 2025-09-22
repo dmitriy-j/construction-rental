@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Equipment;
 use App\Models\EquipmentRentalTerm;
+use Illuminate\Database\Seeder;
 
 class EquipmentRentalTermSeeder extends Seeder
 {

@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\CompletionAct;
 use App\Models\Contract; // Добавьте эту строку
-use App\Models\Waybill; // Добавьте эту строку
 use App\Models\DeliveryNote; // Добавьте эту строку
-use App\Models\CompletionAct; // Добавьте эту строку
+use App\Models\Waybill; // Добавьте эту строку
+use Illuminate\Http\Request; // Добавьте эту строку
 
 class DocumentController extends Controller
 {
@@ -16,7 +16,7 @@ class DocumentController extends Controller
         $data = request()->validate([
             'delivery_date' => 'required|date',
             'driver_name' => 'required|string',
-            'equipment_condition' => 'required|string'
+            'equipment_condition' => 'required|string',
         ]);
 
         // Создание накладной
@@ -24,7 +24,7 @@ class DocumentController extends Controller
 
         // Обновление даты начала услуг
         $order->update([
-            'service_start_date' => $data['delivery_date']
+            'service_start_date' => $data['delivery_date'],
         ]);
 
         return response()->json($deliveryNote, 201);
@@ -38,44 +38,42 @@ class DocumentController extends Controller
             'work_date' => 'required|date',
             'hours_worked' => 'required|numeric|min:0',
             'downtime_hours' => 'nullable|numeric|min:0',
-            'downtime_cause' => 'nullable|in:lessee,lessor,force_majeure'
+            'downtime_cause' => 'nullable|in:lessee,lessor,force_majeure',
         ]);
 
         $waybill = $order->waybills()->create($data);
+
         return response()->json($waybill, 201);
     }
 
     public function generateCompletionAct(Order $order)
     {
-        if (!$order->canGenerateCompletionAct()) {
+        if (! $order->canGenerateCompletionAct()) {
             abort(400, 'Невозможно сформировать акт для этого заказа');
         }
 
         // Создаем экземпляр генератора и вызываем метод
-        $generator = new CompletionActGenerator();
+        $generator = new CompletionActGenerator;
         $act = $generator->generateForOrder($order);
 
         return response()->json($act, 201);
     }
 
-
-   public function index(Request $request)
+    public function index(Request $request)
     {
         $user = auth()->user();
         $type = $request->input('type');
 
         // Для арендодателя: тип по умолчанию - путевые листы
         // Для арендатора: тип по умолчанию - транспортные накладные
-        if (!$type) {
+        if (! $type) {
             $type = $user->company->is_lessor ? 'waybills' : 'delivery_notes';
         }
-
-
 
         \Log::debug('Document access', [
             'user_id' => $user->id,
             'company_id' => $user->company_id,
-            'requested_type' => $type
+            'requested_type' => $type,
         ]);
 
         $query = null;
@@ -88,7 +86,7 @@ class DocumentController extends Controller
                     'order.lessorCompany',
                     'senderCompany',
                     'receiverCompany',
-                    'orderItem'
+                    'orderItem',
                 ]);
 
                 // Фильтрация для арендатора
@@ -111,12 +109,12 @@ class DocumentController extends Controller
                     'order.lesseeCompany',
                     'order.lessorCompany',
                     'operator',
-                    'equipment'
+                    'equipment',
                 ])
-                ->where('perspective', 'lessor') // ДОБАВЛЯЕМ ФИЛЬТРАЦИЮ
-                ->whereHas('order', function($q) use ($user) {
-                    $q->where('lessor_company_id', $user->company_id);
-                });
+                    ->where('perspective', 'lessor') // ДОБАВЛЯЕМ ФИЛЬТРАЦИЮ
+                    ->whereHas('order', function ($q) use ($user) {
+                        $q->where('lessor_company_id', $user->company_id);
+                    });
                 break;
 
             case 'contracts':
@@ -129,7 +127,7 @@ class DocumentController extends Controller
                     ->where('lessor_company_id', $user->company_id);
                 break;
 
-           case 'completion_acts':
+            case 'completion_acts':
                 // Только для арендодателей!
                 if ($userType !== 'lessor') {
                     abort(403, 'Доступ запрещен');
@@ -137,7 +135,7 @@ class DocumentController extends Controller
 
                 $query = CompletionAct::with('order.lesseeCompany')
                     ->where('perspective', 'lessor') // ДОБАВЛЯЕМ ФИЛЬТРАЦИЮ
-                    ->whereHas('order', function($q) use ($user) {
+                    ->whereHas('order', function ($q) use ($user) {
                         $q->where('lessor_company_id', $user->company_id);
                     });
                 break;
@@ -152,7 +150,7 @@ class DocumentController extends Controller
         \Log::debug('Documents loaded', [
             'type' => $type,
             'count' => $documents->count(),
-            'userType' => $userType
+            'userType' => $userType,
         ]);
 
         return view("{$userType}.documents.index", compact('documents', 'type', 'userType'));
@@ -163,17 +161,17 @@ class DocumentController extends Controller
         $type = $request->input('type');
         $user = auth()->user();
 
-        $documents = match($type) {
-            'delivery_notes' => DeliveryNote::whereHas('order', fn($q) => $q->where('lessor_company_id', $user->company_id))
-                                ->whereIn('status', [DeliveryNote::STATUS_DRAFT, DeliveryNote::STATUS_IN_TRANSIT])
-                                ->get(),
-            'waybills' => Waybill::whereHas('order', fn($q) => $q->where('lessor_company_id', $user->company_id))
-                        ->whereIn('status', [Waybill::STATUS_CREATED, Waybill::STATUS_IN_PROGRESS])
-                        ->get(),
+        $documents = match ($type) {
+            'delivery_notes' => DeliveryNote::whereHas('order', fn ($q) => $q->where('lessor_company_id', $user->company_id))
+                ->whereIn('status', [DeliveryNote::STATUS_DRAFT, DeliveryNote::STATUS_IN_TRANSIT])
+                ->get(),
+            'waybills' => Waybill::whereHas('order', fn ($q) => $q->where('lessor_company_id', $user->company_id))
+                ->whereIn('status', [Waybill::STATUS_CREATED, Waybill::STATUS_IN_PROGRESS])
+                ->get(),
             default => collect(),
         };
 
-        return response()->json($documents->map(function($doc) {
+        return response()->json($documents->map(function ($doc) {
             return [
                 'id' => $doc->id,
                 'status' => $doc->status,
@@ -196,7 +194,7 @@ class DocumentController extends Controller
             return $this->downloadDeliveryNote($note);
         }
 
-         // ДОБАВЛЯЕМ ПРОВЕРКУ ПЕРСПЕКТИВЫ ДЛЯ WAYBILLS И COMPLETION_ACTS
+        // ДОБАВЛЯЕМ ПРОВЕРКУ ПЕРСПЕКТИВЫ ДЛЯ WAYBILLS И COMPLETION_ACTS
         if (in_array($type, ['waybills', 'completion_acts'])) {
             if ($document->perspective !== 'lessor') {
                 abort(403, 'Доступ запрещен. Неверный тип документа.');
@@ -204,7 +202,7 @@ class DocumentController extends Controller
         }
 
         // Для остальных типов документов
-        $document = match($type) {
+        $document = match ($type) {
             'contracts' => Contract::findOrFail($id),
             'waybills' => Waybill::findOrFail($id),
             'completion_acts' => CompletionAct::findOrFail($id),
@@ -215,7 +213,7 @@ class DocumentController extends Controller
             abort(403);
         }
 
-        $generatorClass = match($type) {
+        $generatorClass = match ($type) {
             'contracts' => ContractPdfGenerator::class,
             'waybills' => WaybillPdfGenerator::class,
             'completion_acts' => CompletionActGenerator::class,
@@ -226,9 +224,9 @@ class DocumentController extends Controller
 
     public function downloadUPDF(Order $order, $type)
     {
-        $generator = new UPDPdfGenerator();
+        $generator = new UPDPdfGenerator;
 
-        return match($type) {
+        return match ($type) {
             'lessor' => $generator->generateForLessor($order),
             'lessee' => $generator->generateForLessee($order),
             default => abort(404)
@@ -238,7 +236,7 @@ class DocumentController extends Controller
     public function downloadDeliveryNote(DeliveryNote $note)
     {
         // Если документ еще не сгенерирован или отсутствует в хранилище
-        if (!$note->document_path || !Storage::exists($note->document_path)) {
+        if (! $note->document_path || ! Storage::exists($note->document_path)) {
             // Создаем новый генератор
             $pdfGenerator = app(DeliveryNoteGenerator::class);
 
@@ -263,7 +261,7 @@ class DocumentController extends Controller
         $act->load([
             'order.lesseeCompany',
             'waybill.equipment',
-            'waybill.operator'
+            'waybill.operator',
         ]);
 
         return view('lessor.documents.completion_acts.show', compact('act'));
@@ -278,11 +276,9 @@ class DocumentController extends Controller
         // Проверка роли и типа накладной
         if ($user->isLessor() && $note->type === DeliveryNote::TYPE_LESSOR_TO_PLATFORM) {
             $note->update(['sender_signature_path' => $signaturePath]);
-        }
-        elseif ($user->isLessee() && $note->type === DeliveryNote::TYPE_PLATFORM_TO_LESSEE) {
+        } elseif ($user->isLessee() && $note->type === DeliveryNote::TYPE_PLATFORM_TO_LESSEE) {
             $note->update(['receiver_signature_path' => $signaturePath]);
-        }
-        elseif ($user->isPlatformAdmin()) {
+        } elseif ($user->isPlatformAdmin()) {
             $note->update(['carrier_signature_path' => $signaturePath]);
         }
 
@@ -294,14 +290,12 @@ class DocumentController extends Controller
         return response()->json(['status' => 'success']);
     }
 
-
     private function saveSignature($base64): string
     {
         $image = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $base64));
-        $fileName = 'signatures/' . Str::uuid() . '.png';
+        $fileName = 'signatures/'.Str::uuid().'.png';
         Storage::put($fileName, $image);
+
         return $fileName;
     }
-
-
 }

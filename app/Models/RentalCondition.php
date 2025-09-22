@@ -28,8 +28,6 @@ class RentalCondition extends Model
         'loading_cost',
         'unloading_cost',
 
-
-
     ];
 
     protected $casts = [

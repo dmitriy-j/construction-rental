@@ -15,6 +15,7 @@ class ProcessBankStatementTransaction implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $transactionData;
+
     protected $bankStatementId;
 
     public function __construct(array $transactionData, int $bankStatementId)
@@ -58,9 +59,7 @@ class ProcessBankStatementTransaction implements ShouldQueue
             'processed_count' => $processedCount,
             'error_count' => $errorCount,
             'status' => $status,
-            'processed_at' => $status !== 'processing' ? now() : null
+            'processed_at' => $status !== 'processing' ? now() : null,
         ]);
     }
-
-
 }

@@ -20,6 +20,7 @@ class EmployeeController extends Controller
     public function index()
     {
         $employees = Admin::with('roles')->get();
+
         return view('admin.employees.index', compact('employees'));
     }
 
@@ -32,13 +33,13 @@ class EmployeeController extends Controller
     {
         $roles = Role::where('guard_name', 'admin')->get();
         $permissions = Permission::where('guard_name', 'admin')->get();
+
         return view('admin.employees.create', compact('roles', 'permissions'));
     }
 
     /**
      * Store a newly created employee.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\RedirectResponse
      */
     public function store(Request $request)
@@ -87,7 +88,7 @@ class EmployeeController extends Controller
         $employee->assignRole($role);
 
         // Назначение дополнительных прав
-        if (!empty($data['permissions'])) {
+        if (! empty($data['permissions'])) {
             $permissions = Permission::whereIn('id', $data['permissions'])->get();
             $employee->givePermissionTo($permissions);
         }
@@ -99,7 +100,6 @@ class EmployeeController extends Controller
     /**
      * Show the form for editing the specified employee.
      *
-     * @param  Admin  $employee
      * @return \Illuminate\View\View
      */
     public function edit(Admin $employee)
@@ -114,14 +114,12 @@ class EmployeeController extends Controller
     /**
      * Update the specified employee.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  Admin  $employee
      * @return \Illuminate\Http\RedirectResponse
      */
     public function update(Request $request, Admin $employee)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email|unique:admins,email,' . $employee->id,
+            'email' => 'required|email|unique:admins,email,'.$employee->id,
             'password' => 'nullable|min:8|confirmed',
             'last_name' => 'required|string|max:50',
             'first_name' => 'required|string|max:50',
@@ -158,7 +156,7 @@ class EmployeeController extends Controller
             'position' => $data['position'],
         ];
 
-        if (!empty($data['password'])) {
+        if (! empty($data['password'])) {
             $updateData['password'] = Hash::make($data['password']);
         }
 
@@ -169,7 +167,7 @@ class EmployeeController extends Controller
         $employee->syncRoles([$role]);
 
         // Обновление прав
-        $permissions = !empty($data['permissions'])
+        $permissions = ! empty($data['permissions'])
             ? Permission::whereIn('id', $data['permissions'])->get()
             : [];
 
@@ -182,7 +180,6 @@ class EmployeeController extends Controller
     /**
      * Remove the specified employee.
      *
-     * @param  Admin  $employee
      * @return \Illuminate\Http\RedirectResponse
      */
     public function destroy(Admin $employee)
@@ -194,6 +191,7 @@ class EmployeeController extends Controller
         }
 
         $employee->delete();
+
         return redirect()->route('admin.employees.index')
             ->with('success', 'Сотрудник удален');
     }

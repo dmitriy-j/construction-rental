@@ -6,16 +6,19 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Log;
 
 class Waybill extends Model
 {
     use HasFactory;
 
     const STATUS_FUTURE = 'future';
+
     const STATUS_ACTIVE = 'active';
+
     const STATUS_COMPLETED = 'completed';
+
     const SHIFT_DAY = 'day';
+
     const SHIFT_NIGHT = 'night';
 
     protected $fillable = [
@@ -39,7 +42,7 @@ class Waybill extends Model
         'perspective',
         'related_waybill_id',
         'parent_order_id',
-        'upd_id'
+        'upd_id',
 
     ];
 
@@ -60,13 +63,13 @@ class Waybill extends Model
 
     public function canUploadUpd(): bool
     {
-        return $this->status === 'completed' && !$this->upd_id;
+        return $this->status === 'completed' && ! $this->upd_id;
     }
 
     public function scopeCanUploadUpd($query)
     {
         return $query->where('status', 'completed')
-                    ->whereNull('upd_id');
+            ->whereNull('upd_id');
     }
 
     public function parentOrder()
@@ -76,12 +79,12 @@ class Waybill extends Model
 
     protected static function booted()
     {
-         static::creating(function ($model) {
+        static::creating(function ($model) {
             // Генерация номера в зависимости от перспективы
             if ($model->perspective === 'lessor') {
-                $model->number = 'ЭСМ-2-' . date('Ymd') . '-' . str_pad(static::where('perspective', 'lessor')->count() + 1, 5, '0', STR_PAD_LEFT);
+                $model->number = 'ЭСМ-2-'.date('Ymd').'-'.str_pad(static::where('perspective', 'lessor')->count() + 1, 5, '0', STR_PAD_LEFT);
             } else {
-                $model->number = 'ПЛ-АР-' . date('Ymd') . '-' . str_pad(static::where('perspective', 'lessee')->count() + 1, 5, '0', STR_PAD_LEFT);
+                $model->number = 'ПЛ-АР-'.date('Ymd').'-'.str_pad(static::where('perspective', 'lessee')->count() + 1, 5, '0', STR_PAD_LEFT);
             }
 
             // 2. Проверка соответствия оператора
@@ -97,7 +100,7 @@ class Waybill extends Model
                     'waybill_id' => $model->id,
                     'old_status' => $model->getOriginal('status'),
                     'new_status' => $model->status,
-                    'changed_by' => auth()->id()
+                    'changed_by' => auth()->id(),
                 ]);
             }
         });
@@ -165,7 +168,7 @@ class Waybill extends Model
 
     public function getStatusTextAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             self::STATUS_FUTURE => 'Будущий',
             self::STATUS_ACTIVE => 'Активный',
             self::STATUS_COMPLETED => 'Завершен',
@@ -175,7 +178,7 @@ class Waybill extends Model
 
     public function getStatusColorAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             self::STATUS_FUTURE => 'warning',
             self::STATUS_ACTIVE => 'success',
             self::STATUS_COMPLETED => 'secondary',
@@ -265,14 +268,14 @@ class Waybill extends Model
             ->withDefault(function ($item, $waybill) {
                 return new OrderItem([
                     'start_date' => $waybill->start_date,
-                    'end_date' => $waybill->end_date
+                    'end_date' => $waybill->end_date,
                 ]);
             });
     }
 
     public function allShiftsFilled(): bool
     {
-        return $this->shifts()->where(function($query) {
+        return $this->shifts()->where(function ($query) {
             $query->whereNull('hours_worked')
                 ->orWhere('hours_worked', '<=', 0);
         })->doesntExist();
@@ -283,14 +286,14 @@ class Waybill extends Model
         return [
             'id' => $this->id,
             'number' => $this->number,
-            'period' => $this->start_date->format('d.m.Y') . ' - ' . $this->end_date->format('d.m.Y'),
+            'period' => $this->start_date->format('d.m.Y').' - '.$this->end_date->format('d.m.Y'),
             'equipment' => $this->equipment->title,
             'operator' => $this->operator->full_name,
             'total_hours' => $this->total_hours,
             'hourly_rate' => $this->lessor_hourly_rate,
             'total_amount' => $this->total_hours * $this->lessor_hourly_rate,
             'status' => $this->status_text,
-            'perspective' => 'lessor'
+            'perspective' => 'lessor',
         ];
     }
 
@@ -302,7 +305,7 @@ class Waybill extends Model
         return [
             'id' => $this->id,
             'number' => $this->number,
-            'period' => $this->start_date->format('d.m.Y') . ' - ' . $this->end_date->format('d.m.Y'),
+            'period' => $this->start_date->format('d.m.Y').' - '.$this->end_date->format('d.m.Y'),
             'equipment' => $this->equipment->title,
             'operator' => 'Оператор платформы', // Скрываем реальное имя оператора
             'total_hours' => $this->total_hours,
@@ -313,7 +316,7 @@ class Waybill extends Model
             'lessor_name' => 'Платформа', // Заменяем на нейтральное название
             'order_id' => $this->order_id,
             'parent_order_id' => $this->parent_order_id,
-            'created_at' => $this->created_at
+            'created_at' => $this->created_at,
         ];
     }
 
@@ -321,6 +324,4 @@ class Waybill extends Model
     {
         return $query->where('perspective', 'lessor');
     }
-
-
 }

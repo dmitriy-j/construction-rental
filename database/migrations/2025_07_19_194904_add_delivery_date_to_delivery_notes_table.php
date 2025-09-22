@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-         Schema::table('delivery_notes', function (Blueprint $table) {
+        Schema::table('delivery_notes', function (Blueprint $table) {
             $table->dateTime('delivery_date')->after('delivery_to_id');
         });
     }

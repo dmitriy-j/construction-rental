@@ -47,7 +47,7 @@ class Add1CFieldsToUpdsTable extends Migration
                 'lessor_sign_date',
                 'lessee_sign_position',
                 'lessee_sign_name',
-                'lessee_sign_date'
+                'lessee_sign_date',
             ]);
         });
     }

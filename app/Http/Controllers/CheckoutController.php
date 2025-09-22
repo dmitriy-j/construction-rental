@@ -2,27 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Company;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Platform;
 use App\Services\CartService;
 use App\Services\EquipmentAvailabilityService;
 use App\Services\PricingService;
-use App\Services\TransportCalculatorService;
-use App\Services\DeliveryCalculatorService;
+use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Exception;
-use Carbon\Carbon;
-use App\Models\CartItem;
-use App\Models\Company;
-use App\Models\OrderItem;
-use App\Models\Order;
-use App\Models\Platform;
-use App\Models\EquipmentAvailability;
 
 class CheckoutController extends Controller
 {
     protected $cartService;
+
     protected $availabilityService;
+
     protected $pricingService;
 
     public function __construct(
@@ -40,7 +38,7 @@ class CheckoutController extends Controller
         Log::info('[CHECKOUT] Начало оформления заказа', [
             'user_id' => auth()->id(),
             'selected_items' => $request->input('selected_items', ''),
-            'all_request_data' => $request->all()
+            'all_request_data' => $request->all(),
         ]);
 
         try {
@@ -56,7 +54,7 @@ class CheckoutController extends Controller
             Log::debug('[CHECKOUT] Получена корзина', [
                 'cart_id' => $cart->id,
                 'item_count' => $cart->items->count(),
-                'selected_items_count' => count($selectedItems)
+                'selected_items_count' => count($selectedItems),
             ]);
 
             $cart->load([
@@ -64,29 +62,30 @@ class CheckoutController extends Controller
                 'items.rentalTerm.equipment.company',
                 'items.rentalCondition',
                 'items.deliveryFrom',
-                'items.deliveryTo'
+                'items.deliveryTo',
             ]);
 
-            $cartItems = $cart->items->filter(fn($item) => in_array($item->id, $selectedItems));
+            $cartItems = $cart->items->filter(fn ($item) => in_array($item->id, $selectedItems));
 
             // Добавляем детальное логирование
             Log::debug('[CHECKOUT] Cart items details', [
-                'items' => $cartItems->map(function($item) {
+                'items' => $cartItems->map(function ($item) {
                     return [
                         'id' => $item->id,
                         'delivery_cost' => $item->delivery_cost,
                         'delivery_from' => $item->delivery_from_id,
-                        'delivery_to' => $item->delivery_to_id
+                        'delivery_to' => $item->delivery_to_id,
                     ];
-                })
+                }),
             ]);
 
             if ($cartItems->isEmpty()) {
                 Log::warning('[CHECKOUT] Корзина пуста после фильтрации');
+
                 return redirect()->back()->with('error', 'Корзина пуста');
             }
 
-             DB::beginTransaction();
+            DB::beginTransaction();
 
             try {
                 // 1. Генерируем номер для родительского заказа арендатора
@@ -100,7 +99,7 @@ class CheckoutController extends Controller
 
                 // 3. Группируем и создаем дочерние заказы
                 $groupedItems = $cartItems->groupBy(
-                    fn($item) => $item->rentalTerm->equipment->company_id
+                    fn ($item) => $item->rentalTerm->equipment->company_id
                 );
 
                 foreach ($groupedItems as $companyId => $items) {
@@ -136,31 +135,33 @@ class CheckoutController extends Controller
                 Log::info('[CHECKOUT] Заказ успешно оформлен', [
                     'parent_order_id' => $parentOrder->id,
                     'child_orders_count' => count($orders),
-                    'delivery_cost_total' => $parentOrder->delivery_cost
+                    'delivery_cost_total' => $parentOrder->delivery_cost,
                 ]);
 
                 return redirect()->route('lessee.orders.show', ['order' => $parentOrder->id])
-                     ->with('success', 'Заказ #' . $parentOrder->company_order_number . ' успешно оформлен!');
+                    ->with('success', 'Заказ #'.$parentOrder->company_order_number.' успешно оформлен!');
 
             } catch (Exception $e) {
                 DB::rollBack();
                 Log::error('[CHECKOUT] Ошибка в транзакции', [
                     'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
+                    'trace' => $e->getTraceAsString(),
                 ]);
-                return redirect()->back()->with('error', 'Ошибка оформления заказа: ' . $e->getMessage());
+
+                return redirect()->back()->with('error', 'Ошибка оформления заказа: '.$e->getMessage());
             }
 
         } catch (Exception $e) {
             Log::error('[CHECKOUT] Критическая ошибка', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            return redirect()->back()->with('error', 'Произошла непредвиденная ошибка: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Произошла непредвиденная ошибка: '.$e->getMessage());
         }
     }
 
-  protected function createParentOrder($items, $orderNumber)
+    protected function createParentOrder($items, $orderNumber)
     {
 
         if ($items->isEmpty()) {
@@ -171,16 +172,16 @@ class CheckoutController extends Controller
         $deliveryCost = $items->sum('delivery_cost');
 
         // Сумма, которую платит арендатор за аренду (уже включает наценку платформы)
-        $customerRentalTotal = $items->sum(function($item) {
-            return ($item->fixed_customer_price * $item->period_count);
+        $customerRentalTotal = $items->sum(function ($item) {
+            return $item->fixed_customer_price * $item->period_count;
         });
 
         // Заработок платформы (наценка)
-         $platformFeeTotal = $items->sum('platform_fee');
+        $platformFeeTotal = $items->sum('platform_fee');
 
         // Сумма, которая уйдет арендодателям (БЕЗ наценки платформы)
-        $lessorBaseAmount = $items->sum(function($item) {
-            return ($item->fixed_lessor_price * $item->period_count);
+        $lessorBaseAmount = $items->sum(function ($item) {
+            return $item->fixed_lessor_price * $item->period_count;
         });
 
         // Итоговая сумма к оплате арендатором
@@ -208,18 +209,18 @@ class CheckoutController extends Controller
         if ($platformFeeTotal != $items->sum('platform_fee')) {
             \Log::warning('Возможна ошибка в расчете платформенной комиссии', [
                 'calculated' => $platformFeeTotal,
-                'expected' => $items->sum('platform_fee')
+                'expected' => $items->sum('platform_fee'),
             ]);
         }
     }
 
-   protected function createChildOrder($parentId, $companyId, $items, $orderNumber)
+    protected function createChildOrder($parentId, $companyId, $items, $orderNumber)
     {
         $rentalCondition = $items->first()->rentalCondition;
 
         // Расчеты для арендодателя: используем fixed_lessor_price!
         $deliveryCost = $items->sum('delivery_cost');
-        $lessorBaseAmount = $items->sum(function($item) {
+        $lessorBaseAmount = $items->sum(function ($item) {
             return $item->fixed_lessor_price * $item->period_count;
         });
 
@@ -302,10 +303,10 @@ class CheckoutController extends Controller
     public function bookEquipmentItem($cartItem, $orderId)
     {
         // Проверяем наличие необходимых отношений
-        if (!$cartItem->rentalTerm || !$cartItem->rentalTerm->equipment) {
+        if (! $cartItem->rentalTerm || ! $cartItem->rentalTerm->equipment) {
             Log::error('Оборудование не найдено для элемента корзины', [
                 'cart_item_id' => $cartItem->id,
-                'rental_term_id' => $cartItem->rental_term_id
+                'rental_term_id' => $cartItem->rental_term_id,
             ]);
             throw new \Exception("Оборудование для позиции #{$cartItem->id} не найдено");
         }
@@ -315,7 +316,7 @@ class CheckoutController extends Controller
         $endDate = Carbon::parse($cartItem->end_date);
 
         // Проверяем доступность
-        if (!$this->availabilityService->isAvailable($equipment, $startDate, $endDate)) {
+        if (! $this->availabilityService->isAvailable($equipment, $startDate, $endDate)) {
             $nextAvailable = $this->availabilityService->calculateNextAvailableDate($equipment->id);
             $message = $nextAvailable
                 ? "Оборудование {$equipment->title} недоступно. Ближайшая доступная дата: {$nextAvailable->format('d.m.Y')}"
@@ -336,16 +337,16 @@ class CheckoutController extends Controller
     protected function getNextCompanyOrderNumber(?int $lesseeCompanyId, ?int $lessorCompanyId): int
     {
         // Определяем, для какой роли генерируем номер
-        if (!is_null($lesseeCompanyId)) {
+        if (! is_null($lesseeCompanyId)) {
             // Если это заказ арендатора (родительский) - ищем макс. номер по lessee_company_id
             $lastOrder = Order::where('lessee_company_id', $lesseeCompanyId)
-                            ->orderBy('company_order_number', 'desc')
-                            ->first();
-        } elseif (!is_null($lessorCompanyId)) {
+                ->orderBy('company_order_number', 'desc')
+                ->first();
+        } elseif (! is_null($lessorCompanyId)) {
             // Если это заказ арендодателя (дочерний) - ищем макс. номер по lessor_company_id
             $lastOrder = Order::where('lessor_company_id', $lessorCompanyId)
-                            ->orderBy('company_order_number', 'desc')
-                            ->first();
+                ->orderBy('company_order_number', 'desc')
+                ->first();
         } else {
             // Если оба null (маловероятно в вашей схеме), возвращаем 1
             return 1;
@@ -354,4 +355,3 @@ class CheckoutController extends Controller
         return ($lastOrder->company_order_number ?? 0) + 1;
     }
 }
-

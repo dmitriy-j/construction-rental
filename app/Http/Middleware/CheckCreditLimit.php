@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\BalanceService;
 use Closure;
 use Illuminate\Http\Request;
-use App\Services\BalanceService;
 
 class CheckCreditLimit
 {

@@ -13,7 +13,7 @@ class EquipmentImage extends Model
     protected $fillable = [
         'equipment_id',
         'path',
-        'is_main'
+        'is_main',
     ];
 
     public function equipment(): BelongsTo
@@ -24,6 +24,6 @@ class EquipmentImage extends Model
     // URL для изображения
     public function getUrlAttribute(): string
     {
-        return asset('storage/' . $this->path);
+        return asset('storage/'.$this->path);
     }
 }

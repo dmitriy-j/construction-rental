@@ -3,11 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\Company;
+use App\Models\DiscountTier;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Role;
-use App\Models\DiscountTier;
 
 class CompaniesSeeder extends Seeder
 {
@@ -86,7 +85,7 @@ class CompaniesSeeder extends Seeder
 
         foreach ($companies as $company) {
             DiscountTier::factory()->count(rand(1, 3))->create([
-                'company_id' => $company->id
+                'company_id' => $company->id,
             ]);
         }
     }

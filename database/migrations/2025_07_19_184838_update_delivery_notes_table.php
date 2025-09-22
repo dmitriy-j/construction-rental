@@ -39,7 +39,7 @@ class UpdateDeliveryNotesTable extends Migration
                 'delivery_scenario',
                 'carrier_company_id',
                 'carrier_contact_name',
-                'carrier_contact_phone'
+                'carrier_contact_phone',
             ]);
 
             $table->renameColumn('transport_driver_name', 'driver_name');

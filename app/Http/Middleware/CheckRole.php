@@ -4,7 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
 {
@@ -12,12 +11,12 @@ class CheckRole
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return redirect()->route('login');
         }
 
         // Для сотрудников проверяем роль
-        if ($user->isStaff() && !in_array($user->role, $roles)) {
+        if ($user->isStaff() && ! in_array($user->role, $roles)) {
             abort(403, 'Unauthorized action.');
         }
 

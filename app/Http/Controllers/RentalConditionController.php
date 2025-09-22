@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\RentalCondition;
 use App\Models\Company;
+use App\Models\RentalCondition;
 use Illuminate\Http\Request;
 
 class RentalConditionController extends Controller
@@ -12,7 +12,7 @@ class RentalConditionController extends Controller
     {
         return view('rental-conditions.index', [
             'company' => $company,
-            'conditions' => $company->rentalConditions
+            'conditions' => $company->rentalConditions,
         ]);
     }
 

@@ -18,7 +18,7 @@ class DeliveryNoteExportController extends Controller
         $isAuthorized = ($user->isLessee() && $note->receiver_company_id === $user->company_id) ||
                         ($user->isLessor() && $note->sender_company_id === $user->company_id);
 
-        if (!$isAuthorized) {
+        if (! $isAuthorized) {
             abort(403, 'Доступ запрещен');
         }
 
@@ -35,13 +35,13 @@ class DeliveryNoteExportController extends Controller
         $isAuthorized = ($user->isLessee() && $note->receiver_company_id === $user->company_id) ||
                         ($user->isLessor() && $note->sender_company_id === $user->company_id);
 
-        if (!$isAuthorized) {
+        if (! $isAuthorized) {
             abort(403, 'Доступ запрещен');
         }
 
         // Генерируем PDF, если он ещё не создан
-        if (!$note->document_path || !Storage::exists($note->document_path)) {
-            $generator = new DeliveryNoteGenerator();
+        if (! $note->document_path || ! Storage::exists($note->document_path)) {
+            $generator = new DeliveryNoteGenerator;
             $pdfPath = $generator->generateAndSave($note);
             $note->update(['document_path' => $pdfPath]);
         }
@@ -49,7 +49,7 @@ class DeliveryNoteExportController extends Controller
         return Pdf::loadView('documents.delivery-note-lessee', [
             'note' => $note,
             'platform' => \App\Models\Platform::getMain(),
-            'currentDate' => now()->format('d.m.Y')
+            'currentDate' => now()->format('d.m.Y'),
         ])->download("ТН_{$note->document_number}.pdf");
     }
 }

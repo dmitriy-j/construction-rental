@@ -9,9 +9,9 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-   public function up()
+    public function up()
     {
-        if (!Schema::hasColumn('bank_statement_transactions', 'error_message')) {
+        if (! Schema::hasColumn('bank_statement_transactions', 'error_message')) {
             Schema::table('bank_statement_transactions', function (Blueprint $table) {
                 $table->text('error_message')->nullable()->after('status');
             });

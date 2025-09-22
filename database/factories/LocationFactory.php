@@ -21,10 +21,10 @@ class LocationFactory extends Factory
                 'Техническая база',
                 'Склад техники',
                 'Основной склад',
-                'Строительный объект ' . $this->faker->streetName,
-                'Площадка ' . $this->faker->buildingNumber
+                'Строительный объект '.$this->faker->streetName,
+                'Площадка '.$this->faker->buildingNumber,
             ]),
-            'address' => "{$city}, {$region}, " . $this->faker->streetAddress,
+            'address' => "{$city}, {$region}, ".$this->faker->streetAddress,
             'latitude' => $this->faker->latitude(55, 60),
             'longitude' => $this->faker->longitude(30, 40),
             'company_id' => Company::inRandomOrder()->first()->id ?? Company::factory(),

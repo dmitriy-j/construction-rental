@@ -96,8 +96,8 @@ class RussianRegionProvider extends Base
         'Чувашская Республика',
         'Чукотский автономный округ',
         'Ямало-Ненецкий автономный округ',
-        'Ярославская область'
-            ];
+        'Ярославская область',
+    ];
 
     public function russianRegion()
     {

@@ -3,28 +3,26 @@
 namespace App\Http\Controllers\Catalog;
 
 use App\Http\Controllers\Controller;
-use App\Models\Equipment;
 use App\Models\Category;
+use App\Models\Equipment;
+use App\Models\EquipmentRentalTerm;
 use App\Models\Location;
 use Illuminate\Http\Request;
-use App\Models\EquipmentRentalTerm;
 
 class CatalogController extends Controller
 {
     public function index(Request $request)
     {
         // Обновленный подзапрос для минимальной цены
-    $minPriceSubquery = EquipmentRentalTerm::selectRaw('MIN(price_per_hour)')
-        ->whereColumn('equipment_id', 'equipment.id')
-        ->getQuery();
+        $minPriceSubquery = EquipmentRentalTerm::selectRaw('MIN(price_per_hour)')
+            ->whereColumn('equipment_id', 'equipment.id')
+            ->getQuery();
 
-    $query = Equipment::query()
-        ->select('equipment.*')
-        ->with(['category', 'rentalTerms', 'images', 'company']) // Упрощаем
-        ->where('is_approved', true)
-        ->has('rentalTerms'); // Проверяем наличие тарифов
-
-
+        $query = Equipment::query()
+            ->select('equipment.*')
+            ->with(['category', 'rentalTerms', 'images', 'company']) // Упрощаем
+            ->where('is_approved', true)
+            ->has('rentalTerms'); // Проверяем наличие тарифов
 
         // Фильтр по категории
         if ($request->category) {
@@ -38,36 +36,34 @@ class CatalogController extends Controller
 
         // Фильтр по цене (обновленное поле)
         if ($request->min_price) {
-            $query->whereHas('rentalTerms', function($q) use ($request) {
+            $query->whereHas('rentalTerms', function ($q) use ($request) {
                 $q->where('price_per_hour', '>=', $request->min_price);
             });
         }
 
         // Фильтр по статусу (обновленная версия)
         if ($request->status) {
-            $query->where(function($q) use ($request) {
+            $query->where(function ($q) use ($request) {
                 $today = now()->format('Y-m-d');
 
                 if ($request->status === 'available') {
-                    $q->whereDoesntHave('availabilities', function($sub) use ($today) {
+                    $q->whereDoesntHave('availabilities', function ($sub) use ($today) {
                         $sub->where('date', $today)
                             ->whereIn('status', [
                                 EquipmentAvailability::STATUS_BOOKED,
-                                EquipmentAvailability::STATUS_MAINTENANCE
+                                EquipmentAvailability::STATUS_MAINTENANCE,
                             ]);
                     });
-                }
-                elseif ($request->status === 'unavailable') {
-                    $q->whereHas('availabilities', function($sub) use ($today) {
+                } elseif ($request->status === 'unavailable') {
+                    $q->whereHas('availabilities', function ($sub) use ($today) {
                         $sub->where('date', $today)
                             ->whereIn('status', [
                                 EquipmentAvailability::STATUS_BOOKED,
-                                EquipmentAvailability::STATUS_MAINTENANCE
+                                EquipmentAvailability::STATUS_MAINTENANCE,
                             ]);
                     });
-                }
-                elseif ($request->status === 'maintenance') {
-                    $q->whereHas('availabilities', function($sub) use ($today) {
+                } elseif ($request->status === 'maintenance') {
+                    $q->whereHas('availabilities', function ($sub) use ($today) {
                         $sub->where('date', $today)
                             ->where('status', EquipmentAvailability::STATUS_MAINTENANCE);
                     });
@@ -97,6 +93,7 @@ class CatalogController extends Controller
 
         return view('catalog.index', compact('equipments', 'categories', 'locations'));
     }
+
     public function show(Equipment $equipment)
     {
         if ($equipment->rentalTerms->isEmpty()) {
@@ -112,6 +109,7 @@ class CatalogController extends Controller
         $equipment->load('company.locations');
 
         $equipment->increment('views');
+
         return view('catalog.show', compact('equipment', 'defaultStart', 'defaultEnd'));
     }
 }

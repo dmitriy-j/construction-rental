@@ -57,6 +57,7 @@ class Company extends Model
     {
         return $this->hasMany(User::class);
     }
+
     public function lesseeOrders()
     {
         return $this->hasMany(Order::class, 'lessee_company_id');
@@ -74,7 +75,7 @@ class Company extends Model
 
     public function isRegistered(): bool
     {
-        return !empty($this->legal_name) && !empty($this->inn) && $this->status === 'verified';
+        return ! empty($this->legal_name) && ! empty($this->inn) && $this->status === 'verified';
     }
 
     public function carrierDeliveryNotes()
@@ -97,7 +98,7 @@ class Company extends Model
         return $this->legal_name;
     }
 
-      public function rentalConditions()
+    public function rentalConditions()
     {
         return $this->hasMany(RentalCondition::class);
     }
@@ -120,9 +121,9 @@ class Company extends Model
     public function activeRentalConditions()
     {
         return $this->hasMany(RentalCondition::class)
-                    ->whereHas('contract', function($query) {
-                        $query->where('is_active', true);
-                    });
+            ->whereHas('contract', function ($query) {
+                $query->where('is_active', true);
+            });
     }
 
     public function getContactInfo(): array
@@ -138,7 +139,7 @@ class Company extends Model
 
         return [
             'name' => $name,
-            'phone' => $phone
+            'phone' => $phone,
         ];
     }
 
@@ -152,7 +153,7 @@ class Company extends Model
         return $this->carrierRatings()->avg('rating') ?? 0;
     }
 
-     public function activeContract()
+    public function activeContract()
     {
         return $this->contracts()
             ->where('is_active', true)
@@ -189,7 +190,7 @@ class Company extends Model
 
     public function getTaxSystemCode(): string
     {
-        return match($this->tax_system) {
+        return match ($this->tax_system) {
             'osn' => 'ОСН',
             'usn' => 'УСН',
             'usn_income_minus_expenses' => 'УСН Доходы-Расходы',
@@ -203,5 +204,4 @@ class Company extends Model
     {
         return $this->hasMany(TransactionEntry::class);
     }
-
 }

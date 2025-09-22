@@ -4,8 +4,8 @@ namespace Database\Seeders;
 
 use App\Models\Company;
 use App\Models\Contract;
-use Illuminate\Database\Seeder;
 use Faker\Factory as Faker;
+use Illuminate\Database\Seeder;
 
 class ContractSeeder extends Seeder
 {
@@ -18,7 +18,7 @@ class ContractSeeder extends Seeder
             if ($company->is_lessee) {
                 Contract::create([
                     'company_id' => $company->id,
-                    'number' => 'ДГ-' . str_pad($company->id, 4, '0', STR_PAD_LEFT),
+                    'number' => 'ДГ-'.str_pad($company->id, 4, '0', STR_PAD_LEFT),
                     'start_date' => now()->subMonths(6),
                     'end_date' => now()->addYear(),
                     'is_active' => true,
@@ -35,7 +35,7 @@ class ContractSeeder extends Seeder
             for ($i = 1; $i <= 2; $i++) {
                 Contract::create([
                     'company_id' => $company->id,
-                    'number' => 'ДГ-' . str_pad($company->id, 4, '0', STR_PAD_LEFT) . '-' . $i,
+                    'number' => 'ДГ-'.str_pad($company->id, 4, '0', STR_PAD_LEFT).'-'.$i,
                     'start_date' => now()->subMonths(3),
                     'end_date' => now()->addMonths(6),
                     'is_active' => false,

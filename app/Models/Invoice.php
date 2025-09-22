@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Invoice extends Model
 {
@@ -23,7 +23,7 @@ class Invoice extends Model
         'status',
         'file_path',
         'idempotency_key',
-        'paid_at'
+        'paid_at',
     ];
 
     protected $casts = [
@@ -32,14 +32,19 @@ class Invoice extends Model
         'amount' => 'decimal:2',
         'amount_paid' => 'decimal:2',
         'platform_fee' => 'decimal:2',
-        'paid_at' => 'datetime'
+        'paid_at' => 'datetime',
     ];
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_SENT = 'sent';
+
     public const STATUS_VIEWED = 'viewed';
+
     public const STATUS_PAID = 'paid';
+
     public const STATUS_OVERDUE = 'overdue';
+
     public const STATUS_CANCELED = 'canceled';
 
     /**
@@ -84,7 +89,7 @@ class Invoice extends Model
     protected function isOverdue(): Attribute
     {
         return Attribute::make(
-            get: fn () => !$this->isFullyPaid && $this->due_date->isPast()
+            get: fn () => ! $this->isFullyPaid && $this->due_date->isPast()
         );
     }
 

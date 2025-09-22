@@ -76,7 +76,7 @@ class ProfileController extends Controller
             'cargo_value' => $this->cargo_value,
             'transport_type' => $this->transport_type,
             'is_mirror' => true,
-            'status' => self::STATUS_DRAFT
+            'status' => self::STATUS_DRAFT,
         ]);
     }
 }

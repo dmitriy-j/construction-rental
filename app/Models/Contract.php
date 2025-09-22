@@ -24,7 +24,7 @@ class Contract extends Model
         'file_path',
         'start_date',
         'end_date',
-        'is_active'
+        'is_active',
     ];
 
     protected $casts = [

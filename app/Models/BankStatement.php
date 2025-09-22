@@ -20,7 +20,7 @@ class BankStatement extends Model
         'status',
         'processed_by',
         'processed_at',
-        'error_log'
+        'error_log',
     ];
 
     protected $casts = [
@@ -49,7 +49,7 @@ class BankStatement extends Model
             'processed_count' => $processed,
             'error_count' => $errors,
             'error_log' => $log,
-            'processed_at' => now()
+            'processed_at' => now(),
         ]);
     }
 
@@ -58,7 +58,7 @@ class BankStatement extends Model
         $this->update([
             'status' => 'failed',
             'error_log' => $error,
-            'processed_at' => now()
+            'processed_at' => now(),
         ]);
     }
 
@@ -80,7 +80,7 @@ class BankStatement extends Model
             'processed_count' => $processedCount,
             'error_count' => $errorCount,
             'status' => $status,
-            'processed_at' => now()
+            'processed_at' => now(),
         ]);
 
         // Перезагружаем модель после обновления

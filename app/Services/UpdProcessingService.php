@@ -2,24 +2,25 @@
 
 namespace App\Services;
 
-use App\Models\Upd;
-use App\Models\Order;
-use App\Models\ExcelMapping;
-use App\Models\UpdItem;
+use App\Jobs\ExportUpdTo1C;
 use App\Models\Company;
 use App\Models\CompletionAct;
+use App\Models\ExcelMapping;
+use App\Models\Order;
+use App\Models\Upd;
+use App\Models\UpdItem;
 use App\Models\Waybill;
 use App\Services\Parsers\UpdParserService;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use App\Jobs\ExportUpdTo1C;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class UpdProcessingService
 {
     protected $balanceService;
+
     protected $updParserService;
 
     public function __construct(BalanceService $balanceService, UpdParserService $updParserService)
@@ -36,8 +37,8 @@ class UpdProcessingService
             ->where('is_active', true)
             ->first();
 
-        if (!$mapping) {
-            throw new \Exception("Активный шаблон УПД не найден для компании арендодателя.");
+        if (! $mapping) {
+            throw new \Exception('Активный шаблон УПД не найден для компании арендодателя.');
         }
 
         // Получаем акт выполненных работ
@@ -47,18 +48,18 @@ class UpdProcessingService
         }
 
         $completionAct = CompletionAct::where('waybill_id', $additionalData['waybill_id'])
-        ->where('perspective', 'lessor') // Важно: ищем акт для арендодателя
-        ->first();
+            ->where('perspective', 'lessor') // Важно: ищем акт для арендодателя
+            ->first();
 
-    if (!$completionAct) {
-        // Логируем более подробную информацию для отладки
-        Log::error('Акт выполненных работ не найден для путевого листа', [
-            'waybill_id' => $additionalData['waybill_id'],
-            'user_id' => auth()->id(),
-            'existing_acts' => CompletionAct::where('waybill_id', $additionalData['waybill_id'])->get()->toArray()
-        ]);
-        throw new \Exception("Акт выполненных работ не найден для данного путевого листа.");
-    }
+        if (! $completionAct) {
+            // Логируем более подробную информацию для отладки
+            Log::error('Акт выполненных работ не найден для путевого листа', [
+                'waybill_id' => $additionalData['waybill_id'],
+                'user_id' => auth()->id(),
+                'existing_acts' => CompletionAct::where('waybill_id', $additionalData['waybill_id'])->get()->toArray(),
+            ]);
+            throw new \Exception('Акт выполненных работ не найден для данного путевого листа.');
+        }
 
         $filePath = $file->store('temp');
         $fullPath = Storage::path($filePath);
@@ -102,14 +103,14 @@ class UpdProcessingService
         // Получаем компанию-платформу
         $platformCompany = Company::where('is_platform', true)->first();
 
-        if (!$platformCompany) {
-            throw new \Exception("Не найдена компания-платформа в системе.");
+        if (! $platformCompany) {
+            throw new \Exception('Не найдена компания-платформа в системе.');
         }
 
         // Проверяем соответствие продавца (должен быть арендодатель)
         $sellerInn = $this->extractInnFromString($header['seller']['inn']);
         if ($sellerInn !== $order->lessorCompany->inn) {
-            throw new \Exception("ИНН арендодателя в УПД не совпадает с данными в системе.");
+            throw new \Exception('ИНН арендодателя в УПД не совпадает с данными в системе.');
         }
 
         // Определяем, кто является покупателем в этом УПД
@@ -124,16 +125,16 @@ class UpdProcessingService
         }
 
         // Проверяем покупателя только если это не платформа
-        if (!$isPlatformAsBuyer) {
+        if (! $isPlatformAsBuyer) {
             $buyerInn = $this->extractInnFromString($header['buyer']['inn']);
             if ($buyerInn !== $order->lesseeCompany->inn) {
-                throw new \Exception("ИНН арендатора в УПД не совпадает с данными в системе.");
+                throw new \Exception('ИНН арендатора в УПД не совпадает с данными в системе.');
             }
         }
 
         // Проверяем, что в УПД указана сумма
-        if (!isset($parsedData['amounts']['total']) || empty($parsedData['amounts']['total'])) {
-            throw new \Exception("В УПД не указана общая сумма.");
+        if (! isset($parsedData['amounts']['total']) || empty($parsedData['amounts']['total'])) {
+            throw new \Exception('В УПД не указана общая сумма.');
         }
 
         // Проверяем суммы (допускаем расхождение до 1%) - сравниваем с актом выполненных работ
@@ -143,13 +144,13 @@ class UpdProcessingService
         // Если сумма акта равна нулю, проверяем только что сумма УПД тоже ноль
         if ($completionActTotal == 0) {
             if ($updTotal != 0) {
-                throw new \Exception("Сумма в УПД должна быть нулевой, так как сумма акта выполненных работ равна нулю.");
+                throw new \Exception('Сумма в УПД должна быть нулевой, так как сумма акта выполненных работ равна нулю.');
             }
         } else {
             $difference = abs($updTotal - $completionActTotal) / $completionActTotal;
 
             if ($difference > 0.01) {
-                throw new \Exception("Сумма в УПД отличается от суммы акта выполненных работ более чем на 1%.");
+                throw new \Exception('Сумма в УПД отличается от суммы акта выполненных работ более чем на 1%.');
             }
         }
 
@@ -164,13 +165,13 @@ class UpdProcessingService
             if ($completionAct->start_date && $completionAct->end_date) {
                 if ($updStart->format('Y-m-d') !== $completionAct->start_date->format('Y-m-d') ||
                     $updEnd->format('Y-m-d') !== $completionAct->end_date->format('Y-m-d')) {
-                    throw new \Exception("Период оказания услуг в УПД не совпадает с периодом в акте выполненных работ.");
+                    throw new \Exception('Период оказания услуг в УПД не совпадает с периодом в акте выполненных работ.');
                 }
             }
         }
 
         // Дополнительные проверки из настроек шаблона
-        if (!empty($mapping->validation_rules)) {
+        if (! empty($mapping->validation_rules)) {
             $this->applyCustomValidationRules($parsedData, $mapping->validation_rules);
         }
     }
@@ -186,7 +187,7 @@ class UpdProcessingService
                 'января' => 'January', 'февраля' => 'February', 'марта' => 'March',
                 'апреля' => 'April', 'мая' => 'May', 'июня' => 'June',
                 'июля' => 'July', 'августа' => 'August', 'сентября' => 'September',
-                'октября' => 'October', 'ноября' => 'November', 'декабря' => 'December'
+                'октября' => 'October', 'ноября' => 'November', 'декабря' => 'December',
             ];
 
             // Заменяем русские названия месяцев на английские
@@ -208,138 +209,138 @@ class UpdProcessingService
                 ->exists();
 
             if ($existingUpd) {
-                throw new \Exception("УПД с таким номером и датой уже существует в системе.");
+                throw new \Exception('УПД с таким номером и датой уже существует в системе.');
             }
         } catch (\Exception $e) {
-            throw new \Exception("Неверный формат даты в УПД: " . $issueDateString);
+            throw new \Exception('Неверный формат даты в УПД: '.$issueDateString);
         }
     }
 
-   protected function createUpdFromParsedData(Order $order, array $parsedData, UploadedFile $file, array $additionalData = []): Upd
-{
-    DB::beginTransaction();
+    protected function createUpdFromParsedData(Order $order, array $parsedData, UploadedFile $file, array $additionalData = []): Upd
+    {
+        DB::beginTransaction();
 
-    try {
-        $header = $parsedData['header'];
-        $amounts = $parsedData['amounts'];
-        $items = $parsedData['items'] ?? [];
+        try {
+            $header = $parsedData['header'];
+            $amounts = $parsedData['amounts'];
+            $items = $parsedData['items'] ?? [];
 
-        // Базовые проверки
-        if (!isset($additionalData['waybill_id'])) {
-            throw new \Exception("Не передан waybill_id для создания УПД.");
+            // Базовые проверки
+            if (! isset($additionalData['waybill_id'])) {
+                throw new \Exception('Не передан waybill_id для создания УПД.');
+            }
+
+            $waybillId = $additionalData['waybill_id'];
+
+            // Проверяем, что путевой лист существует
+            $waybill = Waybill::find($waybillId);
+            if (! $waybill) {
+                throw new \Exception("Путевой лист #{$waybillId} не найден.");
+            }
+
+            // Проверяем, что путевой лист принадлежит заказу
+            if ($waybill->order_id !== $order->id) {
+                throw new \Exception("Путевой лист #{$waybillId} не принадлежит заказу #{$order->id}.");
+            }
+
+            // Проверяем, что для путевого листа еще нет УПД
+            if ($waybill->upd_id) {
+                throw new \Exception("Для путевого листа #{$waybillId} уже создан УПД #{$waybill->upd_id}.");
+            }
+
+            // Проверяем, что существует акт выполненных работ для этого путевого листа (для арендодателя)
+            $completionAct = CompletionAct::where('waybill_id', $waybillId)
+                ->where('perspective', 'lessor')
+                ->first();
+
+            if (! $completionAct) {
+                throw new \Exception("Акт выполненных работ для путевого листа #{$waybillId} не найден.");
+            }
+
+            // Проверяем, что для акта еще нет УПД
+            if ($completionAct->upd_id) {
+                throw new \Exception("Для акта выполненных работ #{$completionAct->id} уже создан УПД #{$completionAct->upd_id}.");
+            }
+
+            // Получаем шаблон для компании арендодателя
+            $mapping = ExcelMapping::where('company_id', $order->lessor_company_id)
+                ->where('type', 'upd')
+                ->where('is_active', true)
+                ->first();
+
+            if (! $mapping) {
+                throw new \Exception('Активный шаблон УПД не найден для компании арендодателя.');
+            }
+
+            $type = Upd::TYPE_INCOMING;
+            $issueDate = $this->parseRussianDate($header['issue_date']);
+            $filePath = $file->store('upds', 'private');
+
+            // Проверяем уникальность номера УПД
+            $existingUpd = Upd::where('number', $header['number'])
+                ->where('issue_date', $issueDate->format('Y-m-d'))
+                ->where('lessor_company_id', $order->lessor_company_id)
+                ->first();
+
+            if ($existingUpd) {
+                throw new \Exception("УПД с номером {$header['number']} и датой {$issueDate->format('d.m.Y')} уже существует.");
+            }
+
+            $updData = [
+                'order_id' => $order->id,
+                'lessor_company_id' => $order->lessor_company_id,
+                'lessee_company_id' => $order->lessee_company_id,
+                'waybill_id' => $waybillId,
+                'number' => $header['number'],
+                'issue_date' => $issueDate->format('Y-m-d'),
+                'service_period_start' => $completionAct->service_start_date ?? $order->start_date,
+                'service_period_end' => $completionAct->service_end_date ?? $order->end_date,
+                'amount' => $amounts['without_vat'] ?? 0,
+                'tax_amount' => $amounts['vat'] ?? 0,
+                'total_amount' => $amounts['total'],
+                'tax_system' => $order->lessorCompany->tax_system,
+                'contract_number' => $order->contract_number,
+                'contract_date' => $order->contract_date,
+                'file_path' => $filePath,
+                'status' => Upd::STATUS_PENDING,
+                'type' => $type,
+                'idempotency_key' => 'upd_'.Str::uuid(),
+                'parsed_data' => $parsedData,
+            ];
+
+            $upd = Upd::create($updData);
+            $this->processUpdItems($upd, $items);
+
+            // Привязываем УПД к путевому листу
+            $waybill->upd_id = $upd->id;
+            $waybill->save();
+
+            // Привязываем УПД к акту выполненных работ
+            $completionAct->upd_id = $upd->id;
+            $completionAct->save();
+
+            DB::commit();
+
+            Log::info('УПД успешно создан', [
+                'upd_id' => $upd->id,
+                'waybill_id' => $waybillId,
+                'completion_act_id' => $completionAct->id,
+                'order_id' => $order->id,
+            ]);
+
+            return $upd;
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Ошибка создания УПД', [
+                'error' => $e->getMessage(),
+                'waybill_id' => $additionalData['waybill_id'] ?? null,
+                'order_id' => $order->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
         }
-
-        $waybillId = $additionalData['waybill_id'];
-
-        // Проверяем, что путевой лист существует
-        $waybill = Waybill::find($waybillId);
-        if (!$waybill) {
-            throw new \Exception("Путевой лист #{$waybillId} не найден.");
-        }
-
-        // Проверяем, что путевой лист принадлежит заказу
-        if ($waybill->order_id !== $order->id) {
-            throw new \Exception("Путевой лист #{$waybillId} не принадлежит заказу #{$order->id}.");
-        }
-
-        // Проверяем, что для путевого листа еще нет УПД
-        if ($waybill->upd_id) {
-            throw new \Exception("Для путевого листа #{$waybillId} уже создан УПД #{$waybill->upd_id}.");
-        }
-
-        // Проверяем, что существует акт выполненных работ для этого путевого листа (для арендодателя)
-        $completionAct = CompletionAct::where('waybill_id', $waybillId)
-            ->where('perspective', 'lessor')
-            ->first();
-
-        if (!$completionAct) {
-            throw new \Exception("Акт выполненных работ для путевого листа #{$waybillId} не найден.");
-        }
-
-        // Проверяем, что для акта еще нет УПД
-        if ($completionAct->upd_id) {
-            throw new \Exception("Для акта выполненных работ #{$completionAct->id} уже создан УПД #{$completionAct->upd_id}.");
-        }
-
-        // Получаем шаблон для компании арендодателя
-        $mapping = ExcelMapping::where('company_id', $order->lessor_company_id)
-            ->where('type', 'upd')
-            ->where('is_active', true)
-            ->first();
-
-        if (!$mapping) {
-            throw new \Exception("Активный шаблон УПД не найден для компании арендодателя.");
-        }
-
-        $type = Upd::TYPE_INCOMING;
-        $issueDate = $this->parseRussianDate($header['issue_date']);
-        $filePath = $file->store('upds', 'private');
-
-        // Проверяем уникальность номера УПД
-        $existingUpd = Upd::where('number', $header['number'])
-            ->where('issue_date', $issueDate->format('Y-m-d'))
-            ->where('lessor_company_id', $order->lessor_company_id)
-            ->first();
-
-        if ($existingUpd) {
-            throw new \Exception("УПД с номером {$header['number']} и датой {$issueDate->format('d.m.Y')} уже существует.");
-        }
-
-        $updData = [
-            'order_id' => $order->id,
-            'lessor_company_id' => $order->lessor_company_id,
-            'lessee_company_id' => $order->lessee_company_id,
-            'waybill_id' => $waybillId,
-            'number' => $header['number'],
-            'issue_date' => $issueDate->format('Y-m-d'),
-            'service_period_start' => $completionAct->service_start_date ?? $order->start_date,
-            'service_period_end' => $completionAct->service_end_date ?? $order->end_date,
-            'amount' => $amounts['without_vat'] ?? 0,
-            'tax_amount' => $amounts['vat'] ?? 0,
-            'total_amount' => $amounts['total'],
-            'tax_system' => $order->lessorCompany->tax_system,
-            'contract_number' => $order->contract_number,
-            'contract_date' => $order->contract_date,
-            'file_path' => $filePath,
-            'status' => Upd::STATUS_PENDING,
-            'type' => $type,
-            'idempotency_key' => 'upd_' . Str::uuid(),
-            'parsed_data' => $parsedData,
-        ];
-
-        $upd = Upd::create($updData);
-        $this->processUpdItems($upd, $items);
-
-        // Привязываем УПД к путевому листу
-        $waybill->upd_id = $upd->id;
-        $waybill->save();
-
-        // Привязываем УПД к акту выполненных работ
-        $completionAct->upd_id = $upd->id;
-        $completionAct->save();
-
-        DB::commit();
-
-        Log::info('УПД успешно создан', [
-            'upd_id' => $upd->id,
-            'waybill_id' => $waybillId,
-            'completion_act_id' => $completionAct->id,
-            'order_id' => $order->id
-        ]);
-
-        return $upd;
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Ошибка создания УПД', [
-            'error' => $e->getMessage(),
-            'waybill_id' => $additionalData['waybill_id'] ?? null,
-            'order_id' => $order->id,
-            'trace' => $e->getTraceAsString()
-        ]);
-        throw $e;
     }
-}
 
     protected function validateUpdForProcessing(Upd $upd): void
     {
@@ -347,26 +348,25 @@ class UpdProcessingService
 
         // 1. Проверка суммы
         if ($upd->total_amount <= 0) {
-            throw new \Exception("Сумма УПД должна быть больше нуля.");
+            throw new \Exception('Сумма УПД должна быть больше нуля.');
         }
 
         // 2. Проверка существования компаний
         $upd->load(['lessorCompany', 'lesseeCompany']);
 
-        if (!$upd->lessorCompany) {
-            throw new \Exception("Компания арендодателя не найдена.");
+        if (! $upd->lessorCompany) {
+            throw new \Exception('Компания арендодателя не найдена.');
         }
 
-        if (!$upd->lesseeCompany) {
-            throw new \Exception("Компания арендатора не найдена.");
+        if (! $upd->lesseeCompany) {
+            throw new \Exception('Компания арендатора не найдена.');
         }
 
         // 3. Проверка, чтобы компания не выставляла сама себе счет
         if ($upd->lessor_company_id === $upd->lessee_company_id) {
-            throw new \Exception("Компания не может выставлять УПД самой себе.");
+            throw new \Exception('Компания не может выставлять УПД самой себе.');
         }
     }
-
 
     protected function parseRussianDate(string $dateString): \Carbon\Carbon
     {
@@ -378,12 +378,12 @@ class UpdProcessingService
             $dateParts = preg_split('/\s+/', trim($cleanedDate));
 
             if (count($dateParts) < 3) {
-                throw new \Exception("Неверный формат даты: недостаточно частей");
+                throw new \Exception('Неверный формат даты: недостаточно частей');
             }
 
-            $day = (int)$dateParts[0];
+            $day = (int) $dateParts[0];
             $monthName = mb_strtolower($dateParts[1], 'UTF-8');
-            $year = (int)$dateParts[2];
+            $year = (int) $dateParts[2];
 
             // Маппинг русских названий месяцев на числовые значения
             $monthMapping = [
@@ -393,11 +393,11 @@ class UpdProcessingService
                 'октября' => 10, 'ноября' => 11, 'декабря' => 12,
 
                 // Добавляем возможные варианты написания с опечатками
-                'авуста' => 8, 'августа' => 8, 'август' => 8
+                'авуста' => 8, 'августа' => 8, 'август' => 8,
             ];
 
-            if (!isset($monthMapping[$monthName])) {
-                throw new \Exception("Неизвестное название месяца: " . $monthName);
+            if (! isset($monthMapping[$monthName])) {
+                throw new \Exception('Неизвестное название месяца: '.$monthName);
             }
 
             $month = $monthMapping[$monthName];
@@ -409,10 +409,10 @@ class UpdProcessingService
             Log::error('Ошибка парсинга даты', [
                 'original' => $dateString,
                 'cleaned' => $cleanedDate ?? '',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
-            throw new \Exception("Неверный формат даты в УПД: " . $dateString);
+            throw new \Exception('Неверный формат даты в УПД: '.$dateString);
         }
     }
 
@@ -450,7 +450,7 @@ class UpdProcessingService
 
         Log::info('Обработаны позиции УПД', [
             'upd_id' => $upd->id,
-            'items_count' => count($items)
+            'items_count' => count($items),
         ]);
     }
 
@@ -481,21 +481,20 @@ class UpdProcessingService
 
     public function verifyPaperUpd(Upd $upd, array $paperData): bool
     {
-        return (
+        return
             $upd->number === $paperData['number'] &&
             $upd->issue_date->format('Y-m-d') === $paperData['issue_date'] &&
-            abs($upd->total_amount - $paperData['total_amount']) < 0.01
-        );
+            abs($upd->total_amount - $paperData['total_amount']) < 0.01;
     }
 
     protected function validateInnKpp(array $parsedData, Order $order, ExcelMapping $mapping): void
     {
-         // Добавьте в начало метода
+        // Добавьте в начало метода
         \Log::debug('Validate INN/KPP', [
             'parsed_data' => $parsedData['header'],
             'lessor_inn' => $order->lessorCompany->inn,
             'lessee_inn' => $order->lesseeCompany->inn,
-            'platform_inn' => Company::where('is_platform', true)->first()->inn ?? 'not_found'
+            'platform_inn' => Company::where('is_platform', true)->first()->inn ?? 'not_found',
         ]);
 
         $header = $parsedData['header'];
@@ -503,8 +502,8 @@ class UpdProcessingService
         // Получаем компанию-платформу
         $platformCompany = Company::where('is_platform', true)->first();
 
-        if (!$platformCompany) {
-            throw new \Exception("Не найдена компания-платформа в системе.");
+        if (! $platformCompany) {
+            throw new \Exception('Не найдена компания-платформа в системе.');
         }
 
         // Проверяем ИНН продавца (должен быть арендодатель)
@@ -514,7 +513,7 @@ class UpdProcessingService
         }
 
         // Проверяем КПП продавца, если он есть в шаблоне
-        if (isset($header['seller']['kpp']) && !empty($order->lessorCompany->kpp)) {
+        if (isset($header['seller']['kpp']) && ! empty($order->lessorCompany->kpp)) {
             $sellerKpp = $this->extractKppFromString($header['seller']['kpp']);
             $this->validateKpp($sellerKpp, $order->lessorCompany->kpp, 'продавца');
         }
@@ -538,7 +537,7 @@ class UpdProcessingService
                 $this->validateInn($buyerInn, $platformCompany->inn, 'покупателя (платформы)');
             }
 
-            if (isset($header['buyer']['kpp']) && !empty($platformCompany->kpp)) {
+            if (isset($header['buyer']['kpp']) && ! empty($platformCompany->kpp)) {
                 $buyerKpp = $this->extractKppFromString($header['buyer']['kpp']);
                 $this->validateKpp($buyerKpp, $platformCompany->kpp, 'покупателя (платформы)');
             }
@@ -549,7 +548,7 @@ class UpdProcessingService
                 $this->validateInn($buyerInn, $order->lesseeCompany->inn, 'покупателя');
             }
 
-            if (isset($header['buyer']['kpp']) && !empty($order->lesseeCompany->kpp)) {
+            if (isset($header['buyer']['kpp']) && ! empty($order->lesseeCompany->kpp)) {
                 $buyerKpp = $this->extractKppFromString($header['buyer']['kpp']);
                 $this->validateKpp($buyerKpp, $order->lesseeCompany->kpp, 'покупателя');
             }
@@ -565,6 +564,7 @@ class UpdProcessingService
             // Если есть слеш, берем часть до него
             if (strpos($value, '/') !== false) {
                 $parts = explode('/', $value);
+
                 return trim($parts[0]);
             }
 
@@ -577,7 +577,6 @@ class UpdProcessingService
         return (string) $value;
     }
 
-
     protected function extractKppFromString($value): string
     {
         if (is_string($value)) {
@@ -587,6 +586,7 @@ class UpdProcessingService
             // Если есть слеш, берем часть после него
             if (strpos($value, '/') !== false) {
                 $parts = explode('/', $value);
+
                 return count($parts) > 1 ? trim($parts[1]) : '';
             }
 
@@ -612,7 +612,7 @@ class UpdProcessingService
     {
         $documentKpp = $this->extractKppFromString($documentKpp);
 
-        if (!empty($companyKpp) && $documentKpp !== $companyKpp) {
+        if (! empty($companyKpp) && $documentKpp !== $companyKpp) {
             throw new \Exception("КПП {$entity} в УПД ({$documentKpp}) не совпадает с КПП в системе ({$companyKpp}).");
         }
     }

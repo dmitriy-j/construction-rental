@@ -136,7 +136,7 @@ class ReconciliationAct extends Model
         // Здесь будет логика генерации PDF
         // Можно использовать библиотеку вроде dompdf или laravel-dompdf
 
-        $pdfPath = 'reconciliation_acts/act_' . $this->id . '_' . now()->format('Ymd_His') . '.pdf';
+        $pdfPath = 'reconciliation_acts/act_'.$this->id.'_'.now()->format('Ymd_His').'.pdf';
 
         // Сохраняем путь к файлу
         $this->update(['file_path' => $pdfPath]);

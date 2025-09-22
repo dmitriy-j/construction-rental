@@ -25,8 +25,6 @@ return new class extends Migration
             $table->string('okato', 20)->nullable()->comment('Код территории');
             $table->string('certificate_number')->nullable()->comment('Номер свидетельства о регистрации');
 
-
-
             // Адреса
             $table->string('legal_address')->comment('Юридический адрес');
             $table->string('physical_address')->comment('Фактический адрес');

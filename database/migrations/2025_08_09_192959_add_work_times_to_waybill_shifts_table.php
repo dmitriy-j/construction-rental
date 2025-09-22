@@ -9,7 +9,7 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-   public function up()
+    public function up()
     {
         Schema::table('waybill_shifts', function (Blueprint $table) {
             $table->time('work_start_time')->nullable()->after('return_time');

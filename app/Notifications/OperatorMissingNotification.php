@@ -5,8 +5,8 @@ namespace App\Notifications;
 use App\Models\Equipment;
 use App\Models\Order;
 use Illuminate\Bus\Queueable;
-use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
 
 class OperatorMissingNotification extends Notification
 {
@@ -35,7 +35,7 @@ class OperatorMissingNotification extends Notification
     {
         return [
             'message' => "Требуется оператор для {$this->equipment->title} (заказ #{$this->order->id})",
-            'link' => route('lessor.equipment.operators', $this->equipment)
+            'link' => route('lessor.equipment.operators', $this->equipment),
         ];
     }
 }

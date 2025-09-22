@@ -4,14 +4,13 @@ namespace App\Http\Controllers\Lessor;
 
 use App\Http\Controllers\Controller;
 use App\Models\DeliveryNote;
-use App\Models\Equipment;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use App\Services\EquipmentAvailabilityService;
 use App\Models\EquipmentAvailability;
-use Illuminate\Validation\Rule;
 use App\Models\OrderItem;
 use App\Services\DeliveryNoteService;
+use App\Services\EquipmentAvailabilityService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class DeliveryNoteController extends Controller
 {
@@ -36,7 +35,7 @@ class DeliveryNoteController extends Controller
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('delivery_notes')->ignore($note->id)
+                Rule::unique('delivery_notes')->ignore($note->id),
             ],
             'issue_date' => 'required|date',
             'delivery_date' => 'nullable|date',
@@ -48,7 +47,7 @@ class DeliveryNoteController extends Controller
             'equipment_condition' => 'required|string|max:255',
         ]);
 
-        DB::transaction(function() use ($note, $validated) {
+        DB::transaction(function () use ($note, $validated) {
             $note->update($validated);
 
             if ($note->type === DeliveryNote::TYPE_LESSOR_TO_PLATFORM) {
@@ -77,8 +76,6 @@ class DeliveryNoteController extends Controller
             );
         }
     }
-
-
 
     public function close(DeliveryNote $note)
     {
@@ -142,10 +139,9 @@ class DeliveryNoteController extends Controller
                 [
                     'status' => EquipmentAvailability::STATUS_DELIVERY,
                     'order_id' => $note->order_id,
-                    'expires_at' => $deliveryEndDate
+                    'expires_at' => $deliveryEndDate,
                 ]
             );
         }
     }
-
 }

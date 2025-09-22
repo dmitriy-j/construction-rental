@@ -13,11 +13,15 @@ class Upd extends Model
     use HasFactory;
 
     const STATUS_PENDING = 'pending';
+
     const STATUS_ACCEPTED = 'accepted';
+
     const STATUS_REJECTED = 'rejected';
+
     const STATUS_PROCESSED = 'processed'; // Новый статус
 
     const TYPE_INCOMING = 'incoming';
+
     const TYPE_OUTGOING = 'outgoing';
 
     protected $fillable = [
@@ -103,18 +107,18 @@ class Upd extends Model
 
     public function getStatusDescription(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             self::STATUS_PENDING => 'Ожидает обработки администратором',
             self::STATUS_ACCEPTED => 'Принят, ожидает финансового проведения',
             self::STATUS_PROCESSED => 'Принят и финансово проведен',
-            self::STATUS_REJECTED => 'Отклонен. Причина: ' . ($this->rejection_reason ?? 'не указана'),
+            self::STATUS_REJECTED => 'Отклонен. Причина: '.($this->rejection_reason ?? 'не указана'),
             default => 'Неизвестный статус',
         };
     }
 
     public function getStatusTextAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             self::STATUS_PENDING => 'Ожидает',
             self::STATUS_ACCEPTED => 'Принят',
             self::STATUS_PROCESSED => 'Принят (проведен)',
@@ -125,7 +129,7 @@ class Upd extends Model
 
     public function getStatusColorAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             self::STATUS_PENDING => 'warning',
             self::STATUS_ACCEPTED, self::STATUS_PROCESSED => 'success',
             self::STATUS_REJECTED => 'danger',
@@ -135,11 +139,11 @@ class Upd extends Model
 
     public function accept(): void
     {
-        if (!in_array($this->status, [self::STATUS_PENDING, self::STATUS_ACCEPTED])) {
+        if (! in_array($this->status, [self::STATUS_PENDING, self::STATUS_ACCEPTED])) {
             throw new \Exception('УПД уже был обработан.');
         }
 
-       DB::beginTransaction();
+        DB::beginTransaction();
 
         try {
             $balanceService = app(\App\Services\BalanceService::class);
@@ -154,7 +158,7 @@ class Upd extends Model
                     TransactionEntry::PURPOSE_UPD_DEBT,
                     $this,
                     "Принят входящий УПД №{$this->number}",
-                    'upd_accept_in_' . $this->id
+                    'upd_accept_in_'.$this->id
                 );
             } elseif ($this->type === self::TYPE_OUTGOING) {
                 // ИСХОДЯЩИЙ УПД: Платформа -> Арендатор
@@ -166,7 +170,7 @@ class Upd extends Model
                     TransactionEntry::PURPOSE_UPD_DEBT,
                     $this,
                     "Сформирован исходящий УПД №{$this->number}. Сформирована кредиторская задолженность арендатора перед платформой.",
-                    'upd_accept_out_' . $this->id
+                    'upd_accept_out_'.$this->id
                 );
             }
 
@@ -188,7 +192,7 @@ class Upd extends Model
 
     public function reject(string $reason): void
     {
-        if (!in_array($this->status, [self::STATUS_PENDING, self::STATUS_PROCESSED])) {
+        if (! in_array($this->status, [self::STATUS_PENDING, self::STATUS_PROCESSED])) {
             throw new \Exception('УПД уже был отклонен.');
         }
 
@@ -208,7 +212,7 @@ class Upd extends Model
                         TransactionEntry::PURPOSE_CORRECTION,
                         $this,
                         "Сторно проводки по отклоненному входящему УПД №{$this->number}. Причина: {$reason}",
-                        'upd_reverse_in_' . $this->id
+                        'upd_reverse_in_'.$this->id
                     );
                 } elseif ($this->type === self::TYPE_OUTGOING) {
                     // Сторно для исходящего УПД: увеличиваем баланс арендатора
@@ -219,7 +223,7 @@ class Upd extends Model
                         TransactionEntry::PURPOSE_CORRECTION,
                         $this,
                         "Сторно проводки по отклоненному исходящему УПД №{$this->number}. Причина: {$reason}",
-                        'upd_reverse_out_' . $this->id
+                        'upd_reverse_out_'.$this->id
                     );
                 }
             }
@@ -260,14 +264,14 @@ class Upd extends Model
                     'position' => $this->lessor_sign_position,
                     'name' => $this->lessor_sign_name,
                     'date' => $this->lessor_sign_date?->format('Y-m-d'),
-                ]
+                ],
             ]),
             'buyer' => array_merge($this->lesseeCompany->get1CData(), [
                 'signature' => [
                     'position' => $this->lessee_sign_position,
                     'name' => $this->lessee_sign_name,
                     'date' => $this->lessee_sign_date?->format('Y-m-d'),
-                ]
+                ],
             ]),
             'contract' => [
                 'number' => $this->contract_number,

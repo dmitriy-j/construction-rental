@@ -2,10 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Order;
 use App\Models\CompletionAct;
-use App\Models\Waybill;
-use App\Models\Contract;
+use App\Models\Order;
 
 class CompletionActGenerator
 {
@@ -15,12 +13,12 @@ class CompletionActGenerator
         $order->load([
             'waybills',
             'contract',
-            'items' // Добавлена загрузка items
+            'items', // Добавлена загрузка items
         ]);
 
         // Проверяем наличие путевых листов
         if ($order->waybills->isEmpty()) {
-            throw new \Exception('No waybills found for order #' . $order->id);
+            throw new \Exception('No waybills found for order #'.$order->id);
         }
 
         $waybills = $order->waybills;
@@ -29,13 +27,13 @@ class CompletionActGenerator
         // Находим последнюю дату работ
         $lastWorkDate = $waybills->max('work_date');
 
-          // Добавьте проверку
-        if (!$lastWorkDate) {
+        // Добавьте проверку
+        if (! $lastWorkDate) {
             throw new \Exception('No valid work_date found in waybills');
         }
 
-         if (!$order->service_start_date) {
-        throw new \Exception('Service start date not set for order #' . $order->id);
+        if (! $order->service_start_date) {
+            throw new \Exception('Service start date not set for order #'.$order->id);
         }
 
         $act = new CompletionAct([
@@ -47,8 +45,6 @@ class CompletionActGenerator
             'total_downtime' => $waybills->sum('downtime_hours'),
             'prepayment_amount' => $order->prepayment_amount ?? 0, // Исправлено
         ]);
-
-
 
         // Исправленный расчет штрафов
         $act->penalty_amount = self::calculatePenalties($waybills, $contract, $order);
@@ -62,6 +58,7 @@ class CompletionActGenerator
         $act->final_amount = $act->total_amount - $act->prepayment_amount;
 
         $act->save();
+
         return $act;
     }
 

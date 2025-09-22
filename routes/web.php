@@ -1,43 +1,36 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Auth\RegisteredUserController;
-use App\Http\Controllers\CompanyEmployeeController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\PageController;
-use App\Http\Controllers\Catalog\CatalogController;
-use App\Http\Controllers\Catalog\Equipment\EquipmentController;
-use App\Http\Controllers\DocumentController;
-use App\Http\Controllers\CheckoutController;
-use App\Http\Controllers\CartController;
-use App\Http\Controllers\Lessor\DashboardController as LessorDashboardController;
-use App\Http\Controllers\Lessor\LessorOrderController as LessorOrders;
-use App\Http\Controllers\Lessee\DashboardController as LesseeDashboardController;
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Admin\AdminNewsController;
 use App\Http\Controllers\Admin\AdminEquipmentController;
 use App\Http\Controllers\Admin\AdminLesseeController;
-use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminLessorController;
-use App\Http\Controllers\AdminController;
+use App\Http\Controllers\Admin\BankStatementController;
+use App\Http\Controllers\Admin\CompletionActController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\ExcelMappingController;
 use App\Http\Controllers\Admin\OrdersController;
-use App\Http\Controllers\RentalConditionController;
-use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Admin\ReportsController;
+use App\Http\Controllers\Admin\Settings\DocumentTemplateController;
+use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\Catalog\CatalogController;
+use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\CompanyEmployeeController;
+use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\Lessee\DashboardController as LesseeDashboardController;
 use App\Http\Controllers\Lessee\OrderController;
-use App\Http\Controllers\DeliveryNoteExportController;
-use App\Http\Controllers\Lessor\WaybillController;
-use App\Http\Controllers\Lessor\ShiftController;
-use App\Http\Controllers\Lessor\OperatorController;
+use App\Http\Controllers\Lessor\DashboardController as LessorDashboardController;
 use App\Http\Controllers\Lessor\DeliveryNoteController;
 use App\Http\Controllers\Lessor\EquipmentController as LessorEquipmentController;
-use App\Http\Controllers\Admin\ReportsController;
-use App\Http\Controllers\Admin\ExcelMappingController;
+use App\Http\Controllers\Lessor\LessorOrderController as LessorOrders;
+use App\Http\Controllers\Lessor\OperatorController;
+use App\Http\Controllers\Lessor\ShiftController;
 use App\Http\Controllers\Lessor\UpdController;
-use App\Http\Controllers\Admin\CompletionActController;
-use App\Http\Controllers\Admin\BankStatementController;
-use App\Http\Controllers\Admin\Settings\DocumentTemplateController;
-
+use App\Http\Controllers\Lessor\WaybillController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PageController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RentalConditionController;
+use Illuminate\Support\Facades\Route;
 
 // Главная страница
 Route::get('/', function () {
@@ -49,9 +42,9 @@ Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog.index
 Route::get('/catalog/{equipment}', [CatalogController::class, 'show'])->name('catalog.show');
 
 // Статические страницы
-Route::get('/free', fn() => view('free'))->name('free');
-Route::get('/cooperation', fn() => view('cooperation'))->name('cooperation');
-Route::get('/jobs', fn() => view('jobs'))->name('jobs');
+Route::get('/free', fn () => view('free'))->name('free');
+Route::get('/cooperation', fn () => view('cooperation'))->name('cooperation');
+Route::get('/jobs', fn () => view('jobs'))->name('jobs');
 Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/contacts', [PageController::class, 'contacts'])->name('contacts');
 
@@ -67,7 +60,7 @@ Route::post('/register', [RegisteredUserController::class, 'store'])->name('regi
 Route::prefix('/company')
     ->middleware(['auth', 'role:company_admin'])
     ->group(function () {
-        Route::get('/dashboard', fn() => view('company.dashboard'))->name('company.dashboard');
+        Route::get('/dashboard', fn () => view('company.dashboard'))->name('company.dashboard');
         Route::resource('employees', CompanyEmployeeController::class)
             ->names([
                 'index' => 'company.employees.index',
@@ -76,7 +69,7 @@ Route::prefix('/company')
                 'show' => 'company.employees.show',
                 'edit' => 'company.employees.edit',
                 'update' => 'company.employees.update',
-                'destroy' => 'company.employees.destroy'
+                'destroy' => 'company.employees.destroy',
             ]);
     });
 
@@ -91,10 +84,10 @@ Route::prefix('lessor')
         Route::post('dashboard/mark-as-viewed', [LessorDashboardController::class, 'markAsViewed'])
             ->name('dashboard.markAsViewed');
 
-        //Баланс
+        // Баланс
         Route::get('/balance', [\App\Http\Controllers\Lessor\BalanceController::class, 'index'])->name('balance.index');
 
-           // Оборудование (ИСПРАВЛЕНО: используем контроллер из Lessor)
+        // Оборудование (ИСПРАВЛЕНО: используем контроллер из Lessor)
         Route::resource('equipment', LessorEquipmentController::class)
             ->names([
                 'index' => 'equipment.index',
@@ -103,7 +96,7 @@ Route::prefix('lessor')
                 'show' => 'equipment.show',
                 'edit' => 'equipment.edit',
                 'update' => 'equipment.update',
-                'destroy' => 'equipment.destroy'
+                'destroy' => 'equipment.destroy',
             ]);
 
         // Операторы
@@ -141,7 +134,7 @@ Route::prefix('lessor')
         });
 
         // Накладные
-        Route::prefix('delivery-notes')->name('delivery-notes.')->group(function() {
+        Route::prefix('delivery-notes')->name('delivery-notes.')->group(function () {
             Route::get('{note}/edit', [DeliveryNoteController::class, 'edit'])->name('edit');
             Route::put('{note}', [DeliveryNoteController::class, 'update'])->name('update');
             Route::post('{note}/close', [DeliveryNoteController::class, 'close'])->name('close');
@@ -156,7 +149,7 @@ Route::prefix('lessor')
             Route::get('{waybill}/download', [WaybillController::class, 'download'])->name('download');
             Route::post('{waybill}/add-shift', [WaybillController::class, 'addShift'])->name('add-shift');
             Route::post('{waybill}/close', [WaybillController::class, 'close'])->name('close');
-            Route::get('{waybill}/shifts', [WaybillController::class, 'getShifts']) ->name('shifts');
+            Route::get('{waybill}/shifts', [WaybillController::class, 'getShifts'])->name('shifts');
 
         });
 
@@ -170,14 +163,35 @@ Route::prefix('lessor')
             Route::get('/download', [UpdController::class, 'download'])->name('download');
         });
 
-
         // Смены
         Route::prefix('shifts')->name('shifts.')->group(function () {
             Route::put('{shift}', [ShiftController::class, 'update'])->name('update');
             Route::delete('{shift}', [ShiftController::class, 'destroy'])->name('destroy');
         });
+        // Поиск заявок
+        Route::get('rental-requests', [\App\Http\Controllers\Lessor\RentalRequestSearchController::class, 'index'])
+            ->name('lessor.rental-requests.index');
+
+        Route::get('rental-requests/{request}', [\App\Http\Controllers\Lessor\RentalRequestSearchController::class, 'show'])
+            ->name('lessor.rental-requests.show');
+
+        // Управление предложениями
+        Route::get('rental-requests/{request}/proposals/create', [\App\Http\Controllers\Lessor\RequestProposalController::class, 'create'])
+            ->name('lessor.rental-requests.proposals.create');
+
+        Route::post('rental-requests/{request}/proposals', [\App\Http\Controllers\Lessor\RequestProposalController::class, 'store'])
+            ->name('lessor.rental-requests.proposals.store');
+
+        Route::get('rental-requests/{request}/proposals/calculate-price/{equipment}', [\App\Http\Controllers\Lessor\RequestProposalController::class, 'calculatePrice'])
+            ->name('lessor.rental-requests.proposals.calculate-price');
     });
 
+    // API маршруты
+    Route::middleware(['auth:api'])->prefix('api')->group(function () {
+        Route::apiResource('rental-requests', \App\Http\Controllers\API\RentalRequestController::class);
+        Route::apiResource('rental-responses', \App\Http\Controllers\API\RentalResponseController::class);
+
+    });
 
 // Для арендатора
 Route::prefix('lessee')
@@ -186,7 +200,7 @@ Route::prefix('lessee')
         // Дашборд
         Route::get('/dashboard', [LesseeDashboardController::class, 'index'])->name('lessee.dashboard');
 
-        //Баланс
+        // Баланс
         Route::get('/balance', [\App\Http\Controllers\Lessee\BalanceController::class, 'index'])->name('lessee.balance.index');
 
         // Заказы
@@ -197,25 +211,24 @@ Route::prefix('lessee')
             Route::post('/{order}/request-extension', [\App\Http\Controllers\Lessee\OrderController::class, 'requestExtension'])->name('lessee.orders.requestExtension');
         });
 
-       // Документы - общий маршрут
-    Route::get('documents', [\App\Http\Controllers\Lessee\DocumentController::class, 'index'])
-        ->name('documents.index');
+        // Документы - общий маршрут
+        Route::get('documents', [\App\Http\Controllers\Lessee\DocumentController::class, 'index'])
+            ->name('documents.index');
 
-    // Специфические маршруты документов
-    Route::prefix('documents')->name('documents.')->group(function () {
-        Route::get('orders/{order}/waybills', [\App\Http\Controllers\Lessee\DocumentController::class, 'waybills'])
-            ->name('waybills.index');
-        Route::get('orders/{order}/completion-acts', [\App\Http\Controllers\Lessee\DocumentController::class, 'completionActs'])
-            ->name('completion-acts.index');
-        Route::get('waybills/{waybill}/download', [\App\Http\Controllers\Lessee\DocumentController::class, 'downloadWaybill'])
-            ->name('waybill.download');
-        Route::get('completion-acts/{completionAct}/download', [\App\Http\Controllers\Lessee\DocumentController::class, 'downloadCompletionAct'])
-            ->name('completion-act.download');
-        Route::get('waybills/{waybill}', [\App\Http\Controllers\Lessee\DocumentController::class, 'showWaybill'])->name('waybills.show');
-        Route::get('completion-acts/{completionAct}', [\App\Http\Controllers\Lessee\DocumentController::class, 'showCompletionAct'])->name('completion-acts.show');
-        Route::get('delivery-notes/{deliveryNote}', [\App\Http\Controllers\Lessee\DocumentController::class, 'showDeliveryNote'])->name('delivery-notes.show');
-    });
-
+        // Специфические маршруты документов
+        Route::prefix('documents')->name('documents.')->group(function () {
+            Route::get('orders/{order}/waybills', [\App\Http\Controllers\Lessee\DocumentController::class, 'waybills'])
+                ->name('waybills.index');
+            Route::get('orders/{order}/completion-acts', [\App\Http\Controllers\Lessee\DocumentController::class, 'completionActs'])
+                ->name('completion-acts.index');
+            Route::get('waybills/{waybill}/download', [\App\Http\Controllers\Lessee\DocumentController::class, 'downloadWaybill'])
+                ->name('waybill.download');
+            Route::get('completion-acts/{completionAct}/download', [\App\Http\Controllers\Lessee\DocumentController::class, 'downloadCompletionAct'])
+                ->name('completion-act.download');
+            Route::get('waybills/{waybill}', [\App\Http\Controllers\Lessee\DocumentController::class, 'showWaybill'])->name('waybills.show');
+            Route::get('completion-acts/{completionAct}', [\App\Http\Controllers\Lessee\DocumentController::class, 'showCompletionAct'])->name('completion-acts.show');
+            Route::get('delivery-notes/{deliveryNote}', [\App\Http\Controllers\Lessee\DocumentController::class, 'showDeliveryNote'])->name('delivery-notes.show');
+        });
 
         // Управление условиями аренды
         Route::get('/rental-conditions', [RentalConditionController::class, 'index'])
@@ -240,21 +253,39 @@ Route::prefix('lessee')
 
         // Оформление заказа
         Route::post('/checkout', [CheckoutController::class, 'checkout'])->name('checkout');
+
+        // Заявки арендатора
+    Route::resource('rental-requests', \App\Http\Controllers\Lessee\RentalRequestController::class)
+        ->names('lessee.rental-requests');
+
+    // Управление предложениями
+    Route::prefix('rental-requests/{request}/proposals')->group(function () {
+        Route::post('{proposal}/accept', [\App\Http\Controllers\Lessee\RentalRequestController::class, 'acceptProposal'])
+            ->name('lessee.rental-requests.proposals.accept');
+        Route::post('{proposal}/reject', [\App\Http\Controllers\Lessee\RequestResponseController::class, 'reject'])
+            ->name('lessee.rental-requests.proposals.reject');
+        Route::post('{proposal}/counter-offer', [\App\Http\Controllers\Lessee\RequestResponseController::class, 'counterOffer'])
+            ->name('lessee.rental-requests.proposals.counter-offer');
+        });
+
+         // Отдельный ресурс для предложений
+    Route::resource('rental-responses', \App\Http\Controllers\Lessee\RequestResponseController::class)
+        ->only(['index', 'show'])
+        ->names('lessee.rental-responses');
+
     });
 
-    // Загрузка УПД (общий доступ)
-    Route::get('/orders/{order}/upd/{type}', [OrderController::class, 'downloadUPDF']);
+// Загрузка УПД (общий доступ)
+Route::get('/orders/{order}/upd/{type}', [OrderController::class, 'downloadUPDF']);
 
-
-    //Для перевозчика
-    Route::middleware(['auth', 'verified', 'carrier'])->prefix('carrier')->group(function () {
-        Route::get('/dashboard', [CarrierDashboardController::class, 'index'])->name('carrier.dashboard');
-        Route::get('/orders', [CarrierOrderController::class, 'index'])->name('carrier.orders.index');
-        Route::get('/orders/{order}', [CarrierOrderController::class, 'show'])->name('carrier.orders.show');
-        Route::post('/orders/{order}/accept', [CarrierOrderController::class, 'accept'])->name('carrier.orders.accept');
-        Route::post('/orders/{order}/complete', [CarrierOrderController::class, 'complete'])->name('carrier.orders.complete');
-    });
-
+// Для перевозчика
+Route::middleware(['auth', 'verified', 'carrier'])->prefix('carrier')->group(function () {
+    Route::get('/dashboard', [CarrierDashboardController::class, 'index'])->name('carrier.dashboard');
+    Route::get('/orders', [CarrierOrderController::class, 'index'])->name('carrier.orders.index');
+    Route::get('/orders/{order}', [CarrierOrderController::class, 'show'])->name('carrier.orders.show');
+    Route::post('/orders/{order}/accept', [CarrierOrderController::class, 'accept'])->name('carrier.orders.accept');
+    Route::post('/orders/{order}/complete', [CarrierOrderController::class, 'complete'])->name('carrier.orders.complete');
+});
 
 // Админ кабинет
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
@@ -277,7 +308,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
         'show' => 'admin.orders.show', // Добавьте это
         'edit' => 'admin.orders.edit',
         'update' => 'admin.orders.update',
-        'destroy' => 'admin.orders.destroy'
+        'destroy' => 'admin.orders.destroy',
     ]);
     Route::resource('news', \App\Http\Controllers\Admin\AdminNewsController::class)->names([
         'index' => 'admin.news.index',
@@ -285,7 +316,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
         'store' => 'admin.news.store',
         'edit' => 'admin.news.edit',
         'update' => 'admin.news.update',
-        'destroy' => 'admin.news.destroy'
+        'destroy' => 'admin.news.destroy',
     ]);
 
     // Управление шаблонами Excel
@@ -326,11 +357,10 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
             Route::post('/{upd}/reject', [\App\Http\Controllers\Admin\UpdController::class, 'reject'])->name('reject');
         });
 
-
     });
 
-     // Новый раздел: Настройки
-   Route::prefix('settings')->name('admin.settings.')->group(function () {
+    // Новый раздел: Настройки
+    Route::prefix('settings')->name('admin.settings.')->group(function () {
         Route::resource('document-templates', DocumentTemplateController::class)
             ->names([
                 'index' => 'document-templates.index',
@@ -352,16 +382,12 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
         Route::post('/{documentTemplate}/generate', [DocumentTemplateController::class, 'generate'])->name('generate');
     });
 
-
-
-
-
     Route::prefix('completion-acts')->name('admin.completion-acts.')->group(function () {
-    Route::post('/{completionAct}/generate-upd', [CompletionActController::class, 'generateUpd'])
-        ->name('generate-upd');
-    Route::post('/generate-upd-all', [CompletionActController::class, 'generateUpdForAll'])
-        ->name('generate-upd-all');
-});
+        Route::post('/{completionAct}/generate-upd', [CompletionActController::class, 'generateUpd'])
+            ->name('generate-upd');
+        Route::post('/generate-upd-all', [CompletionActController::class, 'generateUpdForAll'])
+            ->name('generate-upd-all');
+    });
 
     // Финансовый раздел
     Route::prefix('finance')->name('admin.finance.')->group(function () {
@@ -397,7 +423,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
         Route::get('/export', [ReportsController::class, 'export'])->name('export');
     });
 
-    //Акты сверок
+    // Акты сверок
     Route::prefix('reconciliation-acts')->name('admin.reconciliation-acts.')->group(function () {
         Route::get('/', [ReconciliationActController::class, 'index'])->name('index');
         Route::get('/create', [ReconciliationActController::class, 'create'])->name('create');
@@ -415,7 +441,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-// Маршруты для уведомлений
+    // Маршруты для уведомлений
     Route::prefix('notifications')->name('notifications.')->group(function () {
         Route::get('/', [NotificationController::class, 'index'])->name('index');
         Route::post('/mark-all-as-read', [NotificationController::class, 'markAllAsRead'])->name('markAllAsRead');

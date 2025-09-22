@@ -15,11 +15,11 @@ class UpdateNewsRequest extends FormRequest
     {
         return [
             'title' => 'sometimes|string|max:255',
-            'slug' => 'sometimes|string|unique:news,slug,' . $this->news->id,
+            'slug' => 'sometimes|string|unique:news,slug,'.$this->news->id,
             'excerpt' => 'nullable|string|max:500',
             'content' => 'sometimes|string',
             'publish_date' => 'sometimes|date',
-            'is_published' => 'sometimes|boolean'
+            'is_published' => 'sometimes|boolean',
         ];
     }
 }

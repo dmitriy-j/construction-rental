@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\TransactionEntry;
 use App\Models\Company;
 use App\Models\Invoice;
+use App\Models\TransactionEntry;
 use App\Models\Upd;
-use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ReportsController extends Controller
@@ -16,6 +16,7 @@ class ReportsController extends Controller
     public function index()
     {
         $companies = Company::where('is_lessee', true)->orWhere('is_lessor', true)->get();
+
         return view('admin.finance.reports', compact('companies'));
     }
 
@@ -25,7 +26,7 @@ class ReportsController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'report_type' => 'required|in:turnover,profit,invoices,upds,company_balance',
-            'company_id' => 'nullable|exists:companies,id'
+            'company_id' => 'nullable|exists:companies,id',
         ]);
 
         $startDate = Carbon::parse($request->start_date);
@@ -64,11 +65,11 @@ class ReportsController extends Controller
         }
 
         return $query->select(
-                DB::raw('DATE(created_at) as date'),
-                'purpose',
-                'type',
-                DB::raw('SUM(amount) as total')
-            )
+            DB::raw('DATE(created_at) as date'),
+            'purpose',
+            'type',
+            DB::raw('SUM(amount) as total')
+        )
             ->groupBy('date', 'purpose', 'type')
             ->orderBy('date')
             ->get();
@@ -91,7 +92,7 @@ class ReportsController extends Controller
         return [
             'platform_fee' => $platformFee,
             'expenses' => $expenses,
-            'profit' => $platformFee - $expenses
+            'profit' => $platformFee - $expenses,
         ];
     }
 
@@ -130,7 +131,7 @@ class ReportsController extends Controller
             $query->where('id', $companyId);
         }
 
-        return $query->with(['transactions' => function($q) use ($startDate, $endDate) {
+        return $query->with(['transactions' => function ($q) use ($startDate, $endDate) {
             $q->whereBetween('created_at', [$startDate, $endDate])
                 ->where('is_canceled', false);
         }])->get();

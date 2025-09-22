@@ -4,9 +4,8 @@ namespace App\Notifications;
 
 use App\Models\Order;
 use Illuminate\Bus\Queueable;
-use Illuminate\Notifications\Notification;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
 
 class OrderApproved extends Notification
 {
@@ -38,7 +37,7 @@ class OrderApproved extends Notification
         return [
             'message' => "Заказ #{$this->order->id} подтвержден арендодателем",
             'order_id' => $this->order->id,
-            'link' => route('lessee.orders.show', $this->order)
+            'link' => route('lessee.orders.show', $this->order),
         ];
     }
 }

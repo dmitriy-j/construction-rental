@@ -2,14 +2,14 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use App\Models\Order;
-use App\Models\Platform;
 use App\Models\Company;
 use App\Models\Equipment;
+use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Platform;
 use App\Services\UPDPdfGenerator;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
+use Tests\TestCase;
 
 class UPDPdfGeneratorTest extends TestCase
 {
@@ -20,17 +20,22 @@ class UPDPdfGeneratorTest extends TestCase
         parent::setUp();
 
         // Отключаем обработку PDF в тестах
-        PDF::swap(new class {
-            public function loadView($view, $data = []) {
-                return new class($view, $data) {
-                    public function download($filename) {
+        PDF::swap(new class
+        {
+            public function loadView($view, $data = [])
+            {
+                return new class($view, $data)
+                {
+                    public function download($filename)
+                    {
                         return response()->make('PDF_CONTENT', 200, [
                             'Content-Type' => 'application/pdf',
-                            'Content-Disposition' => 'attachment; filename="'.$filename.'"'
+                            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
                         ]);
                     }
 
                     public function setPaper($size, $orientation) {}
+
                     public function setOption($option, $value) {}
                 };
             }
@@ -56,11 +61,11 @@ class UPDPdfGeneratorTest extends TestCase
             'order_id' => $order->id,
             'equipment_id' => $equipment->id,
             'base_price' => 5000,
-            'period_count' => 2
+            'period_count' => 2,
         ]);
 
         // Генерируем PDF
-        $generator = new UPDPdfGenerator();
+        $generator = new UPDPdfGenerator;
         $response = $generator->generateForLessor($order);
 
         // Проверяем ответ
@@ -86,7 +91,7 @@ class UPDPdfGeneratorTest extends TestCase
             'lessee_company_id' => $lessee->id,
         ]);
 
-        $generator = new UPDPdfGenerator();
+        $generator = new UPDPdfGenerator;
         $response = $generator->generateForLessee($order);
 
         $this->assertEquals(200, $response->getStatusCode());
@@ -103,7 +108,7 @@ class UPDPdfGeneratorTest extends TestCase
         Platform::query()->delete();
 
         $order = Order::factory()->create();
-        $generator = new UPDPdfGenerator();
+        $generator = new UPDPdfGenerator;
 
         $response = $generator->generateForLessor($order);
 
@@ -115,7 +120,7 @@ class UPDPdfGeneratorTest extends TestCase
     public function it_handles_empty_order()
     {
         $order = Order::factory()->create(['base_amount' => 0]);
-        $generator = new UPDPdfGenerator();
+        $generator = new UPDPdfGenerator;
 
         $response = $generator->generateForLessor($order);
 

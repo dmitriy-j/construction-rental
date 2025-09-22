@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\Lessee;
 
 use App\Http\Controllers\Controller;
-use App\Services\EquipmentAvailabilityService;
 use App\Models\Order;
-use Illuminate\Http\Request;
-use App\Notifications\OrderStatusChanged;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 use App\Models\OrderItem;
+use App\Notifications\OrderStatusChanged;
+use App\Services\EquipmentAvailabilityService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class OrderController extends Controller
 {
@@ -31,7 +31,7 @@ class OrderController extends Controller
             $order->calculated_total = $order->rental_amount + $order->delivery_amount;
 
             $order->total_items_count = $order->isParent()
-                ? $order->childOrders->sum(fn($child) => $child->items->count())
+                ? $order->childOrders->sum(fn ($child) => $child->items->count())
                 : $order->items->count();
 
             return $order;
@@ -40,7 +40,7 @@ class OrderController extends Controller
         return view('lessee.orders.index', compact('orders'));
     }
 
-     public function show(Order $order)
+    public function show(Order $order)
     {
         if ($order->lessee_company_id !== auth()->user()->company_id || $order->isChild()) {
             abort(403);
@@ -54,7 +54,7 @@ class OrderController extends Controller
                 'childOrders.items.deliveryNote',
                 'childOrders.items.deliveryFrom',
                 'childOrders.items.deliveryTo',
-                'childOrders.lessorCompany'
+                'childOrders.lessorCompany',
             ]);
         } else {
             $order->load([
@@ -65,7 +65,7 @@ class OrderController extends Controller
                 },
                 'items.deliveryFrom',
                 'items.deliveryTo',
-                'lessorCompany'
+                'lessorCompany',
             ]);
         }
 
@@ -73,32 +73,31 @@ class OrderController extends Controller
             ? $order->childOrders->flatMap->items
             : $order->items;
 
-          $allItems->each(function ($item) {
-        // Заменяем price_per_unit на фиксированную стоимость
-        $item->price_per_unit = $item->fixed_customer_price ?? $item->price_per_unit;
+        $allItems->each(function ($item) {
+            // Заменяем price_per_unit на фиксированную стоимость
+            $item->price_per_unit = $item->fixed_customer_price ?? $item->price_per_unit;
 
-        // Пересчитываем суммы
-        $item->simple_rental_total = $item->price_per_unit * $item->period_count;
-        $item->simple_total = $item->simple_rental_total + $item->delivery_cost;
+            // Пересчитываем суммы
+            $item->simple_rental_total = $item->price_per_unit * $item->period_count;
+            $item->simple_total = $item->simple_rental_total + $item->delivery_cost;
 
-        // Перенесено внутрь callback-функции!
-        $item->status_text = match($item->status) {
-            OrderItem::STATUS_PENDING => 'Ожидает',
-            OrderItem::STATUS_IN_DELIVERY => 'В пути',
-            OrderItem::STATUS_ACTIVE => 'Активна',
-            OrderItem::STATUS_COMPLETED => 'Завершена',
-            default => $item->status,
-        };
+            // Перенесено внутрь callback-функции!
+            $item->status_text = match ($item->status) {
+                OrderItem::STATUS_PENDING => 'Ожидает',
+                OrderItem::STATUS_IN_DELIVERY => 'В пути',
+                OrderItem::STATUS_ACTIVE => 'Активна',
+                OrderItem::STATUS_COMPLETED => 'Завершена',
+                default => $item->status,
+            };
 
-        $item->status_color = match($item->status) {
-            OrderItem::STATUS_PENDING => 'warning',
-            OrderItem::STATUS_IN_DELIVERY => 'info',
-            OrderItem::STATUS_ACTIVE => 'success',
-            OrderItem::STATUS_COMPLETED => 'secondary',
-            default => 'light',
-        };
-    });
-
+            $item->status_color = match ($item->status) {
+                OrderItem::STATUS_PENDING => 'warning',
+                OrderItem::STATUS_IN_DELIVERY => 'info',
+                OrderItem::STATUS_ACTIVE => 'success',
+                OrderItem::STATUS_COMPLETED => 'secondary',
+                default => 'light',
+            };
+        });
 
         $simpleGrandTotal = $allItems->sum('simple_total');
 
@@ -119,11 +118,11 @@ class OrderController extends Controller
             Order::STATUS_PENDING,
             Order::STATUS_PENDING_APPROVAL,
             Order::STATUS_CONFIRMED,
-            Order::STATUS_AGGREGATED
+            Order::STATUS_AGGREGATED,
         ];
 
-        if (!in_array($order->status, $allowedStatuses)) {
-            return back()->with('error', 'Невозможно отменить заказ в текущем статусе: ' . $order->status_text);
+        if (! in_array($order->status, $allowedStatuses)) {
+            return back()->with('error', 'Невозможно отменить заказ в текущем статусе: '.$order->status_text);
         }
 
         try {
@@ -136,7 +135,8 @@ class OrderController extends Controller
             return back()->with('success', 'Заказ и все связанные подзаказы успешно отменены');
         } catch (\Exception $e) {
             Log::error('Ошибка отмены заказа: '.$e->getMessage(), ['exception' => $e]);
-            return back()->with('error', 'Ошибка при отмене заказа: ' . $e->getMessage());
+
+            return back()->with('error', 'Ошибка при отмене заказа: '.$e->getMessage());
         }
     }
 
@@ -145,19 +145,19 @@ class OrderController extends Controller
         if ($order->lessee_company_id !== auth()->user()->company_id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Доступ запрещен'
+                'message' => 'Доступ запрещен',
             ], 403);
         }
 
         $validator = Validator::make($request->all(), [
-            'new_end_date' => 'required|date|after:'.$order->end_date->format('Y-m-d')
+            'new_end_date' => 'required|date|after:'.$order->end_date->format('Y-m-d'),
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Ошибка валидации',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -165,14 +165,14 @@ class OrderController extends Controller
         $newEndDate = $request->new_end_date;
 
         foreach ($order->items as $item) {
-            if (!$service->isAvailable(
+            if (! $service->isAvailable(
                 $item->equipment,
                 $order->end_date->addDay()->format('Y-m-d'),
                 $newEndDate
             )) {
                 return response()->json([
                     'success' => false,
-                    'message' => "Оборудование {$item->equipment->title} недоступно на выбранные даты"
+                    'message' => "Оборудование {$item->equipment->title} недоступно на выбранные даты",
                 ], 400);
             }
         }
@@ -180,12 +180,12 @@ class OrderController extends Controller
         $order->update([
             'extension_requested' => true,
             'requested_end_date' => $newEndDate,
-            'status' => Order::STATUS_EXTENSION_REQUESTED
+            'status' => Order::STATUS_EXTENSION_REQUESTED,
         ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Запрос на продление отправлен арендодателю'
+            'message' => 'Запрос на продление отправлен арендодателю',
         ]);
     }
 
@@ -207,8 +207,8 @@ class OrderController extends Controller
             'items.*.total_price' => 'required|numeric|min:0',
         ]);
 
-        DB::transaction(function() use ($request) {
-            $order = new Order();
+        DB::transaction(function () use ($request) {
+            $order = new Order;
             $order->lessee_company_id = auth()->user()->company_id;
             $order->status = Order::STATUS_PENDING;
             $order->delivery_type = $request->delivery_type;
@@ -223,7 +223,7 @@ class OrderController extends Controller
                 'platform_fee',
                 'delivery_cost',
                 'discount_amount',
-                'lessor_base_amount'
+                'lessor_base_amount',
             ]));
 
             $order->save();

@@ -4,14 +4,10 @@ namespace App\Policies;
 
 use App\Models\News;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class NewsPolicy
 {
-
-
-
-     public function create(User $user): bool
+    public function create(User $user): bool
     {
         return $user->isAdmin();
     }
@@ -53,10 +49,10 @@ class NewsPolicy
     /**
      * Determine whether the user can update the model.
      */
-  /*  public function update(User $user, News $news): bool
-    {
-        //
-    }
+    /*  public function update(User $user, News $news): bool
+      {
+          //
+      }
 */
     /**
      * Determine whether the user can delete the model.

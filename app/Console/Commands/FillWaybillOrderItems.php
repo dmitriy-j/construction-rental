@@ -2,13 +2,14 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Waybill;
 use App\Models\OrderItem;
+use App\Models\Waybill;
 use Illuminate\Console\Command;
 
 class FillWaybillOrderItems extends Command
 {
     protected $signature = 'fill:waybill-order-items';
+
     protected $description = 'Fill order_item_id in waybills';
 
     public function handle()

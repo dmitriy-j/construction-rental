@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use App\Models\Location;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class DeliveryCalculatorService
 {
@@ -16,6 +16,7 @@ class DeliveryCalculatorService
         // Пытаемся получить из кэша
         if (Cache::has($cacheKey)) {
             $distance = Cache::get($cacheKey);
+
             return $this->applyRoadCoefficient($distance); // Применяем коэффициент!
         }
 
@@ -29,6 +30,7 @@ class DeliveryCalculatorService
             );
 
             Cache::put($cacheKey, $distance, now()->addDays(30));
+
             return $this->applyRoadCoefficient($distance); // Применяем коэффициент!
         }
 
@@ -48,10 +50,12 @@ class DeliveryCalculatorService
             $this->updateLocationCoordinates($to, $toCoords);
 
             Cache::put($cacheKey, $distance, now()->addDays(30));
+
             return $this->applyRoadCoefficient($distance); // Применяем коэффициент!
 
         } catch (\Exception $e) {
             Log::error('Geocoding failed: '.$e->getMessage());
+
             return 0;
         }
     }
@@ -67,7 +71,7 @@ class DeliveryCalculatorService
         $response = Http::get('https://geocode-maps.yandex.ru/1.x/', [
             'geocode' => $location->address,
             'apikey' => $apiKey,
-            'format' => 'json'
+            'format' => 'json',
         ]);
 
         $data = $response->json();
@@ -79,14 +83,14 @@ class DeliveryCalculatorService
         $pos = $data['response']['GeoObjectCollection']['featureMember'][0]['GeoObject']['Point']['pos'];
         [$lon, $lat] = explode(' ', $pos);
 
-        return ['lat' => (float)$lat, 'lon' => (float)$lon];
+        return ['lat' => (float) $lat, 'lon' => (float) $lon];
     }
 
     private function updateLocationCoordinates(Location $location, array $coords)
     {
         $location->update([
             'latitude' => $coords['lat'],
-            'longitude' => $coords['lon']
+            'longitude' => $coords['lon'],
         ]);
     }
 
@@ -96,11 +100,11 @@ class DeliveryCalculatorService
         $dLat = deg2rad($lat2 - $lat1);
         $dLon = deg2rad($lon2 - $lon1);
 
-        $a = sin($dLat/2) * sin($dLat/2) +
+        $a = sin($dLat / 2) * sin($dLat / 2) +
              cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
-             sin($dLon/2) * sin($dLon/2);
+             sin($dLon / 2) * sin($dLon / 2);
 
-        $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
 
         return $earthRadius * $c;
     }
@@ -108,6 +112,7 @@ class DeliveryCalculatorService
     private function applyRoadCoefficient(float $distance): float
     {
         $coefficient = config('services.yandex_maps.coefficient', 1.3);
+
         return $distance * $coefficient;
     }
 }

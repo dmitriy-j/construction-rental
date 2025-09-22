@@ -10,7 +10,7 @@ class AddEquipmentIdToWaybills extends Migration
     {
         Schema::table('waybills', function (Blueprint $table) {
             $table->foreignId('equipment_id')->after('order_id')
-                  ->nullable()->constrained('equipment');
+                ->nullable()->constrained('equipment');
         });
     }
 

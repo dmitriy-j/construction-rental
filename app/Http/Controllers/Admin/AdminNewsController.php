@@ -11,14 +11,16 @@ class AdminNewsController extends Controller
     public function index()
     {
         $news = News::latest()->paginate(10);
+
         return view('admin.news.index', compact('news'));
     }
 
     public function show($id)
-{
-    $news = News::findOrFail($id);
-    return view('admin.news.show', compact('news'));
-}
+    {
+        $news = News::findOrFail($id);
+
+        return view('admin.news.show', compact('news'));
+    }
 
     public function create()
     {
@@ -35,7 +37,7 @@ class AdminNewsController extends Controller
 
         News::create($validated + [
             'author_id' => auth()->id(),
-            'is_published' => $request->has('is_published')
+            'is_published' => $request->has('is_published'),
         ]);
 
         return redirect()->route('news.index')->with('success', 'Новость создана!');
@@ -55,7 +57,7 @@ class AdminNewsController extends Controller
         ]);
 
         $news->update($validated + [
-            'is_published' => $request->has('is_published')
+            'is_published' => $request->has('is_published'),
         ]);
 
         return redirect()->route('news.index')->with('success', 'Новость обновлена!');
@@ -64,6 +66,7 @@ class AdminNewsController extends Controller
     public function destroy(News $news)
     {
         $news->delete();
+
         return redirect()->route('news.index')->with('success', 'Новость удалена!');
     }
 }

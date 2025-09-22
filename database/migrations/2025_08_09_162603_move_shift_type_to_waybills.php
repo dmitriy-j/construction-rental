@@ -12,7 +12,7 @@ return new class extends Migration
     public function up()
     {
         // Проверяем существование столбца перед добавлением
-        if (!Schema::hasColumn('waybills', 'shift_type')) {
+        if (! Schema::hasColumn('waybills', 'shift_type')) {
             Schema::table('waybills', function (Blueprint $table) {
                 $table->string('shift_type', 10)->default('day')->after('operator_id');
             });
@@ -44,7 +44,7 @@ return new class extends Migration
     public function down()
     {
         // Возвращаем поле в waybill_shifts, если оно было удалено
-        if (!Schema::hasColumn('waybill_shifts', 'shift_type')) {
+        if (! Schema::hasColumn('waybill_shifts', 'shift_type')) {
             Schema::table('waybill_shifts', function (Blueprint $table) {
                 $table->string('shift_type', 10)->default('day');
             });

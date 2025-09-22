@@ -2,13 +2,14 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\Company;
 use App\Notifications\CreditLimitAlertNotification;
+use Illuminate\Console\Command;
 
 class CheckCreditLimits extends Command
 {
     protected $signature = 'finance:check-credit-limits';
+
     protected $description = 'Check companies credit limits and send notifications';
 
     public function handle()

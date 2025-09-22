@@ -28,8 +28,8 @@ class CompletionActFactory extends Factory
             'final_amount' => $this->faker->randomFloat(2, 5000, 100000),
             'act_file_path' => $this->faker->optional()->url,
             'status' => $this->faker->randomElement([
-                'draft', 'signed_lessor', 'signed_lessee', 'completed'
-                ]),
+                'draft', 'signed_lessor', 'signed_lessee', 'completed',
+            ]),
         ];
     }
 }

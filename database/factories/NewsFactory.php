@@ -2,9 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\News;
-use App\Models\User;
 use App\Models\Admin;
+use App\Models\News;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class NewsFactory extends Factory

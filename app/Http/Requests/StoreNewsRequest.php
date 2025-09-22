@@ -19,7 +19,7 @@ class StoreNewsRequest extends FormRequest
             'excerpt' => 'nullable|string|max:500',
             'content' => 'required|string',
             'publish_date' => 'required|date',
-            'is_published' => 'sometimes|boolean'
+            'is_published' => 'sometimes|boolean',
         ];
     }
 }

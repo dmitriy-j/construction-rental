@@ -2,26 +2,29 @@
 
 namespace Database\Factories;
 
-use App\Models\Order;
 use App\Models\Company;
-use App\Models\User;
-use App\Models\Platform;
 use App\Models\Contract;
-use Illuminate\Database\Eloquent\Factories\Factory;
+use App\Models\Order;
+use App\Models\Platform;
+use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Factories\Factory;
 
 class OrderFactory extends Factory
 {
     protected $model = Order::class;
 
     private static $lesseeCompanies;
+
     private static $lessorCompanies;
+
     private static $users;
+
     private static $contracts;
 
     public function definition()
     {
-        if (!isset(self::$lesseeCompanies)) {
+        if (! isset(self::$lesseeCompanies)) {
             self::$lesseeCompanies = Company::where('is_lessee', true)->pluck('id')->all();
             self::$lessorCompanies = Company::where('is_lessor', true)->pluck('id')->all();
             self::$users = User::pluck('id')->all();
@@ -44,7 +47,7 @@ class OrderFactory extends Factory
                 'active',
                 'completed',
                 'cancelled',
-                'rejected' // новый статус
+                'rejected', // новый статус
             ]),
             'start_date' => $startDate,
             'end_date' => $endDate,

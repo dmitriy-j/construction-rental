@@ -4,9 +4,8 @@ namespace App\Notifications;
 
 use App\Models\DeliveryNote;
 use Illuminate\Bus\Queueable;
-use Illuminate\Notifications\Notification;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
 
 class EquipmentDelivered extends Notification
 {
@@ -38,7 +37,7 @@ class EquipmentDelivered extends Notification
         return [
             'message' => 'Оборудование доставлено',
             'note_id' => $this->deliveryNote->id,
-            'equipment' => $this->deliveryNote->orderItem->equipment->title
+            'equipment' => $this->deliveryNote->orderItem->equipment->title,
         ];
     }
 }

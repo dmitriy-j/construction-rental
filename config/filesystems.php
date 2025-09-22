@@ -56,7 +56,7 @@ return [
             'throw' => false,
         ],
 
-         'private' => [
+        'private' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
             'throw' => false,

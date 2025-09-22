@@ -3,14 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ExcelMapping;
 use App\Models\Company;
+use App\Models\ExcelMapping;
+use App\Services\Parsers\UpdParserService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use App\Services\Parsers\UpdParserService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class ExcelMappingController extends Controller
 {
@@ -63,7 +62,7 @@ class ExcelMappingController extends Controller
                 'name' => 'required|string|max:255',
                 'mapping' => 'required|array',
                 'file_example' => 'required|file|mimes:xlsx,xls',
-                'is_active' => 'sometimes|boolean'
+                'is_active' => 'sometimes|boolean',
             ]);
 
             \Log::debug('Validation passed');
@@ -73,7 +72,7 @@ class ExcelMappingController extends Controller
             if ($jsonTest === false) {
                 $error = json_last_error_msg();
                 \Log::error('JSON encoding failed:', ['error' => $error, 'data' => $request->mapping]);
-                throw new \Exception("Ошибка в данных маппинга: " . $error);
+                throw new \Exception('Ошибка в данных маппинга: '.$error);
             }
 
             \Log::debug('JSON encoding successful');
@@ -102,7 +101,7 @@ class ExcelMappingController extends Controller
 
             // Проверяем, что запись действительно создалась
             $savedMapping = DB::table('excel_mappings')->find($id);
-            \Log::debug('Saved record:', (array)$savedMapping);
+            \Log::debug('Saved record:', (array) $savedMapping);
 
             return redirect()->route('admin.excel-mappings.index')
                 ->with('success', 'Шаблон УПД успешно создан.');
@@ -111,11 +110,11 @@ class ExcelMappingController extends Controller
             \Log::error('Error saving template:', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'code' => $e->getCode()
+                'code' => $e->getCode(),
             ]);
 
             return redirect()->back()
-                ->with('error', 'Ошибка создания шаблона: ' . $e->getMessage())
+                ->with('error', 'Ошибка создания шаблона: '.$e->getMessage())
                 ->withInput();
         }
     }
@@ -129,10 +128,11 @@ class ExcelMappingController extends Controller
                 Storage::path($excelMapping->file_example_path),
                 $excelMapping->mapping // Исправлено: было mapping_config, стало mapping
             );
+
             return view('admin.excel-mappings.show', compact('excelMapping', 'parsedData'));
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Ошибка тестового парсинга: ' . $e->getMessage());
+                ->with('error', 'Ошибка тестового парсинга: '.$e->getMessage());
         }
     }
 
@@ -141,6 +141,7 @@ class ExcelMappingController extends Controller
         $companies = Company::where('is_lessor', true)->get();
         $defaultConfig = ExcelMapping::getDefaultUpdMappingConfig();
         $parsers = $this->getAvailableParsers();
+
         return view('admin.excel-mappings.edit', compact('excelMapping', 'companies', 'defaultConfig', 'parsers'));
     }
 
@@ -151,14 +152,14 @@ class ExcelMappingController extends Controller
             'name' => 'required|string|max:255',
             'mapping' => 'required|array', // Исправлено: было mapping_config, стало mapping
             'file_example' => 'nullable|file|mimes:xlsx,xls',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
         ]);
         try {
             $data = [
                 'company_id' => $request->company_id,
                 'name' => $request->name,
                 'mapping' => $request->mapping, // Исправлено: было mapping_config, стало mapping
-                'is_active' => $request->is_active ?? false
+                'is_active' => $request->is_active ?? false,
             ];
             if ($request->hasFile('file_example')) {
                 // Проверяем новую конфигурацию на новом файле
@@ -179,11 +180,12 @@ class ExcelMappingController extends Controller
                 );
             }
             $excelMapping->update($data);
+
             return redirect()->route('admin.excel-mappings.index')
                 ->with('success', 'Шаблон УПД успешно обновлен.');
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Ошибка обновления шаблона: ' . $e->getMessage())
+                ->with('error', 'Ошибка обновления шаблона: '.$e->getMessage())
                 ->withInput();
         }
     }
@@ -201,7 +203,7 @@ class ExcelMappingController extends Controller
                 ->with('success', 'Шаблон УПД успешно удален.');
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Ошибка удаления шаблона: ' . $e->getMessage());
+                ->with('error', 'Ошибка удаления шаблона: '.$e->getMessage());
         }
     }
 
@@ -217,13 +219,13 @@ class ExcelMappingController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $parsedData
+                'data' => $parsedData,
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 422);
         }
     }
@@ -231,12 +233,12 @@ class ExcelMappingController extends Controller
     public function downloadExample(ExcelMapping $excelMapping): StreamedResponse
     {
         // Проверяем существование файла
-        if (!Storage::exists($excelMapping->file_example_path)) {
+        if (! Storage::exists($excelMapping->file_example_path)) {
             abort(404, 'Файл не найден');
         }
 
         // Генерируем имя файла для скачивания
-        $fileName = 'пример_шаблона_' . $excelMapping->name . '.' .
+        $fileName = 'пример_шаблона_'.$excelMapping->name.'.'.
                     pathinfo($excelMapping->file_example_path, PATHINFO_EXTENSION);
 
         return Storage::download($excelMapping->file_example_path, $fileName);

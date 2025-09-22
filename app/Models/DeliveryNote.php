@@ -5,10 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\DB; // Добавлено
-use Illuminate\Support\Facades\Log; // Добавлено
 
+// Добавлено
+// Добавлено
 
 class DeliveryNote extends Model
 {
@@ -16,22 +15,29 @@ class DeliveryNote extends Model
 
     // Типы накладных
     const TYPE_LESSOR_TO_PLATFORM = 'lessor_to_platform';
+
     const TYPE_PLATFORM_TO_LESSEE = 'platform_to_lessee';
 
     // Типы транспорта
     const VEHICLE_25T = 'truck_25t';
+
     const VEHICLE_45T = 'truck_45t';
+
     const VEHICLE_110T = 'truck_110t';
 
     // Статусы
     const STATUS_DRAFT = 'draft';
+
     const STATUS_IN_TRANSIT = 'in_transit';
+
     const STATUS_DELIVERED = 'delivered';
+
     const STATUS_ACCEPTED = 'accepted';
 
     const TYPE_DIRECT = 'direct';
 
     const SCENARIO_LESSOR_PLATFORM = 'lessor_platform';
+
     const SCENARIO_PLATFORM_DIRECT = 'platform_direct';
 
     protected $fillable = [
@@ -88,10 +94,9 @@ class DeliveryNote extends Model
         return [
             self::TYPE_LESSOR_TO_PLATFORM => 'От арендодателя платформе',
             self::TYPE_PLATFORM_TO_LESSEE => 'От платформы арендатору',
-            self::TYPE_DIRECT => 'Прямая доставка от арендодателя к арендатору'
+            self::TYPE_DIRECT => 'Прямая доставка от арендодателя к арендатору',
         ];
     }
-
 
     public static function vehicleTypes(): array
     {
@@ -111,8 +116,6 @@ class DeliveryNote extends Model
             self::STATUS_ACCEPTED => 'Принято',
         ];
     }
-
-
 
     public function getStatusTextAttribute(): string
     {
@@ -161,22 +164,20 @@ class DeliveryNote extends Model
 
     public function scopeForCompany($query, $companyId)
     {
-        return $query->where(function($q) use ($companyId) {
+        return $query->where(function ($q) use ($companyId) {
             $q->where('sender_company_id', $companyId)
-            ->orWhere('receiver_company_id', $companyId);
+                ->orWhere('receiver_company_id', $companyId);
         });
     }
 
     public function isFullySigned(): bool
     {
-        return match($this->type) {
-            self::TYPE_LESSOR_TO_PLATFORM =>
-                !empty($this->sender_signature_path) &&
-                !empty($this->carrier_signature_path),
+        return match ($this->type) {
+            self::TYPE_LESSOR_TO_PLATFORM => ! empty($this->sender_signature_path) &&
+                ! empty($this->carrier_signature_path),
 
-            self::TYPE_PLATFORM_TO_LESSEE =>
-                !empty($this->carrier_signature_path) &&
-                !empty($this->receiver_signature_path),
+            self::TYPE_PLATFORM_TO_LESSEE => ! empty($this->carrier_signature_path) &&
+                ! empty($this->receiver_signature_path),
 
             default => false
         };
@@ -184,13 +185,13 @@ class DeliveryNote extends Model
 
     public function isComplete(): bool
     {
-        return !empty($this->document_number) &&
-            !empty($this->issue_date) &&
-            !empty($this->transport_driver_name) &&
-            !empty($this->transport_vehicle_model) &&
-            !empty($this->transport_vehicle_number) &&
-            !empty($this->driver_contact) &&
-            !empty($this->departure_time);
+        return ! empty($this->document_number) &&
+            ! empty($this->issue_date) &&
+            ! empty($this->transport_driver_name) &&
+            ! empty($this->transport_vehicle_model) &&
+            ! empty($this->transport_vehicle_number) &&
+            ! empty($this->driver_contact) &&
+            ! empty($this->departure_time);
     }
 
     public function canBeClosed(): bool
@@ -206,16 +207,16 @@ class DeliveryNote extends Model
     // Мутаторы для сценариев
     public function getScenarioDetailsAttribute(): array
     {
-        return match($this->delivery_scenario) {
+        return match ($this->delivery_scenario) {
             self::SCENARIO_LESSOR_PLATFORM => [
                 'sender_role' => 'Арендодатель',
                 'receiver_role' => 'Платформа',
-                'carrier_role' => 'Арендодатель'
+                'carrier_role' => 'Арендодатель',
             ],
             self::SCENARIO_PLATFORM_DIRECT => [
                 'sender_role' => 'Платформа',
                 'receiver_role' => 'Арендатор',
-                'carrier_role' => 'Сторонний перевозчик'
+                'carrier_role' => 'Сторонний перевозчик',
             ]
         };
     }
@@ -250,7 +251,7 @@ class DeliveryNote extends Model
             'transport_vehicle_model' => $this->transport_vehicle_model,
             'transport_vehicle_number' => $this->transport_vehicle_number,
             'driver_contact' => $this->driver_contact,
-            'departure_time' => $this->departure_time
+            'departure_time' => $this->departure_time,
         ]);
     }
 
@@ -263,7 +264,7 @@ class DeliveryNote extends Model
             'vehicle_model' => $data['vehicle_model'],
             'vehicle_number' => $data['vehicle_number'],
             'driver_contact' => $data['driver_contact'],
-            'status' => DeliveryNote::STATUS_IN_TRANSIT
+            'status' => DeliveryNote::STATUS_IN_TRANSIT,
         ]);
     }
 
@@ -271,9 +272,7 @@ class DeliveryNote extends Model
     {
         $this->update([
             'delivery_date' => $deliveryDate,
-            'status' => DeliveryNote::STATUS_DELIVERED
+            'status' => DeliveryNote::STATUS_DELIVERED,
         ]);
     }
-
 }
-

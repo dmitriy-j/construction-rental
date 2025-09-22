@@ -3,16 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Upd;
-use App\Models\Contract;
-use App\Models\DeliveryNote;
-use App\Models\Waybill;
-use App\Models\CompletionAct;
-use App\Models\Invoice;
-use App\Services\UpdProcessingService;
-use App\Services\DocumentGeneratorService;
-use App\Models\DocumentTemplate;
 use App\Models\Company;
+use App\Models\DocumentTemplate;
+use App\Models\Upd;
+use App\Services\DocumentGeneratorService;
+use App\Services\UpdProcessingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -63,12 +58,12 @@ class UpdController extends Controller
     public function show(Upd $upd)
     {
         $upd->load([
-            'order' => function($query) {
+            'order' => function ($query) {
                 $query->select('id', 'company_order_number', 'lessor_company_id', 'lessee_company_id');
             },
             'lessorCompany',
             'lesseeCompany',
-            'items'
+            'items',
         ]);
 
         return view('admin.documents.upds.show', compact('upd'));
@@ -91,16 +86,17 @@ class UpdController extends Controller
 
             if ($isVerified) {
                 $this->updProcessingService->acceptUpd($upd);
+
                 return redirect()->back()->with('success', 'УПД успешно проверен и принят.');
             } else {
                 return redirect()->back()->with('error', 'Данные бумажного УПД не совпадают с электронным.');
             }
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Ошибка проверки УПД: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Ошибка проверки УПД: '.$e->getMessage());
         }
     }
 
-   public function accept(Upd $upd)
+    public function accept(Upd $upd)
     {
         try {
             // Детальная проверка прав с логированием
@@ -108,24 +104,24 @@ class UpdController extends Controller
                 'user_id' => auth()->id(),
                 'user_roles' => auth()->user()->getRoleNames()->toArray(),
                 'is_admin' => auth()->user()->isAdmin(),
-                'upd_id' => $upd->id
+                'upd_id' => $upd->id,
             ]);
 
             // Обновленная проверка прав
             $allowedRoles = ['platform_super', 'platform_admin', 'financial_manager'];
 
-            if (!auth()->check() || !auth()->user()->hasAnyRole($allowedRoles)) {
+            if (! auth()->check() || ! auth()->user()->hasAnyRole($allowedRoles)) {
                 \Log::warning('Доступ запрещен: недостаточно прав', [
                     'user_id' => auth()->id(),
                     'user_roles' => auth()->user()->getRoleNames()->toArray(),
-                    'required_roles' => $allowedRoles
+                    'required_roles' => $allowedRoles,
                 ]);
-                abort(403, 'Недостаточно прав для принятия УПД. Требуемые роли: ' . implode(', ', $allowedRoles));
+                abort(403, 'Недостаточно прав для принятия УПД. Требуемые роли: '.implode(', ', $allowedRoles));
             }
 
             // Проверка статуса УПД
             if ($upd->status !== Upd::STATUS_PENDING) {
-                throw new \Exception('УПД уже был обработан. Текущий статус: ' . $upd->status);
+                throw new \Exception('УПД уже был обработан. Текущий статус: '.$upd->status);
             }
 
             DB::beginTransaction();
@@ -135,7 +131,7 @@ class UpdController extends Controller
                 'upd_id' => $upd->id,
                 'user_id' => auth()->id(),
                 'current_status' => $upd->status,
-                'type' => $upd->type
+                'type' => $upd->type,
             ]);
 
             $upd->accept();
@@ -145,7 +141,7 @@ class UpdController extends Controller
             \Log::info('УПД успешно принят', [
                 'upd_id' => $upd->id,
                 'new_status' => $upd->status,
-                'accepted_at' => $upd->accepted_at
+                'accepted_at' => $upd->accepted_at,
             ]);
 
             return redirect()->back()->with('success', 'УПД успешно принят и проведен.');
@@ -156,22 +152,22 @@ class UpdController extends Controller
                 'upd_id' => $upd->id,
                 'user_id' => auth()->id(),
                 'error_message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect()->back()->with('error', 'Ошибка принятия УПД: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Ошибка принятия УПД: '.$e->getMessage());
         }
     }
 
     public function reject(Request $request, Upd $upd)
     {
         $request->validate([
-            'reason' => 'required|string|min:10|max:500'
+            'reason' => 'required|string|min:10|max:500',
         ]);
 
         try {
             // Проверяем права доступа
-            if (!auth()->user()->isAdmin()) {
+            if (! auth()->user()->isAdmin()) {
                 abort(403);
             }
 
@@ -179,7 +175,7 @@ class UpdController extends Controller
 
             return redirect()->back()->with('success', 'УПД отклонен.');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Ошибка отклонения УПД: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Ошибка отклонения УПД: '.$e->getMessage());
         }
     }
 
@@ -197,7 +193,7 @@ class UpdController extends Controller
                 ->with('success', 'УПД успешно удален.');
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Ошибка удаления УПД: ' . $e->getMessage());
+                ->with('error', 'Ошибка удаления УПД: '.$e->getMessage());
         }
     }
 
@@ -225,7 +221,7 @@ class UpdController extends Controller
             // Обновляем путь к файлу в УПД
             $relativePath = str_replace(storage_path('app/'), '', $filePath);
             $upd->update([
-                'file_path' => $relativePath
+                'file_path' => $relativePath,
             ]);
 
             Log::info('Путь к файлу обновлен в УПД', ['new_file_path' => $relativePath]);
@@ -237,11 +233,11 @@ class UpdController extends Controller
             Log::error('Ошибка генерации УПД', [
                 'upd_id' => $upd->id,
                 'error_message' => $e->getMessage(),
-                'error_trace' => $e->getTraceAsString()
+                'error_trace' => $e->getTraceAsString(),
             ]);
 
             return redirect()->back()
-                ->with('error', 'Ошибка генерации УПД: ' . $e->getMessage());
+                ->with('error', 'Ошибка генерации УПД: '.$e->getMessage());
         }
     }
 
@@ -250,7 +246,7 @@ class UpdController extends Controller
         $platformCompany = Company::where('is_platform', true)->first();
         $lesseeCompany = $upd->lesseeCompany;
 
-        // Проверяем наличие банковских реквизитов (исправленные названия полей)
+        // Проверяем наличие банковских реквизитов
         if (empty($platformCompany->bank_name) || empty($platformCompany->bik) || empty($platformCompany->bank_account)) {
             throw new \Exception('Не заполнены банковские реквизиты платформы');
         }
@@ -259,7 +255,14 @@ class UpdController extends Controller
             throw new \Exception('Не заполнены банковские реквизиты арендатора');
         }
 
+        // Формируем строку периода
+        $periodString = '';
+        if ($upd->service_period_start && $upd->service_period_end) {
+            $periodString = $upd->service_period_start->format('d.m.Y').' - '.$upd->service_period_end->format('d.m.Y');
+        }
+
         return [
+            // Данные УПД (для плейсхолдеров вида {{upd.number}})
             'upd' => [
                 'number' => $upd->number,
                 'date' => $upd->issue_date ? $upd->issue_date->format('d.m.Y') : '',
@@ -269,40 +272,69 @@ class UpdController extends Controller
                 'total_without_vat' => $upd->amount,
                 'total_vat' => $upd->tax_amount,
                 'total_with_vat' => $upd->total_amount,
+                'period' => $periodString,
             ],
+            // Данные платформы (продавца)
             'platform' => [
                 'name' => $platformCompany->legal_name,
+                'legal_name' => $platformCompany->legal_name,
                 'address' => $platformCompany->legal_address,
                 'inn' => $platformCompany->inn,
                 'kpp' => $platformCompany->kpp,
+                'inn_kpp' => $platformCompany->inn.' / '.$platformCompany->kpp,
                 'bank_name' => $platformCompany->bank_name,
                 'bik' => $platformCompany->bik,
                 'account_number' => $platformCompany->bank_account,
                 'correspondent_account' => $platformCompany->correspondent_account,
             ],
+            // Данные арендатора (покупателя)
             'lessee' => [
                 'name' => $lesseeCompany->legal_name,
+                'legal_name' => $lesseeCompany->legal_name,
                 'address' => $lesseeCompany->legal_address,
                 'inn' => $lesseeCompany->inn,
                 'kpp' => $lesseeCompany->kpp,
+                'inn_kpp' => $lesseeCompany->inn.' / '.$lesseeCompany->kpp,
                 'bank_name' => $lesseeCompany->bank_name,
                 'bik' => $lesseeCompany->bik,
                 'account_number' => $lesseeCompany->bank_account,
                 'correspondent_account' => $lesseeCompany->correspondent_account,
             ],
-            'items' => $upd->items->map(function($item) {
+            // Прямые поля для плейсхолдеров без префикса
+            'upd_number' => $upd->number,
+            'upd_date' => $upd->issue_date ? $upd->issue_date->format('d.m.Y') : '',
+            'contract_number' => $upd->contract_number,
+            'contract_date' => $upd->contract_date ? $upd->contract_date->format('d.m.Y') : '',
+            'shipment_date' => $upd->service_period_start ? $upd->service_period_start->format('d.m.Y') : '',
+            'total_without_vat' => $upd->amount,
+            'total_vat' => $upd->tax_amount,
+            'total_with_vat' => $upd->total_amount,
+            'platform_name' => $platformCompany->legal_name,
+            'platform_inn' => $platformCompany->inn,
+            'platform_kpp' => $platformCompany->kpp,
+            'platform_inn_kpp' => $platformCompany->inn.' / '.$platformCompany->kpp,
+            'platform_address' => $platformCompany->legal_address,
+            'lessee_name' => $lesseeCompany->legal_name,
+            'lessee_legal_name' => $lesseeCompany->legal_name,
+            'lessee_inn' => $lesseeCompany->inn,
+            'lessee_kpp' => $lesseeCompany->kpp,
+            'lessee_inn_kpp' => $lesseeCompany->inn.' / '.$lesseeCompany->kpp,
+            'lessee_address' => $lesseeCompany->legal_address,
+            'period' => $periodString,
+            // Табличная часть
+            'items' => $upd->items->map(function ($item) {
                 return [
                     'code' => $item->code,
                     'name' => $item->name,
                     'unit' => $item->unit,
                     'quantity' => $item->quantity,
                     'price' => $item->price,
-                    'total_without_vat' => $item->amount,
+                    'amount' => $item->amount,
                     'vat_rate' => $item->vat_rate,
                     'vat_amount' => $item->vat_amount,
                     'total_with_vat' => $item->amount + $item->vat_amount,
                 ];
-            })->toArray()
+            })->toArray(),
         ];
     }
 }

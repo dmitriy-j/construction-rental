@@ -27,7 +27,7 @@ class Add1CFieldsToUpdItemsTable extends Migration
                 'nomenclature_type',
                 'accounting_account',
                 'vat_account',
-                'cost_item'
+                'cost_item',
             ]);
         });
     }

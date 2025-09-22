@@ -28,7 +28,7 @@ class AddLicensePlateToWaybills extends Migration
                 'notes',
                 'operator_notes',
                 'foreman_signature_path',
-                'supervisor_signature_path'
+                'supervisor_signature_path',
             ]);
         });
     }

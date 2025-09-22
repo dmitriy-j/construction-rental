@@ -16,7 +16,9 @@ class ProcessUpdAcceptance implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $upd;
+
     public $tries = 3;
+
     public $timeout = 120;
 
     public function __construct(Upd $upd)
@@ -30,6 +32,7 @@ class ProcessUpdAcceptance implements ShouldQueue
             // Проверяем, что УПД еще не обработан
             if ($this->upd->status !== Upd::STATUS_PENDING) {
                 Log::warning('УПД уже обработан', ['upd_id' => $this->upd->id]);
+
                 return;
             }
 
@@ -41,7 +44,7 @@ class ProcessUpdAcceptance implements ShouldQueue
                 'upd_accepted',
                 $this->upd,
                 "Принят УПД №{$this->upd->number} от {$this->upd->issue_date->format('d.m.Y')}",
-                'upd_accept_' . $this->upd->id
+                'upd_accept_'.$this->upd->id
             );
 
             // Обновляем статус УПД
@@ -53,7 +56,7 @@ class ProcessUpdAcceptance implements ShouldQueue
         } catch (\Exception $e) {
             Log::error('Ошибка обработки УПД в очереди', [
                 'upd_id' => $this->upd->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
@@ -63,7 +66,7 @@ class ProcessUpdAcceptance implements ShouldQueue
     {
         Log::error('Job обработки УПД завершился ошибкой', [
             'upd_id' => $this->upd->id,
-            'error' => $exception->getMessage()
+            'error' => $exception->getMessage(),
         ]);
     }
 }

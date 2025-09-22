@@ -2,18 +2,16 @@
 
 namespace App\Models;
 
+use App\Services\EquipmentAvailabilityService;
+use App\Services\PricingService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Services\EquipmentAvailabilityService;
-use Illuminate\Support\Carbon;
-use App\Services\PricingService; // Добавлен импорт сервиса
+use Illuminate\Support\Carbon; // Добавлен импорт сервиса
 
 class Equipment extends Model
 {
     use HasFactory;
-
 
     protected $with = ['specifications']; // Автоматическая загрузка
 
@@ -31,13 +29,17 @@ class Equipment extends Model
     public function company()
     {
         return $this->belongsTo(Company::class)->withDefault([
-            'legal_name' => 'Компания недоступна'
+            'legal_name' => 'Компания недоступна',
         ]);
     }
 
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+    public function requestResponses()
+    {
+        return $this->hasMany(RentalRequestResponse::class);
     }
 
     public function specifications()
@@ -87,10 +89,10 @@ class Equipment extends Model
 
         $activeToday = EquipmentAvailability::where('equipment_id', $this->id)
             ->where('date', $today)
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->where('status', 'booked')
                     ->orWhere('status', 'maintenance')
-                    ->orWhere(function($q) {
+                    ->orWhere(function ($q) {
                         $q->where('status', 'temp_reserve')
                             ->where('expires_at', '>', now());
                     });
@@ -147,7 +149,7 @@ class Equipment extends Model
         });
     }
 
-    Public function getNumericSpecValue(string $key): float
+    public function getNumericSpecValue(string $key): float
     {
         // Получаем спецификации независимо от состояния загрузки
         $specifications = $this->specifications ?? $this->specifications()->get();
@@ -160,25 +162,25 @@ class Equipment extends Model
         // Находим нужную спецификацию
         $spec = $specifications->firstWhere('key', $key);
 
-        if (!$spec) {
+        if (! $spec) {
             return 0;
         }
 
         // Для веса и габаритов используем специальные поля
-        $value = match($key) {
+        $value = match ($key) {
             'weight' => $spec->weight,
             'length' => $spec->length,
-            'width'  => $spec->width,
+            'width' => $spec->width,
             'height' => $spec->height,
-            default  => $spec->value
+            default => $spec->value
         };
 
         // Добавим логирование для отладки
-        \Log::debug("Equipment specification value", [
+        \Log::debug('Equipment specification value', [
             'equipment_id' => $this->id,
             'key' => $key,
             'spec_id' => $spec->id,
-            'value' => $value
+            'value' => $value,
         ]);
 
         return (float) $value;
@@ -187,7 +189,7 @@ class Equipment extends Model
     public function getDisplayPriceAttribute()
     {
 
-        if (!$this->rentalTerms->isEmpty()) {
+        if (! $this->rentalTerms->isEmpty()) {
             $term = $this->rentalTerms->first();
             $price = $term->price_per_hour;
 
@@ -195,13 +197,13 @@ class Equipment extends Model
             $pricingService = app(PricingService::class);
             $markup = $pricingService->getPlatformMarkup(
                 $this,
-                auth()->user()->company ,
+                auth()->user()->company,
                 1 // 1 час для расчета
             );
 
             $priceWithMarkup = $price + $pricingService->applyMarkup($price, $markup);
 
-            return number_format($priceWithMarkup, 2) . ' ₽/час';
+            return number_format($priceWithMarkup, 2).' ₽/час';
         }
 
         return 'Цена не указана';
@@ -219,7 +221,7 @@ class Equipment extends Model
             ->latest();
     }
 
-   public function getDeliveryStatusAttribute()
+    public function getDeliveryStatusAttribute()
     {
         $delivery = EquipmentAvailability::where('equipment_id', $this->id)
             ->where('status', EquipmentAvailability::STATUS_DELIVERY)
@@ -227,7 +229,7 @@ class Equipment extends Model
             ->first();
 
         if ($delivery) {
-            return 'В пути (до ' . $delivery->expires_at->format('d.m.Y') . ')';
+            return 'В пути (до '.$delivery->expires_at->format('d.m.Y').')';
         }
 
         return null;
@@ -235,17 +237,17 @@ class Equipment extends Model
 
     public function getDimensionsAttribute(): string
     {
-        return sprintf("%.2f × %.2f × %.2f м",
+        return sprintf('%.2f × %.2f × %.2f м',
             $this->getNumericSpecValue('length'),
             $this->getNumericSpecValue('width'),
             $this->getNumericSpecValue('height')
         );
     }
 
-   public function activeOperator()
+    public function activeOperator()
     {
         return $this->belongsTo(Operator::class, 'operator_id')
-                    ->where('is_active', true);
+            ->where('is_active', true);
     }
 
     public function getActiveOperatorAttribute()
@@ -317,5 +319,4 @@ class Equipment extends Model
             ->where('is_active', true)
             ->exists();
     }
-
 }

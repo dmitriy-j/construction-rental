@@ -13,21 +13,21 @@ class DeliveryNoteFactory extends Factory
     public function definition()
     {
         static $locationIds;
-        if (!$locationIds) {
+        if (! $locationIds) {
             $locationIds = Location::pluck('id')->all();
         }
 
         return [
-            'document_number' => 'TN-' . $this->faker->unique()->numerify('########'),
+            'document_number' => 'TN-'.$this->faker->unique()->numerify('########'),
             'issue_date' => $this->faker->dateTimeBetween('-1 year'),
             'type' => $this->faker->randomElement([
                 DeliveryNote::TYPE_LESSOR_TO_PLATFORM,
                 DeliveryNote::TYPE_PLATFORM_TO_LESSEE,
-                DeliveryNote::TYPE_DIRECT
+                DeliveryNote::TYPE_DIRECT,
             ]),
             'delivery_scenario' => $this->faker->randomElement([
                 DeliveryNote::SCENARIO_LESSOR_PLATFORM,
-                DeliveryNote::SCENARIO_PLATFORM_DIRECT
+                DeliveryNote::SCENARIO_PLATFORM_DIRECT,
             ]),
             'order_id' => null, // Связь будет устанавливаться отдельно
             'order_item_id' => null, // Связь будет устанавливаться отдельно
@@ -42,7 +42,7 @@ class DeliveryNoteFactory extends Factory
             'transport_type' => $this->faker->randomElement([
                 DeliveryNote::VEHICLE_25T,
                 DeliveryNote::VEHICLE_45T,
-                DeliveryNote::VEHICLE_110T
+                DeliveryNote::VEHICLE_110T,
             ]),
             'equipment_condition' => $this->faker->randomElement(['Хорошее', 'Удовлетворительное', 'Новое']),
             'transport_driver_name' => $this->faker->name, // Исправлено на transport_driver_name
@@ -54,7 +54,7 @@ class DeliveryNoteFactory extends Factory
             'status' => $this->faker->randomElement([
                 DeliveryNote::STATUS_DRAFT,
                 DeliveryNote::STATUS_IN_TRANSIT,
-                DeliveryNote::STATUS_DELIVERED
+                DeliveryNote::STATUS_DELIVERED,
             ]),
         ];
     }

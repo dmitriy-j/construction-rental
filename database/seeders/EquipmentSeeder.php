@@ -2,20 +2,22 @@
 
 namespace Database\Seeders;
 
-use App\Models\Equipment;
-use App\Models\Company;
 use App\Models\Category;
+use App\Models\Company;
+use App\Models\Equipment;
 use App\Models\Location;
-use Illuminate\Database\Seeder;
 use App\Models\Specification;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
 
 class EquipmentSeeder extends Seeder
 {
     private $usedSlugs = [];
+
     private $companyIds;
+
     private $categoryIds;
+
     private $locationIds;
 
     public function run()
@@ -63,18 +65,18 @@ class EquipmentSeeder extends Seeder
         $types = [
             'Гусеничный экскаватор', 'Экскаватор-погрузчик', 'Бульдозер',
             'Фронтальный погрузчик', 'Кран', 'Манипулятор', 'Каток дорожный',
-            'Автобетононасос', 'Автогрейдер', 'Самосвал'
+            'Автобетононасос', 'Автогрейдер', 'Самосвал',
         ];
 
         $brands = ['JCB', 'Caterpillar', 'Komatsu', 'Hitachi', 'Volvo', 'Liebherr', 'Doosan', 'Hyundai'];
         $models = ['X-500', 'HD-300', 'ZX-210', 'PC-200', 'EC-480', 'R-974', 'D-65', 'L-350'];
 
-        $title = fake()->randomElement($types) . ' ' . fake()->randomElement($brands) . ' ' . fake()->randomElement($models);
-        $slug = Str::slug($title) . '-' . Str::random(6);
+        $title = fake()->randomElement($types).' '.fake()->randomElement($brands).' '.fake()->randomElement($models);
+        $slug = Str::slug($title).'-'.Str::random(6);
 
         // Гарантируем уникальность slug
         while (in_array($slug, $this->usedSlugs)) {
-            $slug = Str::slug($title) . '-' . Str::random(6);
+            $slug = Str::slug($title).'-'.Str::random(6);
         }
 
         $this->usedSlugs[] = $slug;
@@ -120,13 +122,13 @@ class EquipmentSeeder extends Seeder
 
         // Пользовательские характеристики (для отображения)
         $displaySpecs = [
-            'Вес' => $systemSpecs['weight'] . ' кг',
-            'Длина' => $systemSpecs['length'] . ' м',
-            'Ширина' => $systemSpecs['width'] . ' м',
-            'Высота' => $systemSpecs['height'] . ' м',
-            'Мощность' => rand(50, 500) . ' л.с.',
-            'Грузоподъемность' => rand(1, 20) . ' т',
-            'Расход топлива' => rand(10, 50) . ' л/час',
+            'Вес' => $systemSpecs['weight'].' кг',
+            'Длина' => $systemSpecs['length'].' м',
+            'Ширина' => $systemSpecs['width'].' м',
+            'Высота' => $systemSpecs['height'].' м',
+            'Мощность' => rand(50, 500).' л.с.',
+            'Грузоподъемность' => rand(1, 20).' т',
+            'Расход топлива' => rand(10, 50).' л/час',
             'Тип двигателя' => fake()->randomElement(['Дизель', 'Бензин', 'Электрический']),
         ];
 
@@ -143,19 +145,26 @@ class EquipmentSeeder extends Seeder
                 'weight' => null,
                 'length' => null,
                 'width' => null,
-                'height' => null
+                'height' => null,
             ];
 
             // Сохраняем числовые значения для ключевых характеристик
-            if ($key === 'Вес') $spec['weight'] = $systemSpecs['weight'];
-            if ($key === 'Длина') $spec['length'] = $systemSpecs['length'];
-            if ($key === 'Ширина') $spec['width'] = $systemSpecs['width'];
-            if ($key === 'Высота') $spec['height'] = $systemSpecs['height'];
+            if ($key === 'Вес') {
+                $spec['weight'] = $systemSpecs['weight'];
+            }
+            if ($key === 'Длина') {
+                $spec['length'] = $systemSpecs['length'];
+            }
+            if ($key === 'Ширина') {
+                $spec['width'] = $systemSpecs['width'];
+            }
+            if ($key === 'Высота') {
+                $spec['height'] = $systemSpecs['height'];
+            }
 
             $specifications[] = $spec;
         }
 
         Specification::insert($specifications);
     }
-
 }

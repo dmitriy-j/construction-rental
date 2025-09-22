@@ -9,7 +9,7 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-   public function up()
+    public function up()
     {
         Schema::table('equipment_rental_terms', function (Blueprint $table) {
             $table->unique(['equipment_id', 'period'], 'equipment_period_unique');

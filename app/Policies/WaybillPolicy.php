@@ -2,10 +2,9 @@
 
 namespace App\Policies;
 
+use App\Models\Order;
 use App\Models\User;
-use App\Models\Waybill;
-use App\Models\Order; // Добавлен правильный импорт
-use Illuminate\Auth\Access\Response;
+use App\Models\Waybill; // Добавлен правильный импорт
 
 class WaybillPolicy
 {

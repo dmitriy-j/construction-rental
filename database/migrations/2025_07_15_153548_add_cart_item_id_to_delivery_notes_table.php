@@ -9,7 +9,7 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-   public function up()
+    public function up()
     {
         Schema::table('delivery_notes', function (Blueprint $table) {
             $table->foreignId('cart_item_id')->nullable()->constrained('cart_items');

@@ -30,15 +30,15 @@ class OperatorSeeder extends Seeder
                 Operator::create([
                     'company_id' => $company->id,
                     'equipment_id' => $equipmentIds[array_rand($equipmentIds)],
-                    'full_name' => fake()->lastName() . ' ' . fake()->firstName(),
+                    'full_name' => fake()->lastName().' '.fake()->firstName(),
                     'phone' => fake()->phoneNumber(),
-                    'license_number' => 'LN-' . rand(1000, 9999),
+                    'license_number' => 'LN-'.rand(1000, 9999),
                     'qualification' => fake()->randomElement(['Экскаваторщик', 'Крановщик', 'Бульдозерист', 'Погрузчик']),
-                    'is_active' => rand(0, 1) ? true : false
+                    'is_active' => rand(0, 1) ? true : false,
                 ]);
             }
         }
 
-        $this->command->info('Operators created: ' . Operator::count());
+        $this->command->info('Operators created: '.Operator::count());
     }
 }

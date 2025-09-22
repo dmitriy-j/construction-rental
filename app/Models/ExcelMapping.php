@@ -18,14 +18,14 @@ class ExcelMapping extends Model
         'is_active',
         'file_example_path',
         'validation_rules',
-        'upd_specific_settings'
+        'upd_specific_settings',
     ];
 
     protected $casts = [
         'mapping' => 'array', // Это должно быть
         'is_active' => 'boolean',
         'validation_rules' => 'array',
-        'upd_specific_settings' => 'array'
+        'upd_specific_settings' => 'array',
     ];
 
     public function company(): BelongsTo
@@ -56,12 +56,12 @@ class ExcelMapping extends Model
                 '20%' => 20,
                 '10%' => 10,
                 '0%' => 0,
-                'без ндс' => 0
+                'без ндс' => 0,
             ],
             'default_vat_rate' => 20,
             'required_fields' => ['number', 'issue_date', 'amount', 'total_amount'],
             'date_format' => 'd.m.Y',
-            'number_patterns' => ['УПД', 'Счет-фактура', 'СФ']
+            'number_patterns' => ['УПД', 'Счет-фактура', 'СФ'],
         ];
     }
 
@@ -97,8 +97,8 @@ class ExcelMapping extends Model
                     'amount' => ['cell' => 'E', 'description' => 'Сумма'],
                     'vat_rate' => ['cell' => 'F', 'description' => 'Ставка НДС'],
                     'vat_amount' => ['cell' => 'G', 'description' => 'Сумма НДС'],
-                ]
-            ]
+                ],
+            ],
         ];
     }
 }

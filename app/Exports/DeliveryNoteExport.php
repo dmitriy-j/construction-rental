@@ -4,13 +4,13 @@ namespace App\Exports;
 
 use App\Models\DeliveryNote;
 use Maatwebsite\Excel\Concerns\FromQuery;
-use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class DeliveryNoteExport implements FromQuery, WithMapping, WithHeadings, ShouldAutoSize, WithStyles
+class DeliveryNoteExport implements FromQuery, ShouldAutoSize, WithHeadings, WithMapping, WithStyles
 {
     protected $note;
 
@@ -27,7 +27,7 @@ class DeliveryNoteExport implements FromQuery, WithMapping, WithHeadings, Should
                 'receiverCompany',
                 'deliveryFrom',
                 'deliveryTo',
-                'orderItem.equipment'
+                'orderItem.equipment',
             ]);
     }
 
@@ -49,7 +49,7 @@ class DeliveryNoteExport implements FromQuery, WithMapping, WithHeadings, Should
             'Водитель',
             'Контакт водителя',
             'Статус',
-            'Дата доставки'
+            'Дата доставки',
         ];
     }
 
@@ -71,7 +71,7 @@ class DeliveryNoteExport implements FromQuery, WithMapping, WithHeadings, Should
             $note->transport_driver_name,
             $note->driver_contact,
             $note->status_text,
-            $note->delivery_date?->format('d.m.Y') ?? 'В пути'
+            $note->delivery_date?->format('d.m.Y') ?? 'В пути',
         ];
     }
 
@@ -80,7 +80,7 @@ class DeliveryNoteExport implements FromQuery, WithMapping, WithHeadings, Should
         return [
             1 => [
                 'font' => ['bold' => true],
-                'fill' => ['fillType' => 'solid', 'color' => ['rgb' => 'D9E1F2']]
+                'fill' => ['fillType' => 'solid', 'color' => ['rgb' => 'D9E1F2']],
             ],
         ];
     }

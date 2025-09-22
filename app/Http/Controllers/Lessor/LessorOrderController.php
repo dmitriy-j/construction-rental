@@ -3,25 +3,23 @@
 namespace App\Http\Controllers\Lessor;
 
 use App\Http\Controllers\Controller;
-use App\Models\Order;
 use App\Models\DeliveryNote;
-use Illuminate\Http\Request;
-use App\Services\EquipmentAvailabilityService;
+use App\Models\Equipment;
+use App\Models\Operator;
+use App\Models\Order;
+use App\Models\OrderStatusHistory;
+use App\Models\RentalCondition;
+use App\Models\Waybill;
+use App\Notifications\OrderActivatedAdminNotification;
+use App\Notifications\OrderActivatedNotification;
 use App\Services\DeliveryNoteService;
 use App\Services\DeliveryScenarioService;
+use App\Services\EquipmentAvailabilityService;
+use App\Services\UpdProcessingService;
+use App\Services\WaybillCreationService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Events\PlatformDeliveryRequested;
-use App\Models\Waybill;
-use App\Models\Equipment;
-use App\Models\RentalCondition;
-use App\Models\OrderStatusHistory;
-use App\Models\Operator;
-use App\Notifications\OrderActivatedNotification;
-use App\Notifications\OrderActivatedAdminNotification;
-use App\Services\WaybillCreationService;
-use App\Models\CompletionAct;
-use App\Services\UpdProcessingService;
 
 class LessorOrderController extends Controller
 {
@@ -53,7 +51,7 @@ class LessorOrderController extends Controller
             'items.rentalTerm',
             'items.deliveryNote.deliveryTo',
             'items.equipment.activeOperator',
-            'parentOrder'
+            'parentOrder',
         ]);
 
         $deliveryAddress = 'Не указан';
@@ -65,8 +63,8 @@ class LessorOrderController extends Controller
             }
         }
 
-         // ПРАВИЛЬНЫЙ расчет: используем фиксированную цену арендодателя из позиций
-        $lessorBaseAmount = $order->items->sum(function($item) {
+        // ПРАВИЛЬНЫЙ расчет: используем фиксированную цену арендодателя из позиций
+        $lessorBaseAmount = $order->items->sum(function ($item) {
             // Важно: используем fixed_lessor_price из OrderItem!
             return $item->fixed_lessor_price * $item->period_count;
         });
@@ -91,7 +89,7 @@ class LessorOrderController extends Controller
     public function updateStatus(Order $order, Request $request)
     {
         $request->validate([
-            'status' => 'required|in:confirmed,cancelled'
+            'status' => 'required|in:confirmed,cancelled',
         ]);
 
         if ($order->lessor_company_id !== auth()->user()->company_id) {
@@ -99,7 +97,7 @@ class LessorOrderController extends Controller
         }
 
         $allowedStatuses = [Order::STATUS_PENDING_APPROVAL, Order::STATUS_CONFIRMED];
-        if (!in_array($order->status, $allowedStatuses)) {
+        if (! in_array($order->status, $allowedStatuses)) {
             return back()->withErrors('Невозможно изменить статус заказа в текущем состоянии');
         }
 
@@ -114,7 +112,7 @@ class LessorOrderController extends Controller
         return back()->with('success', 'Статус заказа обновлен');
     }
 
-   public function markAsActive(Order $order)
+    public function markAsActive(Order $order)
     {
         // Проверка прав доступа
         if ($order->lessor_company_id !== auth()->user()->company_id) {
@@ -123,14 +121,14 @@ class LessorOrderController extends Controller
 
         // Разрешенные статусы для активации
         $allowedStatuses = [Order::STATUS_CONFIRMED, Order::STATUS_IN_DELIVERY];
-        if (!in_array($order->status, $allowedStatuses)) {
+        if (! in_array($order->status, $allowedStatuses)) {
             return back()->withErrors('Невозможно начать аренду в текущем статусе');
         }
 
         // Проверка даты начала аренды
         if (now()->lt($order->start_date)) {
             return back()->withErrors(
-                'Нельзя начать аренду раньше '. $order->start_date->format('d.m.Y')
+                'Нельзя начать аренду раньше '.$order->start_date->format('d.m.Y')
             );
         }
 
@@ -152,8 +150,8 @@ class LessorOrderController extends Controller
                     ->where('shift_type', Operator::SHIFT_DAY)
                     ->isNotEmpty();
 
-                if (!$hasDayOperator) {
-                    $missingOperators[] = $equipment->title . ' (дневная смена)';
+                if (! $hasDayOperator) {
+                    $missingOperators[] = $equipment->title.' (дневная смена)';
                 }
 
                 // Проверяем ночную смену если требуется
@@ -162,24 +160,24 @@ class LessorOrderController extends Controller
                         ->where('shift_type', Operator::SHIFT_NIGHT)
                         ->isNotEmpty();
 
-                    if (!$hasNightOperator) {
-                        $missingOperators[] = $equipment->title . ' (ночная смена)';
+                    if (! $hasNightOperator) {
+                        $missingOperators[] = $equipment->title.' (ночная смена)';
                     }
                 }
             }
 
-            if (!empty($missingOperators)) {
-                throw new \Exception('Для оборудования не назначены активные операторы: ' . implode(', ', $missingOperators));
+            if (! empty($missingOperators)) {
+                throw new \Exception('Для оборудования не назначены активные операторы: '.implode(', ', $missingOperators));
             }
 
             // Обновление статуса заказа
             $order->update([
                 'status' => Order::STATUS_ACTIVE,
-                'service_start_date' => now()
+                'service_start_date' => now(),
             ]);
 
             // Создание ТОЛЬКО ПЕРВЫХ путевых листов
-            $service = new WaybillCreationService();
+            $service = new WaybillCreationService;
             $service->createForOrder($order);
 
             // Запись в историю статусов
@@ -187,7 +185,7 @@ class LessorOrderController extends Controller
                 'order_id' => $order->id,
                 'status' => Order::STATUS_ACTIVE,
                 'changed_by' => auth()->id(),
-                'notes' => 'Аренда активирована, созданы начальные путевые листы'
+                'notes' => 'Аренда активирована, созданы начальные путевые листы',
             ]);
 
             // Отправка уведомлений
@@ -195,13 +193,12 @@ class LessorOrderController extends Controller
 
             Log::info('Order activated with initial waybills', [
                 'order_id' => $order->id,
-                'waybill_count' => $order->waybills()->count()
+                'waybill_count' => $order->waybills()->count(),
             ]);
         });
 
         return back()->with('success', 'Аренда успешно начата. Созданы начальные путевые листы.');
     }
-
 
     public function markAsCompleted(Order $order)
     {
@@ -210,6 +207,7 @@ class LessorOrderController extends Controller
         }
 
         $order->update(['status' => Order::STATUS_COMPLETED]);
+
         return back()->with('success', 'Заказ завершен');
     }
 
@@ -221,7 +219,7 @@ class LessorOrderController extends Controller
 
         $request->validate([
             'action' => 'required|in:approve,reject',
-            'price_adjustment' => 'nullable|numeric|min:0'
+            'price_adjustment' => 'nullable|numeric|min:0',
         ]);
 
         $service = app(EquipmentAvailabilityService::class);
@@ -242,7 +240,7 @@ class LessorOrderController extends Controller
                 'total_amount' => $order->total_amount + ($request->price_adjustment ?? 0),
                 'status' => Order::STATUS_CONFIRMED,
                 'extension_requested' => false,
-                'requested_end_date' => null
+                'requested_end_date' => null,
             ]);
 
             return back()->with('success', 'Продление аренды подтверждено');
@@ -250,14 +248,14 @@ class LessorOrderController extends Controller
             $order->update([
                 'extension_requested' => false,
                 'requested_end_date' => null,
-                'status' => Order::STATUS_CONFIRMED
+                'status' => Order::STATUS_CONFIRMED,
             ]);
 
             return back()->with('success', 'Запрос на продление отклонен');
         }
     }
 
-   public function approve(Request $request, Order $order)
+    public function approve(Request $request, Order $order)
     {
         \Log::info('[ORDER APPROVAL] Начало подтверждения заказа', [
             'order_id' => $order->id,
@@ -265,7 +263,7 @@ class LessorOrderController extends Controller
             'input' => $request->all(),
             'delivery_type' => $order->delivery_type,
             'items_count' => $order->items->count(),
-            'delivery_items' => $order->items->filter(fn($i) => $i->delivery_to_id)->count()
+            'delivery_items' => $order->items->filter(fn ($i) => $i->delivery_to_id)->count(),
         ]);
 
         if ($order->lessor_company_id !== auth()->user()->company_id) {
@@ -273,19 +271,19 @@ class LessorOrderController extends Controller
         }
 
         $request->validate([
-            'delivery_scenario' => 'required|in:lessor,platform,none'
+            'delivery_scenario' => 'required|in:lessor,platform,none',
         ]);
 
         $deliveryScenario = $request->input('delivery_scenario', 'none');
 
         \Log::debug('[ORDER APPROVAL] Выбранный сценарий', [
-            'scenario' => $deliveryScenario
+            'scenario' => $deliveryScenario,
         ]);
 
-        DB::transaction(function() use ($order, $deliveryScenario) {
+        DB::transaction(function () use ($order, $deliveryScenario) {
             $order->update([
                 'status' => Order::STATUS_CONFIRMED,
-                'confirmed_at' => now()
+                'confirmed_at' => now(),
             ]);
 
             \Log::info('[ORDER APPROVAL] Статус заказа обновлен');
@@ -294,7 +292,7 @@ class LessorOrderController extends Controller
                 \Log::debug('[ORDER APPROVAL] Обработка доставки');
 
                 foreach ($order->items as $item) {
-                    if (!$item->delivery_from_id || !$item->delivery_to_id) {
+                    if (! $item->delivery_from_id || ! $item->delivery_to_id) {
                         throw new \Exception("Для позиции #{$item->id} не указаны адреса доставки");
                     }
                 }
@@ -304,7 +302,7 @@ class LessorOrderController extends Controller
 
                 foreach ($order->items as $item) {
                     \Log::debug('[ORDER APPROVAL] Обработка позиции', [
-                        'item_id' => $item->id
+                        'item_id' => $item->id,
                     ]);
 
                     if ($deliveryScenario === 'lessor') {
@@ -315,7 +313,7 @@ class LessorOrderController extends Controller
                             'delivery_note_id' => $note->id,
                             'type' => $note->type,
                             'sender' => $note->sender_company_id,
-                            'receiver' => $note->receiver_company_id
+                            'receiver' => $note->receiver_company_id,
                         ]);
                     }
                 }
@@ -339,7 +337,7 @@ class LessorOrderController extends Controller
             'delivery_notes.*.vehicle_model' => 'required|string',
             'delivery_notes.*.vehicle_number' => 'required|string',
             'delivery_notes.*.driver_contact' => 'required|string',
-            'delivery_notes.*.departure_time' => 'required|date'
+            'delivery_notes.*.departure_time' => 'required|date',
         ]);
 
         $service = app(DeliveryNoteService::class);
@@ -361,13 +359,13 @@ class LessorOrderController extends Controller
         }
 
         $request->validate([
-            'rejection_reason' => 'required|string|max:500'
+            'rejection_reason' => 'required|string|max:500',
         ]);
 
         $order->update([
             'status' => Order::STATUS_REJECTED,
             'rejection_reason' => $request->rejection_reason,
-            'rejected_at' => now()
+            'rejected_at' => now(),
         ]);
 
         app(EquipmentAvailabilityService::class)->releaseBooking($order);
@@ -375,7 +373,7 @@ class LessorOrderController extends Controller
         Log::info('Заказ отклонён', [
             'order_id' => $order->id,
             'user_id' => $order->user_id,
-            'reason' => $request->rejection_reason
+            'reason' => $request->rejection_reason,
         ]);
 
         return back()->with('success', 'Заказ отклонен');
@@ -384,8 +382,9 @@ class LessorOrderController extends Controller
     protected function createWaybills(Order $order)
     {
         $rentalCondition = $order->rentalCondition;
-        if (!$rentalCondition) {
+        if (! $rentalCondition) {
             Log::error('Rental condition not found', ['order_id' => $order->id]);
+
             return;
         }
 
@@ -397,12 +396,13 @@ class LessorOrderController extends Controller
             $equipment->load('operator');
             $operator = $equipment->operator;
 
-            if (!$operator) {
-                Log::warning("No operator assigned for equipment", [
+            if (! $operator) {
+                Log::warning('No operator assigned for equipment', [
                     'equipment_id' => $equipment->id,
-                    'order_id' => $order->id
+                    'order_id' => $order->id,
                 ]);
                 event(new OperatorMissing($equipment, $order));
+
                 continue;
             }
 
@@ -429,16 +429,15 @@ class LessorOrderController extends Controller
                     'fuel_consumption_actual' => 0,
 
                     'created_at' => $now,
-                    'updated_at' => $now
+                    'updated_at' => $now,
                 ];
             }
         }
 
-        if (!empty($waybills)) {
+        if (! empty($waybills)) {
             Waybill::insert($waybills);
         }
     }
-
 
     private function calculateFuelConsumption(Equipment $equipment, RentalCondition $condition): float
     {
@@ -458,7 +457,7 @@ class LessorOrderController extends Controller
         $order->user->notify(new OrderActivatedNotification($order));
 
         // Уведомление администратору платформы
-        $adminUsers = \App\Models\User::whereHas('roles', function($q) {
+        $adminUsers = \App\Models\User::whereHas('roles', function ($q) {
             $q->where('name', 'admin');
         })->get();
 
@@ -490,12 +489,11 @@ class LessorOrderController extends Controller
         } catch (\Exception $e) {
             Log::error('Ошибка загрузки УПД', [
                 'order_id' => $order->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return redirect()->back()
-                ->with('error', 'Ошибка загрузки УПД: ' . $e->getMessage());
+                ->with('error', 'Ошибка загрузки УПД: '.$e->getMessage());
         }
     }
-
 }

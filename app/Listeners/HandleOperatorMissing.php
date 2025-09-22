@@ -10,7 +10,7 @@ class HandleOperatorMissing
     public function handle(OperatorMissing $event)
     {
         $managers = $event->order->lessorCompany->users()
-            ->whereHas('roles', fn($q) => $q->where('name', 'manager'))
+            ->whereHas('roles', fn ($q) => $q->where('name', 'manager'))
             ->get();
 
         Notification::send($managers, new OperatorMissingNotification(

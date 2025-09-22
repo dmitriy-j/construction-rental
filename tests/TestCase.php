@@ -12,9 +12,9 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
 
-         // Отключаем интерактивные запросы в миграциях
+        // Отключаем интерактивные запросы в миграциях
         \Illuminate\Console\Application::starting(function ($console) {
-        $console->setInteractive(false);
+            $console->setInteractive(false);
 
         });
 

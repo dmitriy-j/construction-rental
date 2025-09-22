@@ -15,10 +15,8 @@ class Location extends Model
         'address',
         'latitude',
         'longitude',
-        'company_id'
+        'company_id',
     ];
-
-
 
     public function company(): BelongsTo
     {
@@ -30,6 +28,7 @@ class Location extends Model
     {
         // Извлекаем только улицу и дом
         preg_match('/(ул\.|улица|проспект|пр\.|шоссе|б-р) [\w\s\.-]+,?\s*\d+/u', $this->address, $matches);
+
         return $matches[0] ?? $this->address;
     }
 

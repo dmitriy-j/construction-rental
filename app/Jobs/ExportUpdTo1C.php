@@ -16,6 +16,7 @@ class ExportUpdTo1C implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $tries = 3;
+
     public $backoff = 60;
 
     protected $upd;
@@ -29,7 +30,7 @@ class ExportUpdTo1C implements ShouldQueue
     {
         $result = $oneCService->exportUpd($this->upd);
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             Log::error('Не удалось экспортировать УПД в 1С', [
                 'upd_id' => $this->upd->id,
                 'error' => $result['error'],

@@ -23,7 +23,7 @@ class TransactionEntry extends Model
         'idempotency_key',
         'is_canceled',
         'cancel_reason',
-        'canceled_at'
+        'canceled_at',
     ];
 
     protected $casts = [
@@ -37,10 +37,15 @@ class TransactionEntry extends Model
     ];
 
     public const PURPOSE_LESSEE_PAYMENT = 'lessee_payment';
+
     public const PURPOSE_LESSOR_PAYOUT = 'lessor_payout';
+
     public const PURPOSE_PLATFORM_FEE = 'platform_fee';
+
     public const PURPOSE_REFUND = 'refund';
+
     public const PURPOSE_CORRECTION = 'correction';
+
     public const PURPOSE_UPD_DEBT = 'upd_debt';
 
     /**
@@ -83,7 +88,7 @@ class TransactionEntry extends Model
         $this->update([
             'is_canceled' => true,
             'cancel_reason' => $reason,
-            'canceled_at' => now()
+            'canceled_at' => now(),
         ]);
     }
 }

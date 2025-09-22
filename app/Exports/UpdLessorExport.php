@@ -23,7 +23,7 @@ class UpdLessorExport implements FromQuery, WithHeadings, WithMapping
             'Тип периода',
             'Цена за единицу',
             'Количество',
-            'Сумма'
+            'Сумма',
         ];
     }
 
@@ -34,7 +34,7 @@ class UpdLessorExport implements FromQuery, WithHeadings, WithMapping
             $item->rentalPeriod->name,
             $item->base_price,
             $item->period_count,
-            $item->base_price * $item->period_count
+            $item->base_price * $item->period_count,
         ];
     }
 }

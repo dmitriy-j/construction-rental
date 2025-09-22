@@ -1,4 +1,5 @@
 <?php
+
 // app/Http/Middleware/EnsureIsCompanyAdmin.php
 
 namespace App\Http\Middleware;
@@ -11,7 +12,7 @@ class EnsureIsCompanyAdmin
     public function handle(Request $request, Closure $next)
     {
         // 1. Пользователь должен быть аутентифицирован
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return redirect()->route('login');
         }
 

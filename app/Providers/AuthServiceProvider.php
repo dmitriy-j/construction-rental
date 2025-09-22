@@ -3,8 +3,8 @@
 namespace App\Providers;
 
 use App\Models\User;
-use Illuminate\Support\Facades\Gate; // Исправлено: добавлен правильный импорт
-use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider; // Исправлено: добавлен правильный импорт
+use Illuminate\Support\Facades\Gate;
 
 class AuthServiceProvider extends ServiceProvider
 {

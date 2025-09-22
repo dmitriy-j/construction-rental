@@ -12,7 +12,7 @@ return new class extends Migration
             $table->dateTime('start_date')->nullable()->after('discount_amount');
             $table->dateTime('end_date')->nullable()->after('start_date');
 
-             // Добавьте индексы для частых запросов
+            // Добавьте индексы для частых запросов
             $table->index('start_date');
             $table->index('end_date');
         });

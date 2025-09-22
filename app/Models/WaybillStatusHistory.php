@@ -12,7 +12,7 @@ class WaybillStatusHistory extends Model
         'old_status',
         'new_status',
         'changed_by',
-        'notes'
+        'notes',
     ];
 
     public function waybill(): BelongsTo

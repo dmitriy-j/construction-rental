@@ -13,14 +13,9 @@ class BalanceService
     /**
      * Провести транзакцию и обновить баланс компании
      *
-     * @param Company $company
-     * @param float $amount
-     * @param string $type 'debit' | 'credit'
-     * @param string $purpose
-     * @param mixed $source
-     * @param string|null $description
-     * @param string|null $idempotencyKey
-     * @return TransactionEntry
+     * @param  string  $type  'debit' | 'credit'
+     * @param  mixed  $source
+     *
      * @throws \Exception
      */
     public function commitTransaction(
@@ -34,10 +29,10 @@ class BalanceService
     ): TransactionEntry {
         // Валидация
         if ($amount <= 0) {
-            throw new \InvalidArgumentException("Сумма транзакции должна быть положительной.");
+            throw new \InvalidArgumentException('Сумма транзакции должна быть положительной.');
         }
 
-        if (!in_array($type, ['debit', 'credit'])) {
+        if (! in_array($type, ['debit', 'credit'])) {
             throw new \InvalidArgumentException("Тип транзакции должен быть 'debit' или 'credit'.");
         }
 
@@ -47,6 +42,7 @@ class BalanceService
         // Проверка на дубликат
         if ($existingEntry = TransactionEntry::where('idempotency_key', $idempotencyKey)->first()) {
             Log::warning('Попытка создать дублирующую транзакцию', ['idempotency_key' => $idempotencyKey]);
+
             return $existingEntry;
         }
 
@@ -81,7 +77,7 @@ class BalanceService
                 'purpose' => $purpose,
                 'amount' => $amount,
                 'old_balance' => $currentBalance,
-                'new_balance' => $newBalance
+                'new_balance' => $newBalance,
             ]);
 
             return $entry;
@@ -91,9 +87,9 @@ class BalanceService
             Log::error('Ошибка проведения транзакции', [
                 'company_id' => $company->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            throw new \Exception("Не удалось провести транзакцию: " . $e->getMessage());
+            throw new \Exception('Не удалось провести транзакцию: '.$e->getMessage());
         }
     }
 
@@ -132,8 +128,8 @@ class BalanceService
         $sourceType = $source ? get_class($source) : 'null';
         $sourceId = $source ? $source->id : 'null';
 
-        $baseString = "{$companyId}|{$type}|{$purpose}|{$amount}|{$sourceType}|{$sourceId}|" . now()->toISOString();
+        $baseString = "{$companyId}|{$type}|{$purpose}|{$amount}|{$sourceType}|{$sourceId}|".now()->toISOString();
 
-        return 'trans_' . Str::substr(md5($baseString), 0, 32);
+        return 'trans_'.Str::substr(md5($baseString), 0, 32);
     }
 }

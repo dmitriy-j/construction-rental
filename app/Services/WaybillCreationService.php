@@ -2,7 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\{Order, OrderItem, Waybill, Equipment, Operator};
+use App\Models\Equipment;
+use App\Models\Operator;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Waybill;
 use App\Models\WaybillShift;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -22,9 +26,9 @@ class WaybillCreationService
             return true;
 
         } catch (\Exception $e) {
-            Log::error("Ошибка создания путевых листов для заказа #{$order->id}: " . $e->getMessage(), [
+            Log::error("Ошибка создания путевых листов для заказа #{$order->id}: ".$e->getMessage(), [
                 'order_id' => $order->id,
-                'exception' => $e
+                'exception' => $e,
             ]);
             throw $e;
         }
@@ -46,12 +50,12 @@ class WaybillCreationService
             $endDate = $this->ensureCarbon($item->end_date) ?? $this->ensureCarbon($item->order->end_date);
 
             // Если даты все равно отсутствуют, используем текущую дату как fallback
-            if (!$startDate) {
+            if (! $startDate) {
                 $startDate = now();
                 Log::warning("Использована текущая дата как start_date для item #{$item->id}");
             }
 
-            if (!$endDate) {
+            if (! $endDate) {
                 $endDate = $startDate->copy()->addDay();
                 Log::warning("Использована start_date + 1 день как end_date для item #{$item->id}");
             }
@@ -68,11 +72,11 @@ class WaybillCreationService
             }
 
         } catch (\Exception $e) {
-            Log::error("Ошибка создания путевого листа для item #{$item->id}: " . $e->getMessage(), [
+            Log::error("Ошибка создания путевого листа для item #{$item->id}: ".$e->getMessage(), [
                 'item_data' => $item->toArray(),
-                'shifts_per_day' => $shiftsPerDay
+                'shifts_per_day' => $shiftsPerDay,
             ]);
-            throw new \Exception("Не удалось создать путевой лист для позиции #{$item->id}: " . $e->getMessage());
+            throw new \Exception("Не удалось создать путевой лист для позиции #{$item->id}: ".$e->getMessage());
         }
     }
 
@@ -87,8 +91,9 @@ class WaybillCreationService
                 return Carbon::parse($date);
             } catch (\Exception $e) {
                 Log::warning("Ошибка преобразования строки в дату: '$date'", [
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
+
                 return null;
             }
         }
@@ -107,7 +112,7 @@ class WaybillCreationService
             ->where('is_active', true)
             ->first();
 
-        if (!$operator) {
+        if (! $operator) {
             $error = "Отсутствует активный оператор для смены: $shiftType";
             Log::error($error, ['equipment_id' => $equipment->id]);
             throw new \Exception($error);
@@ -119,10 +124,11 @@ class WaybillCreationService
     protected function calculateEndDate(Carbon $startDate, Carbon $endDate): Carbon
     {
         $firstPeriodEnd = $startDate->copy()->addDays(9);
+
         return $firstPeriodEnd->min($endDate);
     }
 
-   protected function createWaybill(
+    protected function createWaybill(
         OrderItem $item,
         Carbon $startDate,
         Carbon $endDate,
@@ -131,10 +137,10 @@ class WaybillCreationService
     ): Waybill {
         // Дополнительная проверка периода
         if ($endDate < $startDate) {
-            Log::warning("Корректировка дат: end_date < start_date", [
+            Log::warning('Корректировка дат: end_date < start_date', [
                 'item_id' => $item->id,
                 'original_start' => $startDate,
-                'original_end' => $endDate
+                'original_end' => $endDate,
             ]);
 
             // Автоматическая корректировка
@@ -143,12 +149,12 @@ class WaybillCreationService
 
         // Валидация периода (после корректировки)
         if ($endDate < $startDate) {
-            Log::error("Invalid date range for waybill after correction", [
+            Log::error('Invalid date range for waybill after correction', [
                 'item_id' => $item->id,
                 'start' => $startDate,
-                'end' => $endDate
+                'end' => $endDate,
             ]);
-            throw new \Exception("Дата окончания не может быть раньше даты начала даже после корректировки");
+            throw new \Exception('Дата окончания не может быть раньше даты начала даже после корректировки');
         }
 
         $status = $startDate <= now()
@@ -167,7 +173,7 @@ class WaybillCreationService
             'status' => $status,
             'hourly_rate' => $item->rentalTerm->price_per_hour,
             'lessor_hourly_rate' => $item->fixed_lessor_price ?? $item->rentalTerm->lessor_price,
-            'notes' => "Автоматически создан при активации заказа",
+            'notes' => 'Автоматически создан при активации заказа',
             'perspective' => 'lessor', // По умолчанию создаем для арендодателя
         ]);
 
@@ -192,15 +198,16 @@ class WaybillCreationService
         }
     }
 
-   public function createNextWaybill(Waybill $currentWaybill): ?Waybill
+    public function createNextWaybill(Waybill $currentWaybill): ?Waybill
     {
         $nextStart = $currentWaybill->end_date->copy()->addDay();
 
         // Используем связь через orderItem для получения конечной даты аренды
         $orderItem = $currentWaybill->orderItem()->with('order')->first();
 
-        if (!$orderItem || !$orderItem->order) {
+        if (! $orderItem || ! $orderItem->order) {
             Log::error('Order item or parent order missing', ['waybill_id' => $currentWaybill->id]);
+
             return null;
         }
 
@@ -212,8 +219,9 @@ class WaybillCreationService
             Log::info('Rental period is over, no next waybill needed.', [
                 'waybill_id' => $currentWaybill->id,
                 'next_start' => $nextStart,
-                'rental_end' => $rentalEndDate
+                'rental_end' => $rentalEndDate,
             ]);
+
             return null;
         }
 
@@ -226,7 +234,7 @@ class WaybillCreationService
             'next_start' => $nextStart,
             'proposed_end' => $proposedEndDate,
             'rental_end' => $rentalEndDate,
-            'final_end' => $nextEnd
+            'final_end' => $nextEnd,
         ]);
 
         return Waybill::create([
@@ -240,7 +248,7 @@ class WaybillCreationService
             'status' => Waybill::STATUS_FUTURE,
             'hourly_rate' => $currentWaybill->hourly_rate,
             'lessor_hourly_rate' => $currentWaybill->lessor_hourly_rate,
-            'notes' => 'Автоматически создан при закрытии предыдущего путевого листа'
+            'notes' => 'Автоматически создан при закрытии предыдущего путевого листа',
         ]);
     }
 

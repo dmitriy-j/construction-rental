@@ -2,12 +2,13 @@
 
 namespace Database\Seeders;
 
-use App\Models\Equipment;
 use App\Models\Category;
 use App\Models\Company;
+use App\Models\Equipment;
 use App\Models\PlatformMarkup;
 use Illuminate\Database\Seeder;
-use Faker\Factory as FakerFactory; // Добавляем импорт Faker
+
+// Добавляем импорт Faker
 
 class PlatformMarkupSeeder extends Seeder
 {

@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Carbon\Carbon;
 
 class Cart extends Model
 {
@@ -15,7 +15,7 @@ class Cart extends Model
         'total_platform_fee',
         'discount_amount',
         'start_date', // Добавлено
-        'end_date' // Добавлено
+        'end_date', // Добавлено
     ];
 
     public function user(): BelongsTo
@@ -50,17 +50,16 @@ class Cart extends Model
     /**
      * Устанавливает даты аренды для корзины
      */
-
     protected $casts = [
-    'start_date' => 'datetime',
-    'end_date' => 'datetime',
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
     ];
 
     public function setDates(Carbon $startDate, Carbon $endDate): void
     {
         $this->update([
             'start_date' => $startDate,
-            'end_date' => $endDate
+            'end_date' => $endDate,
         ]);
     }
 }

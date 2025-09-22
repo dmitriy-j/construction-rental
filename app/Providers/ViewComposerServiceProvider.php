@@ -2,11 +2,11 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\Facades\View;
-use Illuminate\Support\ServiceProvider;
 use App\Models\Order;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\ServiceProvider;
 
 class ViewComposerServiceProvider extends ServiceProvider
 {
@@ -17,7 +17,7 @@ class ViewComposerServiceProvider extends ServiceProvider
             $user = Auth::user();
 
             if ($user && $user->company) {
-                $cacheKey = 'new_orders_count_' . $user->company_id;
+                $cacheKey = 'new_orders_count_'.$user->company_id;
 
                 $newOrdersCount = Cache::remember($cacheKey, now()->addMinutes(15), function () use ($user) {
                     return Order::where('lessor_company_id', $user->company_id)
@@ -28,7 +28,6 @@ class ViewComposerServiceProvider extends ServiceProvider
 
             $view->with('newOrdersCount', $newOrdersCount);
         });
-
 
     }
 }

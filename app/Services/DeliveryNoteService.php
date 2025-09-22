@@ -3,16 +3,14 @@
 namespace App\Services;
 
 use App\Models\DeliveryNote;
-use App\Models\OrderItem;
-use App\Models\Platform;
-use App\Models\Location;
-use Illuminate\Support\Str;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use App\Models\Equipment;
 use App\Models\EquipmentAvailability;
+use App\Models\Location;
+use App\Models\OrderItem;
+use App\Models\Platform;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class DeliveryNoteService
 {
@@ -20,7 +18,7 @@ class DeliveryNoteService
 
     public function __construct()
     {
-        $this->platform = Platform::first() ?? new Platform();
+        $this->platform = Platform::first() ?? new Platform;
     }
 
     /**
@@ -30,8 +28,8 @@ class DeliveryNoteService
     {
         $platform = Platform::getMain();
         $platformCompany = $platform->company;
-        if (!$platformCompany) {
-            throw new \Exception("Platform company not found");
+        if (! $platformCompany) {
+            throw new \Exception('Platform company not found');
         }
         $order = $item->order;
 
@@ -67,7 +65,7 @@ class DeliveryNoteService
             'visible_to_lessee' => false,
             // Добавляем данные из заказа
             'distance_km' => $item->distance_km,
-            'calculated_cost' => $item->delivery_cost
+            'calculated_cost' => $item->delivery_cost,
         ]);
     }
 
@@ -79,17 +77,16 @@ class DeliveryNoteService
             'transport_vehicle_number' => $data['transport_vehicle_number'],
             'driver_contact' => $data['driver_contact'],
             'departure_time' => $data['departure_time'],
-            'status' => DeliveryNote::STATUS_READY_FOR_SHIPMENT
+            'status' => DeliveryNote::STATUS_READY_FOR_SHIPMENT,
         ]);
 
         return $note;
     }
 
-
     // ЕДИНСТВЕННЫЙ экземпляр этого метода!
     public function generateDocumentNumber(): string
     {
-        return 'TN-' . Carbon::now()->format('Ymd') . '-' . Str::upper(Str::random(6));
+        return 'TN-'.Carbon::now()->format('Ymd').'-'.Str::upper(Str::random(6));
     }
 
     protected function calculateDistance(Location $from, Location $to): float
@@ -106,14 +103,19 @@ class DeliveryNoteService
     {
         $weight = $equipment->getNumericSpecValue('Вес');
 
-        if ($weight <= 25) return DeliveryNote::VEHICLE_25T;
-        if ($weight <= 45) return DeliveryNote::VEHICLE_45T;
+        if ($weight <= 25) {
+            return DeliveryNote::VEHICLE_25T;
+        }
+        if ($weight <= 45) {
+            return DeliveryNote::VEHICLE_45T;
+        }
+
         return DeliveryNote::VEHICLE_110T;
     }
 
     protected function getVehicleModel(string $type): string
     {
-        return match($type) {
+        return match ($type) {
             DeliveryNote::VEHICLE_25T => 'КАМАЗ-65115',
             DeliveryNote::VEHICLE_45T => 'МАЗ-7510',
             DeliveryNote::VEHICLE_110T => 'Scania R730',
@@ -141,7 +143,7 @@ class DeliveryNoteService
         $pdf->loadView('documents.delivery-note', [
             'note' => $note,
             'platform' => $this->platform,
-            'currentDate' => now()->format('d.m.Y')
+            'currentDate' => now()->format('d.m.Y'),
         ]);
 
         return $pdf->output();
@@ -154,7 +156,7 @@ class DeliveryNoteService
     {
         $pdfContent = $this->UPDPdfGenerator($note);
 
-        $fileName = 'delivery_notes/' . $note->document_number . '.pdf';
+        $fileName = 'delivery_notes/'.$note->document_number.'.pdf';
         Storage::put($fileName, $pdfContent);
 
         return $fileName;
@@ -163,7 +165,6 @@ class DeliveryNoteService
     /**
      * УНИФИЦИРОВАННЫЙ метод создания зеркальной накладной
      */
-
     public function createMirrorNote(DeliveryNote $originalNote): DeliveryNote
     {
         $platform = Platform::getMain();
@@ -172,33 +173,33 @@ class DeliveryNoteService
 
         \Log::debug('Creating mirror note start', [
             'original_note_id' => $originalNote->id,
-            'order_id' => $order->id
+            'order_id' => $order->id,
         ]);
 
         // Проверка наличия родительского заказа
-        if (!$parentOrder = $order->parentOrder) {
+        if (! $parentOrder = $order->parentOrder) {
             \Log::error('Parent order not found for delivery note', [
                 'order_id' => $order->id,
-                'original_note_id' => $originalNote->id
+                'original_note_id' => $originalNote->id,
             ]);
-            throw new \Exception("Parent order not found for delivery note");
+            throw new \Exception('Parent order not found for delivery note');
         }
 
         // Проверка критических полей
-        if (!$originalNote->order_item_id) {
+        if (! $originalNote->order_item_id) {
             \Log::error('Missing order_item_id for delivery note', [
-                'note_id' => $originalNote->id
+                'note_id' => $originalNote->id,
             ]);
-            throw new \Exception("Missing order_item_id for delivery note");
+            throw new \Exception('Missing order_item_id for delivery note');
         }
 
-        if (!$originalNote->delivery_from_id || !$originalNote->delivery_to_id) {
+        if (! $originalNote->delivery_from_id || ! $originalNote->delivery_to_id) {
             \Log::error('Missing delivery addresses', [
                 'note_id' => $originalNote->id,
                 'delivery_from_id' => $originalNote->delivery_from_id,
-                'delivery_to_id' => $originalNote->delivery_to_id
+                'delivery_to_id' => $originalNote->delivery_to_id,
             ]);
-            throw new \Exception("Delivery addresses are required");
+            throw new \Exception('Delivery addresses are required');
         }
 
         // Создаем экземпляр модели
@@ -227,7 +228,7 @@ class DeliveryNoteService
             'transport_vehicle_model' => $originalNote->transport_vehicle_model,
             'transport_vehicle_number' => $originalNote->transport_vehicle_number,
             'driver_contact' => $originalNote->driver_contact,
-            'departure_time' => $originalNote->departure_time
+            'departure_time' => $originalNote->departure_time,
         ]);
 
         // Логируем успешное создание
@@ -235,7 +236,7 @@ class DeliveryNoteService
             'id' => $mirrorNote->id,
             'document_number' => $mirrorNote->document_number,
             'order_id' => $parentOrder->id,
-            'lessee_company_id' => $parentOrder->lessee_company_id
+            'lessee_company_id' => $parentOrder->lessee_company_id,
         ]);
 
         return $mirrorNote;
@@ -253,7 +254,7 @@ class DeliveryNoteService
         $pdf->loadView($template, [
             'note' => $note,
             'platform' => Platform::getMain(),
-            'currentDate' => now()->format('d.m.Y')
+            'currentDate' => now()->format('d.m.Y'),
         ]);
 
         return $pdf->output();
@@ -262,23 +263,23 @@ class DeliveryNoteService
     public function processDeliveryNote(DeliveryNote $note): void
     {
 
-         \Log::debug('Creating mirror note', [
+        \Log::debug('Creating mirror note', [
             'original_note_id' => $note->id,
             'order_id' => $note->order_id,
             'order_item_id' => $note->order_item_id,
             'status' => DeliveryNote::STATUS_IN_TRANSIT,
             'is_mirror' => true,
-            'visible_to_lessee' => true
+            'visible_to_lessee' => true,
         ]);
 
         // Создаем зеркальную накладную
         $mirrorNote = $this->createMirrorNote($note);
 
-         // Логируем результат создания
+        // Логируем результат создания
         \Log::debug('Mirror note created', [
             'id' => $mirrorNote->id,
             'document_number' => $mirrorNote->document_number,
-            'status' => $mirrorNote->status
+            'status' => $mirrorNote->status,
         ]);
 
         // Обновляем статус позиции заказа

@@ -10,9 +10,9 @@ class AddUpdIdToWaybillsTable extends Migration
     {
         Schema::table('waybills', function (Blueprint $table) {
             $table->foreignId('upd_id')
-                  ->nullable()
-                  ->constrained()
-                  ->onDelete('set null');
+                ->nullable()
+                ->constrained()
+                ->onDelete('set null');
         });
     }
 

@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-       Schema::table('equipment_rental_terms', function (Blueprint $table) {
+        Schema::table('equipment_rental_terms', function (Blueprint $table) {
             $table->boolean('delivery_organized_by_lessor')->default(true);
-            });
+        });
     }
 
     /**

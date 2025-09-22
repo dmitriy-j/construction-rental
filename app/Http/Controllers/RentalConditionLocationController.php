@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\RentalCondition;
 use App\Models\Company;
-use App\Models\Contract;
-use App\Models\Location;
+use App\Models\RentalCondition;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -17,7 +15,7 @@ class RentalConditionController extends Controller
             'company' => $company,
             'conditions' => $company->rentalConditions()
                 ->with(['contract', 'deliveryLocation'])
-                ->get()
+                ->get(),
         ]);
     }
 
@@ -47,7 +45,7 @@ class RentalConditionController extends Controller
             'extension_policy' => 'required|in:allowed,not_allowed,conditional',
             'payment_type' => 'required|in:hourly,shift,daily,mileage,volume',
             'delivery_location_id' => 'required|exists:locations,id',
-            'is_default' => 'sometimes|boolean'
+            'is_default' => 'sometimes|boolean',
         ]);
 
         DB::transaction(function () use ($company, $validated) {
@@ -90,7 +88,7 @@ class RentalConditionController extends Controller
             'extension_policy' => 'required|in:allowed,not_allowed,conditional',
             'payment_type' => 'required|in:hourly,shift,daily,mileage,volume',
             'delivery_location_id' => 'required|exists:locations,id',
-            'is_default' => 'sometimes|boolean'
+            'is_default' => 'sometimes|boolean',
         ]);
 
         DB::transaction(function () use ($condition, $validated) {

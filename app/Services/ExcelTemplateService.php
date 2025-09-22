@@ -2,10 +2,8 @@
 
 namespace App\Services;
 
-use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ExcelTemplateService
 {
@@ -57,6 +55,7 @@ class ExcelTemplateService
             return \Carbon\Carbon::createFromFormat($format, $value)->format('Y-m-d');
         } catch (\Exception $e) {
             Log::warning('Не удалось преобразовать дату', ['value' => $value, 'format' => $format]);
+
             return null;
         }
     }
@@ -115,9 +114,9 @@ class ExcelTemplateService
             }
         }
 
-        if (!$isValid) {
+        if (! $isValid) {
             throw new \InvalidArgumentException(
-                "Номер документа не соответствует ожидаемому формату. Ожидается один из: " . implode(', ', $patterns)
+                'Номер документа не соответствует ожидаемому формату. Ожидается один из: '.implode(', ', $patterns)
             );
         }
     }

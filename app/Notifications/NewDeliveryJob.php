@@ -4,8 +4,8 @@ namespace App\Notifications;
 
 use App\Models\Order;
 use Illuminate\Bus\Queueable;
-use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
 
 class NewDeliveryJob extends Notification
 {
@@ -26,7 +26,7 @@ class NewDeliveryJob extends Notification
     public function toMail($notifiable)
     {
         $order = $this->order;
-        $items = $order->items->map(fn($item) => "{$item->equipment->title} (x{$item->quantity})")->implode("\n");
+        $items = $order->items->map(fn ($item) => "{$item->equipment->title} (x{$item->quantity})")->implode("\n");
 
         return (new MailMessage)
             ->subject('Новый заказ на доставку оборудования')

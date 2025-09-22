@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\Company;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -29,8 +28,8 @@ class CompanyEmployeeController extends Controller
     public function create()
     {
         $roles = Role::where('name', '!=', 'company_admin')
-                     ->where('name', 'NOT LIKE', 'platform_%')
-                     ->pluck('name', 'name');
+            ->where('name', 'NOT LIKE', 'platform_%')
+            ->pluck('name', 'name');
 
         return view('company.employees.create', compact('roles'));
     }
@@ -41,7 +40,7 @@ class CompanyEmployeeController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'phone' => 'required|string|max:20',
-            'position' => 'required|in:manager,dispatcher,accountant'
+            'position' => 'required|in:manager,dispatcher,accountant',
         ]);
 
         $password = Str::random(12);
@@ -53,7 +52,7 @@ class CompanyEmployeeController extends Controller
             'password' => Hash::make($password),
             'company_id' => Auth::user()->company_id,
             'position' => $request->position,
-            'type' => 'staff'
+            'type' => 'staff',
         ]);
 
         $employee->assignRole($request->position);
@@ -62,7 +61,7 @@ class CompanyEmployeeController extends Controller
         // Mail::to($employee->email)->send(new EmployeeInvitationMail($employee, $password));
 
         return redirect()->route('company.employees.index')
-                         ->with('success', 'Сотрудник успешно добавлен');
+            ->with('success', 'Сотрудник успешно добавлен');
     }
 
     public function edit(User $employee)
@@ -73,8 +72,8 @@ class CompanyEmployeeController extends Controller
         }
 
         $roles = Role::where('name', '!=', 'company_admin')
-                     ->where('name', 'NOT LIKE', 'platform_%')
-                     ->pluck('name', 'name');
+            ->where('name', 'NOT LIKE', 'platform_%')
+            ->pluck('name', 'name');
 
         return view('company.employees.edit', compact('employee', 'roles'));
     }
@@ -88,23 +87,23 @@ class CompanyEmployeeController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $employee->id,
+            'email' => 'required|email|unique:users,email,'.$employee->id,
             'phone' => 'required|string|max:20',
-            'position' => 'required|in:manager,dispatcher,accountant'
+            'position' => 'required|in:manager,dispatcher,accountant',
         ]);
 
         $employee->update([
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
-            'position' => $request->position
+            'position' => $request->position,
         ]);
 
         // Обновление ролей
         $employee->syncRoles([$request->position]);
 
         return redirect()->route('company.employees.index')
-                         ->with('success', 'Данные сотрудника обновлены');
+            ->with('success', 'Данные сотрудника обновлены');
     }
 
     public function destroy(User $employee)
@@ -115,7 +114,8 @@ class CompanyEmployeeController extends Controller
         }
 
         $employee->delete();
+
         return redirect()->route('company.employees.index')
-                         ->with('success', 'Сотрудник удален');
+            ->with('success', 'Сотрудник удален');
     }
 }

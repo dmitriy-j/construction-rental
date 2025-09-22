@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Model;
 
 class Platform extends Model
 {
@@ -68,7 +68,7 @@ class Platform extends Model
     public static function getMain()
     {
         return static::with('company')->first() ?? new static([
-            'name' => 'Основная платформа'
+            'name' => 'Основная платформа',
         ]);
     }
 
@@ -97,25 +97,25 @@ class Platform extends Model
                 'city' => $this->bank_city,
                 'bic' => $this->bic,
                 'correspondent' => $this->correspondent_account,
-                'settlement' => $this->settlement_account
+                'settlement' => $this->settlement_account,
             ],
             'management' => [
                 'ceo' => [
                     'name' => $this->ceo_name,
                     'position' => $this->ceo_position,
-                    'basis' => $this->ceo_basis
+                    'basis' => $this->ceo_basis,
                 ],
                 'accountant' => [
                     'name' => $this->accountant_name,
-                    'position' => $this->accountant_position
-                ]
+                    'position' => $this->accountant_position,
+                ],
             ],
             'contacts' => [
                 'phone' => $this->phone,
                 'email' => $this->email,
-                'website' => $this->website
+                'website' => $this->website,
             ],
-            'certificate' => $this->certificate_number
+            'certificate' => $this->certificate_number,
         ];
     }
 

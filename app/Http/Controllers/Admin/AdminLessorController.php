@@ -15,10 +15,10 @@ class AdminLessorController extends Controller
             ->withCount('equipment');
 
         if ($search = $request->search) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('legal_name', 'like', "%$search%")
-                  ->orWhere('inn', 'like', "%$search%")
-                  ->orWhere('director_name', 'like', "%$search%");
+                    ->orWhere('inn', 'like', "%$search%")
+                    ->orWhere('director_name', 'like', "%$search%");
             });
         }
 
@@ -30,26 +30,26 @@ class AdminLessorController extends Controller
 
         return view('admin.lessors.index', [
             'lessors' => $lessors,
-            'statuses' => ['pending', 'verified', 'rejected']
+            'statuses' => ['pending', 'verified', 'rejected'],
         ]);
     }
 
     public function show(Company $lessor)
-{
-    abort_unless($lessor->is_lessor, 404);
+    {
+        abort_unless($lessor->is_lessor, 404);
 
-    // Загружаем технику с пагинацией и условиями аренды
-    $equipment = $lessor->equipment()
-        ->with(['rentalTerms', 'category'])
-        ->latest()
-        ->paginate(10);
+        // Загружаем технику с пагинацией и условиями аренды
+        $equipment = $lessor->equipment()
+            ->with(['rentalTerms', 'category'])
+            ->latest()
+            ->paginate(10);
 
-    return view('admin.lessors.show', [
-        'lessor' => $lessor,
-        'equipment' => $equipment, // Передаем пагинированный список
-        'statuses' => ['pending', 'verified', 'rejected']
-    ]);
-}
+        return view('admin.lessors.show', [
+            'lessor' => $lessor,
+            'equipment' => $equipment, // Передаем пагинированный список
+            'statuses' => ['pending', 'verified', 'rejected'],
+        ]);
+    }
 
     public function showOrder(Company $lessor, Order $order)
     {
@@ -61,12 +61,12 @@ class AdminLessorController extends Controller
             'items.rentalTerm',
             'lesseeCompany',
             'waybills',
-            'deliveryNote'
+            'deliveryNote',
         ]);
 
         return view('admin.orders.show', [
             'order' => $order,
-            'lessor' => $lessor
+            'lessor' => $lessor,
         ]);
     }
 }

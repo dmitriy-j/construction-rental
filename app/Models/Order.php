@@ -2,33 +2,44 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB; // Добавлено
 use Illuminate\Support\Facades\Log; // Добавлено
 
 class Order extends Model
 {
-    use SoftDeletes, HasFactory;
+    use HasFactory, SoftDeletes;
 
     // Константы статусов
     const STATUS_PENDING = 'pending';
+
     const STATUS_PENDING_APPROVAL = 'pending_approval'; // Новый статус
+
     const STATUS_CONFIRMED = 'confirmed';
+
     const STATUS_ACTIVE = 'active';
+
     const STATUS_COMPLETED = 'completed';
+
     const STATUS_CANCELLED = 'cancelled';
+
     const STATUS_EXTENSION_REQUESTED = 'extension_requested';
+
     const STATUS_REJECTED = 'rejected'; // Новый статус
+
     const STATUS_AGGREGATED = 'aggregated'; // Добавляем новый статус
+
     const DELIVERY_PICKUP = 'pickup';
+
     const DELIVERY_DELIVERY = 'delivery';
+
     const STATUS_IN_DELIVERY = 'in_delivery';
 
     protected $fillable = [
@@ -79,7 +90,7 @@ class Order extends Model
         'prepayment_amount' => 'decimal:2',
         'confirmed_at' => 'datetime',
         'rejected_at' => 'datetime',
-        'delivery_cost' => 'float'
+        'delivery_cost' => 'float',
     ];
 
     public static function statuses(): array
@@ -100,7 +111,7 @@ class Order extends Model
 
     public static function statusText(string $status): string
     {
-        return match($status) {
+        return match ($status) {
             self::STATUS_PENDING => 'Ожидает обработки',
             self::STATUS_PENDING_APPROVAL => 'Ожидает подтверждения арендодателем',
             self::STATUS_CONFIRMED => 'Подтвержден',
@@ -123,7 +134,7 @@ class Order extends Model
     public function lessorCompany()
     {
         return $this->belongsTo(Company::class, 'lessor_company_id')->withDefault([
-            'legal_name' => 'Компания недоступна'
+            'legal_name' => 'Компания недоступна',
         ]);
     }
 
@@ -152,10 +163,10 @@ class Order extends Model
         return in_array($this->status, ['active', 'completed'])
             && $this->service_start_date
             && $this->waybills()->exists()
-            && !$this->completionAct;
+            && ! $this->completionAct;
     }
 
-     public function deliveryNote(): HasOneThrough // Изменен тип возвращаемого значения
+    public function deliveryNote(): HasOneThrough // Изменен тип возвращаемого значения
     {
         return $this->hasOneThrough(
             DeliveryNote::class,
@@ -195,10 +206,10 @@ class Order extends Model
             self::STATUS_PENDING,
             self::STATUS_PENDING_APPROVAL,
             self::STATUS_CONFIRMED,
-            self::STATUS_AGGREGATED
+            self::STATUS_AGGREGATED,
         ];
 
-        if (!in_array($this->status, $allowedStatuses)) {
+        if (! in_array($this->status, $allowedStatuses)) {
             throw new \Exception('Невозможно отменить заказ в текущем статусе');
         }
 
@@ -222,7 +233,7 @@ class Order extends Model
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Ошибка при отмене заказа: ' . $e->getMessage());
+            Log::error('Ошибка при отмене заказа: '.$e->getMessage());
             throw $e;
         }
 
@@ -236,7 +247,7 @@ class Order extends Model
             return 'info';
         }
 
-        return match($this->status) {
+        return match ($this->status) {
             self::STATUS_PENDING => 'warning',
             self::STATUS_PENDING_APPROVAL => 'secondary',
             self::STATUS_CONFIRMED => 'info',
@@ -259,9 +270,10 @@ class Order extends Model
 
         // Проверяем статусы доставки
         if ($statuses->contains(Order::STATUS_IN_DELIVERY)) {
-            if ($statuses->every(fn($s) => $s === Order::STATUS_IN_DELIVERY)) {
+            if ($statuses->every(fn ($s) => $s === Order::STATUS_IN_DELIVERY)) {
                 return 'in_delivery';
             }
+
             return 'partially_in_delivery';
         }
 
@@ -273,11 +285,11 @@ class Order extends Model
             return 'partially_rejected';
         }
 
-        if ($statuses->every(fn($s) => $s === Order::STATUS_COMPLETED)) {
+        if ($statuses->every(fn ($s) => $s === Order::STATUS_COMPLETED)) {
             return 'completed';
         }
 
-        if ($statuses->every(fn($s) => $s === Order::STATUS_ACTIVE)) {
+        if ($statuses->every(fn ($s) => $s === Order::STATUS_ACTIVE)) {
             return 'active';
         }
 
@@ -289,7 +301,7 @@ class Order extends Model
         return self::statusText($this->status);
     }
 
-     public function getDeliveryCostAttribute()
+    public function getDeliveryCostAttribute()
     {
         // Если значение уже установлено - используем его
         if (isset($this->attributes['delivery_cost'])) {
@@ -312,7 +324,7 @@ class Order extends Model
 
     public function getFormattedTotalAttribute()
     {
-        return number_format($this->total_amount, 2) . ' ₽';
+        return number_format($this->total_amount, 2).' ₽';
     }
 
     public function parentOrder()
@@ -332,13 +344,13 @@ class Order extends Model
 
     public function isChild()
     {
-        return !is_null($this->parent_order_id);
+        return ! is_null($this->parent_order_id);
     }
 
     public function getTotalItemsCountAttribute()
     {
         if ($this->isParent()) {
-            return $this->childOrders->sum(function($childOrder) {
+            return $this->childOrders->sum(function ($childOrder) {
                 return $childOrder->items->count();
             });
         }
@@ -346,16 +358,21 @@ class Order extends Model
         return $this->items->count();
     }
 
+    public function requestResponse()
+    {
+        return $this->belongsTo(RentalRequestResponse::class);
+    }
+
     public function getBaseAmountAttribute(): float
     {
-        return $this->items->sum(function($item) {
+        return $this->items->sum(function ($item) {
             return $item->base_price * $item->quantity;
         });
     }
 
     public function getFormattedBaseAmountAttribute(): string
     {
-        return number_format($this->base_amount, 2) . ' ₽';
+        return number_format($this->base_amount, 2).' ₽';
     }
 
     public function getLessorPayoutAttribute()
@@ -381,7 +398,7 @@ class Order extends Model
     {
         // Проверка статуса
         $allowedStatuses = [self::STATUS_CONFIRMED, self::STATUS_IN_DELIVERY];
-        if (!in_array($this->status, $allowedStatuses)) {
+        if (! in_array($this->status, $allowedStatuses)) {
             return false;
         }
 
@@ -392,11 +409,11 @@ class Order extends Model
 
         // Проверка операторов
         foreach ($this->items as $item) {
-            if (!$item->equipment->hasActiveDayOperator()) {
+            if (! $item->equipment->hasActiveDayOperator()) {
                 return false;
             }
             if ($this->rentalCondition->shifts_per_day > 1 &&
-                !$item->equipment->hasActiveNightOperator()) {
+                ! $item->equipment->hasActiveNightOperator()) {
                 return false;
             }
         }
@@ -415,7 +432,7 @@ class Order extends Model
 
         // Проверка статуса
         $allowedStatuses = [self::STATUS_CONFIRMED, self::STATUS_IN_DELIVERY];
-        if (!in_array($this->status, $allowedStatuses)) {
+        if (! in_array($this->status, $allowedStatuses)) {
             $errors[] = 'Невозможно начать аренду в текущем статусе: '.$this->status_text;
         }
 
@@ -431,11 +448,11 @@ class Order extends Model
         foreach ($this->items as $item) {
             $equipment = $item->equipment;
 
-            if (!$equipment->hasActiveDayOperator()) {
+            if (! $equipment->hasActiveDayOperator()) {
                 $errors[] = "Для {$equipment->title} не назначен активный дневной оператор";
             }
 
-            if ($shiftsPerDay > 1 && !$equipment->hasActiveNightOperator()) {
+            if ($shiftsPerDay > 1 && ! $equipment->hasActiveNightOperator()) {
                 $errors[] = "Для {$equipment->title} не назначен активный ночной оператор";
             }
         }
@@ -462,19 +479,19 @@ class Order extends Model
     {
         if ($order->isParent()) {
             if ($order->lessor_company_id) {
-                throw new \Exception("Родительский заказ не должен иметь lessor_company_id");
+                throw new \Exception('Родительский заказ не должен иметь lessor_company_id');
             }
 
             if ($order->childOrders->isEmpty()) {
-                throw new \Exception("Родительский заказ без дочерних заказов");
+                throw new \Exception('Родительский заказ без дочерних заказов');
             }
         } else {
-            if (!$order->lessor_company_id) {
-                throw new \Exception("Дочерний заказ без lessor_company_id");
+            if (! $order->lessor_company_id) {
+                throw new \Exception('Дочерний заказ без lessor_company_id');
             }
 
-            if (!$order->rental_condition_id) {
-                throw new \Exception("Дочерний заказ без rental_condition_id");
+            if (! $order->rental_condition_id) {
+                throw new \Exception('Дочерний заказ без rental_condition_id');
             }
         }
     }
@@ -486,6 +503,7 @@ class Order extends Model
         }
 
         $firstNote = $this->items->first()->deliveryNote ?? null;
+
         return $firstNote ? $firstNote->delivery_scenario : 'none';
     }
 
@@ -495,28 +513,30 @@ class Order extends Model
             'order_id' => $this->id,
             'value' => $value,
             'is_parent' => $this->isParent(),
-            'is_child' => $this->isChild()
+            'is_child' => $this->isChild(),
         ]);
 
         return $value;
     }
 
-     public function updateAggregateStatus()
+    public function updateAggregateStatus()
     {
         $items = $this->items;
 
-        if ($items->isEmpty()) return;
+        if ($items->isEmpty()) {
+            return;
+        }
 
         // Все ли позиции в доставке?
-        if ($items->every(fn($i) => $i->status === OrderItem::STATUS_IN_DELIVERY)) {
+        if ($items->every(fn ($i) => $i->status === OrderItem::STATUS_IN_DELIVERY)) {
             $this->status = self::STATUS_IN_DELIVERY;
         }
         // Все ли позиции активны?
-        elseif ($items->every(fn($i) => $i->status === OrderItem::STATUS_ACTIVE)) {
+        elseif ($items->every(fn ($i) => $i->status === OrderItem::STATUS_ACTIVE)) {
             $this->status = self::STATUS_ACTIVE;
         }
         // Все ли позиции завершены?
-        elseif ($items->every(fn($i) => $i->status === OrderItem::STATUS_COMPLETED)) {
+        elseif ($items->every(fn ($i) => $i->status === OrderItem::STATUS_COMPLETED)) {
             $this->status = self::STATUS_COMPLETED;
         }
         // Смешанные статусы
@@ -536,6 +556,7 @@ class Order extends Model
 
         if ($allItems->isEmpty()) {
             \Log::debug('No items found for order status update', ['order_id' => $this->id]);
+
             return;
         }
 
@@ -545,20 +566,17 @@ class Order extends Model
         // Логируем текущие статусы позиций
         \Log::debug('Order item statuses', [
             'order_id' => $this->id,
-            'statuses' => $itemStatuses
+            'statuses' => $itemStatuses,
         ]);
 
         // Определяем новый статус заказа
-        if ($allItems->every(fn($i) => $i->status === OrderItem::STATUS_IN_DELIVERY)) {
+        if ($allItems->every(fn ($i) => $i->status === OrderItem::STATUS_IN_DELIVERY)) {
             $newStatus = self::STATUS_IN_DELIVERY;
-        }
-        elseif ($allItems->every(fn($i) => $i->status === OrderItem::STATUS_ACTIVE)) {
+        } elseif ($allItems->every(fn ($i) => $i->status === OrderItem::STATUS_ACTIVE)) {
             $newStatus = self::STATUS_ACTIVE;
-        }
-        elseif ($allItems->every(fn($i) => $i->status === OrderItem::STATUS_COMPLETED)) {
+        } elseif ($allItems->every(fn ($i) => $i->status === OrderItem::STATUS_COMPLETED)) {
             $newStatus = self::STATUS_COMPLETED;
-        }
-        else {
+        } else {
             $newStatus = $this->status;
         }
 
@@ -571,7 +589,7 @@ class Order extends Model
                 'order_id' => $this->id,
                 'from' => $originalStatus,
                 'to' => $newStatus,
-                'reason' => 'item_status_change'
+                'reason' => 'item_status_change',
             ]);
         }
     }
@@ -579,18 +597,19 @@ class Order extends Model
     protected function getNextCompanyOrderNumber($companyId)
     {
         $lastOrder = Order::where('lessee_company_id', $companyId)
-                        ->orWhere('lessor_company_id', $companyId)
-                        ->orderBy('company_order_number', 'desc')
-                        ->first();
+            ->orWhere('lessor_company_id', $companyId)
+            ->orderBy('company_order_number', 'desc')
+            ->first();
+
         return ($lastOrder->company_order_number ?? 0) + 1;
     }
 
     public function scopeNextCompanyOrderNumber($query, $companyId)
     {
-        $lastOrder = $query->where(function($q) use ($companyId) {
-                $q->where('lessee_company_id', $companyId)
-                  ->orWhere('lessor_company_id', $companyId);
-            })
+        $lastOrder = $query->where(function ($q) use ($companyId) {
+            $q->where('lessee_company_id', $companyId)
+                ->orWhere('lessor_company_id', $companyId);
+        })
             ->orderBy('company_order_number', 'desc')
             ->first();
 

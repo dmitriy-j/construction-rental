@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Lessee;
 
 use App\Http\Controllers\Controller;
 use App\Services\BalanceService;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class BalanceController extends Controller

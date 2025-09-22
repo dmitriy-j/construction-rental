@@ -12,7 +12,7 @@ class PlatformMarkup extends Model
         'markupable_id',
         'markupable_type',
         'type',
-        'value'
+        'value',
     ];
 
     public function markupable(): MorphTo

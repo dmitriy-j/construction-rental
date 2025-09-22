@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\WaybillShift;
 use App\Models\Waybill;
+use App\Models\WaybillShift;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class WaybillShiftFactory extends Factory
@@ -20,7 +20,7 @@ class WaybillShiftFactory extends Factory
             'hours_worked' => $this->faker->randomFloat(2, 1, 24),
             'downtime_hours' => $this->faker->randomFloat(2, 0, 8),
             'downtime_cause' => $this->faker->optional()->randomElement([
-                'lessee', 'lessor', 'force_majeure'
+                'lessee', 'lessor', 'force_majeure',
             ]),
             'odometer_start' => $this->faker->numberBetween(1000, 10000),
             'odometer_end' => $this->faker->numberBetween(1001, 20000),

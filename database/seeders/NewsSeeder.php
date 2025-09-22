@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Models\News;
 use App\Models\User;
+use Illuminate\Database\Seeder;
 
 class NewsSeeder extends Seeder
 {
@@ -14,9 +13,9 @@ class NewsSeeder extends Seeder
 
         $admin = User::where('position', 'platform_admin')->first();
 
-        if (!$admin) {
+        if (! $admin) {
             $admin = User::factory()->create([
-                'position' => 'platform_admin'
+                'position' => 'platform_admin',
             ]);
         }
 
@@ -30,6 +29,5 @@ class NewsSeeder extends Seeder
             'author_id' => $admin->id, // Убедись, что admin с id=1 существует
         ]);
 
-       
     }
 }

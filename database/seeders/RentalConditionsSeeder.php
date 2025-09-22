@@ -2,12 +2,10 @@
 
 namespace Database\Seeders;
 
-use App\Models\Company;
 use App\Models\Contract;
-use App\Models\Location;
 use App\Models\RentalCondition;
-use Illuminate\Database\Seeder;
-use Faker\Factory as Faker; // Добавлен импорт Faker
+use Faker\Factory as Faker;
+use Illuminate\Database\Seeder; // Добавлен импорт Faker
 
 class RentalConditionsSeeder extends Seeder
 {
@@ -21,7 +19,9 @@ class RentalConditionsSeeder extends Seeder
             $company = $contract->company;
             $locations = $company->locations;
 
-            if ($locations->isEmpty()) continue;
+            if ($locations->isEmpty()) {
+                continue;
+            }
 
             // Создаем условие по умолчанию
             RentalCondition::create([
@@ -37,7 +37,7 @@ class RentalConditionsSeeder extends Seeder
                 'delivery_cost_per_km' => rand(50, 200),
                 'loading_cost' => rand(1000, 5000),
                 'unloading_cost' => rand(1000, 5000),
-                'is_default' => true
+                'is_default' => true,
             ]);
 
             // Создаем 2 нестандартных условия
@@ -55,7 +55,7 @@ class RentalConditionsSeeder extends Seeder
                     'delivery_cost_per_km' => rand(50, 200),
                     'loading_cost' => rand(1000, 5000),
                     'unloading_cost' => rand(1000, 5000),
-                    'is_default' => false
+                    'is_default' => false,
                 ]);
             } // Добавлена закрывающая скобка цикла for
         } // Исправлено - удален дублирующий код создания условия по умолчанию
@@ -64,24 +64,28 @@ class RentalConditionsSeeder extends Seeder
     private function randomTransportation(): string
     {
         $options = ['lessor', 'lessee', 'shared'];
+
         return $options[array_rand($options)];
     }
 
     private function randomFuelResponsibility(): string
     {
         $options = ['lessor', 'lessee'];
+
         return $options[array_rand($options)];
     }
 
     private function randomExtensionPolicy(): string
     {
         $options = ['allowed', 'not_allowed', 'conditional'];
+
         return $options[array_rand($options)];
     }
 
     private function randomPaymentType(): string
     {
         $options = ['hourly', 'shift', 'daily', 'mileage', 'volume'];
+
         return $options[array_rand($options)];
     }
 }

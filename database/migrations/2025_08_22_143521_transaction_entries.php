@@ -3,7 +3,6 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -24,7 +23,7 @@ return new class extends Migration
                 'platform_fee',      // Зачисление платформенного сбора
                 'refund',            // Возврат средств
                 'correction',        // Корректировочная проводка
-                'upd_debt'           // Фиксация долга по УПД
+                'upd_debt',           // Фиксация долга по УПД
             ]);
             // Snapshot баланса компании ПОСЛЕ выполнения этой проводки.
             $table->decimal('balance_snapshot', 12, 2);

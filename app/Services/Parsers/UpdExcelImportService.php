@@ -2,10 +2,10 @@
 
 namespace App\Services\Parsers;
 
-use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class UpdExcelParser
 {
@@ -31,9 +31,9 @@ class UpdExcelParser
         } catch (\Exception $e) {
             Log::error('Ошибка парсинга Excel файла УПД', [
                 'file' => $filePath,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
-            throw new \Exception("Не удалось распарсить файл УПД: " . $e->getMessage());
+            throw new \Exception('Не удалось распарсить файл УПД: '.$e->getMessage());
         }
     }
 
@@ -65,6 +65,7 @@ class UpdExcelParser
             return \Carbon\Carbon::parse($value)->format('Y-m-d');
         } catch (\Exception $e) {
             Log::warning('Не удалось преобразовать дату', ['value' => $value]);
+
             return null;
         }
     }
@@ -80,7 +81,7 @@ class UpdExcelParser
         ]);
 
         if ($validator->fails()) {
-            throw new \InvalidArgumentException('Данные УПД невалидны: ' . $validator->errors()->first());
+            throw new \InvalidArgumentException('Данные УПД невалидны: '.$validator->errors()->first());
         }
 
         return $validator->validated();

@@ -1,9 +1,9 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\NewsController;
-use App\Http\Controllers\DeliveryController; // Импорт контроллера
+use App\Http\Controllers\DeliveryController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route; // Импорт контроллера
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
@@ -15,7 +15,7 @@ Route::get('/news/{news}', [NewsController::class, 'show']);
 Route::get('/news/search', [NewsController::class, 'search']);
 
 // Доставка
-Route::prefix('delivery')->group(function() {
+Route::prefix('delivery')->group(function () {
     Route::post('/calculate', [DeliveryController::class, 'calculate']);
     Route::get('/locations', [DeliveryController::class, 'getLocations']);
 });
@@ -37,7 +37,7 @@ Route::prefix('documents')->group(function () {
     Route::post('orders/{order}/completion-act', [DocumentController::class, 'generateCompletionAct']);
 });
 
-//Финансы
+// Финансы
 Route::prefix('finance')->middleware('auth:api')->group(function () {
     Route::get('/balance', [API\FinanceController::class, 'balance']);
     Route::get('/transactions', [API\FinanceController::class, 'transactions']);

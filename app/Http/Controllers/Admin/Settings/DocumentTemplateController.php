@@ -4,16 +4,17 @@ namespace App\Http\Controllers\Admin\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Models\DocumentTemplate;
+use App\Services\DocumentGeneratorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\IOFactory;
-use App\Services\DocumentGeneratorService;
 
 class DocumentTemplateController extends Controller
 {
     public function index()
     {
         $templates = DocumentTemplate::all();
+
         return view('admin.settings.document-templates.index', compact('templates'));
     }
 
@@ -25,7 +26,11 @@ class DocumentTemplateController extends Controller
             'счет_на_оплату' => 'Счет на оплату',
             'договор' => 'Договор аренды',
             'упд' => 'УПД (Универсальный передаточный документ)',
-            'акт_сверки' => 'Акт сверки'
+            'акт_сверки' => 'Акт сверки',
+            'транспортная_накладная' => 'Транспортная накладная',
+            'акт_выполненных_работ' => 'Акт выполненных работ',
+            'эсм_7' => 'ЭСМ-7 (Акт о сдаче-приемке выполненных работ)',
+            'счет_фактура' => 'Счет-фактура'
         ];
 
         return view('admin.settings.document-templates.create', compact('templateTypes'));
@@ -38,7 +43,7 @@ class DocumentTemplateController extends Controller
             'type' => 'required|string|max:255',
             'description' => 'nullable|string',
             'template_file' => 'required|file|mimes:xlsx,xls',
-            'mapping' => 'required|json'
+            'mapping' => 'required|json',
         ]);
 
         try {
@@ -52,14 +57,14 @@ class DocumentTemplateController extends Controller
                 'description' => $request->description,
                 'file_path' => $filePath,
                 'mapping' => json_decode($request->mapping, true),
-                'is_active' => $request->has('is_active')
+                'is_active' => $request->has('is_active'),
             ]);
 
             return redirect()->route('admin.settings.document-templates.index')
                 ->with('success', 'Шаблон документа успешно создан');
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Ошибка при создании шаблона: ' . $e->getMessage());
+                ->with('error', 'Ошибка при создании шаблона: '.$e->getMessage());
         }
     }
 
@@ -71,7 +76,7 @@ class DocumentTemplateController extends Controller
             'счет_на_оплату' => 'Счет на оплату',
             'договор' => 'Договор аренды',
             'упд' => 'УПД (Универсальный передаточный документ)',
-            'акт_сверки' => 'Акт сверки'
+            'акт_сверки' => 'Акт сверки',
         ];
 
         return view('admin.settings.document-templates.edit', compact('documentTemplate', 'templateTypes'));
@@ -84,7 +89,7 @@ class DocumentTemplateController extends Controller
             'type' => 'required|string|max:255',
             'description' => 'nullable|string',
             'template_file' => 'nullable|file|mimes:xlsx,xls',
-            'mapping' => 'required|json'
+            'mapping' => 'required|json',
         ]);
 
         try {
@@ -93,7 +98,7 @@ class DocumentTemplateController extends Controller
                 'type' => $request->type,
                 'description' => $request->description,
                 'mapping' => json_decode($request->mapping, true),
-                'is_active' => $request->has('is_active')
+                'is_active' => $request->has('is_active'),
             ];
 
             // Обновляем файл, если загружен новый
@@ -111,7 +116,7 @@ class DocumentTemplateController extends Controller
                 ->with('success', 'Шаблон документа успешно обновлен');
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Ошибка при обновлении шаблона: ' . $e->getMessage());
+                ->with('error', 'Ошибка при обновлении шаблона: '.$e->getMessage());
         }
     }
 
@@ -128,13 +133,13 @@ class DocumentTemplateController extends Controller
                 ->with('success', 'Шаблон документа успешно удален');
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Ошибка при удалении шаблона: ' . $e->getMessage());
+                ->with('error', 'Ошибка при удалении шаблона: '.$e->getMessage());
         }
     }
 
     public function download(DocumentTemplate $documentTemplate)
     {
-        return Storage::disk('public')->download($documentTemplate->file_path, $documentTemplate->name . '.xlsx');
+        return Storage::disk('public')->download($documentTemplate->file_path, $documentTemplate->name.'.xlsx');
     }
 
     public function preview(DocumentTemplate $documentTemplate)
@@ -175,7 +180,7 @@ class DocumentTemplateController extends Controller
     {
         $request->validate([
             'entity_type' => 'required|string',
-            'entity_id' => 'required|integer'
+            'entity_id' => 'required|integer',
         ]);
 
         try {
@@ -186,12 +191,12 @@ class DocumentTemplateController extends Controller
             $filePath = $generatorService->generateDocument($documentTemplate, $entityData);
 
             // Возвращаем файл для скачивания
-            return response()->download($filePath, $documentTemplate->name . '.xlsx')
+            return response()->download($filePath, $documentTemplate->name.'.xlsx')
                 ->deleteFileAfterSend(true);
 
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Ошибка генерации документа: ' . $e->getMessage());
+                ->with('error', 'Ошибка генерации документа: '.$e->getMessage());
         }
     }
 
@@ -216,6 +221,7 @@ class DocumentTemplateController extends Controller
         switch ($entityType) {
             case 'order':
                 $order = \App\Models\Order::with(['customer', 'equipment'])->findOrFail($entityId);
+
                 return [
                     'order' => [
                         'id' => $order->id,
@@ -231,9 +237,9 @@ class DocumentTemplateController extends Controller
                     'equipment' => [
                         'name' => $order->equipment->name,
                         'model' => $order->equipment->model,
-                    ]
+                    ],
                 ];
-            // Добавьте другие case для разных типов сущностей
+                // Добавьте другие case для разных типов сущностей
             default:
                 throw new \Exception('Неизвестный тип сущности');
         }

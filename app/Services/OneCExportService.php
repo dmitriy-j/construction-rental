@@ -21,7 +21,7 @@ class OneCExportService
         } catch (\Exception $e) {
             Log::error('Ошибка экспорта УПД в формат 1С', [
                 'upd_id' => $upd->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }

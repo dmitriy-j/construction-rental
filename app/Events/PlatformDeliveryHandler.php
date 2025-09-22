@@ -16,8 +16,9 @@ class PlatformDeliveryHandler
             ->where('status', 'verified')
             ->first();
 
-        if (!$carrier) {
+        if (! $carrier) {
             Log::critical('Не найден ни один перевозчик', ['order_id' => $order->id]);
+
             return;
         }
 
@@ -37,7 +38,7 @@ class PlatformDeliveryHandler
                     'carrier_company_id' => $carrier->id,
                     'carrier_contact_name' => $contactName,
                     'carrier_contact_phone' => $contactPhone,
-                    'status' => DeliveryNote::STATUS_IN_TRANSIT
+                    'status' => DeliveryNote::STATUS_IN_TRANSIT,
                 ]);
             }
         }

@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use App\Models\Order;
-use App\Models\Platform;
 use App\Models\Company;
 use App\Models\Equipment;
+use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Platform;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class UPDPdfTemplateTest extends TestCase
 {
@@ -24,7 +24,7 @@ class UPDPdfTemplateTest extends TestCase
             'kpp' => '123456789',
             'legal_address' => 'г. Москва, ул. Тестовая, д. 1',
             'ceo_name' => 'Иванов И.И.',
-            'accountant_name' => 'Петрова П.П.'
+            'accountant_name' => 'Петрова П.П.',
         ]);
 
         $lessor = Company::factory()->create([
@@ -32,7 +32,7 @@ class UPDPdfTemplateTest extends TestCase
             'inn' => '0987654321',
             'kpp' => '987654321',
             'legal_address' => 'г. Санкт-Петербург, ул. Арендная, д. 10',
-            'type' => 'lessor'
+            'type' => 'lessor',
         ]);
 
         $lessee = Company::factory()->create([
@@ -40,7 +40,7 @@ class UPDPdfTemplateTest extends TestCase
             'inn' => '1122334455',
             'kpp' => '667788990',
             'legal_address' => 'г. Екатеринбург, ул. Заказчиков, д. 5',
-            'type' => 'lessee'
+            'type' => 'lessee',
         ]);
 
         $order = Order::factory()->create([
@@ -52,7 +52,7 @@ class UPDPdfTemplateTest extends TestCase
             'payment_number' => 'ПП-001',
             'base_amount' => 15000.50,
             'lessor_company_id' => $lessor->id,
-            'lessee_company_id' => $lessee->id
+            'lessee_company_id' => $lessee->id,
         ]);
 
         $equipment = Equipment::factory()->create(['name' => 'Экскаватор CAT-330']);
@@ -60,7 +60,7 @@ class UPDPdfTemplateTest extends TestCase
             'order_id' => $order->id,
             'equipment_id' => $equipment->id,
             'base_price' => 7500.25,
-            'period_count' => 2
+            'period_count' => 2,
         ]);
 
         // Рендерим шаблон
@@ -68,7 +68,7 @@ class UPDPdfTemplateTest extends TestCase
             'order' => $order,
             'platform' => $platform,
             'counterparty' => $lessor,
-            'type' => 'lessor'
+            'type' => 'lessor',
         ]);
 
         $html = $view->render();
@@ -91,19 +91,19 @@ class UPDPdfTemplateTest extends TestCase
     {
         $platform = Platform::factory()->create([
             'accountant_name' => null,
-            'kpp' => null
+            'kpp' => null,
         ]);
 
         $order = Order::factory()->create([
             'contract_number' => null,
-            'shipping_number' => null
+            'shipping_number' => null,
         ]);
 
         $view = view('pdf.upd', [
             'order' => $order,
             'platform' => $platform,
             'counterparty' => Company::factory()->create(),
-            'type' => 'lessor'
+            'type' => 'lessor',
         ]);
 
         $html = $view->render();
@@ -116,7 +116,7 @@ class UPDPdfTemplateTest extends TestCase
     public function it_formats_numbers_correctly()
     {
         $order = Order::factory()->create([
-            'base_amount' => 12345.67
+            'base_amount' => 12345.67,
         ]);
 
         $equipment = Equipment::factory()->create();
@@ -124,14 +124,14 @@ class UPDPdfTemplateTest extends TestCase
             'order_id' => $order->id,
             'equipment_id' => $equipment->id,
             'base_price' => 1234.56,
-            'period_count' => 3
+            'period_count' => 3,
         ]);
 
         $view = view('pdf.upd', [
             'order' => $order,
             'platform' => Platform::factory()->create(),
             'counterparty' => Company::factory()->create(),
-            'type' => 'lessor'
+            'type' => 'lessor',
         ]);
 
         $html = $view->render();

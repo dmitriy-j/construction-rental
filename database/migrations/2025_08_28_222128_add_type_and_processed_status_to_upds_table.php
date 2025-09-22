@@ -1,9 +1,9 @@
 <?php
 
+use App\Models\Upd;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use App\Models\Upd;
 
 return new class extends Migration
 {
@@ -11,8 +11,8 @@ return new class extends Migration
     {
         Schema::table('upds', function (Blueprint $table) {
             $table->enum('type', [Upd::TYPE_INCOMING, Upd::TYPE_OUTGOING])
-                  ->default(Upd::TYPE_INCOMING)
-                  ->after('status');
+                ->default(Upd::TYPE_INCOMING)
+                ->after('status');
         });
 
         // Расширяем enum статусов для добавления 'processed'

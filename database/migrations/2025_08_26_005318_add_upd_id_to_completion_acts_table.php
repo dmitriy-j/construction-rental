@@ -10,9 +10,9 @@ class AddUpdIdToCompletionActsTable extends Migration
     {
         Schema::table('completion_acts', function (Blueprint $table) {
             $table->foreignId('upd_id')
-                  ->nullable()
-                  ->constrained('upds')
-                  ->onDelete('set null');
+                ->nullable()
+                ->constrained('upds')
+                ->onDelete('set null');
         });
     }
 

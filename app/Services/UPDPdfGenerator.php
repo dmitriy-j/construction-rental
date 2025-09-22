@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Order;
 use App\Models\Company;
+use App\Models\Order;
 use App\Models\Platform;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -13,7 +13,7 @@ class UPDPdfGenerator
 
     public function __construct()
     {
-        $this->platform = Platform::first() ?? new Platform();
+        $this->platform = Platform::first() ?? new Platform;
     }
 
     public function generateForLessor(Order $order)
@@ -40,7 +40,7 @@ class UPDPdfGenerator
             'order' => $order,
             'platform' => $this->platform,
             'counterparty' => $counterparty,
-            'type' => $type
+            'type' => $type,
         ]);
 
         $pdf->setPaper('a4', 'portrait');
@@ -56,7 +56,7 @@ class UPDPdfGenerator
         $pdf = PDF::loadView('documents.delivery-note', [
             'note' => $note,
             'platform' => Platform::getMain(),
-            'currentDate' => now()->format('d.m.Y')
+            'currentDate' => now()->format('d.m.Y'),
         ]);
 
         return $pdf->output();

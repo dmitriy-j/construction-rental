@@ -2,20 +2,27 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Company;
+use App\Models\Equipment;
+use App\Models\Location;
+use App\Models\Operator;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\User;
+use App\Models\Waybill;
+use App\Models\WaybillShift;
 use Illuminate\Console\Command;
-use App\Models\{Order, OrderItem, Equipment, Operator, Waybill, WaybillShift, Company, User, Location};
-use Carbon\Carbon;
-use Illuminate\Support\Str;
 
 class GenerateTestWaybills extends Command
 {
     protected $signature = 'test:waybills {days=10} {--shifts=10}';
+
     protected $description = 'Generate test waybills for testing';
 
     public function handle()
     {
-        $days = (int)$this->argument('days');
-        $shifts = (int)$this->option('shifts');
+        $days = (int) $this->argument('days');
+        $shifts = (int) $this->option('shifts');
         $startDate = now()->subDays($days);
 
         // Используем существующие данные
@@ -26,15 +33,16 @@ class GenerateTestWaybills extends Command
         $equipmentLocation = Location::find(59);
         $constructionLocation = Location::find(43);
 
-        if (!$equipment || !$equipmentLocation || !$constructionLocation || !$lesseeCompany || !$lessorCompany || !$user) {
+        if (! $equipment || ! $equipmentLocation || ! $constructionLocation || ! $lesseeCompany || ! $lessorCompany || ! $user) {
             $this->error('Required entities not found!');
             $this->line('Missing:');
-            $this->line('- Equipment: '. ($equipment ? 'Found' : 'Not found'));
-            $this->line('- Equipment Location: '. ($equipmentLocation ? 'Found' : 'Not found'));
-            $this->line('- Construction Location: '. ($constructionLocation ? 'Found' : 'Not found'));
-            $this->line('- Lessee Company: '. ($lesseeCompany ? 'Found' : 'Not found'));
-            $this->line('- Lessor Company: '. ($lessorCompany ? 'Found' : 'Not found'));
-            $this->line('- User: '. ($user ? 'Found' : 'Not found'));
+            $this->line('- Equipment: '.($equipment ? 'Found' : 'Not found'));
+            $this->line('- Equipment Location: '.($equipmentLocation ? 'Found' : 'Not found'));
+            $this->line('- Construction Location: '.($constructionLocation ? 'Found' : 'Not found'));
+            $this->line('- Lessee Company: '.($lesseeCompany ? 'Found' : 'Not found'));
+            $this->line('- Lessor Company: '.($lessorCompany ? 'Found' : 'Not found'));
+            $this->line('- User: '.($user ? 'Found' : 'Not found'));
+
             return;
         }
 
@@ -52,7 +60,7 @@ class GenerateTestWaybills extends Command
             'shifts_per_day' => 1,
             'delivery_type' => Order::DELIVERY_DELIVERY,
             'delivery_from_id' => $equipmentLocation->id,
-            'delivery_to_id' => $constructionLocation->id
+            'delivery_to_id' => $constructionLocation->id,
         ]);
 
         // Создаем позицию заказа
@@ -74,7 +82,7 @@ class GenerateTestWaybills extends Command
             // Добавляем значения для новых полей
             'fixed_lessor_price' => 800, // Ставка для арендодателя
             'fixed_customer_price' => 1000, // Ставка для арендатора
-            'distance_km' => 50 // Примерное расстояние
+            'distance_km' => 50, // Примерное расстояние
         ]);
 
         // Используем существующего оператора или создаем нового
@@ -84,7 +92,7 @@ class GenerateTestWaybills extends Command
                 'full_name' => 'Test Operator',
                 'company_id' => $lessorCompany->id,
                 'is_active' => true,
-                'equipment_id' => $equipment->id
+                'equipment_id' => $equipment->id,
             ]
         );
 
@@ -99,7 +107,7 @@ class GenerateTestWaybills extends Command
             'status' => Waybill::STATUS_ACTIVE,
             'hourly_rate' => 1000,
             'lessor_hourly_rate' => 800,
-            'license_plate' => 'А123ВС77'
+            'license_plate' => 'А123ВС77',
         ]);
 
         // Создаем смены
@@ -119,14 +127,14 @@ class GenerateTestWaybills extends Command
                 'fuel_refilled_liters' => 20,
                 'work_start_time' => '08:00',
                 'work_end_time' => '16:00',
-                'object_name' => 'Строительная площадка #'.($i+1),
-                'object_address' => $constructionLocation->address
+                'object_name' => 'Строительная площадка #'.($i + 1),
+                'object_address' => $constructionLocation->address,
             ]);
         }
 
-        $this->info("Successfully created test waybill!");
+        $this->info('Successfully created test waybill!');
         $this->info("Order ID: {$order->id}");
         $this->info("Waybill ID: {$waybill->id}");
-        $this->info("Access URL: ".route('lessor.waybills.show', $waybill));
+        $this->info('Access URL: '.route('lessor.waybills.show', $waybill));
     }
 }

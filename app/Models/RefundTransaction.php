@@ -18,12 +18,12 @@ class RefundTransaction extends Model
         'purpose',
         'transaction_data',
         'status',
-        'notes'
+        'notes',
     ];
 
     protected $casts = [
         'transaction_data' => 'json',
-        'amount' => 'decimal:2'
+        'amount' => 'decimal:2',
     ];
 
     public function bankStatement()

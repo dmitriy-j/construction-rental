@@ -12,6 +12,7 @@ class NewDocumentAvailable extends Notification implements ShouldQueue
     use Queueable;
 
     protected $document;
+
     protected $type;
 
     public function __construct($document, $type)
@@ -40,7 +41,7 @@ class NewDocumentAvailable extends Notification implements ShouldQueue
             'document_id' => $this->document->id,
             'document_type' => $this->type,
             'order_id' => $this->document->order_id,
-            'message' => "Доступен новый {$this->type} для заказа #{$this->document->order_id}"
+            'message' => "Доступен новый {$this->type} для заказа #{$this->document->order_id}",
         ];
     }
 }

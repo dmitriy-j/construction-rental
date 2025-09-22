@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\Lessor;
 
 use App\Http\Controllers\Controller;
-use App\Models\Order;
 use App\Models\Equipment;
+use App\Models\Order;
+use App\Services\BalanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Services\BalanceService;
-
 
 class DashboardController extends Controller
 {
@@ -21,14 +20,14 @@ class DashboardController extends Controller
         $stats = [
             'equipment_count' => Equipment::where('company_id', $companyId)->count(),
             'pending_orders' => Order::where('lessor_company_id', $companyId)
-                                    ->where('status', Order::STATUS_PENDING_APPROVAL)
-                                    ->count(),
+                ->where('status', Order::STATUS_PENDING_APPROVAL)
+                ->count(),
             'active_orders' => Order::where('lessor_company_id', $companyId)
-                                ->where('status', Order::STATUS_ACTIVE)
-                                ->count(),
+                ->where('status', Order::STATUS_ACTIVE)
+                ->count(),
             'revenue' => Order::where('lessor_company_id', $companyId)
-                            ->where('status', Order::STATUS_COMPLETED)
-                            ->sum('total_amount')
+                ->where('status', Order::STATUS_COMPLETED)
+                ->sum('total_amount'),
         ];
 
         // Сохраняем количество новых заказов в сессии для мигания
@@ -92,5 +91,4 @@ class DashboardController extends Controller
 
         return view('lessor.orders.index', compact('orders'));
     }
-
 }

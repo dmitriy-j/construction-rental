@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\Operator;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class OperatorPolicy
 {
@@ -39,7 +38,6 @@ class OperatorPolicy
     {
         return $user->company_id === $operator->company_id;
     }
-
 
     /**
      * Determine whether the user can delete the model.

@@ -5,13 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\BankStatement;
 use App\Models\BankStatementTransaction;
-use App\Models\PendingTransaction;
 use App\Models\PendingPayout;
+use App\Models\PendingTransaction;
 use App\Models\RefundTransaction;
-use App\Services\Parsers\BankStatementParser;
-use App\Services\BankStatementProcessingService;
 use App\Services\BalanceService;
-
+use App\Services\BankStatementProcessingService;
+use App\Services\Parsers\BankStatementParser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -26,7 +25,7 @@ class BankStatementController extends Controller
         // Добавляем подсчет отложенных транзакций
         foreach ($statements as $statement) {
             $statement->pending_count = PendingTransaction::where('bank_statement_id', $statement->id)->count() +
-                                    PendingPayout::whereHas('transaction', function($q) use ($statement) {
+                                    PendingPayout::whereHas('transaction', function ($q) use ($statement) {
                                         $q->where('bank_statement_id', $statement->id);
                                     })->count() +
                                     RefundTransaction::where('bank_statement_id', $statement->id)->count();
@@ -46,7 +45,7 @@ class BankStatementController extends Controller
     {
         $request->validate([
             'statement' => 'required|file|mimes:txt',
-            'bank_name' => 'required|string'
+            'bank_name' => 'required|string',
         ]);
 
         try {
@@ -55,12 +54,12 @@ class BankStatementController extends Controller
             $file = $request->file('statement');
             $content = file_get_contents($file->getRealPath());
 
-            $parser = new BankStatementParser();
+            $parser = new BankStatementParser;
             $transactions = $parser->parse($content);
 
             \Log::info('Parsed transactions', [
                 'count' => count($transactions),
-                'first_few' => array_slice($transactions, 0, 3)
+                'first_few' => array_slice($transactions, 0, 3),
             ]);
 
             $statement = BankStatement::create([
@@ -68,7 +67,7 @@ class BankStatementController extends Controller
                 'bank_name' => $request->bank_name,
                 'transactions_count' => count($transactions),
                 'processed_by' => auth()->id(),
-                'status' => 'processing'
+                'status' => 'processing',
             ]);
 
             $processingService = new BankStatementProcessingService(app(BalanceService::class));
@@ -80,7 +79,7 @@ class BankStatementController extends Controller
 
                     // Валидация обязательных полей
                     if (empty($transactionData['Дата']) || empty($transactionData['Сумма'])) {
-                        throw new \Exception("Отсутствуют обязательные поля: Дата или Сумма");
+                        throw new \Exception('Отсутствуют обязательные поля: Дата или Сумма');
                     }
 
                     $processingService->processTransaction($transactionData, $statement->id);
@@ -89,14 +88,14 @@ class BankStatementController extends Controller
                         'transaction_index' => $index,
                         'transaction' => $transactionData,
                         'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
+                        'trace' => $e->getTraceAsString(),
                     ]);
 
                     // Создаем запись об ошибке с гарантированно валидными значениями
                     try {
                         BankStatementTransaction::create([
                             'bank_statement_id' => $statement->id,
-                            'date' => !empty($transactionData['Дата']) ?
+                            'date' => ! empty($transactionData['Дата']) ?
                                 \Carbon\Carbon::createFromFormat('d.m.Y', $transactionData['Дата'])->format('Y-m-d') :
                                 now()->format('Y-m-d'),
                             'amount' => 0,
@@ -111,13 +110,13 @@ class BankStatementController extends Controller
                             'payee_bic' => $transactionData['ПолучательБИК'] ?? '',
                             'purpose' => $transactionData['НазначениеПлатежа'] ?? 'Не указано',
                             'status' => 'error',
-                            'error_message' => substr($e->getMessage(), 0, 500)
+                            'error_message' => substr($e->getMessage(), 0, 500),
                         ]);
                     } catch (\Exception $creationError) {
                         \Log::critical('Не удалось создать запись об ошибке', [
                             'original_error' => $e->getMessage(),
                             'creation_error' => $creationError->getMessage(),
-                            'transaction_data' => $transactionData
+                            'transaction_data' => $transactionData,
                         ]);
 
                         // Создаем минимальную запись с гарантированно валидными значениями
@@ -136,7 +135,7 @@ class BankStatementController extends Controller
                             'payee_bic' => '000000000',
                             'purpose' => 'Не удалось обработать транзакцию',
                             'status' => 'error',
-                            'error_message' => substr('Ошибка: ' . $e->getMessage() . ' | Creation: ' . $creationError->getMessage(), 0, 500)
+                            'error_message' => substr('Ошибка: '.$e->getMessage().' | Creation: '.$creationError->getMessage(), 0, 500),
                         ]);
                     }
                 }
@@ -155,7 +154,7 @@ class BankStatementController extends Controller
 
             \Log::error('Критическая ошибка обработки выписки', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             // Если выписка была создана, но произошла ошибка - обновляем статус
@@ -164,7 +163,7 @@ class BankStatementController extends Controller
             }
 
             return redirect()->back()
-                ->with('error', 'Критическая ошибка обработки выписки: ' . $e->getMessage());
+                ->with('error', 'Критическая ошибка обработки выписки: '.$e->getMessage());
         }
     }
 
@@ -174,7 +173,8 @@ class BankStatementController extends Controller
     private function cleanInn(string $inn): string
     {
         $cleaned = preg_replace('/[^0-9]/', '', $inn);
-        return !empty($cleaned) ? $cleaned : '0000000000';
+
+        return ! empty($cleaned) ? $cleaned : '0000000000';
     }
 
     protected function updateStatementStatus(BankStatement $statement): void
@@ -204,16 +204,16 @@ class BankStatementController extends Controller
             'processed_count' => $processedCount,
             'error_count' => $errorCount,
             'status' => $status,
-            'processed_at' => $status !== 'processing' ? now() : null
+            'processed_at' => $status !== 'processing' ? now() : null,
         ]);
 
-        \Log::info("Statement status updated", [
+        \Log::info('Statement status updated', [
             'statement_id' => $statement->id,
             'status' => $status,
             'processed' => $processedCount,
             'errors' => $errorCount,
             'total_processed' => $totalProcessed,
-            'transactions_count' => $statement->transactions_count
+            'transactions_count' => $statement->transactions_count,
         ]);
     }
 
@@ -224,7 +224,7 @@ class BankStatementController extends Controller
             'transactions.company',
             'transactions.invoice',
             'transactions.transactionEntry',
-            'processedBy'
+            'processedBy',
         ]);
 
         return view('admin.finance.bank-statements.show', compact('bankStatement'));
@@ -244,7 +244,8 @@ class BankStatementController extends Controller
                 ->with('success', 'Выписка и все связанные транзакции удалены.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Ошибка удаления выписки: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Ошибка удаления выписки: '.$e->getMessage());
         }
     }
 
@@ -266,7 +267,7 @@ class BankStatementController extends Controller
         \Log::debug('Pending data', [
             'transactions' => $pendingTransactions->count(),
             'payouts' => $pendingPayouts->count(),
-            'refunds' => $refundTransactions->count()
+            'refunds' => $refundTransactions->count(),
         ]);
 
         return view('admin.finance.bank-statements.pending',
@@ -281,12 +282,12 @@ class BankStatementController extends Controller
             // Находим или создаем компанию
             $company = Company::where('inn', $pendingTransaction->company_inn)->first();
 
-            if (!$company) {
+            if (! $company) {
                 // Перенаправляем на страницу создания компании с предзаполненными данными
                 return redirect()->route('admin.companies.create', [
                     'inn' => $pendingTransaction->company_inn,
                     'legal_name' => $pendingTransaction->company_name,
-                    'from_pending' => $pendingTransaction->id
+                    'from_pending' => $pendingTransaction->id,
                 ]);
             }
 
@@ -299,7 +300,7 @@ class BankStatementController extends Controller
 
             $pendingTransaction->update([
                 'status' => 'processed',
-                'notes' => 'Обработано администратором: ' . auth()->user()->name
+                'notes' => 'Обработано администратором: '.auth()->user()->name,
             ]);
 
             DB::commit();
@@ -308,7 +309,8 @@ class BankStatementController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Ошибка обработки: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Ошибка обработки: '.$e->getMessage());
         }
     }
 
@@ -317,13 +319,13 @@ class BankStatementController extends Controller
         try {
             $pendingPayout->update([
                 'status' => 'cancelled',
-                'notes' => 'Отменено администратором: ' . auth()->user()->name
+                'notes' => 'Отменено администратором: '.auth()->user()->name,
             ]);
 
             return redirect()->back()->with('success', 'Выплата успешно отменена');
 
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Ошибка отмены выплаты: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Ошибка отмены выплаты: '.$e->getMessage());
         }
     }
 
@@ -332,7 +334,7 @@ class BankStatementController extends Controller
         $request->validate([
             'refund_id' => 'required|exists:refund_transactions,id',
             'action' => 'required|in:process,cancel',
-            'notes' => 'nullable|string|max:500'
+            'notes' => 'nullable|string|max:500',
         ]);
 
         try {
@@ -348,7 +350,7 @@ class BankStatementController extends Controller
                 // Отмена возврата
                 $refund->update([
                     'status' => 'cancelled',
-                    'notes' => $request->notes
+                    'notes' => $request->notes,
                 ]);
                 $message = 'Возврат отклонен';
             }
@@ -359,7 +361,8 @@ class BankStatementController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Ошибка обработки возврата: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Ошибка обработки возврата: '.$e->getMessage());
         }
     }
 
@@ -368,7 +371,7 @@ class BankStatementController extends Controller
         // Находим компанию
         $company = Company::where('inn', $refund->company_inn)->first();
 
-        if (!$company) {
+        if (! $company) {
             throw new \Exception("Компания с ИНН {$refund->company_inn} не найдена");
         }
 
@@ -384,13 +387,13 @@ class BankStatementController extends Controller
             $purpose,
             null,
             "Возврат средств: {$refund->purpose}",
-            'refund_' . $refund->id . '_' . time()
+            'refund_'.$refund->id.'_'.time()
         );
 
         // Обновляем статус возврата
         $refund->update([
             'status' => 'processed',
-            'notes' => 'Обработано администратором: ' . auth()->user()->name
+            'notes' => 'Обработано администратором: '.auth()->user()->name,
         ]);
     }
 }

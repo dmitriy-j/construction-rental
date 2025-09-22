@@ -3,17 +3,16 @@
 namespace App\Http\Controllers\Lessor;
 
 use App\Http\Controllers\Controller;
+use App\Models\Company;
+use App\Models\CompletionAct;
 use App\Models\Order;
 use App\Models\Upd;
-use App\Models\Company;
-use App\Models\Waybill;
-use App\Models\CompletionAct; // Добавьте эту строку
+use App\Models\Waybill; // Добавьте эту строку
 use App\Services\UpdProcessingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-
 
 class UpdController extends Controller
 {
@@ -48,12 +47,12 @@ class UpdController extends Controller
 
         // Получаем завершенные путевые листы с актами выполненных работ
         $waybills = Waybill::where('perspective', 'lessor') // Явное условие вместо scope
-            ->whereHas('order', function($query) use ($companyId) {
+            ->whereHas('order', function ($query) use ($companyId) {
                 $query->where('lessor_company_id', $companyId)
                     ->whereNotIn('status', [Order::STATUS_CANCELLED, Order::STATUS_PENDING]);
             })
             ->where('status', 'completed')
-            ->whereHas('completionAct', function($query) {
+            ->whereHas('completionAct', function ($query) {
                 $query->where('perspective', 'lessor'); // Явное условие вместо scope
             })
             ->whereDoesntHave('upd')
@@ -70,14 +69,13 @@ class UpdController extends Controller
             'upd_file' => 'required|file|mimes:xlsx,xls|max:10240',
         ]);
 
-
         $waybill = Waybill::with(['order', 'completionAct'])->findOrFail($request->waybill_id);
         $order = $waybill->order;
         $completionActExists = CompletionAct::where('waybill_id', $request->waybill_id)
             ->where('perspective', 'lessor')
             ->exists();
 
-        if (!$completionActExists) {
+        if (! $completionActExists) {
             return redirect()->back()
                 ->with('error', 'Для выбранного путевого листа отсутствует акт выполненных работ. Невозможно загрузить УПД.')
                 ->withInput();
@@ -104,11 +102,11 @@ class UpdController extends Controller
             Log::error('Ошибка загрузки УПД', [
                 'user_id' => Auth::id(),
                 'waybill_id' => $request->waybill_id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return redirect()->back()
-                ->with('error', 'Ошибка загрузки УПД: ' . $e->getMessage())
+                ->with('error', 'Ошибка загрузки УПД: '.$e->getMessage())
                 ->withInput();
         }
     }
@@ -126,7 +124,7 @@ class UpdController extends Controller
             'lessorCompany',
             'waybill',
             'waybill.completionAct',
-            'items'
+            'items',
         ]);
 
         return view('lessor.upds.show', compact('upd'));
@@ -169,11 +167,11 @@ class UpdController extends Controller
         } catch (\Exception $e) {
             Log::error('Ошибка удаления УПД', [
                 'upd_id' => $upd->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return redirect()->back()
-                ->with('error', 'Ошибка удаления УПД: ' . $e->getMessage());
+                ->with('error', 'Ошибка удаления УПД: '.$e->getMessage());
         }
     }
 
@@ -184,11 +182,10 @@ class UpdController extends Controller
             abort(403);
         }
 
-        if (!Storage::disk('private')->exists($upd->file_path)) {
+        if (! Storage::disk('private')->exists($upd->file_path)) {
             abort(404, 'Файл УПД не найден');
         }
 
         return Storage::disk('private')->download($upd->file_path, "УПД_{$upd->number}.xlsx");
     }
-
 }

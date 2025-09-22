@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\BankStatement;
-use App\Models\TransactionEntry;
 use App\Models\BankStatementTransaction;
+use App\Models\TransactionEntry;
 use Illuminate\Console\Command;
 
 class FixBankStatementTransactions extends Command
@@ -49,11 +49,11 @@ class FixBankStatementTransactions extends Command
                 'source_type' => get_class($entry),
                 'source_id' => $entry->id,
                 'company_id' => $entry->company_id,
-                'idempotency_key' => $entry->idempotency_key
+                'idempotency_key' => $entry->idempotency_key,
             ]);
         }
 
         $statement->refreshStatus();
-        $this->info("Восстановлено транзакций: " . $transactionEntries->count());
+        $this->info('Восстановлено транзакций: '.$transactionEntries->count());
     }
 }

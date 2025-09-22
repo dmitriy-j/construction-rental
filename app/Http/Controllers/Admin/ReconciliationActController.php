@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ReconciliationAct;
 use App\Models\Company;
+use App\Models\ReconciliationAct;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -52,13 +52,14 @@ class ReconciliationActController extends Controller
                 ->with('success', 'Акт сверки успешно создан');
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Ошибка создания акта сверки: ' . $e->getMessage());
+                ->with('error', 'Ошибка создания акта сверки: '.$e->getMessage());
         }
     }
 
     public function show(ReconciliationAct $reconciliationAct)
     {
         $reconciliationAct->load('company');
+
         return view('admin.finance.reconciliation-act-show', compact('reconciliationAct'));
     }
 
@@ -71,18 +72,18 @@ class ReconciliationActController extends Controller
                 ->with('success', 'Акт сверки подтвержден платформой');
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Ошибка подтверждения акта: ' . $e->getMessage());
+                ->with('error', 'Ошибка подтверждения акта: '.$e->getMessage());
         }
     }
 
     public function download(ReconciliationAct $reconciliationAct)
     {
-        if (!Storage::exists($reconciliationAct->file_path)) {
+        if (! Storage::exists($reconciliationAct->file_path)) {
             return redirect()->back()
                 ->with('error', 'Файл акта сверки не найден');
         }
 
-        return Storage::download($reconciliationAct->file_path, 'reconciliation_act_' . $reconciliationAct->id . '.pdf');
+        return Storage::download($reconciliationAct->file_path, 'reconciliation_act_'.$reconciliationAct->id.'.pdf');
     }
 
     public function destroy(ReconciliationAct $reconciliationAct)
@@ -99,7 +100,7 @@ class ReconciliationActController extends Controller
                 ->with('success', 'Акт сверки успешно удален');
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Ошибка удаления акта сверки: ' . $e->getMessage());
+                ->with('error', 'Ошибка удаления акта сверки: '.$e->getMessage());
         }
     }
 }

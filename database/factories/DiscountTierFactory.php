@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\DiscountTier;
 use App\Models\Company;
+use App\Models\DiscountTier;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class DiscountTierFactory extends Factory

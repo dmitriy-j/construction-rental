@@ -3,17 +3,17 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Mail\CompanyRegisteredMail;
 use App\Models\Company;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\CompanyRegisteredMail;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
-use Illuminate\Support\Facades\DB;
 
 class CompanyAuthController extends Controller
 {
@@ -61,6 +61,7 @@ class CompanyAuthController extends Controller
 
             if ($validator->fails()) {
                 Log::error('ОШИБКИ ВАЛИДАЦИИ:', $validator->errors()->toArray());
+
                 return redirect()->back()
                     ->withErrors($validator)
                     ->withInput();
@@ -98,7 +99,7 @@ class CompanyAuthController extends Controller
                 'status' => 'pending',
             ]);
 
-            Log::info('Компания успешно создана! ID: ' . $company->id);
+            Log::info('Компания успешно создана! ID: '.$company->id);
 
             // Отправляем email (временно отключим для теста)
             Log::info('Отправка email...');
@@ -114,15 +115,15 @@ class CompanyAuthController extends Controller
             Log::info('Транзакция завершена успешно!');
 
             return redirect()->route('tenant.dashboard')
-                   ->with('success', 'Компания успешно зарегистрирована!');
+                ->with('success', 'Компания успешно зарегистрирована!');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('КРИТИЧЕСКАЯ ОШИБКА: ' . $e->getMessage());
-            Log::error('Трассировка: ' . $e->getTraceAsString());
+            Log::error('КРИТИЧЕСКАЯ ОШИБКА: '.$e->getMessage());
+            Log::error('Трассировка: '.$e->getTraceAsString());
 
             return back()->withInput()
-                   ->with('error', 'Ошибка при регистрации: ' . $e->getMessage());
+                ->with('error', 'Ошибка при регистрации: '.$e->getMessage());
         }
     }
 }

@@ -2,10 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\TransactionEntry;
 use App\Models\Company;
+use App\Models\TransactionEntry;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
 
 class FinancialAnalyticsService
 {
@@ -52,7 +51,7 @@ class FinancialAnalyticsService
             $results[] = [
                 'month' => $startDate->format('Y-m'),
                 'revenue' => $currentRevenue,
-                'growth' => $growth
+                'growth' => $growth,
             ];
         }
 
@@ -64,12 +63,12 @@ class FinancialAnalyticsService
         $startDate = $startDate ?: now()->subMonth()->startOfMonth();
         $endDate = $endDate ?: now()->subMonth()->endOfMonth();
 
-        return Company::withSum(['transactions' => function($query) use ($startDate, $endDate) {
+        return Company::withSum(['transactions' => function ($query) use ($startDate, $endDate) {
             $query->where('is_canceled', false)
                 ->whereBetween('created_at', [$startDate, $endDate]);
         }], 'amount')
-        ->orderBy('transactions_sum_amount', 'desc')
-        ->limit($limit)
-        ->get();
+            ->orderBy('transactions_sum_amount', 'desc')
+            ->limit($limit)
+            ->get();
     }
 }

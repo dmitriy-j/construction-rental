@@ -16,11 +16,11 @@ class PendingPayout extends Model
         'amount',
         'purpose',
         'status',
-        'notes'
+        'notes',
     ];
 
     protected $casts = [
-        'amount' => 'decimal:2'
+        'amount' => 'decimal:2',
     ];
 
     public function transaction()

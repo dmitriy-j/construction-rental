@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
-use App\Models\Company;
 
 class AdminOrderController extends Controller
 {
@@ -19,7 +18,7 @@ class AdminOrderController extends Controller
             'lessorCompany',
             'lesseeCompany',
             'waybills',
-            'deliveryNote'
+            'deliveryNote',
         ]);
 
         return view('admin.orders.show', compact('order'));

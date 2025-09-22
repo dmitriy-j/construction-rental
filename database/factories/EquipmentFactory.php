@@ -2,11 +2,11 @@
 
 namespace Database\Factories;
 
-use App\Models\Company;
 use App\Models\Category;
-use App\Models\Location;
+use App\Models\Company;
 use App\Models\Equipment;
 use App\Models\EquipmentRentalTerm;
+use App\Models\Location;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class EquipmentFactory extends Factory
@@ -16,17 +16,17 @@ class EquipmentFactory extends Factory
         $types = [
             'Гусеничный экскаватор', 'Экскаватор-погрузчик', 'Бульдозер',
             'Фронтальный погрузчик', 'Кран', 'Манипулятор', 'Каток дорожный',
-            'Автобетононасос', 'Автогрейдер', 'Самосвал'
+            'Автобетононасос', 'Автогрейдер', 'Самосвал',
         ];
 
         $brands = ['JCB', 'Caterpillar', 'Komatsu', 'Hitachi', 'Volvo', 'Liebherr', 'Doosan', 'Hyundai'];
         $models = ['X-500', 'HD-300', 'ZX-210', 'PC-200', 'EC-480', 'R-974', 'D-65', 'L-350'];
 
-        $title = $this->faker->randomElement($types) . ' ' . $this->faker->randomElement($brands) . ' ' . $this->faker->randomElement($models);
+        $title = $this->faker->randomElement($types).' '.$this->faker->randomElement($brands).' '.$this->faker->randomElement($models);
 
         return [
             'title' => $title,
-            'slug' => \Illuminate\Support\Str::slug($title) . '-' . uniqid(),
+            'slug' => \Illuminate\Support\Str::slug($title).'-'.uniqid(),
             'description' => $this->faker->paragraph(3),
             'company_id' => Company::inRandomOrder()->first()->id,
             'category_id' => Category::inRandomOrder()->first()->id,
@@ -52,7 +52,7 @@ class EquipmentFactory extends Factory
                 'weight' => $isTruck ? rand(15000, 35000) : rand(5000, 20000),
                 'length' => $isTruck ? rand(8, 15) : rand(5, 10),
                 'width' => $isTruck ? rand(3, 4) : rand(2, 3),
-                'height' => $isTruck ? rand(3, 4) : rand(2, 3)
+                'height' => $isTruck ? rand(3, 4) : rand(2, 3),
             ];
 
             foreach ($specs as $key => $value) {
@@ -60,10 +60,9 @@ class EquipmentFactory extends Factory
                     'equipment_id' => $equipment->id,
                     'key' => $key,
                     'value' => $value,
-                    $key => $value // сохраняем числовое значение
+                    $key => $value, // сохраняем числовое значение
                 ]);
             }
         });
     }
-
 }

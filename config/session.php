@@ -155,7 +155,7 @@ return [
     |
     */
 
-    'domain' => null, //env('SESSION_DOMAIN', '.cr.loc'),
+    'domain' => null, // env('SESSION_DOMAIN', '.cr.loc'),
 
     /*
     |--------------------------------------------------------------------------
@@ -168,7 +168,7 @@ return [
     |
     */
 
-    'secure' => false, //env('SESSION_SECURE_COOKIE'),
+    'secure' => false, // env('SESSION_SECURE_COOKIE'),
 
     /*
     |--------------------------------------------------------------------------

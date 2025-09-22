@@ -4,15 +4,15 @@ namespace App\Notifications;
 
 use App\Models\Order;
 use Illuminate\Bus\Queueable;
-use Illuminate\Notifications\Notification;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
 
 class OrderRejected extends Notification
 {
     use Queueable;
 
     public $order;
+
     public $reason;
 
     public function __construct(Order $order, string $reason)
@@ -41,7 +41,7 @@ class OrderRejected extends Notification
         return [
             'message' => "Заказ #{$this->order->id} отклонен: {$this->reason}",
             'order_id' => $this->order->id,
-            'link' => route('lessee.orders.show', $this->order)
+            'link' => route('lessee.orders.show', $this->order),
         ];
     }
 }

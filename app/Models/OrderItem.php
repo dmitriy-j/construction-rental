@@ -7,14 +7,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OrderItem extends Model
 {
-
     // Константы статусов
     const STATUS_PENDING = 'pending';
-    const STATUS_IN_DELIVERY = 'in_delivery';
-    const STATUS_ACTIVE = 'active';
-    const STATUS_COMPLETED = 'completed';
-    const STATUS_CANCELLED = 'cancelled';
 
+    const STATUS_IN_DELIVERY = 'in_delivery';
+
+    const STATUS_ACTIVE = 'active';
+
+    const STATUS_COMPLETED = 'completed';
+
+    const STATUS_CANCELLED = 'cancelled';
 
     protected $fillable = [
         'order_id',
@@ -35,8 +37,7 @@ class OrderItem extends Model
         'distance_km',
         'status', // Добавляем новое поле
         'fixed_lessor_price', // Добавляем
-        'fixed_customer_price' // Добавляем
-
+        'fixed_customer_price', // Добавляем
 
     ];
 
@@ -44,9 +45,9 @@ class OrderItem extends Model
         'delivery_cost' => 'float',
         'status' => 'string',
 
-        ];
+    ];
 
-     protected $attributes = [
+    protected $attributes = [
         'distance_km' => 0, // Значение по умолчанию
     ];
 
@@ -62,7 +63,7 @@ class OrderItem extends Model
         return $this->belongsTo(Equipment::class)->withDefault([
             'title' => 'Удаленное оборудование',
             'brand' => 'N/A',
-            'model' => 'N/A'
+            'model' => 'N/A',
         ]);
     }
 
@@ -81,7 +82,7 @@ class OrderItem extends Model
         return $this->hasOne(DeliveryNote::class, 'order_item_id');
     }
 
-     protected static function booted()
+    protected static function booted()
     {
         static::updating(function ($model) {
             $original = $model->getOriginal();
@@ -92,11 +93,11 @@ class OrderItem extends Model
                 'price_per_unit',
                 'rental_term_id',
                 'rental_condition_id',
-                'quantity'
+                'quantity',
             ];
 
             foreach ($protected as $field) {
-                if ($model->$field != $original[$field]) {
+                if ($original[$field] != $model->$field) {
                     throw new \Exception("Cannot change $field after creation");
                 }
             }
@@ -118,9 +119,9 @@ class OrderItem extends Model
         return $this->belongsTo(Company::class, 'lessor_company_id');
     }
 
-     public function getStatusTextAttribute(): string
+    public function getStatusTextAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             self::STATUS_PENDING => 'Ожидает',
             self::STATUS_IN_DELIVERY => 'В пути',
             self::STATUS_ACTIVE => 'Активна',
@@ -131,7 +132,7 @@ class OrderItem extends Model
 
     public function getStatusColorAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             self::STATUS_PENDING => 'warning',
             self::STATUS_IN_DELIVERY => 'info',
             self::STATUS_ACTIVE => 'success',
@@ -154,6 +155,4 @@ class OrderItem extends Model
     {
         return $this->fixed_lessor_price ?? $this->rentalTerm->price_per_hour;
     }
-
-
 }

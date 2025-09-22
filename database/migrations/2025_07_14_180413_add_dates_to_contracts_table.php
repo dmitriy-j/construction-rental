@@ -12,17 +12,12 @@ class AddDatesToContractsTable extends Migration
             $table->date('start_date')->after('company_id');
             $table->date('end_date')->after('start_date');
 
-
             // Удалим ненужные поля, если они есть в ошибке
         });
     }
 
     public function down()
     {
-        Schema::table('contracts', function (Blueprint $table) {
-
-
-
-        });
+        Schema::table('contracts', function (Blueprint $table) {});
     }
 }

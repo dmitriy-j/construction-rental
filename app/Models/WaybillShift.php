@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Carbon\Carbon;
 
 class WaybillShift extends Model
 {
@@ -39,7 +39,7 @@ class WaybillShift extends Model
         'work_end_time',   // Добавлено
     ];
 
-   protected $casts = [
+    protected $casts = [
         'shift_date' => 'date',
         'departure_time' => 'datetime:H:i',
         'return_time' => 'datetime:H:i',
@@ -51,6 +51,7 @@ class WaybillShift extends Model
         'hourly_rate' => 'decimal:2',
         'total_amount' => 'decimal:2',
     ];
+
     public function waybill(): BelongsTo
     {
         return $this->belongsTo(Waybill::class);
@@ -62,7 +63,7 @@ class WaybillShift extends Model
     }
 
     // Автоматический расчет суммы при сохранении
-   protected static function booted()
+    protected static function booted()
     {
         static::saving(function ($model) {
             // Если часы уже установлены вручную - не пересчитывать
@@ -78,7 +79,9 @@ class WaybillShift extends Model
                 $start = Carbon::createFromFormat('H:i', $start, 'Europe/Moscow');
                 $end = Carbon::createFromFormat('H:i', $end, 'Europe/Moscow');
 
-                if ($end < $start) $end->addDay();
+                if ($end < $start) {
+                    $end->addDay();
+                }
 
                 $model->hours_worked = round($end->diffInMinutes($start) / 60, 2);
             }

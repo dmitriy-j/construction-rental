@@ -17,12 +17,12 @@ class PendingTransaction extends Model
         'type',
         'transaction_data',
         'status',
-        'notes'
+        'notes',
     ];
 
     protected $casts = [
         'transaction_data' => 'json',
-        'amount' => 'decimal:2'
+        'amount' => 'decimal:2',
     ];
 
     public function bankStatement()

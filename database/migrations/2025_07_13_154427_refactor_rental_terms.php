@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-         Schema::table('equipment_rental_terms', function (Blueprint $table) {
+        Schema::table('equipment_rental_terms', function (Blueprint $table) {
             $table->dropColumn('period');
             $table->dropColumn('price');
             $table->dropColumn('delivery_price');

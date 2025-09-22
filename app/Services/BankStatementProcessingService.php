@@ -5,8 +5,8 @@ namespace App\Services;
 use App\Models\BankStatementTransaction;
 use App\Models\Company;
 use App\Models\Invoice;
-use App\Models\PendingTransaction;
 use App\Models\PendingPayout;
+use App\Models\PendingTransaction;
 use App\Models\RefundTransaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 class BankStatementProcessingService
 {
     protected $balanceService;
+
     protected $platformInn;
 
     public function __construct(BalanceService $balanceService)
@@ -32,12 +33,14 @@ class BankStatementProcessingService
             // Если это возврат, создаем отложенную транзакцию
             if (in_array($type, ['refund_incoming', 'refund_outgoing'])) {
                 $this->handleRefundTransaction($transactionData, $type, $bankStatementId);
+
                 return;
             }
 
             // Проверка на дубликат
             if (BankStatementTransaction::where('idempotency_key', $idempotencyKey)->exists()) {
                 \Log::warning('Попытка обработки дублирующей транзакции', ['idempotency_key' => $idempotencyKey]);
+
                 return;
             }
 
@@ -50,13 +53,13 @@ class BankStatementProcessingService
                 'payer_inn' => $transactionData['ПлательщикИНН'] ?? '',
                 'payee_inn' => $transactionData['ПолучательИНН'] ?? '',
                 'cleaned_payer_inn' => $this->cleanInn($transactionData['ПлательщикИНН'] ?? ''),
-                'cleaned_payee_inn' => $this->cleanInn($transactionData['ПолучательИНН'] ?? '')
+                'cleaned_payee_inn' => $this->cleanInn($transactionData['ПолучательИНН'] ?? ''),
             ]);
 
             $company = $this->findCompany($transactionData, $type, $bankStatementId);
 
             // Если компания не найдена, просто возвращаемся (она уже обработана в findCompany)
-            if (!$company) {
+            if (! $company) {
                 return;
             }
 
@@ -87,7 +90,7 @@ class BankStatementProcessingService
                 'idempotency_key' => $idempotencyKey,
                 'company_id' => $company->id,
                 'invoice_id' => $invoice?->id,
-                'status' => 'pending'
+                'status' => 'pending',
             ]);
 
             $this->processFinancialOperation($transaction, $company, $invoice);
@@ -97,12 +100,12 @@ class BankStatementProcessingService
                 'error_message' => $e->getMessage(),
                 'error_trace' => $e->getTraceAsString(),
                 'transaction_data' => $transactionData,
-                'bank_statement_id' => $bankStatementId
+                'bank_statement_id' => $bankStatementId,
             ]);
 
             try {
                 // Генерируем idempotency_key для записи об ошибке
-                $errorIdempotencyKey = 'error_' . $this->generateIdempotencyKey($transactionData);
+                $errorIdempotencyKey = 'error_'.$this->generateIdempotencyKey($transactionData);
 
                 // Преобразуем дату
                 $date = isset($transactionData['Дата']) ?
@@ -126,13 +129,13 @@ class BankStatementProcessingService
                     'purpose' => $transactionData['НазначениеПлатежа'] ?? 'Не указано',
                     'idempotency_key' => $errorIdempotencyKey,
                     'status' => 'error',
-                    'error_message' => substr($e->getMessage(), 0, 500)
+                    'error_message' => substr($e->getMessage(), 0, 500),
                 ]);
             } catch (\Exception $creationError) {
                 \Log::critical('Не удалось создать запись об ошибке', [
                     'original_error' => $e->getMessage(),
                     'creation_error' => $creationError->getMessage(),
-                    'transaction_data' => $transactionData
+                    'transaction_data' => $transactionData,
                 ]);
             }
         }
@@ -158,19 +161,19 @@ class BankStatementProcessingService
                 'type' => $type,
                 'transaction_data' => $transactionData,
                 'status' => 'pending',
-                'purpose' => $transactionData['НазначениеПлатежа'] ?? ''
+                'purpose' => $transactionData['НазначениеПлатежа'] ?? '',
             ]);
 
             \Log::warning('Обнаружен возврат средств', [
                 'inn' => $inn,
                 'name' => $name,
-                'type' => $type
+                'type' => $type,
             ]);
 
         } catch (\Exception $e) {
             \Log::error('Ошибка обработки возврата', [
                 'transaction' => $transactionData,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -183,7 +186,7 @@ class BankStatementProcessingService
             $amount = str_replace(',', '.', $amount);
         }
 
-        if (!is_numeric($amount)) {
+        if (! is_numeric($amount)) {
             throw new \Exception("Некорректный формат суммы: {$amount}");
         }
 
@@ -207,10 +210,10 @@ class BankStatementProcessingService
             $transactionData['Сумма'] ?? '',
             $transactionData['ПлательщикИНН'] ?? '',
             $transactionData['ПолучательИНН'] ?? '',
-            $transactionData['НазначениеПлатежа'] ?? ''
+            $transactionData['НазначениеПлатежа'] ?? '',
         ]);
 
-        return 'bank_stmt_' . md5($uniqueSourceString);
+        return 'bank_stmt_'.md5($uniqueSourceString);
     }
 
     protected function determineTransactionType(array $transactionData): string
@@ -251,7 +254,8 @@ class BankStatementProcessingService
         }
 
         $cleaned = preg_replace('/[^0-9]/', '', $inn);
-        return !empty($cleaned) ? $cleaned : '0000000000';
+
+        return ! empty($cleaned) ? $cleaned : '0000000000';
     }
 
     protected function findCompany(array $transactionData, string $type, int $bankStatementId): ?Company
@@ -264,16 +268,18 @@ class BankStatementProcessingService
         if ($inn === '0000000000' || strlen($inn) < 10) {
             \Log::warning('Неверный формат ИНН после очистки', [
                 'original_inn' => $type === 'incoming' ? $transactionData['ПлательщикИНН'] ?? '' : $transactionData['ПолучательИНН'] ?? '',
-                'cleaned_inn' => $inn
+                'cleaned_inn' => $inn,
             ]);
+
             return null;
         }
 
         $company = Company::where('inn', $inn)->first();
 
-        if (!$company) {
+        if (! $company) {
             // Создаем отложенную транзакцию для незарегистрированной компании
             $this->handleUnregisteredCompany($transactionData, $type, $bankStatementId);
+
             return null;
         }
 
@@ -290,6 +296,7 @@ class BankStatementProcessingService
 
         if (preg_match('/[Сс]чет[\s№]*([A-Za-zА-Яа-я\-0-9]+)/u', $purpose, $matches)) {
             $invoiceNumber = trim($matches[1]);
+
             return Invoice::where('number', $invoiceNumber)->first();
         }
 
@@ -301,14 +308,14 @@ class BankStatementProcessingService
         try {
             DB::beginTransaction();
 
-            if (!$company) {
+            if (! $company) {
                 $inn = $transaction->type === 'incoming' ? $transaction->payer_inn : $transaction->payee_inn;
                 throw new \Exception("Компания с ИНН {$inn} не найдена в системе");
             }
 
             // Определяем роль компании в данной транзакции
             $role = $this->determineCompanyRole($company, [
-                'НазначениеПлатежа' => $transaction->purpose
+                'НазначениеПлатежа' => $transaction->purpose,
             ], $transaction->type);
 
             if ($transaction->type === 'incoming') {
@@ -324,11 +331,11 @@ class BankStatementProcessingService
             DB::rollBack();
             $transaction->update([
                 'status' => 'error',
-                'error_message' => $e->getMessage()
+                'error_message' => $e->getMessage(),
             ]);
             Log::error('Ошибка обработки транзакции', [
                 'transaction_id' => $transaction->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -352,7 +359,7 @@ class BankStatementProcessingService
         $transaction->update([
             'source_type' => get_class($entry),
             'source_id' => $entry->id,
-            'status' => 'processed'
+            'status' => 'processed',
         ]);
 
         if ($invoice && $role === 'lessee') {
@@ -369,7 +376,7 @@ class BankStatementProcessingService
             $payeeInn = $this->cleanInn($transaction->payee_inn);
             $payeeCompany = Company::where('inn', $payeeInn)->first();
 
-            if (!$payeeCompany) {
+            if (! $payeeCompany) {
                 // Создаем запись о pending payout
                 PendingPayout::create([
                     'bank_statement_transaction_id' => $transaction->id,
@@ -377,12 +384,12 @@ class BankStatementProcessingService
                     'payee_name' => $transaction->payee_name,
                     'amount' => $transaction->amount,
                     'purpose' => $transaction->purpose,
-                    'status' => 'pending_registration'
+                    'status' => 'pending_registration',
                 ]);
 
                 $transaction->update([
                     'status' => 'on_hold',
-                    'error_message' => 'Получатель не зарегистрирован на платформе'
+                    'error_message' => 'Получатель не зарегистрирован на платформе',
                 ]);
 
                 return;
@@ -402,11 +409,11 @@ class BankStatementProcessingService
         } catch (\Exception $e) {
             $transaction->update([
                 'status' => 'error',
-                'error_message' => $e->getMessage()
+                'error_message' => $e->getMessage(),
             ]);
             Log::error('Ошибка обработки исходящей транзакции', [
                 'transaction_id' => $transaction->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -430,7 +437,7 @@ class BankStatementProcessingService
                 'payee_name' => $name,
                 'amount' => $this->validateAndParseAmount($transactionData['Сумма']),
                 'purpose' => $transactionData['НазначениеПлатежа'] ?? '',
-                'status' => 'pending_registration'
+                'status' => 'pending_registration',
             ]);
         } else {
             // Для входящих платежей создаем PendingTransaction
@@ -441,7 +448,7 @@ class BankStatementProcessingService
                 'amount' => $this->validateAndParseAmount($transactionData['Сумма']),
                 'type' => $type,
                 'transaction_data' => $transactionData,
-                'status' => 'pending_registration'
+                'status' => 'pending_registration',
             ]);
         }
     }

@@ -3,9 +3,8 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Models\Company;
-use App\Models\TransactionEntry;
 use App\Models\Invoice;
+use App\Models\TransactionEntry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -24,7 +23,7 @@ class FinanceController extends Controller
         return response()->json([
             'company' => $company->legal_name,
             'balance' => $balance,
-            'currency' => 'RUB'
+            'currency' => 'RUB',
         ]);
     }
 

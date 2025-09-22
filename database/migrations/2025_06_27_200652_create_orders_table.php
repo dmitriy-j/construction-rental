@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
         Schema::create('orders', function (Blueprint $table) {
@@ -23,7 +24,7 @@ return new class extends Migration {
                 'confirmed',    // Подтвержден арендодателем
                 'active',       // Исполняется
                 'completed',    // Завершен
-                'cancelled'     // Отменен
+                'cancelled',     // Отменен
             ])->default('pending');
 
             $table->decimal('total_amount', 12, 2)->default(0);

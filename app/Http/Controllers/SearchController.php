@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\News;
+use Illuminate\Http\Request;
 
 class SearchController extends Controller
 {
@@ -15,7 +15,7 @@ class SearchController extends Controller
 
         return view('search.results', [
             'results' => $results,
-            'query' => $query
+            'query' => $query,
         ]);
     }
 }

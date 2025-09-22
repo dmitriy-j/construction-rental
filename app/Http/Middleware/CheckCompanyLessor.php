@@ -4,8 +4,8 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\Response;
 
 class CheckCompanyLessor
 {
@@ -14,17 +14,17 @@ class CheckCompanyLessor
         $user = Auth::user();
 
         // Проверяем что пользователь аутентифицирован
-        if (!$user) {
+        if (! $user) {
             abort(403, 'Требуется авторизация');
         }
 
         // Проверяем наличие компании
-        if (!$user->company) {
+        if (! $user->company) {
             abort(403, 'Пользователь не привязан к компании');
         }
 
         // Проверяем что компания является арендодателем
-        if (!$user->company->is_lessor) {
+        if (! $user->company->is_lessor) {
             abort(403, 'Доступ только для компаний-арендодателей');
         }
 

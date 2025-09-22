@@ -1,6 +1,5 @@
 <?php
 
-
 class NewsResource extends JsonResource
 {
     public function toArray($request)

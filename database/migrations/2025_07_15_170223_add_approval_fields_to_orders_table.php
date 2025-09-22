@@ -4,7 +4,8 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up()
     {
         Schema::table('orders', function (Blueprint $table) {
@@ -16,7 +17,7 @@ return new class extends Migration {
                 'active',           // Исполняется
                 'completed',        // Завершен
                 'cancelled',        // Отменен арендатором
-                'rejected'          // Отклонен арендодателем
+                'rejected',          // Отклонен арендодателем
             ])->default('pending')->change();
 
             // Добавляем новые поля
@@ -40,14 +41,14 @@ return new class extends Migration {
                 'confirmed',
                 'active',
                 'completed',
-                'cancelled'
+                'cancelled',
             ])->default('pending')->change();
 
             $table->dropColumn([
                 'rejection_reason',
                 'confirmed_at',
                 'rejected_at',
-                'rental_condition_id'
+                'rental_condition_id',
             ]);
         });
     }

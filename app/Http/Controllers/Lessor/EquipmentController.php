@@ -3,18 +3,15 @@
 namespace App\Http\Controllers\Lessor;
 
 use App\Http\Controllers\Controller;
-use App\Models\Equipment;
-use App\Models\Category;
-use App\Models\Location;
-use App\Models\EquipmentRentalTerm;
-use App\Models\EquipmentImage;
 use App\Http\Requests\Catalog\StoreEquipmentRequest;
 use App\Http\Requests\Catalog\UpdateEquipmentRequest;
-use Illuminate\Support\Facades\Storage;
+use App\Models\Category;
+use App\Models\Equipment;
+use App\Models\EquipmentImage;
+use App\Models\Location;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class EquipmentController extends Controller
@@ -23,6 +20,7 @@ class EquipmentController extends Controller
     {
         $this->middleware(function ($request, $next) {
             $this->categories = Category::all();
+
             return $next($request);
         });
     }
@@ -38,10 +36,11 @@ class EquipmentController extends Controller
 
     public function create()
     {
-        $equipment = new Equipment();
+        $equipment = new Equipment;
+
         return view('lessor.equipment.create', [
             'categories' => $this->categories,
-            'equipment' => $equipment
+            'equipment' => $equipment,
         ]);
     }
 
@@ -69,7 +68,7 @@ class EquipmentController extends Controller
             $counter = 1;
 
             while (Equipment::where('slug', $slug)->exists()) {
-                $slug = Str::slug($request->title) . '-' . $counter;
+                $slug = Str::slug($request->title).'-'.$counter;
                 $counter++;
             }
 
@@ -82,8 +81,8 @@ class EquipmentController extends Controller
                 'location_id' => $location->id,
                 'brand' => $request->brand,
                 'model' => $request->model,
-                'year' => (int)$request->year,
-                'hours_worked' => (float)$request->hours_worked,
+                'year' => (int) $request->year,
+                'hours_worked' => (float) $request->hours_worked,
                 'is_approved' => false,
             ]);
 
@@ -105,18 +104,20 @@ class EquipmentController extends Controller
                     $path = $image->store('public/equipment');
                     $equipment->images()->create([
                         'path' => str_replace('public/', '', $path),
-                        'is_main' => $key === 0
+                        'is_main' => $key === 0,
                     ]);
                 }
             }
 
             DB::commit();
+
             return redirect()->route('lessor.equipment.show', $equipment);
 
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Store error: '.$e->getMessage());
-            return back()->withInput()->withErrors(['error' => 'Ошибка при сохранении: ' . $e->getMessage()]);
+
+            return back()->withInput()->withErrors(['error' => 'Ошибка при сохранении: '.$e->getMessage()]);
         }
     }
 
@@ -124,6 +125,7 @@ class EquipmentController extends Controller
     {
         $this->authorize('view', $equipment);
         $equipment->load('specifications');
+
         return view('lessor.equipment.show', compact('equipment'));
     }
 
@@ -206,7 +208,7 @@ class EquipmentController extends Controller
                 foreach ($request->delete_images as $imageId) {
                     $image = EquipmentImage::find($imageId);
                     if ($image && $image->equipment_id == $equipment->id) {
-                        Storage::delete('public/' . $image->path);
+                        Storage::delete('public/'.$image->path);
                         $image->delete();
                     }
                 }
@@ -219,7 +221,7 @@ class EquipmentController extends Controller
                     $relativePath = str_replace('public/', '', $path);
                     $equipment->images()->create([
                         'path' => $relativePath,
-                        'is_main' => false
+                        'is_main' => false,
                     ]);
                 }
             }
@@ -239,6 +241,7 @@ class EquipmentController extends Controller
 
         } catch (\Exception $e) {
             \Log::error('Update error: '.$e->getMessage());
+
             return back()->withInput()->withErrors(['error' => $e->getMessage()]);
         }
     }
@@ -249,36 +252,35 @@ class EquipmentController extends Controller
             $apiKey = env('YANDEX_MAPS_API_KEY');
             $address = urlencode($location->address);
 
-            $response = Http::get("https://geocode-maps.yandex.ru/1.x/", [
+            $response = Http::get('https://geocode-maps.yandex.ru/1.x/', [
                 'apikey' => $apiKey,
                 'geocode' => $address,
                 'format' => 'json',
-                'results' => 1
+                'results' => 1,
             ]);
 
             $data = $response->json();
 
             if (isset($data['response']['GeoObjectCollection']['featureMember'][0])) {
-                $coordinates = $data['response']['GeoObjectCollection']['featureMember'][0]
-                               ['GeoObject']['Point']['pos'];
+                $coordinates = $data['response']['GeoObjectCollection']['featureMember'][0]['GeoObject']['Point']['pos'];
 
-                list($longitude, $latitude) = explode(' ', $coordinates);
+                [$longitude, $latitude] = explode(' ', $coordinates);
 
                 $location->update([
                     'latitude' => $latitude,
-                    'longitude' => $longitude
+                    'longitude' => $longitude,
                 ]);
 
-                \Log::info("Location geocoded", [
+                \Log::info('Location geocoded', [
                     'address' => $location->address,
                     'latitude' => $latitude,
-                    'longitude' => $longitude
+                    'longitude' => $longitude,
                 ]);
             } else {
                 \Log::warning("Geocoding failed for address: {$location->address}");
             }
         } catch (\Exception $e) {
-            \Log::error("Geocoding error: " . $e->getMessage());
+            \Log::error('Geocoding error: '.$e->getMessage());
         }
     }
 
@@ -295,11 +297,12 @@ class EquipmentController extends Controller
         $this->authorize('delete', $equipment);
 
         foreach ($equipment->images as $image) {
-            Storage::delete('public/' . $image->path);
+            Storage::delete('public/'.$image->path);
             $image->delete();
         }
 
         $equipment->delete();
+
         return redirect()->route('lessor.equipment.index');
     }
 
@@ -307,7 +310,7 @@ class EquipmentController extends Controller
     {
         $equipment->rentalTerms()->create([
             'price_per_hour' => $request->price_per_hour,
-            'currency' => 'RUB'
+            'currency' => 'RUB',
         ]);
     }
 

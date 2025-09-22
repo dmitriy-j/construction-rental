@@ -41,11 +41,11 @@ return [
             'provider' => 'users',
         ],
 
-     'admin' => [
-        'driver' => 'session',
-        'provider' => 'users',
+        'admin' => [
+            'driver' => 'session',
+            'provider' => 'users',
         ],
-     ],
+    ],
     /*
     |--------------------------------------------------------------------------
     | User Providers
@@ -70,7 +70,7 @@ return [
             'model' => App\Models\User::class,
         ],
 
-         /*'admins' => [
+        /*'admins' => [
             'driver' => 'eloquent',
             'model' => App\Models\Admin::class, // Модель для сотрудников
          ],*/

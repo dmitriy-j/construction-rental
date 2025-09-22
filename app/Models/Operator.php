@@ -17,11 +17,12 @@ class Operator extends Model
         'license_number',
         'qualification',
         'is_active',
-        'shift_type'
+        'shift_type',
     ];
 
     // Добавляем константы для типов смен
     const SHIFT_DAY = 'day';
+
     const SHIFT_NIGHT = 'night';
 
     public function company()

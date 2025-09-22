@@ -3,20 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Company;
 use App\Models\CompletionAct;
 use App\Models\Upd;
 use App\Models\UpdItem;
-use App\Models\Company;
-use App\Models\Contract;
-use App\Models\DeliveryNote;
-use App\Models\Waybill;
-use App\Models\Invoice;
-use Illuminate\Http\Request;
-use Illuminate\Support\Str;
-use App\Helpers\TaxHelper;
-use App\Models\OrderItem;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class CompletionActController extends Controller
 {
@@ -42,15 +34,14 @@ class CompletionActController extends Controller
 
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Ошибка при создании УПД: ' . $e->getMessage());
+                ->with('error', 'Ошибка при создании УПД: '.$e->getMessage());
         }
     }
 
     // Массовая генерация УПД
-   public function generateUpdForAll()
+    public function generateUpdForAll()
     {
         \Log::info('Запуск массовой генерации УПД для арендаторов с транзакционной блокировкой');
-
 
         try {
             // Получаем ID актов без блокировки для первоначального отбора
@@ -58,7 +49,7 @@ class CompletionActController extends Controller
                 ->whereNull('upd_id')
                 ->pluck('id');
 
-            \Log::info("Найдено актов для обработки: " . $completionActIds->count());
+            \Log::info('Найдено актов для обработки: '.$completionActIds->count());
 
             $generatedCount = 0;
             $errors = [];
@@ -72,13 +63,14 @@ class CompletionActController extends Controller
                         ->lockForUpdate()
                         ->first();
 
-                    if (!$completionAct) {
+                    if (! $completionAct) {
                         DB::rollBack();
+
                         continue;
                     }
 
                     // Перезагружаем отношения с блокировкой
-                    $completionAct->load(['waybill' => function($query) {
+                    $completionAct->load(['waybill' => function ($query) {
                         $query->lockForUpdate();
                     }, 'order.parentOrder.lesseeCompany']);
 
@@ -86,15 +78,15 @@ class CompletionActController extends Controller
 
                     // Атомарная проверка условий внутри транзакции
                     if ($completionAct->upd_id) {
-                        throw new \Exception("Акт уже имеет привязанный УПД");
+                        throw new \Exception('Акт уже имеет привязанный УПД');
                     }
 
-                    if (!$completionAct->waybill) {
-                        throw new \Exception("Акт не имеет путевого листа");
+                    if (! $completionAct->waybill) {
+                        throw new \Exception('Акт не имеет путевого листа');
                     }
 
                     if ($completionAct->waybill->upd_id) {
-                        throw new \Exception("Путевой лист уже имеет привязанный УПД");
+                        throw new \Exception('Путевой лист уже имеет привязанный УПД');
                     }
 
                     // Генерируем УПД
@@ -107,21 +99,21 @@ class CompletionActController extends Controller
 
                 } catch (\Exception $e) {
                     DB::rollBack();
-                    $errorMsg = "Акт #{$actId}: " . $e->getMessage();
+                    $errorMsg = "Акт #{$actId}: ".$e->getMessage();
                     $errors[] = $errorMsg;
-                    \Log::error("Ошибка генерации УПД для акта #{$actId}: " . $e->getMessage());
+                    \Log::error("Ошибка генерации УПД для акта #{$actId}: ".$e->getMessage());
                 }
             }
 
             $message = "Успешно создано УПД для {$generatedCount} актов.";
 
-            if (!empty($errors)) {
+            if (! empty($errors)) {
                 $errorCount = count($errors);
                 $message .= " Не удалось создать для {$errorCount} актов. Подробности в логах.";
 
-                \Log::error("Ошибки массовой генерации УПД:", [
+                \Log::error('Ошибки массовой генерации УПД:', [
                     'total_errors' => $errorCount,
-                    'errors' => $errors
+                    'errors' => $errors,
                 ]);
             }
 
@@ -131,13 +123,14 @@ class CompletionActController extends Controller
                 ->with('success', $message);
 
         } catch (\Exception $e) {
-            \Log::error("Критическая ошибка в массовой генерации УПД: " . $e->getMessage());
+            \Log::error('Критическая ошибка в массовой генерации УПД: '.$e->getMessage());
+
             return redirect()->back()
-                ->with('error', 'Критическая ошибка при массовой генерации УПД: ' . $e->getMessage());
+                ->with('error', 'Критическая ошибка при массовой генерации УПД: '.$e->getMessage());
         }
     }
 
-   protected function generateUpdInternal(CompletionAct $completionAct)
+    protected function generateUpdInternal(CompletionAct $completionAct)
     {
         \Log::debug("Начало генерации УПД для акта #{$completionAct->id}");
 
@@ -158,7 +151,7 @@ class CompletionActController extends Controller
             }
 
             // Проверка, что путевой лист существует и не имеет УПД
-            if (!$completionAct->waybill) {
+            if (! $completionAct->waybill) {
                 throw new \Exception('Не найден путевой лист для акта');
             }
 
@@ -173,7 +166,7 @@ class CompletionActController extends Controller
             // Получаем компании
             $platformCompany = Company::where('is_platform', true)->first();
 
-            if (!$platformCompany) {
+            if (! $platformCompany) {
                 throw new \Exception('Не найдена компания-платформа');
             }
 
@@ -181,13 +174,13 @@ class CompletionActController extends Controller
             $order = $completionAct->order;
             $parentOrder = $order->parentOrder;
 
-            if (!$parentOrder) {
+            if (! $parentOrder) {
                 throw new \Exception('Не найден родительский заказ для определения арендатора');
             }
 
             $lesseeCompany = $parentOrder->lesseeCompany;
 
-            if (!$lesseeCompany) {
+            if (! $lesseeCompany) {
                 throw new \Exception('Не удалось определить компанию арендатора');
             }
 
@@ -196,13 +189,13 @@ class CompletionActController extends Controller
             // Получаем данные для позиции УПД
             $orderItem = $order->items()->first();
 
-            if (!$orderItem) {
+            if (! $orderItem) {
                 throw new \Exception('Не найдены позиции в заказе');
             }
 
             $equipment = $orderItem->equipment;
 
-            if (!$equipment) {
+            if (! $equipment) {
                 throw new \Exception('Не найдено оборудование для позиции заказа');
             }
 
@@ -225,9 +218,9 @@ class CompletionActController extends Controller
 
             // ПРАВИЛЬНЫЙ РАСЧЕТ НДС
             $priceWithVat = $orderItem->price_per_unit; // Цена с НДС (2310)
-            $priceWithoutVat = $priceWithVat / (1 + $vatRate/100); // Цена без НДС (1925)
+            $priceWithoutVat = $priceWithVat / (1 + $vatRate / 100); // Цена без НДС (1925)
             $amountWithoutVat = $priceWithoutVat * $completionAct->total_hours; // Сумма без НДС (57750)
-            $vatAmount = $amountWithoutVat * ($vatRate/100); // Сумма НДС (11550)
+            $vatAmount = $amountWithoutVat * ($vatRate / 100); // Сумма НДС (11550)
             $totalAmount = $amountWithoutVat + $vatAmount; // Итоговая сумма с НДС (69300)
 
             // Округляем все значения до 2 знаков
@@ -239,7 +232,7 @@ class CompletionActController extends Controller
             \Log::debug("Рассчитаны финансовые показатели: цена={$priceWithoutVat}, сумма={$amountWithoutVat}, НДС={$vatAmount}, итого={$totalAmount}");
 
             // Генерация номера УПД
-            $number = 'УПД-' . now()->format('Ymd') . '-' . Str::upper(Str::random(6));
+            $number = 'УПД-'.now()->format('Ymd').'-'.Str::upper(Str::random(6));
             \Log::debug("Сгенерирован номер УПД: {$number}");
 
             // Создаем УПД (ПЛАТФОРМА → АРЕНДАТОР)
@@ -300,18 +293,18 @@ class CompletionActController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error("Ошибка генерации УПД для акта #{$completionAct->id}: " . $e->getMessage());
+            \Log::error("Ошибка генерации УПД для акта #{$completionAct->id}: ".$e->getMessage());
             throw $e;
         }
     }
 
     private function validateActForUpd(CompletionAct $act)
     {
-        if (!$act->order) {
+        if (! $act->order) {
             throw new \Exception('Не найден заказ для акта');
         }
 
-        if (!$act->order->lesseeCompany) {
+        if (! $act->order->lesseeCompany) {
             throw new \Exception('Не найдена компания арендатора');
         }
 

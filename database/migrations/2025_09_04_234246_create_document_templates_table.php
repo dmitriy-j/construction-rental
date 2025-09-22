@@ -24,4 +24,4 @@ class CreateDocumentTemplatesTable extends Migration
     {
         Schema::dropIfExists('document_templates');
     }
-};
+}

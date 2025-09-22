@@ -3,21 +3,21 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Route;
-use Illuminate\View\View;
-use Illuminate\Validation\ValidationException;
 use App\Models\Company;
 use App\Providers\RouteServiceProvider;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
     public function create(): View
     {
         Log::info('Showing login form');
+
         return view('auth.login');
     }
 
@@ -30,7 +30,7 @@ class AuthenticatedSessionController extends Controller
             'password' => ['required'],
         ]);
 
-        if (!Auth::attempt($credentials, $request->boolean('remember'))) {
+        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
             Log::warning('Authentication failed', ['email' => $request->email]);
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),
@@ -40,7 +40,7 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
         Log::info('User authenticated', [
             'user_id' => Auth::id(),
-            'session_id' => session()->getId()
+            'session_id' => session()->getId(),
         ]);
 
         $user = Auth::user();
@@ -51,27 +51,28 @@ class AuthenticatedSessionController extends Controller
             Auth::logout();
             Log::warning('Company not verified', [
                 'user_id' => $user->id,
-                'company_status' => $company->status
+                'company_status' => $company->status,
             ]);
+
             return back()->withErrors([ // ВОЗВРАТ ЗДЕСЬ
-                'email' => 'Ваша компания не прошла верификацию'
+                'email' => 'Ваша компания не прошла верификацию',
             ]);
         }
 
         // Подробное логирование
-      //  Log::debug('User details', [
-      //      'id' => $user->id,
-      //      'email' => $user->email,
-      //      'company_id' => $user->company_id,
-      //      'is_platform_admin' => $user->isPlatformAdmin()
-     //   ]);
+        //  Log::debug('User details', [
+        //      'id' => $user->id,
+        //      'email' => $user->email,
+        //      'company_id' => $user->company_id,
+        //      'is_platform_admin' => $user->isPlatformAdmin()
+        //   ]);
 
         if ($company) {
             Log::debug('Company details', [
                 'id' => $company->id,
                 'is_lessor' => $company->is_lessor,
                 'is_lessee' => $company->is_lessee,
-                'status' => $company->status
+                'status' => $company->status,
             ]);
         } else {
             Log::warning('User has no company associated', ['user_id' => $user->id]);
@@ -80,19 +81,23 @@ class AuthenticatedSessionController extends Controller
         // Исправленный блок редиректов с возвратом
         if ($user->isPlatformAdmin()) {
             Log::info('Redirecting to admin dashboard');
+
             return redirect()->route('admin.dashboard'); // ВОЗВРАТ
         } elseif ($company) {
             if ($company->is_lessor) {
                 Log::info('Redirecting to lessor dashboard');
+
                 return redirect()->route('lessor.dashboard'); // ВОЗВРАТ
             } elseif ($company->is_lessee) {
                 Log::info('Redirecting to lessee dashboard');
+
                 return redirect()->route('lessee.dashboard'); // ВОЗВРАТ
             }
         }
 
         // Fallback редирект с возвратом
         Log::warning('No valid redirection found, using default');
+
         return redirect()->intended(RouteServiceProvider::HOME); // ВОЗВРАТ
     }
 
@@ -103,6 +108,7 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerateToken();
 
         Log::info('User logged out');
+
         return redirect('/');
     }
 }

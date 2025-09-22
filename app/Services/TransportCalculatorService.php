@@ -7,13 +7,15 @@ use App\Models\Equipment;
 class TransportCalculatorService
 {
     const VEHICLE_25T = 'truck_25t';
+
     const VEHICLE_45T = 'truck_45t';
+
     const VEHICLE_110T = 'truck_110t';
 
     public function calculateRequiredTransport(Equipment $equipment): string
     {
         // Гарантируем загрузку спецификаций
-        if (!$equipment->relationLoaded('specifications')) {
+        if (! $equipment->relationLoaded('specifications')) {
             $equipment->load('specifications');
         }
 
@@ -33,8 +35,12 @@ class TransportCalculatorService
         }
 
         // Проверка по весу
-        if ($weight > 45000) return self::VEHICLE_110T;
-        if ($weight > 25000) return self::VEHICLE_45T;
+        if ($weight > 45000) {
+            return self::VEHICLE_110T;
+        }
+        if ($weight > 25000) {
+            return self::VEHICLE_45T;
+        }
 
         return self::VEHICLE_25T;
     }
@@ -44,7 +50,7 @@ class TransportCalculatorService
         $rates = [
             self::VEHICLE_25T => 200,
             self::VEHICLE_45T => 250,
-            self::VEHICLE_110T => 350
+            self::VEHICLE_110T => 350,
         ];
 
         return $rates[$vehicleType] ?? 200;

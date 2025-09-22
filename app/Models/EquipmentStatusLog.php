@@ -10,7 +10,7 @@ class EquipmentStatusLog extends Model
         'equipment_id',
         'status',
         'changed_by',
-        'notes'
+        'notes',
     ];
 
     public function equipment()

@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Location;
 use App\Models\RentalCondition;
-use Illuminate\Http\Request;
 use App\Services\DeliveryCalculatorService;
+use Illuminate\Http\Request;
 
 class DeliveryController extends Controller
 {
@@ -14,7 +14,7 @@ class DeliveryController extends Controller
         $request->validate([
             'from_id' => 'required|exists:locations,id',
             'to_id' => 'required|exists:locations,id',
-            'condition_id' => 'required|exists:rental_conditions,id'
+            'condition_id' => 'required|exists:rental_conditions,id',
         ]);
 
         $from = Location::find($request->from_id);

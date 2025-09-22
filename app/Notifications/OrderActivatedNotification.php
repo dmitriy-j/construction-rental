@@ -4,9 +4,9 @@ namespace App\Notifications;
 
 use App\Models\Order;
 use Illuminate\Bus\Queueable;
-use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
 
 class OrderActivatedNotification extends Notification implements ShouldQueue
 {
@@ -31,7 +31,7 @@ class OrderActivatedNotification extends Notification implements ShouldQueue
         return [
             'message' => "Заказ #{$this->order->id} активирован",
             'order_id' => $this->order->id,
-            'link' => route('lessee.orders.show', $this->order)
+            'link' => route('lessee.orders.show', $this->order),
         ];
     }
 }

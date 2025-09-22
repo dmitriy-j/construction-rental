@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Equipment;
 use App\Models\EquipmentAvailability;
-use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 
 class EquipmentAvailabilitySeeder extends Seeder
@@ -28,7 +27,7 @@ class EquipmentAvailabilitySeeder extends Seeder
                         'date' => $date->format('Y-m-d'),
                         'status' => $status,
                         'created_at' => now(),
-                        'updated_at' => now()
+                        'updated_at' => now(),
                     ];
 
                     if (count($availabilities) >= 500) {
@@ -38,7 +37,7 @@ class EquipmentAvailabilitySeeder extends Seeder
                 }
             }
 
-            if (!empty($availabilities)) {
+            if (! empty($availabilities)) {
                 EquipmentAvailability::insert($availabilities);
             }
         });

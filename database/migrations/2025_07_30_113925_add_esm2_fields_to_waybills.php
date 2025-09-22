@@ -9,7 +9,7 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-   public function up()
+    public function up()
     {
         Schema::table('waybills', function (Blueprint $table) {
             $table->string('shift')->default('day')->after('operator_id');
@@ -42,7 +42,7 @@ return new class extends Migration
                 'work_description',
                 'status',
                 'rental_condition_id',
-                'completed_at'
+                'completed_at',
             ]);
         });
     }

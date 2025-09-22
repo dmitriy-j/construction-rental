@@ -2,8 +2,6 @@
 
 namespace App\Services\Parsers;
 
-use Illuminate\Support\Facades\Log;
-
 class BankStatementParser
 {
     public function parse(string $content): array
@@ -33,6 +31,7 @@ class BankStatementParser
             if (str_starts_with($line, 'СекцияДокумент=Платежное поручение')) {
                 $inTransaction = true;
                 $currentTransaction = [];
+
                 continue;
             }
 
@@ -48,15 +47,16 @@ class BankStatementParser
                     } catch (\Exception $e) {
                         \Log::warning('Некорректная сумма в транзакции', [
                             'сумма' => $currentTransaction['Сумма'],
-                            'транзакция' => $currentTransaction
+                            'транзакция' => $currentTransaction,
                         ]);
                         $currentTransaction['Сумма'] = 0;
                     }
                 }
 
-                if (!empty($currentTransaction)) {
+                if (! empty($currentTransaction)) {
                     $transactions[] = $currentTransaction;
                 }
+
                 continue;
             }
 
@@ -67,6 +67,7 @@ class BankStatementParser
         }
 
         \Log::info('Распознано транзакций', ['count' => count($transactions)]);
+
         return $transactions;
     }
 
@@ -76,7 +77,9 @@ class BankStatementParser
         $lines = explode("\n", $content);
 
         foreach ($lines as $line) {
-            if (empty(trim($line))) continue;
+            if (empty(trim($line))) {
+                continue;
+            }
 
             $parts = preg_split('/\s{2,}/', trim($line));
 
@@ -87,7 +90,7 @@ class BankStatementParser
                     'payer_name' => $parts[1],
                     'payer_inn' => $this->extractInn($parts[2]),
                     'purpose' => $parts[4],
-                    'idempotency_key' => 'bank_' . md5($parts[0] . $parts[3] . $parts[4])
+                    'idempotency_key' => 'bank_'.md5($parts[0].$parts[3].$parts[4]),
                 ];
 
                 $transactions[] = $transaction;
@@ -100,6 +103,7 @@ class BankStatementParser
     protected function extractInn(string $text): string
     {
         preg_match('/\b\d{10,12}\b/', $text, $matches);
+
         return $matches[0] ?? '';
     }
 }

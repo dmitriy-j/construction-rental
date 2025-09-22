@@ -3,15 +3,13 @@
 namespace App\Http\Controllers\Catalog\Equipment;
 
 use App\Http\Controllers\Controller;
-use App\Models\Equipment;
-use App\Models\Category;
-use App\Models\Location;
-use App\Models\EquipmentRentalTerm;
-use App\Models\EquipmentImage;
 use App\Http\Requests\Catalog\StoreEquipmentRequest;
 use App\Http\Requests\Catalog\UpdateEquipmentRequest;
+use App\Models\Category;
+use App\Models\Equipment;
+use App\Models\EquipmentImage;
+use App\Models\Location;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class EquipmentController extends Controller
@@ -21,6 +19,7 @@ class EquipmentController extends Controller
         $this->middleware(function ($request, $next) {
             $this->categories = Category::all();
             $this->locations = Location::all();
+
             return $next($request);
         });
     }
@@ -38,50 +37,52 @@ class EquipmentController extends Controller
     {
         return view('lessor.equipment.create', [
             'categories' => $this->categories,
-            'locations' => $this->locations
+            'locations' => $this->locations,
         ]);
     }
 
     public function store(StoreEquipmentRequest $request)
-{
-    $equipment = Equipment::create([
-        'title' => $request->title,
-        'slug' => Str::slug($request->title),
-        'description' => $request->description,
-        'company_id' => auth()->user()->company_id,
-        'category_id' => $request->category_id,
-        'location_id' => $request->location_id,
-        'brand' => $request->brand,
-        'model' => $request->model,
-        'year' => $request->year,
-        'hours_worked' => $request->hours_worked,
-        'is_approved' => false,
-    ]);
+    {
+        $equipment = Equipment::create([
+            'title' => $request->title,
+            'slug' => Str::slug($request->title),
+            'description' => $request->description,
+            'company_id' => auth()->user()->company_id,
+            'category_id' => $request->category_id,
+            'location_id' => $request->location_id,
+            'brand' => $request->brand,
+            'model' => $request->model,
+            'year' => $request->year,
+            'hours_worked' => $request->hours_worked,
+            'is_approved' => false,
+        ]);
 
-    // Создаем тарифы
-    $this->createRentalTerms($equipment, $request);
+        // Создаем тарифы
+        $this->createRentalTerms($equipment, $request);
 
-    // Обработка изображений
-    if ($request->hasFile('images')) {
-        foreach ($request->images as $key => $image) {
-            $path = $image->store('public/equipment');
-            $equipment->images()->create([
-                'path' => str_replace('public/', '', $path),
-                'is_main' => $key === 0
-            ]);
+        // Обработка изображений
+        if ($request->hasFile('images')) {
+            foreach ($request->images as $key => $image) {
+                $path = $image->store('public/equipment');
+                $equipment->images()->create([
+                    'path' => str_replace('public/', '', $path),
+                    'is_main' => $key === 0,
+                ]);
+            }
         }
+
+        if (! $equipment->hasActiveRentalTerms()) {
+            throw new \Exception('Оборудование должно иметь хотя бы одно условие аренды');
+        }
+
+        return redirect()->route('lessor.equipment.index');
     }
 
-    if (!$equipment->hasActiveRentalTerms()) {
-        throw new \Exception("Оборудование должно иметь хотя бы одно условие аренды");
-    }
-
-    return redirect()->route('lessor.equipment.index');
-}
     public function show(Equipment $equipment)
     {
         $this->authorize('view', $equipment);
         $equipment->load('rentalTerms', 'images', 'specifications');
+
         return view('lessor.equipment.show', compact('equipment'));
     }
 
@@ -101,7 +102,7 @@ class EquipmentController extends Controller
             'equipment' => $equipment,
             'categories' => $this->categories,
             'locations' => $this->locations,
-            'prices' => $prices
+            'prices' => $prices,
         ]);
     }
 
@@ -129,7 +130,7 @@ class EquipmentController extends Controller
             foreach ($request->delete_images as $imageId) {
                 $image = EquipmentImage::find($imageId);
                 if ($image && $image->equipment_id == $equipment->id) {
-                    Storage::delete('public/' . $image->path);
+                    Storage::delete('public/'.$image->path);
                     $image->delete();
                 }
             }
@@ -141,7 +142,7 @@ class EquipmentController extends Controller
                 $path = $image->store('public/equipment');
                 $equipment->images()->create([
                     'path' => str_replace('public/', '', $path),
-                    'is_main' => false
+                    'is_main' => false,
                 ]);
             }
         }
@@ -166,11 +167,12 @@ class EquipmentController extends Controller
 
         // Удаляем изображения
         foreach ($equipment->images as $image) {
-            Storage::delete('public/' . $image->path);
+            Storage::delete('public/'.$image->path);
             $image->delete();
         }
 
         $equipment->delete();
+
         return redirect()->route('lessor.equipment.index');
     }
 
@@ -179,11 +181,11 @@ class EquipmentController extends Controller
         // Создаем только почасовой тариф
         $equipment->rentalTerms()->create([
             'price_per_hour' => $request->price_per_hour,
-            'currency' => 'RUB'
+            'currency' => 'RUB',
         ]);
     }
 
-   protected function updateRentalTerms(Equipment $equipment, $request)
+    protected function updateRentalTerms(Equipment $equipment, $request)
     {
         // Обновляем только почасовой тариф
         $term = $equipment->rentalTerms()->first();
@@ -193,7 +195,7 @@ class EquipmentController extends Controller
         } else {
             $equipment->rentalTerms()->create([
                 'price_per_hour' => $request->price_per_hour,
-                'currency' => 'RUB'
+                'currency' => 'RUB',
             ]);
         }
     }
@@ -206,23 +208,23 @@ class EquipmentController extends Controller
             [
                 'key' => 'weight',
                 'value' => $specs['weight'],
-                'weight' => $specs['weight']
+                'weight' => $specs['weight'],
             ],
             [
                 'key' => 'length',
                 'value' => $specs['length'],
-                'length' => $specs['length']
+                'length' => $specs['length'],
             ],
             [
                 'key' => 'width',
                 'value' => $specs['width'],
-                'width' => $specs['width']
+                'width' => $specs['width'],
             ],
             [
                 'key' => 'height',
                 'value' => $specs['height'],
-                'height' => $specs['height']
-            ]
+                'height' => $specs['height'],
+            ],
         ]);
     }
 }

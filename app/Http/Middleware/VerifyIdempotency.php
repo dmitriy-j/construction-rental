@@ -13,21 +13,21 @@ class VerifyIdempotency
     {
         $idempotencyKey = $request->header('Idempotency-Key');
 
-        if (!$idempotencyKey) {
+        if (! $idempotencyKey) {
             return response()->json([
-                'message' => 'Idempotency-Key header is required'
+                'message' => 'Idempotency-Key header is required',
             ], 400);
         }
 
         // Проверяем, не обрабатывался ли уже этот ключ
-        if (Cache::has('idempotency:' . $idempotencyKey)) {
+        if (Cache::has('idempotency:'.$idempotencyKey)) {
             return response()->json([
-                'message' => 'Duplicate request'
+                'message' => 'Duplicate request',
             ], 409);
         }
 
         // Сохраняем ключ на короткое время
-        Cache::put('idempotency:' . $idempotencyKey, true, 60);
+        Cache::put('idempotency:'.$idempotencyKey, true, 60);
 
         return $next($request);
     }

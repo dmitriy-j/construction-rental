@@ -15,7 +15,7 @@ class AddStatusToOrderItemsTable extends Migration
                 'in_delivery',
                 'active',
                 'completed',
-                'cancelled'
+                'cancelled',
             ])->default('pending')->after('lessor_company_id');
         });
     }

@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('status', 20)->change();
         });
     }
+
     public function down()
     {
         Schema::table('completion_acts', function (Blueprint $table) {

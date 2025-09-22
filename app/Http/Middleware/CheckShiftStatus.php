@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\WaybillShift;
 use Closure;
 use Illuminate\Http\Request;
-use App\Models\WaybillShift;
 use Symfony\Component\HttpFoundation\Response;
 
 class CheckShiftStatus

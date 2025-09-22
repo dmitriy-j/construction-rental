@@ -23,7 +23,7 @@ class UpdateEquipmentRequest extends FormRequest
             'category_id' => 'required|exists:equipment_categories,id',
             'brand' => 'required|string|max:100',
             'model' => 'required|string|max:100',
-            'year' => 'required|integer|min:1900|max:'.(date('Y')+1),
+            'year' => 'required|integer|min:1900|max:'.(date('Y') + 1),
             'hours_worked' => 'required|numeric|min:0',
             'price_per_hour' => 'required|numeric|min:0',
             'images' => 'sometimes|array',

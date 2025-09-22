@@ -10,14 +10,14 @@ class WaybillController extends Controller
     {
 
         // Проверка, что путевой лист в правильном статусе
-        if (!in_array($waybill->status, [Waybill::STATUS_FUTURE, Waybill::STATUS_ACTIVE])) {
+        if (! in_array($waybill->status, [Waybill::STATUS_FUTURE, Waybill::STATUS_ACTIVE])) {
             return back()->withErrors('Невозможно подписать завершенный путевой лист');
         }
 
         $request->validate([
             'odometer_end' => 'required|integer|min:'.$waybill->odometer_start,
             'fuel_end' => 'required|numeric|min:0',
-            'signature' => 'required|string'
+            'signature' => 'required|string',
         ]);
 
         $waybill->update([
@@ -26,7 +26,7 @@ class WaybillController extends Controller
             'fuel_end' => $request->fuel_end,
             'fuel_consumption_actual' => $waybill->fuel_start - $request->fuel_end,
             'customer_signature_path' => $this->saveSignature($request->signature),
-            'completed_at' => now()
+            'completed_at' => now(),
         ]);
 
         event(new WaybillCompleted($waybill));
@@ -38,8 +38,7 @@ class WaybillController extends Controller
     {
         $filename = 'signatures/'.Str::uuid().'.svg';
         Storage::put($filename, $svg);
+
         return $filename;
     }
-
-
 }

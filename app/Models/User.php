@@ -2,19 +2,17 @@
 
 namespace App\Models;
 
-use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Spatie\Permission\Traits\HasRoles;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\DatabaseNotification;
-
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, HasRoles;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     protected $fillable = [
         'name',
@@ -49,7 +47,7 @@ class User extends Authenticatable
         return $this->hasRole([
             'platform_super',
             'platform_admin',
-            'platform_support'
+            'platform_support',
         ]);
     }
 
@@ -66,6 +64,15 @@ class User extends Authenticatable
     public function cart(): HasOne
     {
         return $this->hasOne(Cart::class);
+    }
+
+    public function rentalRequests()
+    {
+        return $this->hasMany(RentalRequest::class);
+    }
+    public function requestResponses()
+    {
+        return $this->hasMany(RentalRequestResponse::class, 'lessor_id');
     }
 
     protected static function booted(): void
@@ -103,12 +110,11 @@ class User extends Authenticatable
     public function notifications()
     {
         return $this->morphMany(DatabaseNotification::class, 'notifiable')
-                    ->orderBy('created_at', 'desc');
+            ->orderBy('created_at', 'desc');
     }
 
     public function hasAnyRole(array $roles): bool
     {
         return $this->hasRole($roles);
     }
-
 }

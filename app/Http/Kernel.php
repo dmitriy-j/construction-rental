@@ -16,15 +16,15 @@ class Kernel extends HttpKernel
     ];
 
     protected $routeMiddleware = [
-    // ...
-    'admin' => \App\Http\Middleware\AdminMiddleware::class,
-    'company.lessee' => \App\Http\Middleware\CheckCompanyLessee::class,
-    'company.lessor' => \App\Http\Middleware\CheckCompanyLessor::class,
-    'company.verified' => \App\Http\Middleware\CheckCompanyVerified::class, // Добавь эту строку
-    'shift.status' => \App\Http\Middleware\CheckShiftStatus::class,
-    'idempotency' => \App\Http\Middleware\VerifyIdempotency::class,
-    'credit.check' => \App\Http\Middleware\CheckCreditLimit::class,
-];
+        // ...
+        'admin' => \App\Http\Middleware\AdminMiddleware::class,
+        'company.lessee' => \App\Http\Middleware\CheckCompanyLessee::class,
+        'company.lessor' => \App\Http\Middleware\CheckCompanyLessor::class,
+        'company.verified' => \App\Http\Middleware\CheckCompanyVerified::class, // Добавь эту строку
+        'shift.status' => \App\Http\Middleware\CheckShiftStatus::class,
+        'idempotency' => \App\Http\Middleware\VerifyIdempotency::class,
+        'credit.check' => \App\Http\Middleware\CheckCreditLimit::class,
+    ];
 
     protected $middlewareGroups = [
         'web' => [
@@ -60,5 +60,12 @@ class Kernel extends HttpKernel
         'company_admin' => \App\Http\Middleware\EnsureIsCompanyAdmin::class,
         'company.lessor' => \App\Http\Middleware\CheckCompanyLessor::class,
         'company.lessee' => \App\Http\Middleware\CheckCompanyLessee::class,
+        'check.company.verified' => \App\Http\Middleware\CheckCompanyVerified::class,
+        'check.company.lessee' => \App\Http\Middleware\CheckCompanyLessee::class,
+        'check.company.lessor' => \App\Http\Middleware\CheckCompanyLessor::class,
+        'check.user.type' => \App\Http\Middleware\CheckUserType::class,
+        'admin' => \App\Http\Middleware\AdminMiddleware::class,
+        'platform.admin' => \App\Http\Middleware\PlatformAdmin::class,
+        'ensure.is.company.admin' => \App\Http\Middleware\EnsureIsCompanyAdmin::class,
     ];
 }

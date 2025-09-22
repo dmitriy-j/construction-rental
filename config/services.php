@@ -33,7 +33,7 @@ return [
 
     'yandex_maps' => [
         'api_key' => env('YANDEX_MAPS_API_KEY'),
-        'coefficient' => env('DISTANCE_COEFFICIENT', 1.3)
+        'coefficient' => env('DISTANCE_COEFFICIENT', 1.3),
     ],
 
     '1c' => [

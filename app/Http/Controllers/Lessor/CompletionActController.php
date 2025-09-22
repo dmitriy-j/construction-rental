@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Lessor;
 
 use App\Http\Controllers\Controller;
 use App\Models\CompletionAct;
-use App\Models\Order;
 use Illuminate\Http\Request;
 
 class CompletionActController extends Controller
@@ -15,7 +14,7 @@ class CompletionActController extends Controller
         $companyId = auth()->user()->company_id;
 
         $acts = CompletionAct::where('perspective', 'lessor') // Фильтруем по перспективе
-            ->whereHas('order', function($query) use ($companyId) {
+            ->whereHas('order', function ($query) use ($companyId) {
                 $query->where('lessor_company_id', $companyId);
             })
             ->when($status, function ($query, $status) {
@@ -39,7 +38,7 @@ class CompletionActController extends Controller
             'order.items.equipment',
             'waybill.shifts',
             'waybill.equipment',
-            'waybill.operator'
+            'waybill.operator',
         ]);
 
         return view('lessor.documents.completion_acts.show', compact('completionAct'));
@@ -56,7 +55,7 @@ class CompletionActController extends Controller
             'order.lesseeCompany',
             'order.lessorCompany',
             'waybill.equipment',
-            'waybill.operator'
+            'waybill.operator',
         ]);
 
         $pdf = PDF::loadView('lessor.documents.completion_acts.pdf', compact('completionAct'))

@@ -2,14 +2,15 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\Invoice;
 use App\Services\BalanceService;
 use Carbon\Carbon;
+use Illuminate\Console\Command;
 
 class CalculateLateFees extends Command
 {
     protected $signature = 'finance:calculate-late-fees';
+
     protected $description = 'Calculate late fees for overdue invoices';
 
     protected $balanceService;
@@ -38,7 +39,7 @@ class CalculateLateFees extends Command
                 'late_fee',
                 $invoice,
                 "Пеня за просрочку платежа по счету №{$invoice->number}",
-                'late_fee_' . $invoice->id . '_' . now()->format('Ymd')
+                'late_fee_'.$invoice->id.'_'.now()->format('Ymd')
             );
 
             $this->info("Начислена пеня {$lateFee} ₽ для счета №{$invoice->number}");

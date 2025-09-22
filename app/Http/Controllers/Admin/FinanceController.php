@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Invoice;
 use App\Models\TransactionEntry;
 use App\Models\Upd;
-use App\Models\Invoice;
 use App\Services\BalanceService;
 use App\Services\FinancialAnalyticsService;
 use Illuminate\Http\Request;
-
 
 class FinanceController extends Controller
 {
@@ -39,26 +38,25 @@ class FinanceController extends Controller
 
         $transactionTypesData = [
             'labels' => $transactionTypes->pluck('purpose')->toArray(),
-            'data' => $transactionTypes->pluck('total')->toArray()
+            'data' => $transactionTypes->pluck('total')->toArray(),
         ];
 
-        $topCompanies = \App\Models\Company::withSum(['transactions' => function($query) {
+        $topCompanies = \App\Models\Company::withSum(['transactions' => function ($query) {
             $query->where('is_canceled', false);
         }], 'amount')
-        ->orderBy('transactions_sum_amount', 'desc')
-        ->limit(10)
-        ->get()
-        ->each(function($company) {
-            $company->turnover = $company->transactions_sum_amount;
-        });
+            ->orderBy('transactions_sum_amount', 'desc')
+            ->limit(10)
+            ->get()
+            ->each(function ($company) {
+                $company->turnover = $company->transactions_sum_amount;
+            });
 
         $recentTransactions = TransactionEntry::with('company')
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
 
-
-        $analyticsService = new FinancialAnalyticsService();
+        $analyticsService = new FinancialAnalyticsService;
 
         // Добавляем новые метрики
         $monthlyRevenue = $analyticsService->getPlatformRevenue(now()->startOfMonth(), now());
@@ -113,13 +111,14 @@ class FinanceController extends Controller
     public function showTransaction(TransactionEntry $transaction)
     {
         $transaction->load('company', 'source');
+
         return view('admin.finance.transaction-show', compact('transaction'));
     }
 
     public function cancelTransaction(Request $request, TransactionEntry $transaction)
     {
         $request->validate([
-            'reason' => 'required|string|min:10|max:500'
+            'reason' => 'required|string|min:10|max:500',
         ]);
 
         try {
@@ -135,7 +134,7 @@ class FinanceController extends Controller
                 'reversal',
                 $transaction,
                 "Отмена проводки #{$transaction->id}. Причина: {$request->reason}",
-                'reversal_' . $transaction->id . '_' . time()
+                'reversal_'.$transaction->id.'_'.time()
             );
 
             DB::commit();
@@ -144,7 +143,8 @@ class FinanceController extends Controller
                 ->with('success', 'Транзакция успешно отменена');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Ошибка: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Ошибка: '.$e->getMessage());
         }
     }
 
@@ -160,6 +160,7 @@ class FinanceController extends Controller
     public function showInvoice(Invoice $invoice)
     {
         $invoice->load(['company', 'order', 'order.items.equipment']);
+
         return view('admin.finance.invoice-show', compact('invoice'));
     }
 
@@ -176,14 +177,14 @@ class FinanceController extends Controller
     {
         $request->validate([
             'statement' => 'required|file|mimes:txt,xml,1c',
-            'bank_name' => 'required|string'
+            'bank_name' => 'required|string',
         ]);
 
         try {
             $file = $request->file('statement');
             $content = file_get_contents($file->getRealPath());
 
-            $parser = new BankStatementParser();
+            $parser = new BankStatementParser;
             $transactions = $parser->parse($content);
 
             $statement = BankStatement::create([
@@ -191,14 +192,14 @@ class FinanceController extends Controller
                 'bank_name' => $request->bank_name,
                 'transactions_count' => count($transactions),
                 'processed_by' => auth()->id(),
-                'status' => 'processing'
+                'status' => 'processing',
             ]);
 
             ProcessBankStatement::dispatch($statement, $transactions);
 
             return redirect()->back()->with('success', 'Выписка принята в обработку');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Ошибка: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Ошибка: '.$e->getMessage());
         }
     }
 }

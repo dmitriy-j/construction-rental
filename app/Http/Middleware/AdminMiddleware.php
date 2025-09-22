@@ -15,9 +15,10 @@ class AdminMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!auth()->user()->isPlatformAdmin()) {
+        if (! auth()->user()->isPlatformAdmin()) {
             abort(403);
         }
+
         return $next($request);
     }
 }

@@ -38,7 +38,6 @@ class CompletionAct extends Model
         'service_end_date' => 'datetime',
     ];
 
-
     public function relatedCompletionAct()
     {
         return $this->belongsTo(CompletionAct::class, 'related_completion_act_id');
@@ -82,11 +81,11 @@ class CompletionAct extends Model
                     $count = static::where('perspective', 'lessee')->count() + 1;
                 }
 
-                $model->number = $prefix . date('Ymd') . '-' . str_pad($count, 5, '0', STR_PAD_LEFT);
+                $model->number = $prefix.date('Ymd').'-'.str_pad($count, 5, '0', STR_PAD_LEFT);
             }
 
             // Автоматическая установка parent_order_id, если не задан
-            if (empty($model->parent_order_id) && !empty($model->order_id)) {
+            if (empty($model->parent_order_id) && ! empty($model->order_id)) {
                 $order = Order::find($model->order_id);
                 if ($order && $order->parent_order_id) {
                     $model->parent_order_id = $order->parent_order_id;
@@ -103,7 +102,7 @@ class CompletionAct extends Model
             // После создания акта, отправляем уведомление, если это акт для арендатора
             if ($model->perspective === 'lessee' && $model->parentOrder) {
                 $usersToNotify = \App\Models\User::where('company_id', $model->parentOrder->lessee_company_id)
-                    ->whereHas('roles', function($query) {
+                    ->whereHas('roles', function ($query) {
                         $query->whereIn('name', ['company_admin', 'company_user']);
                     })
                     ->get();
@@ -118,12 +117,12 @@ class CompletionAct extends Model
 
         static::updating(function ($model) {
             // Запрещаем изменение номера после создания
-            if ($model->isDirty('number') && !is_null($model->getOriginal('number'))) {
+            if ($model->isDirty('number') && ! is_null($model->getOriginal('number'))) {
                 throw new \Exception('Номер акта нельзя изменять после создания');
             }
 
             // Запрещаем изменение перспективы после создания
-            if ($model->isDirty('perspective') && !is_null($model->getOriginal('perspective'))) {
+            if ($model->isDirty('perspective') && ! is_null($model->getOriginal('perspective'))) {
                 throw new \Exception('Перспективу акта нельзя изменять после создания');
             }
         });
@@ -138,8 +137,9 @@ class CompletionAct extends Model
         if ($existingAct) {
             \Log::warning('Попытка создать дублирующий акт для путевого листа', [
                 'waybill_id' => $waybill->id,
-                'existing_act_id' => $existingAct->id
+                'existing_act_id' => $existingAct->id,
             ]);
+
             return $existingAct;
         }
 
@@ -161,7 +161,7 @@ class CompletionAct extends Model
             'hourly_rate' => $waybill->hourly_rate,
             'total_amount' => $waybill->shifts->sum('total_amount'),
             'status' => 'draft',
-            'perspective' => 'lessor' // Сначала создаем для арендодателя
+            'perspective' => 'lessor', // Сначала создаем для арендодателя
         ]);
     }
 
@@ -170,12 +170,12 @@ class CompletionAct extends Model
         return [
             'id' => $this->id,
             'act_date' => $this->act_date->format('d.m.Y'),
-            'service_period' => $this->service_start_date->format('d.m.Y') . ' - ' . $this->service_end_date->format('d.m.Y'),
+            'service_period' => $this->service_start_date->format('d.m.Y').' - '.$this->service_end_date->format('d.m.Y'),
             'total_hours' => $this->total_hours,
             'hourly_rate' => $this->hourly_rate,
             'total_amount' => $this->total_amount,
             'status' => $this->status,
-            'perspective' => 'lessor'
+            'perspective' => 'lessor',
         ];
     }
 
@@ -188,7 +188,7 @@ class CompletionAct extends Model
         return [
             'id' => $this->id,
             'act_date' => $this->act_date->format('d.m.Y'),
-            'service_period' => $this->service_start_date->format('d.m.Y') . ' - ' . $this->service_end_date->format('d.m.Y'),
+            'service_period' => $this->service_start_date->format('d.m.Y').' - '.$this->service_end_date->format('d.m.Y'),
             'total_hours' => $this->total_hours,
             'hourly_rate' => $customerHourlyRate,
             'total_amount' => $totalAmount,
@@ -197,7 +197,7 @@ class CompletionAct extends Model
             'lessor_name' => 'Платформа', // Заменяем на нейтральное название
             'order_id' => $this->order_id,
             'parent_order_id' => $this->parent_order_id,
-            'created_at' => $this->created_at
+            'created_at' => $this->created_at,
         ];
     }
 
@@ -205,5 +205,4 @@ class CompletionAct extends Model
     {
         return $this->belongsTo(Waybill::class)->lockForUpdate();
     }
-
 }

@@ -3,9 +3,9 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class PermissionSeeder extends Seeder
 {
@@ -22,7 +22,7 @@ class PermissionSeeder extends Seeder
             'view reports',
             'manage company settings',
             'moderate content',
-            'manage platform settings'
+            'manage platform settings',
         ];
 
         foreach ($permissions as $permission) {
@@ -65,14 +65,14 @@ class PermissionSeeder extends Seeder
             'manage users',
             'moderate content',
             'view reports',
-            'manage platform settings'
+            'manage platform settings',
         ]);
 
         // Техподдержка
         $support = Role::firstOrCreate(['name' => 'platform_support']);
         $support->syncPermissions([
             'view reports',
-            'moderate content'
+            'moderate content',
         ]);
     }
 
@@ -86,7 +86,7 @@ class PermissionSeeder extends Seeder
             'manage orders',
             'manage finances',
             'view reports',
-            'manage company settings'
+            'manage company settings',
         ]);
 
         // Менеджер арендодателя
@@ -94,27 +94,27 @@ class PermissionSeeder extends Seeder
         $lessorManager->syncPermissions([
             'manage equipment',
             'manage orders',
-            'view reports'
+            'view reports',
         ]);
 
         // Менеджер арендатора
         $lesseeManager = Role::firstOrCreate(['name' => 'lessee_manager']);
         $lesseeManager->syncPermissions([
             'manage orders',
-            'view reports'
+            'view reports',
         ]);
 
         // Диспетчер
         $dispatcher = Role::firstOrCreate(['name' => 'dispatcher']);
         $dispatcher->syncPermissions([
-            'manage orders'
+            'manage orders',
         ]);
 
         // Бухгалтер
         $accountant = Role::firstOrCreate(['name' => 'accountant']);
         $accountant->syncPermissions([
             'manage finances',
-            'view reports'
+            'view reports',
         ]);
     }
 }

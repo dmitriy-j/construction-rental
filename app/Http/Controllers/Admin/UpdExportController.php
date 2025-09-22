@@ -61,11 +61,11 @@ class UpdExportController extends Controller
         $format = $request->get('format', 'xml');
         $upds = Upd::whereIn('id', $request->upd_ids)->get();
 
-        $archiveName = 'upd_export_' . now()->format('Ymd_His') . '.zip';
+        $archiveName = 'upd_export_'.now()->format('Ymd_His').'.zip';
         $zipPath = Storage::disk('local')->path("upd_exports/{$archiveName}");
 
-        $zip = new \ZipArchive();
-        if ($zip->open($zipPath, \ZipArchive::CREATE) === TRUE) {
+        $zip = new \ZipArchive;
+        if ($zip->open($zipPath, \ZipArchive::CREATE) === true) {
             foreach ($upds as $upd) {
                 try {
                     $content = $this->exportService->exportUpd($upd, $format);

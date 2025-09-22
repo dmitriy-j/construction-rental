@@ -17,16 +17,16 @@ class RoleSeeder extends Seeder
             'lessor_manager',
             'lessee_manager',
             'dispatcher',
-            'accountant'
+            'accountant',
         ];
 
         foreach ($roles as $role) {
             Role::firstOrCreate([
                 'name' => $role,
-                'guard_name' => 'web'
+                'guard_name' => 'web',
             ]);
         }
-        
+
         $this->command->info('Роли успешно созданы!');
     }
 }

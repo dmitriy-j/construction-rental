@@ -13,8 +13,9 @@ class PlatformSeeder extends Seeder
         // Находим компанию платформы
         $platformCompany = Company::where('is_platform', true)->first();
 
-        if (!$platformCompany) {
-            $this->command->error("Platform company not found. Please run CompaniesSeeder first.");
+        if (! $platformCompany) {
+            $this->command->error('Platform company not found. Please run CompaniesSeeder first.');
+
             return;
         }
 
@@ -56,18 +57,18 @@ class PlatformSeeder extends Seeder
             ]);
             $this->command->info('Платформа успешно создана и связана с компанией!');
         } catch (\Exception $e) {
-            $this->command->error("Ошибка: " . $e->getMessage());
+            $this->command->error('Ошибка: '.$e->getMessage());
             // Вывести длину критичных значений
             $accounts = [
                 'correspondent' => '30101810745374525104',
-                'settlement' => '40702810301500108320'
+                'settlement' => '40702810301500108320',
             ];
 
             $this->command->table(
                 ['Поле', 'Длина'],
                 [
                     ['correspondent_account', strlen($accounts['correspondent'])],
-                    ['settlement_account', strlen($accounts['settlement'])]
+                    ['settlement_account', strlen($accounts['settlement'])],
                 ]
             );
         }

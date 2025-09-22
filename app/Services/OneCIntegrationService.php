@@ -3,15 +3,18 @@
 namespace App\Services;
 
 use App\Models\Upd;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Carbon\Carbon;
 
 class OneCIntegrationService
 {
     protected $baseUrl;
+
     protected $login;
+
     protected $password;
+
     protected $timeout;
 
     public function __construct()
@@ -33,7 +36,7 @@ class OneCIntegrationService
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
                 ])
-                ->post($this->baseUrl . '/upd', $data);
+                ->post($this->baseUrl.'/upd', $data);
 
             if ($response->successful()) {
                 $responseData = $response->json();
@@ -58,7 +61,7 @@ class OneCIntegrationService
 
                 return [
                     'success' => false,
-                    'error' => 'Ошибка экспорта в 1С: ' . $response->status(),
+                    'error' => 'Ошибка экспорта в 1С: '.$response->status(),
                 ];
             }
         } catch (\Exception $e) {
@@ -69,7 +72,7 @@ class OneCIntegrationService
 
             return [
                 'success' => false,
-                'error' => 'Исключение: ' . $e->getMessage(),
+                'error' => 'Исключение: '.$e->getMessage(),
             ];
         }
     }
@@ -79,7 +82,7 @@ class OneCIntegrationService
         try {
             $response = Http::withBasicAuth($this->login, $this->password)
                 ->timeout($this->timeout)
-                ->get($this->baseUrl . '/upd/status/' . $guid);
+                ->get($this->baseUrl.'/upd/status/'.$guid);
 
             if ($response->successful()) {
                 return [
@@ -89,13 +92,13 @@ class OneCIntegrationService
             } else {
                 return [
                     'success' => false,
-                    'error' => 'Ошибка получения статуса: ' . $response->status(),
+                    'error' => 'Ошибка получения статуса: '.$response->status(),
                 ];
             }
         } catch (\Exception $e) {
             return [
                 'success' => false,
-                'error' => 'Исключение: ' . $e->getMessage(),
+                'error' => 'Исключение: '.$e->getMessage(),
             ];
         }
     }
@@ -109,7 +112,7 @@ class OneCIntegrationService
             try {
                 $response = Http::withBasicAuth($this->login, $this->password)
                     ->timeout($this->timeout)
-                    ->post($this->baseUrl . '/counterparty', $company->get1CData());
+                    ->post($this->baseUrl.'/counterparty', $company->get1CData());
 
                 if ($response->successful()) {
                     $responseData = $response->json();

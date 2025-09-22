@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-       Schema::table('delivery_notes', function (Blueprint $table) {
+        Schema::table('delivery_notes', function (Blueprint $table) {
             $table->integer('cargo_places_count')->default(1)->after('cargo_value');
             $table->string('special_permission')->nullable()->after('transport_vehicle_number');
             $table->string('ownership_type')->default('1')->after('special_permission');

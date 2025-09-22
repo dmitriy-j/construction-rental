@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Lessee;
 
 use App\Http\Controllers\Controller;
-use App\Models\Order;
-use App\Models\Waybill;
 use App\Models\CompletionAct;
 use App\Models\DeliveryNote;
+use App\Models\Order;
+use App\Models\Waybill;
 use Illuminate\Http\Request;
 use PDF;
 
@@ -20,20 +20,20 @@ class DocumentController extends Controller
         switch ($type) {
             case 'waybills':
                 $documents = Waybill::where('perspective', 'lessee') // Только документы для арендатора
-                    ->whereHas('parentOrder', function($query) use ($companyId) {
+                    ->whereHas('parentOrder', function ($query) use ($companyId) {
                         $query->where('lessee_company_id', $companyId);
                     })->with(['equipment', 'parentOrder.lessorCompany'])->paginate(10);
                 break;
 
             case 'completion_acts':
                 $documents = CompletionAct::where('perspective', 'lessee') // Только документы для арендатора
-                    ->whereHas('parentOrder', function($query) use ($companyId) {
+                    ->whereHas('parentOrder', function ($query) use ($companyId) {
                         $query->where('lessee_company_id', $companyId);
                     })->with(['waybill.equipment', 'parentOrder.lessorCompany'])->paginate(10);
                 break;
 
             case 'delivery_notes':
-                $documents = DeliveryNote::whereHas('order', function($query) use ($companyId) {
+                $documents = DeliveryNote::whereHas('order', function ($query) use ($companyId) {
                     $query->where('lessee_company_id', $companyId);
                 })->with(['senderCompany', 'order'])->paginate(10);
                 break;
@@ -88,7 +88,7 @@ class DocumentController extends Controller
         $waybillData = $waybill->forLessee();
 
         $pdf = PDF::loadView('lessee.documents.waybill_pdf', [
-            'waybill' => $waybillData
+            'waybill' => $waybillData,
         ]);
 
         return $pdf->download("Путевой-лист-{$waybill->number}-для-арендатора.pdf");
@@ -103,7 +103,7 @@ class DocumentController extends Controller
         $actData = $completionAct->forLessee();
 
         $pdf = PDF::loadView('lessee.documents.completion_act_pdf', [
-            'act' => $actData
+            'act' => $actData,
         ]);
 
         return $pdf->download("Акт-{$completionAct->id}-для-арендатора.pdf");

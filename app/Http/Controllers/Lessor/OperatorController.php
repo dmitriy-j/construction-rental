@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Lessor;
 
 use App\Http\Controllers\Controller;
-use App\Models\Operator;
 use App\Models\Equipment;
+use App\Models\Operator;
 use Illuminate\Http\Request;
 
 class OperatorController extends Controller
@@ -19,21 +19,21 @@ class OperatorController extends Controller
 
         // Получаем оборудование без операторов с группировкой
         $equipmentWithoutOperators = Equipment::where('company_id', $companyId)
-            ->with(['operators' => function($query) {
+            ->with(['operators' => function ($query) {
                 $query->where('is_active', true);
             }])
             ->get()
-            ->filter(function($equipment) {
+            ->filter(function ($equipment) {
                 $hasDay = $equipment->operators->contains('shift_type', Operator::SHIFT_DAY);
                 $hasNight = $equipment->operators->contains('shift_type', Operator::SHIFT_NIGHT);
 
-                return !$hasDay || !$hasNight;
+                return ! $hasDay || ! $hasNight;
             })
             ->unique('id'); // Убираем дубликаты
 
         return view('lessor.operators.index', [
             'operators' => $operators,
-            'equipmentWithoutOperators' => $equipmentWithoutOperators
+            'equipmentWithoutOperators' => $equipmentWithoutOperators,
         ]);
     }
 
@@ -41,6 +41,7 @@ class OperatorController extends Controller
     {
         $companyId = auth()->user()->company_id;
         $equipment = Equipment::where('company_id', $companyId)->get();
+
         return view('lessor.operators.create', compact('equipment'));
     }
 
@@ -53,7 +54,7 @@ class OperatorController extends Controller
             'qualification' => 'nullable|string|max:255',
             'is_active' => 'boolean',
             'equipment_id' => 'nullable|exists:equipment,id',
-            'shift_type' => 'required|in:day,night' // Добавить
+            'shift_type' => 'required|in:day,night', // Добавить
         ]);
 
         $data['company_id'] = auth()->user()->company_id;
@@ -78,6 +79,7 @@ class OperatorController extends Controller
 
         $companyId = auth()->user()->company_id;
         $equipment = Equipment::where('company_id', $companyId)->get();
+
         return view('lessor.operators.edit', compact('operator', 'equipment'));
     }
 
@@ -91,7 +93,7 @@ class OperatorController extends Controller
             'license_number' => 'required|string|max:50',
             'qualification' => 'nullable|string|max:255',
             'equipment_id' => 'nullable|exists:equipment,id',
-            'shift_type' => 'required|in:day,night'
+            'shift_type' => 'required|in:day,night',
         ]);
 
         // Определение статуса активности
@@ -118,7 +120,7 @@ class OperatorController extends Controller
         \Log::debug('Final update data', [
             'is_active' => $data['is_active'],
             'request_is_active' => $request->input('is_active'),
-            'request_fallback' => $request->input('is_active_fallback')
+            'request_fallback' => $request->input('is_active_fallback'),
         ]);
 
         return redirect()->route('lessor.operators.index')
@@ -135,7 +137,7 @@ class OperatorController extends Controller
             $currentOperator = Equipment::find($request->equipment_id)->operator_id;
 
             if ($currentOperator && $currentOperator != $operator->id) {
-                throw new \Exception("Оборудование уже привязано к другому оператору");
+                throw new \Exception('Оборудование уже привязано к другому оператору');
             }
 
             Equipment::where('id', $request->equipment_id)->update(['operator_id' => $operator->id]);

@@ -3,20 +3,18 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\Company;
+use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
-use App\Mail\CompanyRegisteredMail;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Validation\Rule;
 
 class RegisteredUserController extends Controller
 {
@@ -84,7 +82,7 @@ class RegisteredUserController extends Controller
                 'director_name' => $validatedData['director_name'],
                 'phone' => $validatedData['phone'],
                 'contacts' => $validatedData['contacts'] ?? null,
-                'status' => 'pending'
+                'status' => 'pending',
             ]);
 
             // Создаем пользователя
@@ -107,8 +105,9 @@ class RegisteredUserController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return back()
-                ->withErrors(['error' => 'Ошибка регистрации: ' . $e->getMessage()])
+                ->withErrors(['error' => 'Ошибка регистрации: '.$e->getMessage()])
                 ->withInput();
         }
     }

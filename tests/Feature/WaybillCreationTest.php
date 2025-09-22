@@ -2,8 +2,6 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 
 class WaybillCreationTest extends TestCase
@@ -13,12 +11,12 @@ class WaybillCreationTest extends TestCase
         // Подготовка
         $condition = RentalCondition::factory()->create([
             'shifts_per_day' => 2,
-            'shift_hours' => 8
+            'shift_hours' => 8,
         ]);
 
         $order = Order::factory()->create([
             'status' => Order::STATUS_CONFIRMED,
-            'rental_condition_id' => $condition->id
+            'rental_condition_id' => $condition->id,
         ]);
 
         $equipment = Equipment::factory()->create(['fuel_consumption' => 12.5]);
@@ -72,8 +70,7 @@ class WaybillCreationTest extends TestCase
         );
 
         // Проверка записи в лог
-        Log::assertLogged('warning', fn ($message) =>
-            str_contains($message, 'No operator assigned')
+        Log::assertLogged('warning', fn ($message) => str_contains($message, 'No operator assigned')
         );
     }
 
@@ -81,7 +78,7 @@ class WaybillCreationTest extends TestCase
     {
         $order = Order::factory()->create([
             'status' => Order::STATUS_CONFIRMED,
-            'start_date' => now()->addDays(2)
+            'start_date' => now()->addDays(2),
         ]);
 
         $response = $this->actingAs($order->lessorCompany->admin)
@@ -108,13 +105,13 @@ class WaybillCreationTest extends TestCase
                 'fuel_end' => 35.5,
                 'hours_worked' => 8,
                 'downtime_hours' => 0.5,
-                'downtime_cause' => 'Технический перерыв'
+                'downtime_cause' => 'Технический перерыв',
             ]);
 
         // 4. Подписание клиентом
         $this->actingAs($order->lesseeCompany->admin)
             ->post(route('waybill.sign', $waybills[0]), [
-                'signature' => 'svg-data...'
+                'signature' => 'svg-data...',
             ]);
 
         // 5. Проверка статуса и расчетов
@@ -122,7 +119,6 @@ class WaybillCreationTest extends TestCase
         $this->assertEquals(Waybill::STATUS_COMPLETED, $waybill->status);
         $this->assertEquals(14.5, $waybill->fuel_consumption_actual);
     }
-
 
     public function test_example(): void
     {

@@ -16,7 +16,7 @@ class ContractFactory extends Factory
         return [
             'company_id' => Company::factory(),
             'order_id' => Order::factory(),
-            'number' => 'CT-' . $this->faker->unique()->randomNumber(6),
+            'number' => 'CT-'.$this->faker->unique()->randomNumber(6),
             'start_date' => $this->faker->dateTimeBetween('-1 year'),
             'end_date' => $this->faker->dateTimeBetween('now', '+1 year'),
             'is_active' => $this->faker->boolean(80), // 80% chance of being active

@@ -21,9 +21,9 @@ return new class extends Migration
 
             // Затем создаем внешний ключ
             $table->foreign('rental_term_id')
-                  ->references('id')
-                  ->on('equipment_rental_terms')
-                  ->onDelete('cascade');
+                ->references('id')
+                ->on('equipment_rental_terms')
+                ->onDelete('cascade');
 
             // Уникальный индекс
             $table->unique(['cart_id', 'rental_term_id']);
