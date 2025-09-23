@@ -18,8 +18,8 @@ class RentalRequest extends Model
         'desired_specifications' => 'array',
         'rental_period_start' => 'date',
         'rental_period_end' => 'date',
-        'budget_from' => 'decimal:2',
-        'budget_to' => 'decimal:2',
+        'budget_from' => 'float',
+        'budget_to' => 'float',
         'delivery_required' => 'boolean',
         'expires_at' => 'datetime'
     ];

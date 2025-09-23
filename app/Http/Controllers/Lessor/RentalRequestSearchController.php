@@ -7,7 +7,6 @@ use App\Models\RentalRequest;
 use App\Services\RequestMatchingService;
 use App\Services\RentalRequestService;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
 use App\Http\Middleware\CheckCompanyVerified; // ПРАВИЛЬНЫЙ ИМПОРТ
 use App\Http\Middleware\CheckUserType;
 
@@ -48,7 +47,7 @@ class RentalRequestSearchController extends Controller
         $categories = \App\Models\Category::active()->get();
         $locations = \App\Models\Location::all();
 
-        return view('lessor.rental_requests.index', compact(
+        return view('lessor.rental-requests.index', compact(
             'rentalRequests',
             'recommendedRequests',
             'categories',
@@ -92,7 +91,7 @@ class RentalRequestSearchController extends Controller
         // Увеличиваем счетчик просмотров
         $rentalRequest->increment('views_count');
 
-        return view('lessor.rental_requests.show', compact(
+        return view('lessor.rental-requests.show', compact(
             'rentalRequest',
             'availableEquipment',
             'hasExistingProposal',

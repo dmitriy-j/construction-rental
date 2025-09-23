@@ -87,19 +87,27 @@
                             <div class="col-md-6">
                                 <label for="budget_from" class="form-label">Бюджет от (руб.) *</label>
                                 <div class="input-group">
-                                    <input type="number" class="form-control" id="budget_from"
-                                           name="budget_from" required min="0" step="1000">
+                                    <input type="text" class="form-control" id="budget_from"
+                                        name="budget_from" required
+                                        pattern="[0-9]*[.,]?[0-9]+"
+                                        placeholder="10000"
+                                        title="Введите число (например: 10000 или 15000.50)">
                                     <span class="input-group-text">₽</span>
                                 </div>
+                                <div class="form-text">Только цифры, точка или запятая</div>
                             </div>
 
                             <div class="col-md-6">
                                 <label for="budget_to" class="form-label">Бюджет до (руб.) *</label>
                                 <div class="input-group">
-                                    <input type="number" class="form-control" id="budget_to"
-                                           name="budget_to" required min="0" step="1000">
+                                    <input type="text" class="form-control" id="budget_to"
+                                        name="budget_to" required
+                                        pattern="[0-9]*[.,]?[0-9]+"
+                                        placeholder="20000"
+                                        title="Введите число (например: 20000 или 25000.50)">
                                     <span class="input-group-text">₽</span>
                                 </div>
+                                <div class="form-text">Только цифры, точка или запятая</div>
                             </div>
 
                             <div class="col-md-12">
@@ -199,6 +207,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('createRentalRequestForm');
     const submitBtn = document.getElementById('submitBtn');
 
+    // Функция для нормализации чисел перед отправкой
+    function normalizeNumber(value) {
+        if (!value) return '0';
+
+        // Заменяем запятую на точку и убираем пробелы
+        return value.toString()
+            .replace(/\s/g, '')
+            .replace(/,/g, '.')
+            .replace(/[^\d.-]/g, '');
+    }
+
     // Валидация дат
     const startDateInput = document.getElementById('rental_period_start');
     const endDateInput = document.getElementById('rental_period_end');
@@ -214,40 +233,82 @@ document.addEventListener('DOMContentLoaded', function() {
     const budgetFrom = document.getElementById('budget_from');
     const budgetTo = document.getElementById('budget_to');
 
-    budgetFrom.addEventListener('change', function() {
-        if (budgetTo.value && parseInt(budgetTo.value) < parseInt(this.value)) {
-            budgetTo.value = parseInt(this.value) + 1000;
+    budgetFrom.addEventListener('blur', function() {
+        let value = normalizeNumber(this.value);
+        this.value = value;
+
+        if (budgetTo.value) {
+            let toValue = normalizeNumber(budgetTo.value);
+            if (parseFloat(toValue) < parseFloat(value)) {
+                budgetTo.value = (parseFloat(value) + 1000).toString();
+            }
         }
-        budgetTo.min = this.value;
     });
 
-    // Отправка формы
+    // Отправка формы с предварительной обработкой данных
     form.addEventListener('submit', function(e) {
         e.preventDefault();
+
+        // Нормализуем числовые поля перед отправкой
+        budgetFrom.value = normalizeNumber(budgetFrom.value);
+        budgetTo.value = normalizeNumber(budgetTo.value);
+
+        // Валидация на клиенте
+        const fromValue = parseFloat(budgetFrom.value);
+        const toValue = parseFloat(budgetTo.value);
+
+        if (isNaN(fromValue) || isNaN(toValue)) {
+            alert('Пожалуйста, введите корректные числовые значения для бюджета');
+            return;
+        }
+
+        if (fromValue >= toValue) {
+            alert('Бюджет "до" должен быть больше бюджета "от"');
+            return;
+        }
 
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Создание...';
 
+        // Создаем FormData и логируем данные для отладки
+        const formData = new FormData(this);
+        console.log('Отправляемые данные:');
+        for (let [key, value] of formData.entries()) {
+            console.log(key + ': ' + value + ' (тип: ' + typeof value + ')');
+        }
+
         fetch(this.action, {
             method: 'POST',
-            body: new FormData(this),
+            body: formData,
             headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 window.location.href = data.redirect_url;
             } else {
-                alert('Ошибка: ' + data.message);
+                let errorMessage = 'Ошибка: ' + data.message;
+                if (data.errors) {
+                    errorMessage += '\n' + JSON.stringify(data.errors, null, 2);
+                }
+                alert(errorMessage);
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-plus me-2"></i>Создать заявку';
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Произошла ошибка при создании заявки');
+            alert('Произошла ошибка при создании заявки: ' + error.message);
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="fas fa-plus me-2"></i>Создать заявку';
         });

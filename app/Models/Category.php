@@ -68,4 +68,13 @@ class Category extends Model
     {
         return $this->equipments()->where('is_active', true)->exists();
     }
+
+    public function scopeActive($query)
+    {
+        // Assuming you have an 'is_active' column on your categories table
+        return $query->where('is_active', true);
+
+        // If the column is named differently, e.g., 'status', adjust accordingly:
+        // return $query->where('status', 'active');
+    }
 }

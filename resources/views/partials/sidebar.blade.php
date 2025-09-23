@@ -100,7 +100,12 @@
                             <i class="nav-icon bi bi-search-heart"></i>
                             <span class="nav-text">Заявки на аренду</span>
                             @php
-                                $newRentalRequestsCount = app\Services\RequestMatchingService::getNewRequestsCount(auth()->user());
+                                 try {
+                                $newRentalRequestsCount = \App\Services\RequestMatchingService::getNewRequestsCount(auth()->user());
+                                } catch (\Exception $e) {
+                                    $newRentalRequestsCount = 0;
+                                    \Log::error('Error counting rental requests: ' . $e->getMessage());
+                                }
                             @endphp
                             @if($newRentalRequestsCount > 0)
                                 <span class="badge bg-success rounded-pill pulse">{{ $newRentalRequestsCount }}</span>

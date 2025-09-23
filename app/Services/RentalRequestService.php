@@ -11,26 +11,56 @@ class RentalRequestService
 {
     public function createRentalRequest(array $data, User $user): RentalRequest
     {
+        \Log::info("Service received data:", $data);
+
+        // Валидация обязательных полей
+        $requiredFields = ['title', 'description', 'category_id', 'rental_period_start',
+                        'rental_period_end', 'budget_from', 'budget_to', 'location_id'];
+
+        foreach ($requiredFields as $field) {
+            if (!isset($data[$field])) {
+                throw new \InvalidArgumentException("Missing required field: {$field}");
+            }
+        }
+
+        // Преобразование числовых полей
+        $data['budget_from'] = (float) $data['budget_from'];
+        $data['budget_to'] = (float) $data['budget_to'];
+        $data['delivery_required'] = (bool) ($data['delivery_required'] ?? false);
+
+        \Log::info("Service processed data:", $data);
+
         return DB::transaction(function () use ($data, $user) {
-            $request = RentalRequest::create([
+            $requestData = [
                 'user_id' => $user->id,
                 'company_id' => $user->company_id,
                 'title' => $data['title'],
                 'description' => $data['description'],
                 'category_id' => $data['category_id'],
                 'desired_specifications' => $data['specifications'] ?? null,
-                'rental_period_start' => $data['period_start'],
-                'rental_period_end' => $data['period_end'],
+                'rental_period_start' => $data['rental_period_start'],
+                'rental_period_end' => $data['rental_period_end'],
                 'budget_from' => $data['budget_from'],
                 'budget_to' => $data['budget_to'],
                 'location_id' => $data['location_id'],
-                'delivery_required' => $data['delivery_required'] ?? false,
+                'delivery_required' => $data['delivery_required'],
                 'status' => 'active',
-                'expires_at' => now()->addDays(30) // Заявка активна 30 дней
-            ]);
+                'expires_at' => now()->addDays(30)
+            ];
+
+            \Log::info("Creating rental request with data:", $requestData);
+
+            $request = RentalRequest::create($requestData);
+
+            \Log::info("Rental request created successfully", ['id' => $request->id]);
 
             // Отправка уведомлений подходящим арендодателям
-            app(RequestMatchingService::class)->notifyRelevantLessors($request);
+            try {
+                app(RequestMatchingService::class)->notifyRelevantLessors($request);
+            } catch (\Exception $e) {
+                \Log::error("Error notifying lessors: " . $e->getMessage());
+                // Не прерываем выполнение из-за ошибки уведомлений
+            }
 
             return $request;
         });

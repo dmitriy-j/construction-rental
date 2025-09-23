@@ -170,20 +170,20 @@ Route::prefix('lessor')
         });
         // Поиск заявок
         Route::get('rental-requests', [\App\Http\Controllers\Lessor\RentalRequestSearchController::class, 'index'])
-            ->name('lessor.rental-requests.index');
+            ->name('rental-requests.index');
 
         Route::get('rental-requests/{request}', [\App\Http\Controllers\Lessor\RentalRequestSearchController::class, 'show'])
-            ->name('lessor.rental-requests.show');
+            ->name('rental-requests.show');
 
         // Управление предложениями
         Route::get('rental-requests/{request}/proposals/create', [\App\Http\Controllers\Lessor\RequestProposalController::class, 'create'])
-            ->name('lessor.rental-requests.proposals.create');
+            ->name('rental-requests.proposals.create');
 
         Route::post('rental-requests/{request}/proposals', [\App\Http\Controllers\Lessor\RequestProposalController::class, 'store'])
-            ->name('lessor.rental-requests.proposals.store');
+            ->name('rental-requests.proposals.store');
 
         Route::get('rental-requests/{request}/proposals/calculate-price/{equipment}', [\App\Http\Controllers\Lessor\RequestProposalController::class, 'calculatePrice'])
-            ->name('lessor.rental-requests.proposals.calculate-price');
+            ->name('rental-requests.proposals.calculate-price');
     });
 
     // API маршруты
