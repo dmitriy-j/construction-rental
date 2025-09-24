@@ -80,7 +80,7 @@ class PricingService
 
         $finalPrice = $totalPrice - $discount;
 
-        // Анализ соответствия бюджету заявки
+        // Анализ соответствия бюджету заявки - с явным преобразованием типов
         $budgetAnalysis = $this->analyzeBudgetCompatibility($finalPrice, $request);
 
         return [
@@ -89,7 +89,7 @@ class PricingService
             'discount_amount' => $discount,
             'calculated_price' => $finalPrice,
             'working_hours' => $workingHours,
-            'price_per_hour' => $finalPrice / max(1, $workingHours),
+            'price_per_hour' => $workingHours > 0 ? $finalPrice / $workingHours : 0,
 
             // Анализ бюджета
             'budget_analysis' => $budgetAnalysis,
@@ -104,29 +104,47 @@ class PricingService
     /**
      * АНАЛИЗ СООТВЕТСТВИЯ БЮДЖЕТУ ЗАЯВКИ
      */
-    private function analyzeBudgetCompatibility(float $calculatedPrice, RentalRequest $request): array
+     private function analyzeBudgetCompatibility(float $calculatedPrice, RentalRequest $request): array
     {
-        $isWithinBudget = $calculatedPrice >= $request->budget_from &&
-                         $calculatedPrice <= $request->budget_to;
+        \Log::info("Analyzing budget compatibility:", [
+            'calculated_price' => $calculatedPrice,
+            'budget_from' => $request->budget_from,
+            'budget_to' => $request->budget_to,
+            'types' => [
+                'calculated_type' => gettype($calculatedPrice),
+                'budget_from_type' => gettype($request->budget_from),
+                'budget_to_type' => gettype($request->budget_to)
+            ]
+        ]);
+
+        // ЯВНОЕ ПРЕОБРАЗОВАНИЕ В ЧИСЛА ПЕРЕД ОПЕРАЦИЯМИ
+        $budgetFrom = (float) $request->budget_from;
+        $budgetTo = (float) $request->budget_to;
+
+        $isWithinBudget = $calculatedPrice >= $budgetFrom &&
+                         $calculatedPrice <= $budgetTo;
 
         // Рекомендуемая цена (в рамках бюджета заявки)
-        if ($calculatedPrice < $request->budget_from) {
+        if ($calculatedPrice < $budgetFrom) {
             // Можно предложить цену повыше, но в рамках бюджета
-            $recommendedPrice = min($calculatedPrice * 1.1, $request->budget_to); // +10%, но не выше макс. бюджета
-        } elseif ($calculatedPrice > $request->budget_to) {
+            $recommendedPrice = min($calculatedPrice * 1.1, $budgetTo);
+        } elseif ($calculatedPrice > $budgetTo) {
             // Нужно предложить цену пониже, но не ниже минимальной рентабельности
-            $minProfitablePrice = $calculatedPrice * 0.8; // -20% как минимальная граница
-            $recommendedPrice = max($minProfitablePrice, $request->budget_from);
+            $minProfitablePrice = $calculatedPrice * 0.8;
+            $recommendedPrice = max($minProfitablePrice, $budgetFrom);
         } else {
             // Цена в рамках бюджета - оставляем как есть
             $recommendedPrice = $calculatedPrice;
         }
 
+        // ИСПРАВЛЕННЫЙ РАСЧЕТ ПРОЦЕНТОВ - ИЗБЕГАЕМ ДЕЛЕНИЯ НА НОЛЬ
+        $budgetPercentage = $budgetTo > 0 ? ($calculatedPrice / $budgetTo * 100) : 0;
+
         return [
             'is_within_budget' => $isWithinBudget,
             'recommended_price' => round($recommendedPrice, 2),
-            'budget_gap' => $isWithinBudget ? 0 : round(abs($calculatedPrice - $request->budget_to), 2),
-            'budget_percentage' => $calculatedPrice / $request->budget_to * 100,
+            'budget_gap' => $isWithinBudget ? 0 : round(abs($calculatedPrice - $budgetTo), 2),
+            'budget_percentage' => $budgetPercentage,
         ];
     }
 

@@ -207,15 +207,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('createRentalRequestForm');
     const submitBtn = document.getElementById('submitBtn');
 
-    // Функция для нормализации чисел перед отправкой
+    // Функция для нормализации чисел - возвращает ЧИСЛО в виде строки без форматирования
     function normalizeNumber(value) {
         if (!value) return '0';
 
         // Заменяем запятую на точку и убираем пробелы
-        return value.toString()
+        const normalizedString = value.toString()
             .replace(/\s/g, '')
             .replace(/,/g, '.')
             .replace(/[^\d.-]/g, '');
+
+        // Преобразуем в число и обратно в строку чтобы убрать лишние нули
+        const numberValue = parseFloat(normalizedString);
+
+        // Если не число - возвращаем '0'
+        return isNaN(numberValue) ? '0' : numberValue.toString();
     }
 
     // Валидация дат
@@ -270,13 +276,16 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Создание...';
 
-        // Создаем FormData и логируем данные для отладки
+        // Создаем FormData
         const formData = new FormData(this);
+
+        // Логируем данные для отладки
         console.log('Отправляемые данные:');
         for (let [key, value] of formData.entries()) {
             console.log(key + ': ' + value + ' (тип: ' + typeof value + ')');
         }
 
+        // Отправляем как FormData (обычная форма)
         fetch(this.action, {
             method: 'POST',
             body: formData,
@@ -312,33 +321,6 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="fas fa-plus me-2"></i>Создать заявку';
         });
-    });
-});
-</script>
-@endpush
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const categorySelect = document.getElementById('category_id');
-    const originalOptions = categorySelect.innerHTML;
-
-    // Функция для фильтрации подкатегорий при поиске
-    categorySelect.addEventListener('input', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-
-        if (searchTerm.length > 2) {
-            // Показываем только соответствующие категории
-            const options = categorySelect.querySelectorAll('option');
-            options.forEach(option => {
-                if (option.value === '') return;
-                const text = option.textContent.toLowerCase();
-                option.style.display = text.includes(searchTerm) ? '' : 'none';
-            });
-        } else {
-            // Восстанавливаем все опции
-            const options = categorySelect.querySelectorAll('option');
-            options.forEach(option => option.style.display = '');
-        }
     });
 });
 </script>

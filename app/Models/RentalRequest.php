@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str; // ДОБАВИТЬ ЭТУ СТРОКУ
 
 class RentalRequest extends Model
 {
@@ -18,11 +19,22 @@ class RentalRequest extends Model
         'desired_specifications' => 'array',
         'rental_period_start' => 'date',
         'rental_period_end' => 'date',
-        'budget_from' => 'float',
-        'budget_to' => 'float',
+        'budget_from' => 'decimal:2', // ИЗМЕНИТЬ float на decimal:2
+        'budget_to' => 'decimal:2',   // ИЗМЕНИТЬ float на decimal:2
         'delivery_required' => 'boolean',
         'expires_at' => 'datetime'
     ];
+
+    // ДОБАВИТЬ МУТАТОРЫ ДЛЯ БЮДЖЕТА
+    public function setBudgetFromAttribute($value)
+    {
+        $this->attributes['budget_from'] = $value === null ? null : (float) $value;
+    }
+
+    public function setBudgetToAttribute($value)
+    {
+        $this->attributes['budget_to'] = $value === null ? null : (float) $value;
+    }
 
     public function getStatusTextAttribute()
     {

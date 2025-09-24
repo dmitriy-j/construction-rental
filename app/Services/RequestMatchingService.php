@@ -10,10 +10,27 @@ class RequestMatchingService
 {
     public function notifyRelevantLessors(RentalRequest $request): void
     {
+        \Log::info("Starting lessor notification for request:", [
+            'request_id' => $request->id,
+            'budget_from' => $request->budget_from,
+            'budget_to' => $request->budget_to,
+            'types' => [
+                'budget_from_type' => gettype($request->budget_from),
+                'budget_to_type' => gettype($request->budget_to)
+            ]
+        ]);
+
         $relevantLessors = $this->findRelevantLessors($request);
 
+        \Log::info("Found relevant lessors:", ['count' => $relevantLessors->count()]);
+
         foreach ($relevantLessors as $lessor) {
-            $lessor->notify(new NewRentalRequestNotification($request));
+            try {
+                $lessor->notify(new NewRentalRequestNotification($request));
+                \Log::info("Notification sent to lessor:", ['lessor_id' => $lessor->id]);
+            } catch (\Exception $e) {
+                \Log::error("Error sending notification to lessor {$lessor->id}: " . $e->getMessage());
+            }
         }
     }
 

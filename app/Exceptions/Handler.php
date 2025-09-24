@@ -45,4 +45,19 @@ class Handler extends ExceptionHandler
             //
         });
     }
+
+    public function render($request, Throwable $exception)
+    {
+        // Для ошибок brick/math логируем полный стектрейс
+        if ($exception instanceof \Brick\Math\Exception\NumberFormatException) {
+            \Log::error("FULL BRICK/MATH STACKTRACE:", [
+                'message' => $exception->getMessage(),
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
+                'trace' => $exception->getTrace()
+            ]);
+        }
+
+        return parent::render($request, $exception);
+    }
 }

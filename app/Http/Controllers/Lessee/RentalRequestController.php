@@ -73,97 +73,52 @@ class RentalRequestController extends Controller
      * Сохранение новой заявки
      */
 
-    private function normalizeNumber($value)
-    {
-        if ($value === null || $value === '') {
-            return null;
-        }
-
-        // Если уже число - возвращаем как есть
-        if (is_numeric($value)) {
-            return $value;
-        }
-
-        // Преобразуем в строку
-        $value = (string) $value;
-
-        \Log::info('Normalizing value:', ['raw' => $value]);
-
-        // Убираем все пробелы (разделители тысяч)
-        $value = str_replace(' ', '', $value);
-
-        // Заменяем русскую запятую на точку
-        $value = str_replace(',', '.', $value);
-
-        // Убираем все нечисловые символы кроме точки, минуса и цифр
-        $value = preg_replace('/[^\d\.\-]/', '', $value);
-
-        // Если после обработки пустая строка
-        if ($value === '' || $value === '-') {
-            return null;
-        }
-
-        // Проверяем, является ли результат числом
-        if (!is_numeric($value)) {
-            \Log::warning('Value is not numeric after normalization:', ['value' => $value]);
-            return null;
-        }
-
-        // Для целых чисел возвращаем int, для дробных - float
-        $result = strpos($value, '.') !== false ? (float) $value : (int) $value;
-
-        \Log::info('Normalization result:', ['input' => $value, 'output' => $result]);
-
-        return $result;
-    }
 
     public function store(StoreRentalRequestRequest $request): JsonResponse
     {
-        // Временное решение: обход brick/math проблемы
-        ini_set('precision', 14);
-        ini_set('serialize_precision', 14);
-
-        \Log::info("=== BRICK/MATH DEBUG ===");
-        \Log::info("Raw budget_from:", ['value' => $request->budget_from, 'type' => gettype($request->budget_from)]);
-        \Log::info("Raw budget_to:", ['value' => $request->budget_to, 'type' => gettype($request->budget_to)]);
-
         try {
             $validated = $request->validated();
 
-            // Явно преобразуем в примитивные типы PHP
-            $validated['budget_from'] = floatval($validated['budget_from']);
-            $validated['budget_to'] = floatval($validated['budget_to']);
-
-            \Log::info("After float conversion:", [
+            \Log::info("Validated data for creation:", [
                 'budget_from' => $validated['budget_from'],
-                'budget_from_type' => gettype($validated['budget_from']),
                 'budget_to' => $validated['budget_to'],
-                'budget_to_type' => gettype($validated['budget_to'])
+                'specifications' => $validated['specifications'],
+                'types' => [
+                    'budget_from_type' => gettype($validated['budget_from']),
+                    'budget_to_type' => gettype($validated['budget_to']),
+                    'specifications_type' => gettype($validated['specifications'])
+                ]
             ]);
 
-            $rentalRequest = $this->rentalRequestService->createRentalRequest(
-                $validated,
-                auth()->user()
-            );
+            // Преобразуем specifications в массив, если нужно
+            $specificationsArray = $validated['specifications'] ?
+                ['description' => $validated['specifications']] : [];
+
+            $rentalRequest = RentalRequest::create([
+                'user_id' => auth()->id(),
+                'company_id' => auth()->user()->company_id,
+                'title' => $validated['title'],
+                'description' => $validated['description'],
+                'category_id' => $validated['category_id'],
+                'desired_specifications' => $specificationsArray, // Используем массив
+                'rental_period_start' => $validated['rental_period_start'],
+                'rental_period_end' => $validated['rental_period_end'],
+                'budget_from' => $validated['budget_from'],
+                'budget_to' => $validated['budget_to'],
+                'location_id' => $validated['location_id'],
+                'delivery_required' => $validated['delivery_required'] ?? false,
+                'status' => 'active',
+                'expires_at' => now()->addDays(30)
+            ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Заявка успешно создана',
-                'request' => $rentalRequest,
                 'redirect_url' => route('lessee.rental-requests.show', $rentalRequest->id)
             ]);
 
-        } catch (\Brick\Math\Exception\NumberFormatException $e) {
-            \Log::error("Brick/Math Exception:", [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            // Альтернативный способ создания заявки
-            return $this->createRentalRequestAlternative($request);
-
         } catch (\Exception $e) {
-            \Log::error("General exception:", [
+            \Log::error("Rental request creation error:", [
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);

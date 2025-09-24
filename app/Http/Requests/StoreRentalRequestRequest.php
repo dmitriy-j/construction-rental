@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use App\Rules\BudgetComparison;
 
 class StoreRentalRequestRequest extends FormRequest
 {
@@ -20,11 +21,24 @@ class StoreRentalRequestRequest extends FormRequest
             'rental_period_start' => 'required|date|after:today',
             'rental_period_end' => 'required|date|after:rental_period_start',
             'budget_from' => 'required|numeric|min:0',
-            'budget_to' => 'required|numeric|min:budget_from',
+            'budget_to' => 'required|numeric', // Убрали min:budget_from
             'location_id' => 'required|exists:locations,id',
             'delivery_required' => 'boolean',
-            'specifications' => 'nullable|array'
+            'specifications' => 'nullable|string' // ИЗМЕНИЛИ array на string
         ];
+    }
+
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            // Кастомная проверка сравнения бюджетов
+            if ($this->budget_to <= $this->budget_from) {
+                $validator->errors()->add(
+                    'budget_to',
+                    'Поле "Бюджет до" должно быть больше поля "Бюджет от".'
+                );
+            }
+        });
     }
 
     public function prepareForValidation()
@@ -35,75 +49,35 @@ class StoreRentalRequestRequest extends FormRequest
             'budget_from' => $this->normalizeNumber($this->budget_from),
             'budget_to' => $this->normalizeNumber($this->budget_to),
             'delivery_required' => $this->boolean('delivery_required'),
+            // УБИРАЕМ преобразование specifications в массив
         ]);
 
         \Log::info('Processed request data:', [
             'budget_from' => $this->budget_from,
             'budget_to' => $this->budget_to,
             'delivery_required' => $this->delivery_required,
+            'specifications' => $this->specifications // Оставляем как строку
         ]);
-    }
-
-    public function messages()
-    {
-        return [
-            'budget_from.numeric' => 'Поле "Бюджет от" должно быть числом',
-            'budget_to.numeric' => 'Поле "Бюджет до" должно быть числом',
-            'budget_to.min' => 'Поле "Бюджет до" должно быть больше поля "Бюджет от"',
-        ];
     }
 
     private function normalizeNumber($value)
     {
-        \Log::info("Normalizing value:", ['raw_value' => $value, 'type' => gettype($value)]);
-
         if ($value === null || $value === '') {
             return 0;
         }
 
-        // Если уже число - возвращаем как есть
         if (is_numeric($value)) {
-            \Log::info("Value is already numeric", ['value' => $value]);
-            return $value;
+            return (float) $value;
         }
 
-        // Преобразуем в строку
         $value = (string) $value;
-        \Log::info("Value as string", ['string_value' => $value]);
-
-        // Убираем все пробелы (разделители тысяч)
-        $value = str_replace(' ', '', $value);
-
-        // Заменяем русскую запятую на точку
-        $value = str_replace(',', '.', $value);
-
-        // Убираем все нечисловые символы кроме цифр, точки и минуса
+        $value = str_replace([' ', ','], ['', '.'], $value);
         $value = preg_replace('/[^\d\.\-]/', '', $value);
 
-        \Log::info("Value after cleaning", ['cleaned_value' => $value]);
-
-        // Если после обработки пустая строка или только минус
         if ($value === '' || $value === '-') {
             return 0;
         }
 
-        // Проверяем, является ли результат числом
-        if (!is_numeric($value)) {
-            \Log::warning("Value is not numeric after normalization", ['value' => $value]);
-
-            // Пробуем извлечь число с помощью filter_var
-            $filtered = filter_var($value, FILTER_SANITIZE_NUMBER_FLOAT, FILTER_FLAG_ALLOW_FRACTION);
-            if ($filtered !== false && is_numeric($filtered)) {
-                \Log::info("Value filtered successfully", ['filtered' => $filtered]);
-                return $filtered;
-            }
-
-            return 0;
-        }
-
-        $result = $value;
-        \Log::info("Normalization successful", ['result' => $result, 'type' => gettype($result)]);
-
-        return $result;
+        return is_numeric($value) ? (float) $value : 0;
     }
 }

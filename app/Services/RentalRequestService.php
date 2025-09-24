@@ -55,12 +55,12 @@ class RentalRequestService
             \Log::info("Rental request created successfully", ['id' => $request->id]);
 
             // Отправка уведомлений подходящим арендодателям
-            try {
+            /*try {
                 app(RequestMatchingService::class)->notifyRelevantLessors($request);
             } catch (\Exception $e) {
                 \Log::error("Error notifying lessors: " . $e->getMessage());
                 // Не прерываем выполнение из-за ошибки уведомлений
-            }
+            }*/
 
             return $request;
         });
