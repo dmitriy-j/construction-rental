@@ -9,6 +9,9 @@ use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
 
 class User extends Authenticatable
 {
@@ -64,6 +67,21 @@ class User extends Authenticatable
     public function cart(): HasOne
     {
         return $this->hasOne(Cart::class);
+    }
+
+    public function locations(): BelongsToMany
+    {
+        return $this->belongsToMany(Location::class, 'location_user', 'user_id', 'location_id');
+        // Если промежуточная таблица следует соглашениям именования Laravel (location_user),
+        // и внешние ключи называются 'user_id' и 'location_id', то сигнатура может быть упрощена до:
+        // return $this->belongsToMany(Location::class);
+    }
+
+    public function equipment(): HasMany // Указываем тип возвращаемого значения
+    {
+        return $this->hasMany(Equipment::class);
+        // Если внешний ключ называется не `user_id`, укажите его явно:
+        // return $this->hasMany(Equipment::class, 'owner_id');
     }
 
     public function rentalRequests()

@@ -24,3 +24,35 @@ $accent-dark: #00e5ff;
   --navbar-height: 70px;
   --content-padding: clamp(1rem, 2vw, 1.5rem);
 }
+:root {
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 80px;
+  --icon-size: 24px;
+  --icon-size-collapsed: 28px;
+  --transition-duration: 0.3s;
+  --border-radius: 12px;
+}
+
+.app-sidebar {
+  // Жесткая фиксация размеров иконок
+  .nav-icon {
+    width: var(--icon-size) !important;
+    height: var(--icon-size) !important;
+    min-width: var(--icon-size) !important;
+    font-size: calc(var(--icon-size) - 8px) !important;
+    flex-shrink: 0;
+
+    // Запрещаем любые трансформации
+    transform: none !important;
+    scale: 1 !important;
+  }
+
+  &.app-sidebar--collapsed {
+    .nav-icon {
+      width: var(--icon-size-collapsed) !important;
+      height: var(--icon-size-collapsed) !important;
+      min-width: var(--icon-size-collapsed) !important;
+      font-size: calc(var(--icon-size-collapsed) - 8px) !important;
+    }
+  }
+}

@@ -8,319 +8,212 @@
         <div class="col-12">
             <div class="page-header d-flex justify-content-between align-items-center mb-4">
                 <h1 class="page-title">Создание заявки на аренду</h1>
-                <a href="{{ route('lessee.rental-requests.index') }}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>Назад к списку
-                </a>
+                <div>
+                    <a href="{{ route('lessee.rental-requests.index') }}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-arrow-left me-2"></i>Назад к списку
+                    </a>
+                    <button type="button" class="btn btn-info" data-bs-toggle="collapse" data-bs-target="#helpGuide">
+                        <i class="fas fa-question-circle me-2"></i>Шпаргалка
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-lg-8">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Основная информация</h5>
+    <!-- Шпаргалка для арендатора -->
+    <div class="collapse mb-4" id="helpGuide">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>Шпаргалка по заполнению заявки
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="help-item mb-3">
+                            <h6 class="text-primary">📝 Название и описание</h6>
+                            <ul class="small">
+                                <li><strong>Будьте конкретны:</strong> "Аренда экскаватора для котлована" вместо "Нужна техника"</li>
+                                <li><strong>Укажите тип работ:</strong> земляные работы, демонтаж, погрузка и т.д.</li>
+                                <li><strong>Описание проекта:</strong> площадь участка, объем работ, особые условия</li>
+                            </ul>
+                        </div>
+
+                        <div class="help-item mb-3">
+                            <h6 class="text-primary">📅 Период аренды</h6>
+                            <ul class="small">
+                                <li><strong>Запас по времени:</strong> добавляйте 1-2 дня на непредвиденные обстоятельства</li>
+                                <li><strong>Учитывайте доставку:</strong> если техника нужна с конкретного числа, укажите дату начала на день раньше</li>
+                                <li><strong>Сезонность:</strong> в высокий сезон бронируйте технику заранее</li>
+                            </ul>
+                        </div>
+
+                        <div class="help-item mb-3">
+                            <h6 class="text-primary">📍 Локация</h6>
+                            <ul class="small">
+                                <li><strong>Точный адрес:</strong> необходим для расчета стоимости доставки</li>
+                                <li><strong>Особенности подъезда:</strong> отметьте если есть ограничения по габаритам</li>
+                                <li><strong>Несколько площадок?</strong> Создайте отдельные заявки для разных адресов</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="help-item mb-3">
+                            <h6 class="text-primary">💰 Стоимость часа</h6>
+                            <ul class="small">
+                                <li><strong>Рыночные цены:</strong> экскаватор - 1,500-2,500 ₽/час, бульдозер - 2,000-3,000 ₽/час</li>
+                                <li><strong>Не уверены?</strong> Оставьте поле пустым - арендодатели предложат свои цены</li>
+                                <li><strong>Оптовые скидки:</strong> при аренде нескольких единиц техники можно указать желаемую скидку</li>
+                            </ul>
+                        </div>
+
+                        <div class="help-item mb-3">
+                            <h6 class="text-primary">🛠 Позиции оборудования</h6>
+                            <ul class="small">
+                                <li><strong>Добавляйте по одной:</strong> каждая позиция - отдельный тип техники</li>
+                                <li><strong>Количество:</strong> укажите точное число необходимых единиц</li>
+                                <li><strong>Индивидуальные условия:</strong> используйте для техники со специальными требованиями</li>
+                            </ul>
+                        </div>
+
+                        <div class="help-item mb-3">
+                            <h6 class="text-primary">⚙️ Условия аренды</h6>
+                            <ul class="small">
+                                <li><strong>Сменный график:</strong> 1 смена = 8 часов, 2 смены = 16 часов в сутки</li>
+                                <li><strong>Оператор:</strong> включите если нужен специалист для работы с техникой</li>
+                                <li><strong>ГСМ:</strong> "включено" - проще, "отдельно" - может быть выгоднее при большом пробеге</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <form id="createRentalRequestForm" method="POST"
-                          action="{{ route('lessee.rental-requests.store') }}">
-                        @csrf
 
-                        <div class="row g-3">
-                            <div class="col-md-12">
-                                <label for="title" class="form-label">Название заявки *</label>
-                                <input type="text" class="form-control" id="title" name="title"
-                                       required maxlength="255" placeholder="Например: Аренда экскаватора для земляных работ">
-                            </div>
-
-                            <div class="col-md-12">
-                                <label for="description" class="form-label">Подробное описание потребности *</label>
-                                <textarea class="form-control" id="description" name="description"
-                                          rows="4" required placeholder="Опишите задачи, которые нужно выполнить с помощью техники..."></textarea>
-                                <div class="form-text">Минимум 50 символов</div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="category_id" class="form-label">Категория техники *</label>
-                                <select class="form-select" id="category_id" name="category_id" required>
-                                    <option value="">Выберите категорию</option>
-                                    @foreach($categories as $category)
-                                        {{-- Основная категория --}}
-                                        <option value="{{ $category->id }}"
-                                                {{ old('category_id') == $category->id ? 'selected' : '' }}>
-                                            {{ $category->name }}
-                                        </option>
-
-                                        {{-- Подкатегории (если есть) --}}
-                                        @foreach($category->children as $subcategory)
-                                            <option value="{{ $subcategory->id }}"
-                                                    {{ old('category_id') == $subcategory->id ? 'selected' : '' }}>
-                                                &nbsp;&nbsp;└─ {{ $subcategory->name }}
-                                            </option>
-                                        @endforeach
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="location_id" class="form-label">Локация выполнения работ *</label>
-                                <select class="form-select" id="location_id" name="location_id" required>
-                                    <option value="">Выберите локацию</option>
-                                    @foreach($locations as $location)
-                                        <option value="{{ $location->id }}">{{ $location->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="rental_period_start" class="form-label">Дата начала аренды *</label>
-                                <input type="date" class="form-control" id="rental_period_start"
-                                       name="rental_period_start" required min="{{ date('Y-m-d') }}">
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="rental_period_end" class="form-label">Дата окончания аренды *</label>
-                                <input type="date" class="form-control" id="rental_period_end"
-                                       name="rental_period_end" required>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="budget_from" class="form-label">Бюджет от (руб.) *</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="budget_from"
-                                        name="budget_from" required
-                                        pattern="[0-9]*[.,]?[0-9]+"
-                                        placeholder="10000"
-                                        title="Введите число (например: 10000 или 15000.50)">
-                                    <span class="input-group-text">₽</span>
-                                </div>
-                                <div class="form-text">Только цифры, точка или запятая</div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="budget_to" class="form-label">Бюджет до (руб.) *</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="budget_to"
-                                        name="budget_to" required
-                                        pattern="[0-9]*[.,]?[0-9]+"
-                                        placeholder="20000"
-                                        title="Введите число (например: 20000 или 25000.50)">
-                                    <span class="input-group-text">₽</span>
-                                </div>
-                                <div class="form-text">Только цифры, точка или запятая</div>
-                            </div>
-
-                            <div class="col-md-12">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="delivery_required" name="delivery_required">
-                                    <label class="form-check-label" for="delivery_required">
-                                        Требуется доставка техники к месту работ
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div class="col-md-12">
-                                <label for="specifications" class="form-label">Дополнительные требования и характеристики</label>
-                                <textarea class="form-control" id="specifications" name="specifications"
-                                          rows="3" placeholder="Укажите желаемые характеристики техники, особые требования..."></textarea>
-                                <div class="form-text">Например: Требуется техника с оператором, наличие сертификатов и т.д.</div>
-                            </div>
-                        </div>
-
-                        <div class="row mt-4">
-                            <div class="col-12">
-                                <button type="submit" class="btn btn-primary me-2" id="submitBtn">
-                                    <i class="fas fa-plus me-2"></i>Создать заявку
-                                </button>
-                                <a href="{{ route('lessee.rental-requests.index') }}" class="btn btn-outline-secondary">
-                                    Отмена
-                                </a>
-                            </div>
-                        </div>
-                    </form>
+                <div class="alert alert-warning mt-3">
+                    <small>
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Совет:</strong> Чем подробнее заявка, тем быстрее вы получите подходящие предложения от арендодателей.
+                        Рекомендуем заполнять все поля максимально точно.
+                    </small>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="col-lg-4">
-            {{-- Подсказки --}}
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h6 class="card-title mb-0"><i class="fas fa-lightbulb me-2"></i>Советы по заполнению</h6>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-info">
-                        <h6>📝 Как правильно оформить заявку:</h6>
-                        <ul class="mb-0">
-                            <li>Указывайте реалистичный бюджет</li>
-                            <li>Подробно опишите задачи для техники</li>
-                            <li>Укажите точные даты аренды</li>
-                            <li>Четко сформулируйте требования</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Преимущества --}}
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="card-title mb-0"><i class="fas fa-star me-2"></i>Преимущества системы заявок</h6>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex mb-3">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-bolt text-primary"></i>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="mb-1">Быстрые предложения</h6>
-                            <p class="text-muted mb-0">Получайте предложения от проверенных арендодателей</p>
-                        </div>
-                    </div>
-                    <div class="d-flex mb-3">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-chart-line text-success"></i>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="mb-1">Лучшие цены</h6>
-                            <p class="text-muted mb-0">Сравнивайте предложения и выбирайте оптимальные</p>
-                        </div>
-                    </div>
-                    <div class="d-flex">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-shield-alt text-warning"></i>
-                        </div>
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="mb-1">Безопасная сделка</h6>
-                            <p class="text-muted mb-0">Все сделки защищены платформой</p>
-                        </div>
-                    </div>
-                </div>
+    <!-- Быстрые подсказки (появляются при наведении) -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex flex-wrap gap-2">
+                <span class="badge bg-light text-dark" data-bs-toggle="tooltip" title="Указывайте реальные сроки работ с запасом 10-15%">
+                    <i class="fas fa-clock me-1"></i>Сроки
+                </span>
+                <span class="badge bg-light text-dark" data-bs-toggle="tooltip" title="Точный адрес помогает арендодателям рассчитать доставку">
+                    <i class="fas fa-map-marker-alt me-1"></i>Адрес
+                </span>
+                <span class="badge bg-light text-dark" data-bs-toggle="tooltip" title="Можно указать ориентировочную стоимость для привлечения предложений">
+                    <i class="fas fa-ruble-sign me-1"></i>Бюджет
+                </span>
+                <span class="badge bg-light text-dark" data-bs-toggle="tooltip" title="Добавляйте отдельные позиции для каждого типа техники">
+                    <i class="fas fa-truck me-1"></i>Позиции
+                </span>
             </div>
         </div>
+    </div>
+
+    <!-- Vue приложение для создания заявки -->
+    <div id="rental-request-app"
+         data-categories='@json($categories)'
+         data-locations='@json($locations)'
+         data-store-url="{{ route('lessee.rental-requests.store') }}"
+         data-csrf-token="{{ csrf_token() }}">
     </div>
 </div>
 @endsection
 
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('createRentalRequestForm');
-    const submitBtn = document.getElementById('submitBtn');
-
-    // Функция для нормализации чисел - возвращает ЧИСЛО в виде строки без форматирования
-    function normalizeNumber(value) {
-        if (!value) return '0';
-
-        // Заменяем запятую на точку и убираем пробелы
-        const normalizedString = value.toString()
-            .replace(/\s/g, '')
-            .replace(/,/g, '.')
-            .replace(/[^\d.-]/g, '');
-
-        // Преобразуем в число и обратно в строку чтобы убрать лишние нули
-        const numberValue = parseFloat(normalizedString);
-
-        // Если не число - возвращаем '0'
-        return isNaN(numberValue) ? '0' : numberValue.toString();
+@push('styles')
+<style>
+    .rental-request-app {
+        min-height: 80vh;
     }
 
-    // Валидация дат
-    const startDateInput = document.getElementById('rental_period_start');
-    const endDateInput = document.getElementById('rental_period_end');
+    .item-card {
+        transition: all 0.3s ease;
+        border-left: 4px solid #0d6efd;
+    }
 
-    startDateInput.addEventListener('change', function() {
-        endDateInput.min = this.value;
-        if (endDateInput.value && endDateInput.value < this.value) {
-            endDateInput.value = '';
+    .item-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .individual-conditions {
+        border-left: 3px solid #20c997;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+
+    .help-item {
+        padding: 10px;
+        border-left: 3px solid #0dcaf0;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+    }
+
+    .help-item h6 {
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .help-item ul {
+        margin-bottom: 0;
+    }
+
+    .help-item li {
+        margin-bottom: 0.25rem;
+    }
+
+    @media (max-width: 768px) {
+        .item-card .card-body .row {
+            flex-direction: column;
         }
+
+        .item-card .col-md-4,
+        .item-card .col-md-3,
+        .item-card .col-md-2,
+        .item-card .col-md-1 {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+    }
+</style>
+@endpush
+
+@push('scripts')
+<!-- Подключаем через Vite -->
+@vite(['resources/js/pages/rental-request-create.js'])
+
+<!-- Инициализация подсказок -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
     });
 
-    // Валидация бюджета
-    const budgetFrom = document.getElementById('budget_from');
-    const budgetTo = document.getElementById('budget_to');
+    // Сохранение состояния шпаргалки в localStorage
+    const helpGuide = document.getElementById('helpGuide');
+    const helpState = localStorage.getItem('helpGuideExpanded');
 
-    budgetFrom.addEventListener('blur', function() {
-        let value = normalizeNumber(this.value);
-        this.value = value;
+    if (helpState === 'true') {
+        new bootstrap.Collapse(helpGuide, { show: true });
+    }
 
-        if (budgetTo.value) {
-            let toValue = normalizeNumber(budgetTo.value);
-            if (parseFloat(toValue) < parseFloat(value)) {
-                budgetTo.value = (parseFloat(value) + 1000).toString();
-            }
-        }
+    helpGuide.addEventListener('show.bs.collapse', function () {
+        localStorage.setItem('helpGuideExpanded', 'true');
     });
 
-    // Отправка формы с предварительной обработкой данных
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        // Нормализуем числовые поля перед отправкой
-        budgetFrom.value = normalizeNumber(budgetFrom.value);
-        budgetTo.value = normalizeNumber(budgetTo.value);
-
-        // Валидация на клиенте
-        const fromValue = parseFloat(budgetFrom.value);
-        const toValue = parseFloat(budgetTo.value);
-
-        if (isNaN(fromValue) || isNaN(toValue)) {
-            alert('Пожалуйста, введите корректные числовые значения для бюджета');
-            return;
-        }
-
-        if (fromValue >= toValue) {
-            alert('Бюджет "до" должен быть больше бюджета "от"');
-            return;
-        }
-
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Создание...';
-
-        // Создаем FormData
-        const formData = new FormData(this);
-
-        // Логируем данные для отладки
-        console.log('Отправляемые данные:');
-        for (let [key, value] of formData.entries()) {
-            console.log(key + ': ' + value + ' (тип: ' + typeof value + ')');
-        }
-
-        // Отправляем как FormData (обычная форма)
-        fetch(this.action, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.text().then(text => {
-                    throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                window.location.href = data.redirect_url;
-            } else {
-                let errorMessage = 'Ошибка: ' + data.message;
-                if (data.errors) {
-                    errorMessage += '\n' + JSON.stringify(data.errors, null, 2);
-                }
-                alert(errorMessage);
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-plus me-2"></i>Создать заявку';
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Произошла ошибка при создании заявки: ' + error.message);
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-plus me-2"></i>Создать заявку';
-        });
+    helpGuide.addEventListener('hide.bs.collapse', function () {
+        localStorage.setItem('helpGuideExpanded', 'false');
     });
 });
 </script>

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Location extends Model
 {
@@ -35,5 +36,49 @@ class Location extends Model
     public function scopeWithoutCoordinates($query)
     {
         return $query->whereNull('latitude')->orWhereNull('longitude');
+    }
+
+    public function rentalRequests(): HasMany
+    {
+        return $this->hasMany(RentalRequest::class, 'location_id');
+    }
+
+    public function equipment(): HasMany
+    {
+        return $this->hasMany(Equipment::class, 'location_id');
+    }
+
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeForCompany($query, $companyId)
+    {
+        return $query->where('company_id', $companyId);
+    }
+
+     public function getFullAddressAttribute(): string
+    {
+        return $this->address; // Упрощаем, так как нет отдельных полей города и региона
+    }
+
+    public function getCoordinatesAttribute(): ?string
+    {
+        if ($this->latitude && $this->longitude) {
+            return "{$this->latitude}, {$this->longitude}";
+        }
+
+        return null;
+    }
+
+    public function getIsActiveAttribute(): bool
+    {
+        return true;
     }
 }

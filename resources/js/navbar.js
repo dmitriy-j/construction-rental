@@ -1,3 +1,4 @@
+// resources/js/navbar.js - ОБНОВЛЕННАЯ ВЕРСИЯ
 export function initSmartNavbar() {
   const navbar = document.querySelector('.navbar');
   if (!navbar) return;
@@ -5,15 +6,27 @@ export function initSmartNavbar() {
   let lastScrollY = window.scrollY;
   let ticking = false;
   const navbarHeight = navbar.offsetHeight;
+  let isDropdownOpen = false;
+
+  // Отслеживаем открытие/закрытие dropdown
+  document.addEventListener('show.bs.dropdown', () => {
+    isDropdownOpen = true;
+    navbar.classList.remove('navbar--hidden');
+    document.documentElement.style.setProperty('--navbar-height', `${navbarHeight}px`);
+  });
+
+  document.addEventListener('hide.bs.dropdown', () => {
+    isDropdownOpen = false;
+  });
 
   const updateNavbarState = () => {
+    if (isDropdownOpen) return; // Не скрываем навбар при открытом dropdown
+
     const scrollY = window.scrollY;
 
     // Всегда показывать навбар в верхней части страницы
     if (scrollY <= 50) {
       navbar.classList.remove('navbar--hidden', 'navbar--scrolled');
-      navbar.style.transform = 'translateY(0)';
-      navbar.style.opacity = '1';
       document.documentElement.style.setProperty('--navbar-height', `${navbarHeight}px`);
       lastScrollY = scrollY;
       ticking = false;
@@ -23,12 +36,9 @@ export function initSmartNavbar() {
     // Управление видимостью
     if (scrollY > lastScrollY && scrollY > 100) {
       navbar.classList.add('navbar--hidden');
-      navbar.style.transform = 'translateY(-100%)';
       document.documentElement.style.setProperty('--navbar-height', '0px');
     } else if (scrollY < lastScrollY) {
       navbar.classList.remove('navbar--hidden');
-      navbar.style.transform = 'translateY(0)';
-      navbar.style.opacity = '1';
       document.documentElement.style.setProperty('--navbar-height', `${navbarHeight}px`);
     }
 
@@ -44,7 +54,7 @@ export function initSmartNavbar() {
   };
 
   const onScroll = () => {
-    if (!ticking) {
+    if (!ticking && !isDropdownOpen) {
       window.requestAnimationFrame(updateNavbarState);
       ticking = true;
     }
@@ -55,8 +65,6 @@ export function initSmartNavbar() {
   window.addEventListener('scroll', () => {
     if (window.scrollY === 0) {
       navbar.classList.remove('navbar--hidden', 'navbar--scrolled');
-      navbar.style.transform = 'translateY(0)';
-      navbar.style.opacity = '1';
       document.documentElement.style.setProperty('--navbar-height', `${navbarHeight}px`);
     }
   });

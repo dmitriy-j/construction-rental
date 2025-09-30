@@ -54,6 +54,23 @@ class Category extends Model
         });
     }
 
+    public function rentalRequestItems(): HasMany
+    {
+        return $this->hasMany(RentalRequestItem::class, 'category_id');
+    }
+
+    public function rentalRequests()
+    {
+        return $this->hasManyThrough(
+            RentalRequest::class,
+            RentalRequestItem::class,
+            'category_id', // Внешний ключ в rental_request_items
+            'id', // Внешний ключ в rental_requests
+            'id', // Локальный ключ в categories
+            'rental_request_id' // Локальный ключ в rental_request_items
+        );
+    }
+
     public function getIsRootAttribute(): bool
     {
         return is_null($this->parent_id);

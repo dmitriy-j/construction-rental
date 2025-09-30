@@ -1,5 +1,123 @@
 {{-- resources/views/partials/sidebar.blade.php --}}
 @auth
+@php
+    // Безопасные счетчики
+    $unreadNotificationsCount = auth()->user()->unreadNotifications->count();
+
+    try {
+        $cartItemsCount = App\Services\CartService::getCartItemsCount(auth()->user());
+    } catch (Exception $e) {
+        $cartItemsCount = 0;
+    }
+
+    try {
+        $newProposalsCount = App\Services\ProposalManagementService::getNewProposalsCount(auth()->user());
+    } catch (Exception $e) {
+        $newProposalsCount = 0;
+    }
+
+    try {
+        $newRentalRequestsCount = \App\Services\RequestMatchingService::getNewRequestsCount(auth()->user());
+    } catch (\Exception $e) {
+        $newRentalRequestsCount = 0;
+    }
+@endphp
+
+<style>
+/* ГАРАНТИРОВАННЫЕ СТИЛИ ДЛЯ САЙДБАРА */
+#sidebarContainer {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: fixed !important;
+    top: 80px !important;
+    left: 0 !important;
+    width: 280px !important;
+    height: calc(100vh - 80px) !important;
+    z-index: 1000 !important;
+    background: #f8f9fa !important;
+    border-right: 1px solid #dee2e6 !important;
+    overflow-y: auto !important;
+    transition: width 0.3s ease !important;
+}
+
+/* Минимизированный режим */
+.sidebar-mini #sidebarContainer {
+    width: 80px !important;
+}
+
+/* Контент должен смещаться */
+.content-area {
+    margin-left: 280px !important;
+    transition: margin-left 0.3s ease !important;
+}
+
+.sidebar-mini .content-area {
+    margin-left: 80px !important;
+}
+
+/* Мобильная адаптация */
+@media (max-width: 992px) {
+    #sidebarContainer {
+        transform: translateX(-100%) !important;
+        width: 280px !important;
+    }
+
+    #sidebarContainer.mobile-open {
+        transform: translateX(0) !important;
+    }
+
+    .content-area {
+        margin-left: 0 !important;
+    }
+}
+
+/* Стили для анимации стрелки */
+.rotate-180 {
+    transform: rotate(180deg);
+    transition: transform 0.3s ease;
+}
+</style>
+
+<script>
+// ПРОСТОЙ СКРИПТ ДЛЯ МИНИМИЗАЦИИ САЙДБАРА
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebarMinify = document.getElementById('sidebarMinify');
+    if (sidebarMinify) {
+        sidebarMinify.addEventListener('click', () => {
+            const isMini = localStorage.getItem('sidebarMini') === 'true';
+            const newState = !isMini;
+            localStorage.setItem('sidebarMini', newState);
+
+            // Обновляем CSS переменные
+            document.documentElement.style.setProperty(
+                '--sidebar-width',
+                newState ? 'var(--sidebar-mini-width)' : 'var(--sidebar-width)'
+            );
+
+            // Обновляем иконку стрелки
+            const icon = sidebarMinify.querySelector('i');
+            if (newState) {
+                icon.classList.add('rotate-180');
+            } else {
+                icon.classList.remove('rotate-180');
+            }
+        });
+
+        // Восстанавливаем состояние при загрузке
+        const isMini = localStorage.getItem('sidebarMini') === 'true';
+        if (isMini) {
+            document.documentElement.style.setProperty(
+                '--sidebar-width',
+                'var(--sidebar-mini-width)'
+            );
+            const icon = sidebarMinify.querySelector('i');
+            icon.classList.add('rotate-180');
+        }
+    }
+});
+</script>
+
 <aside class="sidebar-container" id="sidebarContainer">
     <div class="user-profile-card">
         <div class="avatar-container">
@@ -99,14 +217,6 @@
                            data-tooltip="Заявки на аренду">
                             <i class="nav-icon bi bi-search-heart"></i>
                             <span class="nav-text">Заявки на аренду</span>
-                            @php
-                                 try {
-                                $newRentalRequestsCount = \App\Services\RequestMatchingService::getNewRequestsCount(auth()->user());
-                                } catch (\Exception $e) {
-                                    $newRentalRequestsCount = 0;
-                                    \Log::error('Error counting rental requests: ' . $e->getMessage());
-                                }
-                            @endphp
                             @if($newRentalRequestsCount > 0)
                                 <span class="badge bg-success rounded-pill pulse">{{ $newRentalRequestsCount }}</span>
                             @endif
@@ -129,7 +239,7 @@
                             <li>
                                 <a class="dropdown-item {{ Request::is('lessor/upds*') ? 'active' : '' }}" href="{{ route('lessor.upds.index') }}">
                                     <i class="bi bi-receipt me-2"></i> УПД
-                                    @if($pendingUpdsCount > 0)
+                                    @if(isset($pendingUpdsCount) && $pendingUpdsCount > 0)
                                         <span class="badge bg-warning float-end">{{ $pendingUpdsCount }}</span>
                                     @endif
                                 </a>
@@ -168,17 +278,6 @@
                            data-tooltip="Мои заявки">
                             <i class="nav-icon bi bi-clipboard-plus"></i>
                             <span class="nav-text">Мои заявки</span>
-                            @php
-                                // Безопасный подсчет предложений
-                                try {
-                                    $newProposalsCount = App\Services\ProposalManagementService::getNewProposalsCount(auth()->user());
-                                } catch (Exception $e) {
-                                    $newProposalsCount = 0;
-                                    // Логируем ошибку для отладки, но не показываем пользователю
-                                    \Log::warning('ProposalManagementService not available: ' . $e->getMessage());
-                                }
-                            @endphp
-
                             @if($newProposalsCount > 0)
                                 <span class="badge bg-success rounded-pill pulse">{{ $newProposalsCount }}</span>
                             @endif
@@ -189,15 +288,6 @@
                         <a class="nav-link {{ Request::is('lessee/cart*') ? 'active' : '' }}" href="{{ route('cart.index') }}" data-tooltip="Корзина">
                             <i class="nav-icon bi bi-cart"></i>
                             <span class="nav-text">Корзина</span>
-                            @php
-                                // Безопасный подсчет элементов корзины
-                                try {
-                                    $cartItemsCount = App\Services\CartService::getCartItemsCount(auth()->user());
-                                } catch (Exception $e) {
-                                    $cartItemsCount = 0;
-                                    \Log::warning('CartService not available: ' . $e->getMessage());
-                                }
-                            @endphp
                             @if($cartItemsCount > 0)
                                 <span class="badge bg-primary rounded-pill pulse">{{ $cartItemsCount }}</span>
                             @endif
@@ -241,9 +331,6 @@
                 <a class="nav-link {{ Request::is('notifications') ? 'active' : '' }}" href="{{ route('notifications') }}" data-tooltip="Уведомления">
                     <i class="nav-icon bi bi-bell"></i>
                     <span class="nav-text">Уведомления</span>
-                    @php
-                        $unreadNotificationsCount = auth()->user()->unreadNotifications->count();
-                    @endphp
                     @if($unreadNotificationsCount > 0)
                         <span class="badge bg-danger rounded-pill pulse">{{ $unreadNotificationsCount }}</span>
                     @endif
@@ -329,48 +416,169 @@
         </div>
     </div>
 </aside>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const sidebarMinify = document.getElementById('sidebarMinify');
-    if (sidebarMinify) {
-        sidebarMinify.addEventListener('click', () => {
-            const isMini = localStorage.getItem('sidebarMini') === 'true';
-            const newState = !isMini;
-            localStorage.setItem('sidebarMini', newState);
-
-            document.documentElement.style.setProperty(
-                '--sidebar-width',
-                newState ? 'var(--sidebar-mini-width)' : 'var(--sidebar-width)'
-            );
-
-            // Обновляем иконку стрелки
-            const icon = sidebarMinify.querySelector('i');
-            if (newState) {
-                icon.classList.add('rotate-180');
-            } else {
-                icon.classList.remove('rotate-180');
-            }
-        });
-
-        // Восстанавливаем состояние при загрузке
-        const isMini = localStorage.getItem('sidebarMini') === 'true';
-        if (isMini) {
-            document.documentElement.style.setProperty(
-                '--sidebar-width',
-                'var(--sidebar-mini-width)'
-            );
-            const icon = sidebarMinify.querySelector('i');
-            icon.classList.add('rotate-180');
-        }
-    }
-});
-</script>
+@endauth
 
 <style>
+/* ГАРАНТИРОВАННЫЕ СТИЛИ ДЛЯ САЙДБАРА */
+#sidebarContainer {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: fixed !important;
+    top: var(--navbar-height, 80px) !important;
+    left: 0 !important;
+    width: 280px !important;
+    height: calc(100vh - var(--navbar-height, 80px)) !important;
+    z-index: 1000 !important;
+    background: #f8f9fa !important;
+    border-right: 1px solid #dee2e6 !important;
+    overflow-y: auto !important;
+    transition: all 0.3s ease !important;
+}
+
+/* Когда навбар скрыт - сайдбар занимает всю высоту */
+.navbar--hidden ~ .main-container #sidebarContainer {
+    top: 0 !important;
+    height: 100vh !important;
+}
+
+/* Минимизированный режим */
+.sidebar-mini #sidebarContainer {
+    width: 80px !important;
+}
+
+/* Контент должен смещаться */
+.content-area {
+    margin-left: 280px !important;
+    transition: margin-left 0.3s ease !important;
+}
+
+.sidebar-mini .content-area {
+    margin-left: 80px !important;
+}
+
+/* Мобильная адаптация */
+@media (max-width: 992px) {
+    #sidebarContainer {
+        transform: translateX(-100%) !important;
+        width: 280px !important;
+        top: 0 !important;
+        height: 100vh !important;
+    }
+
+    #sidebarContainer.mobile-open {
+        transform: translateX(0) !important;
+    }
+
+    .content-area {
+        margin-left: 0 !important;
+    }
+}
+
+/* Стили для анимации стрелки */
 .rotate-180 {
     transform: rotate(180deg);
     transition: transform 0.3s ease;
 }
 </style>
-@endauth
+{{-- В конец файла sidebar.blade.php --}}
+<style>
+/* ПРИНУДИТЕЛЬНЫЕ СТИЛИ ДЛЯ СТРАНИЦЫ РЕДАКТИРОВАНИЯ */
+body.rental-request-edit-page #sidebarContainer {
+    height: calc(100vh - 80px) !important;
+    max-height: calc(100vh - 80px) !important;
+    overflow-y: auto !important;
+    position: fixed !important;
+    top: 80px !important;
+    left: 0 !important;
+    width: 280px !important;
+    z-index: 1000 !important;
+}
+
+body.rental-request-edit-page .sidebar-navigation {
+    max-height: none !important;
+    height: auto !important;
+}
+
+body.rental-request-edit-page .nav-menu {
+    display: block !important;
+    height: auto !important;
+}
+
+body.rental-request-edit-page .nav-item {
+    display: block !important;
+    height: auto !important;
+    min-height: 50px !important;
+}
+</style>
+
+<script>
+// Скрипт для добавления класса к body на странице редактирования
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.location.pathname.includes('/edit')) {
+        document.body.classList.add('rental-request-edit-page');
+        console.log('🔧 Применены стили для страницы редактирования');
+    }
+});
+</script>
+<style>
+/* ЭКСТРЕННОЕ ИСПРАВЛЕНИЕ ДЛЯ СТРАНИЦЫ РЕДАКТИРОВАНИЯ */
+body:has(#rental-request-edit-app) #sidebarContainer,
+body.rental-request-edit-page #sidebarContainer {
+    height: calc(100vh - 80px) !important;
+    max-height: calc(100vh - 80px) !important;
+    min-height: auto !important;
+    overflow-y: auto !important;
+    position: fixed !important;
+    top: 80px !important;
+    left: 0 !important;
+    width: 280px !important;
+    z-index: 1000 !important;
+    display: block !important;
+}
+
+body:has(#rental-request-edit-app) .sidebar-navigation,
+body.rental-request-edit-page .sidebar-navigation {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+body:has(#rental-request-edit-app) .nav-menu,
+body.rental-request-edit-page .nav-menu {
+    display: block !important;
+    height: auto !important;
+}
+
+body:has(#rental-request-edit-app) .nav-item,
+body.rental-request-edit-page .nav-item {
+    display: block !important;
+    height: auto !important;
+    min-height: 50px !important;
+    max-height: none !important;
+}
+</style>
+
+<script>
+// Принудительное исправление сайдбара для страницы редактирования
+document.addEventListener('DOMContentLoaded', function() {
+    const isEditPage = window.location.pathname.includes('/edit');
+    const hasVueEditApp = document.getElementById('rental-request-edit-app');
+
+    if (isEditPage || hasVueEditApp) {
+        document.body.classList.add('rental-request-edit-page');
+        console.log('🔧 Применены экстренные стили для страницы редактирования');
+
+        // Принудительно устанавливаем высоту сайдбара
+        const sidebar = document.getElementById('sidebarContainer');
+        if (sidebar) {
+            const navbar = document.querySelector('.navbar');
+            const navbarHeight = navbar ? navbar.offsetHeight : 80;
+
+            sidebar.style.height = `calc(100vh - ${navbarHeight}px)`;
+            sidebar.style.top = `${navbarHeight}px`;
+            console.log('📏 Высота сайдбара принудительно установлена');
+        }
+    }
+});
+</script>

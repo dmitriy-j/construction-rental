@@ -1,102 +1,144 @@
 <?php
-// app/Services/RentalRequestService.php
+
 namespace App\Services;
 
 use App\Models\RentalRequest;
+use App\Models\RentalRequestItem;
 use App\Models\User;
-use App\Models\Company;
 use Illuminate\Support\Facades\DB;
 
 class RentalRequestService
 {
     public function createRentalRequest(array $data, User $user): RentalRequest
     {
-        \Log::info("Service received data:", $data);
-
-        // Валидация обязательных полей
-        $requiredFields = ['title', 'description', 'category_id', 'rental_period_start',
-                        'rental_period_end', 'budget_from', 'budget_to', 'location_id'];
-
-        foreach ($requiredFields as $field) {
-            if (!isset($data[$field])) {
-                throw new \InvalidArgumentException("Missing required field: {$field}");
-            }
-        }
-
-        // Преобразование числовых полей
-        $data['budget_from'] = (float) $data['budget_from'];
-        $data['budget_to'] = (float) $data['budget_to'];
-        $data['delivery_required'] = (bool) ($data['delivery_required'] ?? false);
-
-        \Log::info("Service processed data:", $data);
-
         return DB::transaction(function () use ($data, $user) {
-            $requestData = [
-                'user_id' => $user->id,
-                'company_id' => $user->company_id,
-                'title' => $data['title'],
-                'description' => $data['description'],
-                'category_id' => $data['category_id'],
-                'desired_specifications' => $data['specifications'] ?? null,
-                'rental_period_start' => $data['rental_period_start'],
-                'rental_period_end' => $data['rental_period_end'],
-                'budget_from' => $data['budget_from'],
-                'budget_to' => $data['budget_to'],
-                'location_id' => $data['location_id'],
-                'delivery_required' => $data['delivery_required'],
-                'status' => 'active',
-                'expires_at' => now()->addDays(30)
-            ];
+            if (empty($data['items']) || !is_array($data['items'])) {
+                throw new \Exception('Заявка должна содержать хотя бы одну позицию оборудования');
+            }
 
-            \Log::info("Creating rental request with data:", $requestData);
+            $requestData = $this->prepareRequestData($data, $user);
+            $rentalRequest = RentalRequest::create($requestData);
 
-            $request = RentalRequest::create($requestData);
+            $this->createRequestItems($rentalRequest, $data['items']);
+            $rentalRequest->load('items');
+            $rentalRequest->calculateBudget();
 
-            \Log::info("Rental request created successfully", ['id' => $request->id]);
+            \Log::info('Rental request created successfully', [
+                'request_id' => $rentalRequest->id,
+                'total_budget' => $rentalRequest->total_budget,
+                'items_count' => $rentalRequest->items->count()
+            ]);
 
-            // Отправка уведомлений подходящим арендодателям
-            /*try {
-                app(RequestMatchingService::class)->notifyRelevantLessors($request);
-            } catch (\Exception $e) {
-                \Log::error("Error notifying lessors: " . $e->getMessage());
-                // Не прерываем выполнение из-за ошибки уведомлений
-            }*/
-
-            return $request;
+            return $rentalRequest->refresh();
         });
     }
 
-    public function updateRequestStatus(RentalRequest $request, string $status): void
+    private function prepareRequestData(array $data, User $user): array
     {
-        $request->update(['status' => $status]);
-
-        if ($status === 'completed') {
-            // Архивирование завершенной заявки
-            event(new RentalRequestCompleted($request));
-        }
+        return [
+            'user_id' => $user->id,
+            'company_id' => $user->company_id,
+            'title' => $data['title'],
+            'description' => $data['description'],
+            'hourly_rate' => (float) $data['hourly_rate'],
+            'rental_conditions' => $data['rental_conditions'] ?? $this->getDefaultRentalConditions(),
+            'rental_period_start' => $data['rental_period_start'],
+            'rental_period_end' => $data['rental_period_end'],
+            'location_id' => $data['location_id'],
+            'delivery_required' => $data['delivery_required'] ?? false,
+            'status' => 'active',
+            'expires_at' => now()->addDays(30),
+            // Временные значения
+            'total_budget' => 0,
+            'calculated_budget_from' => 0,
+            'calculated_budget_to' => 0,
+            'total_equipment_quantity' => 0
+        ];
     }
 
-    public function getActiveRequestsForLessor(User $lessor, array $filters = [])
+    private function createRequestItems(RentalRequest $rentalRequest, array $items): void
     {
-        $query = RentalRequest::active()
-            ->with(['category', 'location', 'user.company'])
-            ->whereDoesntHave('responses', function ($q) use ($lessor) {
-                $q->where('lessor_id', $lessor->id);
-            });
-
-        // Применение фильтров
-        if (isset($filters['category_id'])) {
-            $query->where('category_id', $filters['category_id']);
+        foreach ($items as $item) {
+            RentalRequestItem::create([
+                'rental_request_id' => $rentalRequest->id,
+                'category_id' => $item['category_id'],
+                'quantity' => $item['quantity'],
+                'hourly_rate' => $item['hourly_rate'] ?? null,
+                'use_individual_conditions' => $item['use_individual_conditions'] ?? false, // ДОБАВЛЕНО
+                'individual_conditions' => $item['individual_conditions'] ?? null,
+                'specifications' => $item['specifications'] ?? null,
+                'calculated_price' => 0
+            ]);
         }
 
-        if (isset($filters['location_id'])) {
-            $query->where('location_id', $filters['location_id']);
-        }
+        $rentalRequest->load('items');
+    }
 
-        if (isset($filters['budget_max'])) {
-            $query->where('budget_from', '<=', $filters['budget_max']);
-        }
+    private function getDefaultRentalConditions(): array
+    {
+        return [
+            'payment_type' => 'hourly',
+            'hours_per_shift' => 8,
+            'shifts_per_day' => 1,
+            'transportation_organized_by' => 'lessor',
+            'gsm_payment' => 'included',
+            'accommodation_payment' => false,
+            'extension_possibility' => true,
+            'operator_included' => false
+        ];
+    }
 
-        return $query->orderBy('created_at', 'desc')->paginate(15);
+    /**
+     * Метод для обновления бюджета существующей заявки
+     */
+    public function updateRentalRequestBudget(RentalRequest $rentalRequest): void
+    {
+        $rentalRequest->load('items');
+        $rentalRequest->calculateBudget();
+    }
+
+    public function updateRentalRequest(RentalRequest $rentalRequest, array $validatedData)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Обновление основной информации заявки
+            $rentalRequest->update([
+                'title' => $validatedData['title'],
+                'description' => $validatedData['description'],
+                'hourly_rate' => $validatedData['hourly_rate'],
+                'rental_period_start' => $validatedData['rental_period_start'],
+                'rental_period_end' => $validatedData['rental_period_end'],
+                'location_id' => $validatedData['location_id'],
+                'rental_conditions' => $validatedData['rental_conditions'] ?? [],
+                'delivery_required' => $validatedData['delivery_required'] ?? false,
+            ]);
+
+            // Удаляем существующие позиции и создаем новые
+            $rentalRequest->items()->delete();
+
+            foreach ($validatedData['items'] as $itemData) {
+                $rentalRequest->items()->create([
+                    'category_id' => $itemData['category_id'],
+                    'quantity' => $itemData['quantity'],
+                    'hourly_rate' => $itemData['hourly_rate'] ?? null,
+                    'specifications' => $itemData['specifications'] ?? [],
+                    'use_individual_conditions' => $itemData['use_individual_conditions'] ?? false,
+                    'individual_conditions' => $itemData['individual_conditions'] ?? [],
+                ]);
+            }
+
+            // Пересчитываем и сохраняем общий бюджет
+            $rentalRequest->calculateBudget();
+            $rentalRequest->save();
+
+            DB::commit();
+
+            return $rentalRequest->fresh(['items.category', 'location']);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
     }
 }

@@ -470,3 +470,196 @@ html[data-at-top="true"] .navbar {
     padding: 0 10px;
   }
 }
+
+.navbar-logo-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    color: white;
+    text-decoration: none;
+    font-family: 'Roboto', 'Arial', sans-serif;
+    padding: 0.5rem 0;
+
+    .logo-acronym {
+        font-size: 1.8rem;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.1rem;
+    }
+
+    .logo-full-name {
+        font-size: 0.75rem;
+        font-weight: 400;
+        line-height: 1.1;
+        opacity: 0.9;
+        white-space: nowrap;
+    }
+
+    &:hover {
+        color: white;
+        text-decoration: none;
+        opacity: 0.9;
+    }
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 768px) {
+    .navbar-logo-text {
+        .logo-acronym {
+            font-size: 1.5rem;
+        }
+
+        .logo-full-name {
+            font-size: 0.65rem;
+        }
+    }
+}
+
+/* Для темной темы (если используется) */
+[data-bs-theme="dark"] .navbar-logo-text {
+    color: white;
+}
+
+/* Для светлой темы */
+[data-bs-theme="light"] .navbar-logo-text {
+    color: #2c3e50;
+
+    &:hover {
+        color: #2c3e50;
+    }
+}
+
+navbar-logo-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    color: white;
+    text-decoration: none;
+    font-family: 'Roboto', 'Arial', sans-serif;
+    padding: 0.5rem 0;
+
+    .logo-acronym {
+        font-size: 1.8rem;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: 0.5px;
+    }
+
+    .logo-full-name {
+        font-size: 0.75rem;
+        font-weight: 400;
+        line-height: 1.1;
+        opacity: 0.9;
+        white-space: nowrap;
+    }
+
+    .bi-building {
+        font-size: 1.5rem;
+        opacity: 0.9;
+    }
+
+    &:hover {
+        color: white;
+        text-decoration: none;
+        opacity: 0.9;
+
+        .bi-building {
+            opacity: 1;
+        }
+    }
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 768px) {
+    .navbar-logo-text {
+        .logo-acronym {
+            font-size: 1.5rem;
+        }
+
+        .logo-full-name {
+            font-size: 0.65rem;
+        }
+
+        .bi-building {
+            font-size: 1.3rem;
+        }
+    }
+}
+
+/* Для темной темы */
+[data-bs-theme="dark"] .navbar-logo-text {
+    color: white;
+}
+
+/* Для светлой темы */
+[data-bs-theme="light"] .navbar-logo-text {
+    color: #2c3e50;
+
+    &:hover {
+        color: #2c3e50;
+    }
+}
+
+.navbar {
+  transition: all 0.3s ease-in-out;
+}
+
+.navbar--hidden {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+.navbar--scrolled {
+  /* Ваши существующие стили для проскролленного состояния */
+  backdrop-filter: blur(10px);
+  background: rgba(0, 0, 0, 0.9) !important;
+}
+
+.navbar {
+  // Гарантируем, что навбар не создает контекст для dropdown
+  transform-style: preserve-3d;
+
+  .dropdown-menu {
+    // Принудительно устанавливаем высокий z-index
+    z-index: 9999 !important;
+
+    // Гарантируем видимость даже при скрытом навбаре
+    &.show {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+    }
+  }
+}
+
+// Переопределение позиционирования для dropdown
+.user-dropdown {
+  position: relative;
+
+  .dropdown-menu {
+    position: absolute !important;
+    top: 100% !important;
+    right: 0 !important;
+    left: auto !important;
+    transform: none !important;
+    margin-top: 0.5rem !important;
+    z-index: 9999 !important;
+
+    // Гарантия видимости
+    visibility: visible !important;
+    opacity: 1 !important;
+
+    @media (max-width: 992px) {
+      position: fixed !important;
+      top: var(--navbar-height) !important;
+      left: 0 !important;
+      width: 100vw !important;
+      right: auto !important;
+    }
+  }
+}

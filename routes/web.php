@@ -7,7 +7,7 @@ use App\Http\Controllers\Admin\BankStatementController;
 use App\Http\Controllers\Admin\CompletionActController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExcelMappingController;
-use App\Http\Controllers\Admin\OrdersController;
+//use App\Http\Controllers\Admin\OrdersController;
 use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Admin\Settings\DocumentTemplateController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -30,12 +30,22 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RentalConditionController;
+use App\Http\Controllers\RentalRequestController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 
 // Главная страница
 Route::get('/', function () {
     return view('home');
 })->name('home');
+
+//Заявки
+Route::get('/requests', [RentalRequestController::class, 'index'])->name('rental-requests.index');
+Route::get('/public/rental-requests/{id}', function ($id) {
+    return view('public.rental-request-show', [
+        'rentalRequestId' => $id
+    ]);
+})->name('public.rental-requests.show');
 
 // Каталог
 Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog.index');
@@ -51,6 +61,7 @@ Route::get('/contacts', [PageController::class, 'contacts'])->name('contacts');
 // Публичные роуты новостей
 Route::get('/news', [NewsController::class, 'index'])->name('news.index');
 Route::get('/news/{news:slug}', [NewsController::class, 'show'])->name('news.show');
+
 
 // Регистрация и аутентификация
 Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
@@ -117,7 +128,7 @@ Route::prefix('lessor')
             Route::post('{order}/mark-active', [LessorOrders::class, 'markAsActive'])->name('markActive');
             Route::post('{order}/mark-completed', [LessorOrders::class, 'markAsCompleted'])->name('markCompleted');
             Route::post('{order}/handle-extension', [LessorOrders::class, 'handleExtension'])->name('handleExtension');
-            Route::post('{order}/prepare-shipment', [LessorOrderController::class, 'prepareForShipment'])->name('prepare-shipment');
+            Route::post('{order}/prepare-shipment', [LessorOrders::class, 'prepareForShipment'])->name('prepare-shipment');
             Route::post('{order}/approve', [LessorOrders::class, 'approve'])->name('approve');
             Route::post('{order}/reject', [LessorOrders::class, 'reject'])->name('reject');
             Route::post('{order}/delivery-note', [DocumentController::class, 'createDeliveryNote'])->name('createDeliveryNote');
@@ -176,22 +187,22 @@ Route::prefix('lessor')
             ->name('rental-requests.show');
 
         // Управление предложениями
-        Route::get('rental-requests/{request}/proposals/create', [\App\Http\Controllers\Lessor\RequestProposalController::class, 'create'])
+        /*Route::get('rental-requests/{request}/proposals/create', [\App\Http\Controllers\Lessor\RequestProposalController::class, 'create'])
             ->name('rental-requests.proposals.create');
 
         Route::post('rental-requests/{request}/proposals', [\App\Http\Controllers\Lessor\RequestProposalController::class, 'store'])
             ->name('rental-requests.proposals.store');
 
         Route::get('rental-requests/{request}/proposals/calculate-price/{equipment}', [\App\Http\Controllers\Lessor\RequestProposalController::class, 'calculatePrice'])
-            ->name('rental-requests.proposals.calculate-price');
+            ->name('rental-requests.proposals.calculate-price');*/
     });
 
     // API маршруты
-    Route::middleware(['auth:api'])->prefix('api')->group(function () {
+    /*Route::middleware(['auth:api'])->prefix('api')->group(function () {
         Route::apiResource('rental-requests', \App\Http\Controllers\API\RentalRequestController::class);
         Route::apiResource('rental-responses', \App\Http\Controllers\API\RentalResponseController::class);
 
-    });
+    });*/
 
 // Для арендатора
 Route::prefix('lessee')
@@ -258,6 +269,9 @@ Route::prefix('lessee')
     Route::resource('rental-requests', \App\Http\Controllers\Lessee\RentalRequestController::class)
         ->names('lessee.rental-requests');
 
+    Route::get('/rental-requests/{id}/edit', [\App\Http\Controllers\Lessee\RentalRequestController::class, 'edit'])
+        ->name('lessee.rental-requests.edit');
+
     // Управление предложениями
     Route::prefix('rental-requests/{request}/proposals')->group(function () {
         Route::post('{proposal}/accept', [\App\Http\Controllers\Lessee\RentalRequestController::class, 'acceptProposal'])
@@ -267,6 +281,39 @@ Route::prefix('lessee')
         Route::post('{proposal}/counter-offer', [\App\Http\Controllers\Lessee\RequestResponseController::class, 'counterOffer'])
             ->name('lessee.rental-requests.proposals.counter-offer');
         });
+
+        // Новый маршрут для создания локаций
+    Route::post('/locations', function (Request $request) {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'address' => 'required|string|max:255',
+            'latitude' => 'nullable|numeric',
+            'longitude' => 'nullable|numeric'
+        ]);
+
+        try {
+            $location = \App\Models\Location::create([
+                'name' => $validated['name'],
+                'address' => $validated['address'],
+                'latitude' => $validated['latitude'],
+                'longitude' => $validated['longitude'],
+                'company_id' => auth()->user()->company_id
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'location' => $location,
+                'message' => 'Локация успешно создана'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при создании локации: ' . $e->getMessage()
+            ], 500);
+        }
+    })->name('locations.store');
+
 
          // Отдельный ресурс для предложений
     Route::resource('rental-responses', \App\Http\Controllers\Lessee\RequestResponseController::class)
@@ -279,14 +326,14 @@ Route::prefix('lessee')
 Route::get('/orders/{order}/upd/{type}', [OrderController::class, 'downloadUPDF']);
 
 // Для перевозчика
-Route::middleware(['auth', 'verified', 'carrier'])->prefix('carrier')->group(function () {
+/*Route::middleware(['auth', 'verified', 'carrier'])->prefix('carrier')->group(function () {
     Route::get('/dashboard', [CarrierDashboardController::class, 'index'])->name('carrier.dashboard');
     Route::get('/orders', [CarrierOrderController::class, 'index'])->name('carrier.orders.index');
     Route::get('/orders/{order}', [CarrierOrderController::class, 'show'])->name('carrier.orders.show');
     Route::post('/orders/{order}/accept', [CarrierOrderController::class, 'accept'])->name('carrier.orders.accept');
     Route::post('/orders/{order}/complete', [CarrierOrderController::class, 'complete'])->name('carrier.orders.complete');
 });
-
+*/
 // Админ кабинет
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
@@ -301,7 +348,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/lessors/{lessor}', [AdminLessorController::class, 'show'])->name('admin.lessors.show');
     Route::get('/lessors/{lessor}/orders/{order}', [AdminLessorController::class, 'showOrder'])->name('admin.lessors.orders.show');
     Route::put('/equipment/{equipment}', [AdminEquipmentController::class, 'update'])->name('admin.equipment.update');
-    Route::resource('orders', OrdersController::class)->names([
+    /*Route::resource('orders', OrdersController::class)->names([
         'index' => 'admin.orders.index',
         'create' => 'admin.orders.create',
         'store' => 'admin.orders.store',
@@ -309,8 +356,8 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
         'edit' => 'admin.orders.edit',
         'update' => 'admin.orders.update',
         'destroy' => 'admin.orders.destroy',
-    ]);
-    Route::resource('news', \App\Http\Controllers\Admin\AdminNewsController::class)->names([
+    ]);*/
+   Route::resource('news', \App\Http\Controllers\Admin\AdminNewsController::class)->names([
         'index' => 'admin.news.index',
         'create' => 'admin.news.create',
         'store' => 'admin.news.store',
@@ -424,7 +471,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     });
 
     // Акты сверок
-    Route::prefix('reconciliation-acts')->name('admin.reconciliation-acts.')->group(function () {
+    /*Route::prefix('reconciliation-acts')->name('admin.reconciliation-acts.')->group(function () {
         Route::get('/', [ReconciliationActController::class, 'index'])->name('index');
         Route::get('/create', [ReconciliationActController::class, 'create'])->name('create');
         Route::post('/', [ReconciliationActController::class, 'store'])->name('store');
@@ -432,7 +479,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
         Route::post('/{reconciliationAct}/confirm', [ReconciliationActController::class, 'confirm'])->name('confirm');
         Route::get('/{reconciliationAct}/download', [ReconciliationActController::class, 'download'])->name('download');
         Route::delete('/{reconciliationAct}', [ReconciliationActController::class, 'destroy'])->name('destroy');
-    });
+    });*/
 });
 
 // Профиль пользователя
@@ -451,5 +498,41 @@ Route::middleware('auth')->group(function () {
     // Добавьте этот отдельный маршрут для совместимости со старым кодом
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications');
 });
+
+
+// Временный маршрут для проверки данных
+Route::get('/debug/rental-requests-data', function () {
+    $user = auth()->user();
+
+    if (!$user) {
+        return response()->json(['error' => 'Не авторизован']);
+    }
+
+    $requests = \App\Models\RentalRequest::with(['items.category'])
+        ->where('user_id', $user->id)
+        ->get();
+
+    return response()->json([
+        'user' => $user->email,
+        'user_id' => $user->id,
+        'requests_count' => $requests->count(),
+        'requests' => $requests->map(function($request) {
+            return [
+                'id' => $request->id,
+                'title' => $request->title,
+                'status' => $request->status,
+                'items_count' => $request->items->count(),
+                'items' => $request->items->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'category_id' => $item->category_id,
+                        'category' => $item->category ? $item->category->name : 'NULL'
+                    ];
+                })
+            ];
+        })
+    ]);
+})->middleware(['auth']);
+
 
 require __DIR__.'/auth.php';

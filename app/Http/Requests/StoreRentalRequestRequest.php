@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use App\Rules\BudgetComparison;
 
 class StoreRentalRequestRequest extends FormRequest
 {
@@ -17,67 +16,59 @@ class StoreRentalRequestRequest extends FormRequest
         return [
             'title' => 'required|string|max:255',
             'description' => 'required|string|min:50',
-            'category_id' => 'required|exists:equipment_categories,id',
+            'hourly_rate' => 'required|numeric|min:0', // Базовая стоимость
             'rental_period_start' => 'required|date|after:today',
             'rental_period_end' => 'required|date|after:rental_period_start',
-            'budget_from' => 'required|numeric|min:0',
-            'budget_to' => 'required|numeric', // Убрали min:budget_from
             'location_id' => 'required|exists:locations,id',
-            'delivery_required' => 'boolean',
-            'specifications' => 'nullable|string' // ИЗМЕНИЛИ array на string
-        ];
-    }
+            'delivery_required' => 'sometimes',
 
-    public function withValidator($validator)
-    {
-        $validator->after(function ($validator) {
-            // Кастомная проверка сравнения бюджетов
-            if ($this->budget_to <= $this->budget_from) {
-                $validator->errors()->add(
-                    'budget_to',
-                    'Поле "Бюджет до" должно быть больше поля "Бюджет от".'
-                );
-            }
-        });
+            // Позиции заявки
+            'items' => 'required|array|min:1',
+            'items.*.category_id' => 'required|exists:equipment_categories,id',
+            'items.*.quantity' => 'required|integer|min:1|max:1000',
+            'items.*.hourly_rate' => 'sometimes|numeric|min:0',
+            'items.*.specifications' => 'sometimes|array',
+            'items.*.individual_conditions' => 'sometimes|array',
+            'items.*.use_individual_conditions' => 'sometimes|boolean',
+
+            // Условия аренды
+            'rental_conditions' => 'sometimes|array',
+            'rental_conditions.payment_type' => 'sometimes|in:hourly,shift,daily',
+            'rental_conditions.hours_per_shift' => 'sometimes|integer|min:1|max:24',
+            'rental_conditions.shifts_per_day' => 'sometimes|integer|min:1|max:3',
+            'rental_conditions.transportation_organized_by' => 'sometimes|in:lessor,lessee',
+            'rental_conditions.gsm_payment' => 'sometimes|in:included,separate',
+            'rental_conditions.accommodation_payment' => 'sometimes|boolean',
+            'rental_conditions.extension_possibility' => 'sometimes|boolean',
+            'rental_conditions.operator_included' => 'sometimes|boolean',
+        ];
     }
 
     public function prepareForValidation()
     {
-        \Log::info('Raw request data:', $this->all());
+        // Преобразуем все чекбоксы в boolean
+        $deliveryRequired = $this->has('delivery_required') &&
+                        in_array($this->input('delivery_required'), ['true', '1', 'on'], true);
+
+        // Обрабатываем чекбоксы в rental_conditions
+        $rentalConditions = $this->input('rental_conditions', []);
+        $checkboxes = ['operator_included', 'accommodation_payment', 'extension_possibility'];
+
+        foreach ($checkboxes as $checkbox) {
+            if (isset($rentalConditions[$checkbox])) {
+                $rentalConditions[$checkbox] = in_array($rentalConditions[$checkbox], ['true', '1', 'on'], true);
+            }
+        }
 
         $this->merge([
-            'budget_from' => $this->normalizeNumber($this->budget_from),
-            'budget_to' => $this->normalizeNumber($this->budget_to),
-            'delivery_required' => $this->boolean('delivery_required'),
-            // УБИРАЕМ преобразование specifications в массив
+            'hourly_rate' => (float) str_replace(',', '.', $this->hourly_rate),
+            'delivery_required' => $deliveryRequired,
+            'rental_conditions' => $rentalConditions,
         ]);
 
-        \Log::info('Processed request data:', [
-            'budget_from' => $this->budget_from,
-            'budget_to' => $this->budget_to,
-            'delivery_required' => $this->delivery_required,
-            'specifications' => $this->specifications // Оставляем как строку
+        \Log::debug('After prepareForValidation:', [
+            'delivery_required' => $deliveryRequired,
+            'rental_conditions' => $rentalConditions
         ]);
-    }
-
-    private function normalizeNumber($value)
-    {
-        if ($value === null || $value === '') {
-            return 0;
-        }
-
-        if (is_numeric($value)) {
-            return (float) $value;
-        }
-
-        $value = (string) $value;
-        $value = str_replace([' ', ','], ['', '.'], $value);
-        $value = preg_replace('/[^\d\.\-]/', '', $value);
-
-        if ($value === '' || $value === '-') {
-            return 0;
-        }
-
-        return is_numeric($value) ? (float) $value : 0;
     }
 }

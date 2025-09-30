@@ -1,198 +1,137 @@
-import Swal from 'sweetalert2';
-window.Swal = Swal;
-
+import { createApp } from 'vue';
+import RentalRequests from '/resources/js/Views/RentalRequests.vue';
+import PublicRentalRequestShow from './Views/PublicRentalRequestShow.vue';
 import { initRipple } from './ripple';
 import { initTheme } from './theme';
-import { initSidebar } from './sidebar';
 import { initSmartNavbar } from './navbar';
 import Chart from 'chart.js/auto';
+import './bootstrap';
+import Alpine from 'alpinejs';
 
-// Функция для инициализации каталога
-function initCatalog() {
-  document.addEventListener('change', function(e) {
-    if (e.target.classList.contains('delivery-toggle')) {
-      const termId = e.target.dataset.termId;
-      const block = document.getElementById(`deliveryFields_${termId}`);
-      if (block) block.style.display = e.target.checked ? 'block' : 'none';
-    }
+window.Alpine = Alpine;
+Alpine.start();
+window.Chart = Chart;
 
-    if (e.target.classList.contains('use-default-conditions')) {
-      const termId = e.target.dataset.termId;
-      const block = document.getElementById(`custom-conditions_${termId}`);
-      if (block) block.style.display = e.target.checked ? 'none' : 'block';
-    }
-  });
-}
+console.log('🟢 app.js - УПРОЩЕННАЯ ВЕРСИЯ С АДАПТИВНЫМ САЙДБАРОМ');
 
-// Функция для инициализации корзины
-function initCart() {
-  console.log('Cart initialization started');
-
-  // Функция для получения выбранных элементов
-  const getSelectedItems = () => {
-    return Array.from(document.querySelectorAll('.item-checkbox:checked'))
-      .map(el => el.value);
-  };
-
-  // Инициализация "Выбрать все"
-  const selectAll = document.getElementById('select-all');
-  if (selectAll) {
-    selectAll.addEventListener('change', function() {
-      const checkboxes = document.querySelectorAll('.item-checkbox');
-      checkboxes.forEach(checkbox => {
-        checkbox.checked = this.checked;
-      });
-    });
-  }
-
-  // Инициализация кнопки удаления с SweetAlert
-  const removeSelectedBtn = document.getElementById('remove-selected');
-  if (removeSelectedBtn) {
-    removeSelectedBtn.addEventListener('click', async function() {
-      const selected = getSelectedItems();
-      if (selected.length === 0) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Ошибка',
-          text: 'Выберите хотя бы один элемент',
-        });
+// Функция для инициализации адаптивного сайдбара
+function initStableSidebar() {
+    const sidebar = document.getElementById('sidebarContainer');
+    if (!sidebar) {
+        console.log('❌ Сайдбар не найден на этой странице');
         return;
-      }
-
-      // Подтверждение через SweetAlert
-      const result = await Swal.fire({
-        title: 'Вы уверены?',
-        text: `Вы собираетесь удалить ${selected.length} выбранных позиций`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Да',
-        cancelButtonText: 'Отмена'
-      });
-
-      if (result.isConfirmed) {
-        try {
-          const response = await fetch(document.getElementById('cart-data').dataset.removeSelectedRoute, {
-            method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify({ items: selected })
-          });
-
-          const data = await response.json();
-
-          if (response.ok) {
-            Swal.fire({
-              icon: 'success',
-              title: 'Успешно!',
-              text: data.message || 'Позиции успешно удалены',
-            }).then(() => {
-              location.reload(); // Перезагружаем страницу
-            });
-          } else {
-            throw new Error(data.message || 'Ошибка при удалении');
-          }
-        } catch (error) {
-          Swal.fire({
-            icon: 'error',
-            title: 'Ошибка',
-            text: error.message || 'Не удалось удалить позиции',
-          });
-        }
-      }
-    });
-  }
-
-  // Инициализация popovers
-  const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
-  popoverTriggerList.forEach(popoverTriggerEl => {
-    if (typeof bootstrap !== 'undefined' && bootstrap.Popover) {
-      const content = `
-        <div><strong>От:</strong> ${popoverTriggerEl.dataset.deliveryFrom || 'N/A'}</div>
-        <div><strong>До:</strong> ${popoverTriggerEl.dataset.deliveryTo || 'N/A'}</div>
-        <div class="mt-2"><strong>Стоимость:</strong> ${popoverTriggerEl.dataset.deliveryCost || '0'} ₽</div>
-      `;
-
-      new bootstrap.Popover(popoverTriggerEl, {
-        html: true,
-        trigger: 'hover focus',
-        title: 'Детали доставки',
-        content: content
-      });
     }
-  });
 
-  console.log('Cart initialization complete');
+    console.log('✅ Инициализация адаптивного сайдбара');
+
+    // Функция для обновления высоты сайдбара при изменении состояния навбара
+    function updateSidebarHeight() {
+        const navbar = document.querySelector('.navbar');
+        const isNavbarHidden = document.body.classList.contains('navbar--hidden');
+
+        if (isNavbarHidden) {
+            // Навбар скрыт - сайдбар на всю высоту
+            sidebar.style.top = '0';
+            sidebar.style.height = '100vh';
+        } else {
+            // Навбар виден - учитываем его высоту
+            const navbarHeight = navbar ? navbar.offsetHeight : 80;
+            sidebar.style.top = `${navbarHeight}px`;
+            sidebar.style.height = `calc(100vh - ${navbarHeight}px)`;
+        }
+    }
+
+    // Минимизация сайдбара
+    const minifyBtn = document.getElementById('sidebarMinify');
+    if (minifyBtn) {
+        function updateMinifyIcon(isMini) {
+            const icon = minifyBtn.querySelector('i');
+            if (icon) {
+                icon.style.transition = 'transform 0.3s ease';
+                icon.style.transform = isMini ? 'rotate(180deg)' : 'rotate(0deg)';
+            }
+        }
+
+        const isMini = localStorage.getItem('sidebarMini') === 'true';
+        if (isMini) {
+            document.body.classList.add('sidebar-mini');
+            updateMinifyIcon(true);
+        }
+
+        minifyBtn.addEventListener('click', () => {
+            const isNowMini = !document.body.classList.contains('sidebar-mini');
+            document.body.classList.toggle('sidebar-mini', isNowMini);
+            localStorage.setItem('sidebarMini', isNowMini);
+            updateMinifyIcon(isNowMini);
+        });
+    }
+
+    // Слушаем изменения состояния навбара
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.attributeName === 'class') {
+                updateSidebarHeight();
+            }
+        });
+    });
+
+    // Начинаем наблюдать за body на предмет изменения классов
+    observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['class']
+    });
+
+    // Также обновляем при ресайзе окна
+    window.addEventListener('resize', updateSidebarHeight);
+
+    // Изначальная настройка высоты
+    updateSidebarHeight();
+
+    console.log('🎉 Адаптивный сайдбар инициализирован');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOMContentLoaded');
+// УМНАЯ ИНИЦИАЛИЗАЦИЯ: проверяем, нужно ли монтировать Vue приложения
+function initializePageSpecificApps() {
+    const path = window.location.pathname;
+    console.log('🎯 Текущий путь:', path);
 
-  initRipple();
-  initTheme();
-  initSmartNavbar();
+    // ТОЛЬКО для страниц создания и просмотра заявок пропускаем Blade сайдбар
+    // Страница редактирования ДОЛЖНА использовать Blade сайдбар
+    const vueOnlyPages = [
+        '/rental-requests/create',
+        '/rental-requests/show' // если есть отдельная страница просмотра
+    ];
 
+    const shouldSkipSidebar = vueOnlyPages.some(vuePath => path.includes(vuePath));
 
- // Инициализируем сайдбар после полной загрузки страницы
-  window.addEventListener('load', () => {
-    initSidebar();
+    if (shouldSkipSidebar) {
+        console.log('⏭️ Vue-страница - пропускаем Blade сайдбар');
+        return;
+    }
 
-    // Пересчет высоты при изменении контента
-    new MutationObserver(initSidebar).observe(
-      document.body,
-      { childList: true, subtree: true }
-    );
-  });
+    // На ВСЕХ остальных страницах, включая редактирование, инициализируем сайдбар
+    console.log('✅ Инициализируем Blade сайдбар для:', path);
+    initStableSidebar();
+}
 
-  if (document.querySelector('.catalog-show-page')) {
-    console.log('Initializing catalog');
-    initCatalog();
-  }
-
-  if (document.getElementById('cart-data')) {
-    console.log('Initializing cart');
-    initCart();
-  }
+window.addEventListener('load', () => {
+    console.log('📦 Window loaded - завершено');
 });
 
+const rentalRequestsApp = createApp({});
+rentalRequestsApp.component('rental-requests', RentalRequests);
 
-// Добавьте в конец файла
-function protectSidebarIcons() {
-  const sidebar = document.getElementById('sidebarContainer');
-  if (!sidebar) return;
-
-  // Замораживаем стили иконок
-  const icons = sidebar.querySelectorAll('.nav-icon');
-  icons.forEach(icon => {
-    const originalSize = {
-      width: icon.offsetWidth,
-      height: icon.offsetHeight,
-      fontSize: window.getComputedStyle(icon).fontSize
-    };
-
-    // Защита от изменений
-    const observer = new MutationObserver(() => {
-      if (icon.offsetWidth !== originalSize.width ||
-          icon.offsetHeight !== originalSize.height) {
-        icon.style.width = `${originalSize.width}px`;
-        icon.style.height = `${originalSize.height}px`;
-        icon.style.fontSize = originalSize.fontSize;
-      }
-    });
-
-    observer.observe(icon, {
-      attributes: true,
-      attributeFilter: ['style', 'class']
-    });
-  });
+// Монтируем приложение только если на странице есть соответствующий элемент
+if (document.getElementById('rental-requests-app')) {
+    rentalRequestsApp.mount('#rental-requests-app');
 }
 
-// Инициализируем при загрузке и после изменений DOM
-document.addEventListener('DOMContentLoaded', protectSidebarIcons);
-const sidebarObserver = new MutationObserver(protectSidebarIcons);
-sidebarObserver.observe(document.body, { childList: true, subtree: true });
-window.Chart = Chart;
+// Регистрируем компонент для публичной страницы заявки
+const publicRentalRequestShowApp = createApp({});
+publicRentalRequestShowApp.component('public-rental-request-show', PublicRentalRequestShow);
+
+// Монтируем приложение только если на странице есть соответствующий элемент
+if (document.getElementById('public-rental-request-show-app')) {
+    publicRentalRequestShowApp.mount('#public-rental-request-show-app');
+    console.log('✅ Public Rental Request Show App mounted');
+}

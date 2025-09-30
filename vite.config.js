@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
+import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
     plugins: [
@@ -10,24 +11,31 @@ export default defineConfig({
                 'resources/sass/footer.scss',
                 'resources/sass/navbar.scss',
                 'resources/js/app.js',
-                'resources/js/sidebar.js',
+                'resources/js/components/SidebarComponent.js',
+                'resources/js/stores/sidebarStore.js',
                 'resources/js/theme.js',
                 'resources/js/ripple.js',
                 'resources/js/cart/index.js',
                 'resources/js/navbar.js',
-                'resources/js/document-editor.js',
+                'resources/js/pages/rental-request-create.js', // Добавляем новую точку входа
+                'resources/js/pages/rental-request-show.js',
+                'resources/js/pages/rental-request-edit.js',
+                'resources/js/pages/rental-requests.js',
+
             ],
             refresh: true,
         }),
+        vue(),
     ],
-    build: {
-        rollupOptions: {
-            output: {
-                manualChunks: {
-                    bootstrap: ['bootstrap']
-                    // Удалите sweetalert из manualChunks
-                }
-            }
-        }
-    }
+    resolve: {
+        alias: {
+            '@': '/resources/js',
+            'vue': 'vue/dist/vue.esm-bundler.js'
+        },
+    },
+    server: {
+        hmr: {
+            host: 'localhost',
+        },
+    },
 });

@@ -434,6 +434,27 @@ body.auth-layout {
     background-color: #6c757d !important;
 }
 
+// Гарантированные стили для автономного сайдбара
+body.sidebar-mini {
+    --sidebar-width: 80px;
+}
+
+body:not(.sidebar-mini) {
+    --sidebar-width: 280px;
+}
+
+// Принудительные стили для контента
+.content-area {
+    margin-left: var(--sidebar-width) !important;
+    transition: margin-left 0.3s ease !important;
+}
+
+// Мобильная адаптация
+@media (max-width: 992px) {
+    .content-area {
+        margin-left: 0 !important;
+    }
+}
 // =====================
 // Импорт компонентов
 // =====================
