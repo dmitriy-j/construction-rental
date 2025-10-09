@@ -28,26 +28,69 @@
         <div class="row mt-4">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header bg-warning bg-opacity-10">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-star me-2 text-warning"></i>Рекомендуемые заявки
-                        </h5>
-                    </div>
+                    <!-- ... остальной HTML ... -->
                     <div class="card-body">
-                        <rental-request-list
-                            :requests="{{ json_encode($recommendedRequests->items()) }}"
-                            :pagination="{{ json_encode($recommendedRequests->toArray()) }}"
-                            :can-respond="true"
-                            @respond="handleRespond"
-                            @page-changed="handlePageChanged"
-                        ></rental-request-list>
+                        @if(method_exists($recommendedRequests, 'items'))
+                            <rental-request-list
+                                :requests="{{ json_encode($recommendedRequests->items()) }}"
+                                :pagination="{{ json_encode($recommendedRequests->toArray()) }}"
+                                :can-respond="true"
+                                @respond="handleRespond"
+                                @page-changed="handlePageChanged"
+                            ></rental-request-list>
+                        @else
+                            <rental-request-list
+                                :requests="{{ json_encode($recommendedRequests) }}"
+                                :pagination="{{ json_encode([]) }}"
+                                :can-respond="true"
+                                @respond="handleRespond"
+                                @page-changed="handlePageChanged"
+                            ></rental-request-list>
+                        @endif
                     </div>
                 </div>
             </div>
         </div>
     @endif
 
-    {{-- Все заявки --}}
+    {{-- Временный код для проверки --}}
+<div class="container">
+    <h1>Тест: Найдено заявок (коллекция)</h1>
+    <p>{{ $rentalRequests->count() }}</p>
+
+    <h1>Тест: Найдено заявок (пагинатор)</h1>
+    <p>{{ $rentalRequests->total() }}</p>
+
+    <hr>
+    <h2>Содержимое первой заявки (дамп):</h2>
+    @if($rentalRequests->count() > 0)
+        <pre>{{ print_r($rentalRequests->first()->toArray(), true) }}</pre>
+    @else
+        <p>Нет заявок для отображения.</p>
+    @endif
+</div>
+
+<div class="row">
+    @foreach ($rentalRequests->items() as $request)
+        <div class="col-12 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ $request->title }}</h5>
+                    <p class="card-text">{{ $request->description }}</p>
+                    <p class="card-text"><small class="text-muted">Бюджет: {{ $request->total_budget }} руб.</small></p>
+                </div>
+            </div>
+        </div>
+    @endforeach
+</div>
+
+{{-- Упрощенный вывод через Vue
+<rental-request-list
+    :requests="{{ json_encode($rentalRequests->items()) }}"
+    :can-respond="true"
+>
+</rental-request-list>
+    {{-- Все заявки
     <div class="row mt-4">
         <div class="col-12">
             <div class="card">
@@ -63,7 +106,7 @@
                         @respond="handleRespond"
                         @page-changed="handlePageChanged"
                         @reset-filters="handleResetFilters"
-                    ></rental-request-list>
+                    ></rental-request-list>--}}
                 </div>
             </div>
         </div>

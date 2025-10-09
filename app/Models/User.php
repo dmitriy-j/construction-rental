@@ -107,12 +107,12 @@ class User extends Authenticatable
 
     public function isLessee(): bool
     {
-        return $this->company->is_lessee;
+        return $this->company && $this->company->is_lessee;
     }
 
     public function isLessor(): bool
     {
-        return $this->company->is_lessor;
+        return $this->company && $this->company->is_lessor;
     }
 
     public function isAdmin(): bool

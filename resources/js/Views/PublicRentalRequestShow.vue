@@ -1,269 +1,284 @@
 <template>
-    <div class="public-rental-request-show" v-if="request">
-        <!-- Заголовок и навигация -->
-        <div class="container-fluid px-4">
-            <div class="row">
-                <div class="col-12">
-                    <div class="page-header d-flex justify-content-between align-items-center mb-4">
-                        <h1 class="page-title">Публичная заявка: {{ request.title }}</h1>
-                        <div>
-                            <a href="/rental-requests" class="btn btn-outline-secondary me-2">
-                                <i class="fas fa-arrow-left me-2"></i>Назад к списку
-                            </a>
-                            <button v-if="isAuthenticatedLessor && canMakeProposal"
-                                    class="btn btn-primary"
-                                    @click="showProposalModal">
-                                <i class="fas fa-paper-plane me-2"></i>Предложить технику
-                            </button>
+    <div class="public-rental-request-show">
+        <div v-if="request && !loading && !error">
+            <div class="container-fluid px-4">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="page-header d-flex justify-content-between align-items-center mb-4">
+                            <h1 class="page-title">Публичная заявка: {{ request.title }}</h1>
+                            <div>
+                                <a href="/requests" class="btn btn-outline-secondary me-2">
+                                    <i class="fas fa-arrow-left me-2"></i>Назад к списку
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Статус и метрики -->
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="public-stats-card card">
-                        <div class="card-body">
-                            <div class="stats-grid">
-                                <div class="stat-item">
-                                    <div class="stat-value">{{ summary.total_items }}</div>
-                                    <div class="stat-label">Позиций</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-value">{{ summary.total_quantity }}</div>
-                                    <div class="stat-label">Единиц техники</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-value">{{ summary.categories_count }}</div>
-                                    <div class="stat-label">Категорий</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-value">{{ request.active_proposals_count || 0 }}</div>
-                                    <div class="stat-label">Предложений</div>
+                <!-- Статус и метрики -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="public-stats-card card">
+                            <div class="card-body">
+                                <div class="stats-grid">
+                                    <div class="stat-item">
+                                        <div class="stat-value">{{ summary.total_items }}</div>
+                                        <div class="stat-label">Позиций</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-value">{{ summary.total_quantity }}</div>
+                                        <div class="stat-label">Единиц техники</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-value">{{ summary.categories_count }}</div>
+                                        <div class="stat-label">Категорий</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-value">{{ request.active_proposals_count || 0 }}</div>
+                                        <div class="stat-label">Предложений</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="row">
-                <!-- Основная информация -->
-                <div class="col-lg-8">
-                    <!-- Карточка основной информации -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-info-circle me-2"></i>Основная информация
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="info-item mb-3">
-                                        <label class="text-muted small">Описание проекта</label>
-                                        <p class="mb-0">{{ request.description }}</p>
+                <div class="row">
+                    <div class="col-lg-8">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>Основная информация
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="info-item mb-3">
+                                            <label class="text-muted small">Описание проекта</label>
+                                            <p class="mb-0">{{ request.description }}</p>
+                                        </div>
+                                        <div class="info-item mb-3">
+                                            <label class="text-muted small">Локация объекта</label>
+                                            <p class="mb-0">
+                                                <i class="fas fa-map-marker-alt text-danger me-2"></i>
+                                                {{ request.location?.name || 'Не указана' }}
+                                                <br>
+                                                <small class="text-muted">{{ request.location?.address || '' }}</small>
+                                            </p>
+                                        </div>
                                     </div>
 
-                                    <div class="info-item mb-3">
-                                        <label class="text-muted small">Локация объекта</label>
-                                        <p class="mb-0">
-                                            <i class="fas fa-map-marker-alt text-danger me-2"></i>
-                                            {{ request.location?.name || 'Не указана' }}
-                                            <br>
-                                            <small class="text-muted">{{ request.location?.address || '' }}</small>
-                                        </p>
-                                    </div>
-                                </div>
+                                    <div class="col-md-6">
+                                        <div class="info-item mb-3">
+                                            <label class="text-muted small">Период аренды</label>
+                                            <p class="mb-0">
+                                                <i class="fas fa-calendar-alt text-primary me-2"></i>
+                                                {{ request.rental_period_display || 'Период не указан' }}
+                                                <br>
+                                                <small class="text-muted" v-if="request.rental_days">
+                                                    {{ request.rental_days }} дней
+                                                </small>
+                                            </p>
+                                        </div>
 
-                                <div class="col-md-6">
-                                    <div class="info-item mb-3">
-                                        <label class="text-muted small">Период аренды</label>
-                                        <p class="mb-0">
-                                            <i class="fas fa-calendar-alt text-primary me-2"></i>
-                                            {{ request.rental_period_display || 'Период не указан' }}
-                                            <br>
-                                            <small class="text-muted" v-if="request.rental_days">
-                                                {{ request.rental_days }} дней
-                                            </small>
-                                        </p>
-                                    </div>
+                                        <div class="info-item mb-3" v-if="isAuthenticatedLessor && request.lessor_pricing">
+                                            <label class="text-muted small">Бюджет для вас</label>
+                                            <p class="mb-0 fs-5 text-success fw-bold">
+                                                {{ formatCurrency(request.lessor_pricing.total_lessor_budget || 0) }}
+                                            </p>
+                                            <div class="pricing-details mt-2">
+                                                <div v-for="item in request.lessor_pricing.items" :key="item.item_id"
+                                                     class="price-item small text-muted mb-1">
+                                                    <strong>{{ item.category_name }}</strong>:
+                                                    {{ item.quantity }} шт. × {{ formatCurrency(item.lessor_price) }}/час
+                                                </div>
+                                            </div>
+                                            <div class="rental-info small text-muted mt-2">
+                                                <i class="fas fa-clock me-1"></i>
+                                                {{ request.lessor_pricing.working_hours }} часов
+                                                ({{ request.lessor_pricing.rental_days }} дней)
+                                            </div>
+                                        </div>
 
-                                    <!-- Бюджет только для арендодателей -->
-                                    <div class="info-item mb-3" v-if="isAuthenticatedLessor">
-                                        <label class="text-muted small">Бюджет заявки</label>
-                                        <p class="mb-0 fs-5 text-success fw-bold">
-                                            {{ formatCurrency(request.total_budget || 0) }}
-                                        </p>
-                                        <small class="text-muted">
-                                            Ставка: до {{ formatCurrency(request.max_hourly_rate || request.hourly_rate || 0) }}/час
-                                        </small>
-                                    </div>
+                                        <div class="info-item mb-3" v-else-if="isAuthenticatedLessor">
+                                            <label class="text-muted small">Бюджет</label>
+                                            <p class="mb-0 text-muted">
+                                                <i class="fas fa-info-circle me-2"></i>
+                                                Бюджет загружается...
+                                            </p>
+                                        </div>
 
-                                    <div class="info-item mb-3" v-else>
-                                        <label class="text-muted small">Бюджет</label>
-                                        <p class="mb-0 text-muted">
-                                            <i class="fas fa-lock me-2"></i>
-                                            Войдите как арендодатель для просмотра бюджета
-                                        </p>
+                                        <div class="info-item mb-3" v-else>
+                                            <label class="text-muted small">Бюджет</label>
+                                            <p class="mb-0 text-muted">
+                                                <i class="fas fa-lock me-2"></i>
+                                                Войдите как арендодатель для просмотра бюджета
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Условия аренды -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-clipboard-list me-2"></i>Условия аренды
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <PublicRentalConditionsDisplay
-                                :conditions="request.rental_conditions"
-                                :show-full="isAuthenticatedLessor"
-                            />
-                        </div>
-                    </div>
-
-                    <!-- Технические требования -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h5 class="card-title mb-0">
-                                <i class="fas fa-cogs me-2"></i>Технические требования
-                                <span class="badge bg-primary ms-2">{{ groupedByCategory.length }} категорий</span>
-                            </h5>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="categories-list">
-                                <!-- Используем упрощенный вариант с CategoryGroup -->
-                                <PublicCategoryGroup
-                                    v-for="category in groupedByCategory"
-                                    :key="category.category_id"
-                                    :category="category"
-                                    :initially-expanded="true"
+                        <!-- Условия аренды -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-clipboard-list me-2"></i>Условия аренды
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <PublicRentalConditionsDisplay
+                                    :conditions="request.rental_conditions"
+                                    :show-full="isAuthenticatedLessor"
                                 />
                             </div>
                         </div>
+
+                         <!-- Технические требования -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-cogs me-2"></i>Технические требования
+                                    <span class="badge bg-primary ms-2">{{ request.grouped_items?.length || 0 }} категорий</span>
+                                </h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="categories-list">
+                                    <!-- 🔥 ИСПОЛЬЗУЕМ ГРУППИРОВКУ ИЗ КОНТРОЛЛЕРА -->
+                                    <PublicCategoryGroup
+                                        v-for="category in request.grouped_items"
+                                        :key="category.category_name"
+                                        :category="category"
+                                        :initially-expanded="true"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Боковая панель -->
+                    <div class="col-lg-4">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">Статус заявки</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <span class="badge me-2" :class="getStatusBadgeClass(request.status)">
+                                        {{ getStatusDisplayText(request.status) }}
+                                    </span>
+                                    <small class="text-muted">
+                                        Опубликована {{ formatDate(request.created_at) }}
+                                    </small>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-eye me-1"></i>
+                                        {{ request.views_count || 0 }} просмотров
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Действия для арендодателя -->
+                        <div class="card mb-4" v-if="isAuthenticatedLessor">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">Ваши действия</h6>
+                            </div>
+                            <div class="card-body">
+                                <button class="btn btn-primary w-100 mb-2"
+                                        @click="openProposalModal"
+                                        :disabled="!canMakeProposal">
+                                    <i class="fas fa-paper-plane me-2"></i>
+                                    Предложить технику
+                                </button>
+
+                                <button class="btn btn-outline-secondary w-100"
+                                        @click="addToFavorites">
+                                    <i class="fas fa-star me-2"></i>
+                                    В избранное
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Призыв к действию для гостей -->
+                        <div class="card mb-4" v-else>
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">Хотите предложить технику?</h6>
+                            </div>
+                            <div class="card-body text-center">
+                                <p class="small text-muted mb-3">
+                                    Зарегистрируйтесь как арендодатель для доступа к полной информации и возможности делать предложения
+                                </p>
+                                <a href="/register?type=lessor" class="btn btn-primary w-100 mb-2">
+                                    Зарегистрироваться
+                                </a>
+                                <a href="/login" class="btn btn-outline-primary w-100">
+                                    Войти
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Контактная информация (только для арендодателей) -->
+                        <div class="card" v-if="isAuthenticatedLessor && request.company">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">Контактная информация</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="contact-info">
+                                    <p class="mb-2">
+                                        <strong>{{ request.company.legal_name }}</strong>
+                                    </p>
+                                    <p class="small text-muted mb-1">
+                                        <i class="fas fa-user me-2"></i>
+                                        {{ request.user?.name || 'Контактное лицо' }}
+                                    </p>
+                                    <p class="small text-muted mb-0">
+                                        <i class="fas fa-map-marker-alt me-2"></i>
+                                        {{ request.company.legal_address }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Боковая панель -->
-                <div class="col-lg-4">
-                    <!-- Статус заявки -->
-                    <div class="card mb-4">
-                        <div class="card-header">
-                            <h6 class="card-title mb-0">Статус заявки</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <span class="badge me-2" :class="getStatusBadgeClass(request.status)">
-                                    {{ getStatusDisplayText(request.status) }}
-                                </span>
-                                <small class="text-muted">
-                                    Опубликована {{ formatDate(request.created_at) }}
-                                </small>
-                            </div>
-                            <div class="mt-2">
-                                <small class="text-muted">
-                                    <i class="fas fa-eye me-1"></i>
-                                    {{ request.views_count || 0 }} просмотров
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Действия для арендодателя -->
-                    <div class="card mb-4" v-if="isAuthenticatedLessor">
-                        <div class="card-header">
-                            <h6 class="card-title mb-0">Ваши действия</h6>
-                        </div>
-                        <div class="card-body">
-                            <button class="btn btn-primary w-100 mb-2"
-                                    @click="showProposalModal"
-                                    :disabled="!canMakeProposal">
-                                <i class="fas fa-paper-plane me-2"></i>
-                                Предложить технику
-                            </button>
-
-                            <button class="btn btn-outline-secondary w-100"
-                                    @click="addToFavorites">
-                                <i class="fas fa-star me-2"></i>
-                                В избранное
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Призыв к действию для гостей -->
-                    <div class="card mb-4" v-else>
-                        <div class="card-header">
-                            <h6 class="card-title mb-0">Хотите предложить технику?</h6>
-                        </div>
-                        <div class="card-body text-center">
-                            <p class="small text-muted mb-3">
-                                Зарегистрируйтесь как арендодатель для доступа к полной информации и возможности делать предложения
-                            </p>
-                            <a href="/register?type=lessor" class="btn btn-primary w-100 mb-2">
-                                Зарегистрироваться
-                            </a>
-                            <a href="/login" class="btn btn-outline-primary w-100">
-                                Войти
-                            </a>
-                        </div>
-                    </div>
-
-                    <!-- Контактная информация (только для арендодателей) -->
-                    <div class="card" v-if="isAuthenticatedLessor && request.company">
-                        <div class="card-header">
-                            <h6 class="card-title mb-0">Контактная информация</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="contact-info">
-                                <p class="mb-2">
-                                    <strong>{{ request.company.legal_name }}</strong>
-                                </p>
-                                <p class="small text-muted mb-1">
-                                    <i class="fas fa-user me-2"></i>
-                                    {{ request.user?.name || 'Контактное лицо' }}
-                                </p>
-                                <p class="small text-muted mb-0">
-                                    <i class="fas fa-map-marker-alt me-2"></i>
-                                    {{ request.company.legal_address }}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+                <!-- Отладочная информация -->
+                <div v-if="isAuthenticatedLessor" style="background: lightgreen; padding: 10px;">
+                    <p>Отладка: Роль арендодателя определена.</p>
+                    <p>Бюджет: {{ request.total_budget }}</p>
+                    <p>Условия: {{ request.rental_conditions }}</p>
                 </div>
+
+                <!-- Модальное окно предложения -->
+                <PublicProposalModal
+                    :show="showProposalModal"
+                    :request="request"
+                    @close="showProposalModal=false"
+                    @proposal-created="onProposalCreated"
+                />
             </div>
         </div>
 
-        <!-- Модальное окно предложения -->
-        <PublicProposalModal
-            v-if="showProposalModal"
-            :request="request"
-            @close="showProposalModal = false"
-            @proposal-created="onProposalCreated"
-        />
-    </div>
-
-    <!-- Загрузка -->
-    <div v-else-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Загрузка...</span>
+        <!-- Индикатор загрузки -->
+        <div v-else-if="loading" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Загрузка...</span>
+            </div>
+            <p class="mt-2">Загрузка заявки...</p>
         </div>
-        <p class="mt-2">Загрузка заявки...</p>
-    </div>
 
-    <!-- Ошибка -->
-    <div v-else-if="error" class="alert alert-danger text-center">
-        <i class="fas fa-exclamation-triangle me-2"></i>
-        {{ error }}
-        <br>
-        <button class="btn btn-outline-danger btn-sm mt-2" @click="loadRequest">
-            Попробовать снова
-        </button>
+        <!-- Сообщение об ошибке -->
+        <div v-else-if="error" class="alert alert-danger text-center">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            {{ error }}
+            <br>
+            <button class="btn btn-outline-danger btn-sm mt-2" @click="loadRequest">
+                Попробовать снова
+            </button>
+        </div>
     </div>
 </template>
 
@@ -286,6 +301,7 @@ export default {
             request: null,
             showProposalModal: false,
             currentUser: null,
+            authChecked: false,
             groupedByCategory: [],
             summary: {
                 total_items: 0,
@@ -296,15 +312,46 @@ export default {
     },
     computed: {
         isAuthenticatedLessor() {
-            return this.currentUser && this.currentUser.is_lessor;
-        },
-        canMakeProposal() {
-            if (!this.isAuthenticatedLessor) return false;
-            if (!this.request) return false;
+            // Добавлена проверка на существование company
+            const isLessor = this.currentUser &&
+                            this.currentUser.company &&
+                            this.currentUser.company.is_lessor === 1; // Явная проверка на 1
 
-            // Проверяем, что заявка активна и не истекла
+            console.log('🔐 Проверка роли пользователя:', {
+                currentUser: this.currentUser,
+                company: this.currentUser?.company,
+                is_lessor: this.currentUser?.company?.is_lessor,
+                result: isLessor
+            });
+
+            return isLessor;
+        },
+
+         totalEquipmentQuantity() {
+            if (!this.request.items) return 0;
+            return this.request.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+        },
+
+        canMakeProposal() {
+            if (!this.isAuthenticatedLessor) {
+                console.log('❌ Не может делать предложение: не арендодатель');
+                return false;
+            }
+            if (!this.request) {
+                console.log('❌ Не может делать предложение: нет данных заявки');
+                return false;
+            }
+
+            // 🎯 ИСПРАВЛЕННАЯ ПРОВЕРКА: используем status из API
             const isActive = this.request.status === 'active';
             const notExpired = !this.request.expires_at || new Date(this.request.expires_at) > new Date();
+
+            console.log('📋 Проверка возможности предложения:', {
+                isActive,
+                notExpired,
+                status: this.request.status,
+                expires_at: this.request.expires_at
+            });
 
             return isActive && notExpired;
         }
@@ -312,6 +359,7 @@ export default {
     methods: {
         async loadUser() {
             try {
+                console.log('🔄 Загрузка данных пользователя...');
                 const response = await fetch('/api/user', {
                     headers: {
                         'Accept': 'application/json',
@@ -321,11 +369,46 @@ export default {
                 });
 
                 if (response.ok) {
-                    this.currentUser = await response.json();
+                    const userData = await response.json();
+
+                    // ДЛЯ ОТЛАДКИ: выведите полную структуру ответа
+                    console.log('📊 Полные данные пользователя из API:', JSON.stringify(userData, null, 2));
+
+                    // Проверяем различные возможные структуры ответа
+                    if (userData.company) {
+                        // Стандартная структура
+                        this.currentUser = userData;
+                    } else if (userData.data && userData.data.company) {
+                        // Структура с обёрткой {data: {}}
+                        this.currentUser = userData.data;
+                    } else if (userData.original && userData.original.company) {
+                        // Структура Laravel с обёрткой {original: {}}
+                        this.currentUser = userData.original;
+                    } else {
+                        // Если компания не найдена, устанавливаем структуру вручную
+                        this.currentUser = {
+                            ...userData,
+                            company: userData.company || null
+                        };
+                        console.warn('⚠️ Компания не найдена в ответе API');
+                    }
+
+                    console.log('✅ Обработанные данные пользователя:', {
+                        id: this.currentUser.id,
+                        name: this.currentUser.name,
+                        hasCompany: !!this.currentUser.company,
+                        company: this.currentUser.company,
+                        is_lessor: this.currentUser.company?.is_lessor
+                    });
+                } else {
+                    console.log('⚠️ Пользователь не авторизован, статус:', response.status);
+                    this.currentUser = null;
                 }
             } catch (error) {
-                console.error('Ошибка загрузки пользователя:', error);
+                console.error('❌ Ошибка загрузки пользователя:', error);
                 this.currentUser = null;
+            } finally {
+                this.authChecked = true;
             }
         },
 
@@ -334,12 +417,16 @@ export default {
                 id: this.request?.id,
                 rental_period_start: this.request?.rental_period_start,
                 rental_period_end: this.request?.rental_period_end,
-                rental_period: this.request?.rental_period, // проверяем если есть объект
+                rental_period: this.request?.rental_period,
+                total_budget: this.request?.total_budget,
+                hourly_rate: this.request?.hourly_rate,
+                max_hourly_rate: this.request?.max_hourly_rate,
+                rental_conditions: this.request?.rental_conditions,
                 raw_request: this.request
             });
         },
 
-         async loadRequest() {
+        async loadRequest() {
             this.loading = true;
             this.error = null;
 
@@ -347,8 +434,7 @@ export default {
                 const requestId = this.getRequestIdFromUrl();
                 const apiUrl = `/api/public/rental-requests/${requestId}`;
 
-                console.log('🔄 Загрузка публичной заявки:', apiUrl);
-
+                console.log('🔄 Загрузка публичной заявки...', { requestId, apiUrl });
                 const response = await fetch(apiUrl, {
                     headers: {
                         'Accept': 'application/json',
@@ -362,60 +448,61 @@ export default {
                 }
 
                 const data = await response.json();
+                console.log('📦 Ответ от API заявки:', data);
 
                 if (data.success) {
                     this.request = data.data;
 
-                    // Детальная отладка
-                    this.debugRequestData();
+                    console.log('💰 Данные бюджета в заявке:', {
+                        has_lessor_pricing: !!this.request.lessor_pricing,
+                        lessor_budget: this.request.lessor_pricing?.total_lessor_budget,
+                        items_count: this.request.lessor_pricing?.items?.length
+                    });
 
-                    // Обрабатываем данные для отображения
                     this.processRequestData();
 
-                    console.log('✅ Публичная заявка загружена:', this.request);
                 } else {
                     throw new Error(data.message || 'Ошибка загрузки заявки');
                 }
             } catch (error) {
-                console.error('❌ Ошибка загрузки публичной заявки:', error);
-                this.error = error.message;
+                console.error('❌ Ошибка загрузки заявки:', error);
+                this.error = `Не удалось загрузить заявку: ${error.message}`;
             } finally {
                 this.loading = false;
             }
         },
 
         getRequestIdFromUrl() {
-            // Получаем ID заявки из URL
             const path = window.location.pathname;
             const matches = path.match(/\/public\/rental-requests\/(\d+)/);
             return matches ? matches[1] : null;
         },
 
-         processRequestData() {
+        processRequestData() {
             if (!this.request) return;
 
             console.log('🔍 Данные заявки для обработки:', this.request);
 
-            // Обрабатываем период аренды
-            const rentalPeriodDisplay = this.getRentalPeriodDisplay(
-                this.request.rental_period_start || this.request.rental_period?.start,
-                this.request.rental_period_end || this.request.rental_period?.end
-            );
+            // Обрабатываем период аренды (если не пришло из API)
+            if (!this.request.rental_period_display) {
+                this.request.rental_period_display = this.getRentalPeriodDisplay(
+                    this.request.rental_period_start,
+                    this.request.rental_period_end
+                );
+            }
 
-            const rentalDays = this.calculateRentalDays(
-                this.request.rental_period_start || this.request.rental_period?.start,
-                this.request.rental_period_end || this.request.rental_period?.end
-            );
-
-            this.request.rental_period_display = rentalPeriodDisplay;
-            this.request.rental_days = rentalDays;
+            if (!this.request.rental_days) {
+                this.request.rental_days = this.calculateRentalDays(
+                    this.request.rental_period_start,
+                    this.request.rental_period_end
+                );
+            }
 
             // Обрабатываем позиции заявки
             const items = this.request.items || [];
-            console.log('📦 Позиции заявки:', items);
 
-            // ИСПРАВЛЕНИЕ: считаем количество уникальных категорий по строке
-            const uniqueCategories = new Set(items.map(item => item.category || 'Без категории'));
+            // Считаем суммарную информацию
+            const uniqueCategories = new Set(items.map(item => item.category?.name || 'Без категории'));
 
             this.summary = {
                 total_items: items.length,
@@ -424,10 +511,12 @@ export default {
             };
 
             this.groupedByCategory = this.groupItemsByCategory(items);
-            console.log('🗂 Сгруппированные категории:', this.groupedByCategory);
+
+            // Детальная отладка данных заявки
+            this.debugRequestData();
         },
 
-         getRentalPeriodDisplay(startDate, endDate) {
+        getRentalPeriodDisplay(startDate, endDate) {
             console.log('📅 Получены даты:', { startDate, endDate });
 
             if (!startDate || !endDate) {
@@ -457,13 +546,12 @@ export default {
             items.forEach((item, index) => {
                 console.log(`📋 Обрабатываем item ${index + 1}:`, item);
 
-                // ИСПРАВЛЕНИЕ: используем строку category вместо category_id
                 const categoryName = item.category || 'Без категории';
-                const categoryKey = categoryName; // Используем имя категории как ключ
+                const categoryKey = categoryName;
 
                 if (!grouped[categoryKey]) {
                     grouped[categoryKey] = {
-                        category_id: categoryKey, // Используем имя как ID для группировки
+                        category_id: categoryKey,
                         category_name: categoryName,
                         items: [],
                         total_quantity: 0,
@@ -506,23 +594,31 @@ export default {
             return texts[status] || status;
         },
 
-        openProposalModal() {
+         openProposalModal() {
+            console.log('🔄 Открытие модального окна предложения');
+
             if (!this.canMakeProposal) {
+                console.log('❌ Нельзя сделать предложение:', {
+                    isAuthenticatedLessor: this.isAuthenticatedLessor,
+                    requestStatus: this.request?.status,
+                    canMakeProposal: this.canMakeProposal
+                });
                 this.redirectToLogin();
                 return;
             }
-            this.openProposalModal = true;
+
+            this.showProposalModal = true;
+            console.log('✅ Модальное окно открыто');
         },
 
-        onProposalCreated() {
-            this.openProposalModal = false;
+        onProposalCreated(proposalData) {
+            console.log('✅ Предложение создано:', proposalData);
+            this.showProposalModal = false; // Заменить closeProposalModal()
             this.showToast('success', 'Предложение успешно отправлено!');
-            // Перезагружаем данные для обновления счетчика предложений
             this.loadRequest();
         },
 
         addToFavorites() {
-            // TODO: Реализовать добавление в избранное
             this.showToast('info', 'Добавлено в избранное');
         },
 
@@ -570,7 +666,6 @@ export default {
         },
 
         showToast(type, message) {
-            // Простая реализация toast уведомления
             const toast = document.createElement('div');
             toast.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
             toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
@@ -586,8 +681,10 @@ export default {
         }
     },
     async mounted() {
+        console.log('🚀 Компонент PublicRentalRequestShow mounted');
         await this.loadUser();
         await this.loadRequest();
+        console.log('✅ Инициализация компонента завершена');
     }
 }
 </script>

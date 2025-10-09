@@ -31,5 +31,9 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('access-admin', function (User $user) {
             return $user->isAdmin();
         });
+
+        Gate::define('view-full-request', function (User $user) {
+            return $user->isLessor();
+        });
     }
 }

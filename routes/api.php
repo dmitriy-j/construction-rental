@@ -5,10 +5,10 @@ use App\Http\Controllers\DeliveryController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route; // Импорт контроллера
 use App\Http\Controllers\API\LocationController;
-
+use App\Http\Controllers\API\PublicProposalController;
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+    return $request->user()->load('company');
 });
 
 // Публичные маршруты
@@ -21,6 +21,17 @@ Route::prefix('delivery')->group(function () {
     Route::post('/calculate', [DeliveryController::class, 'calculate']);
     Route::get('/locations', [DeliveryController::class, 'getLocations']);
 });
+
+
+// Этот маршрут будет загружать доступную технику для заявки
+Route::get('/rental-requests/{rentalRequest}/available-equipment', [PublicProposalController::class, 'getAvailableEquipment'])
+    ->middleware(['auth:sanctum', 'company.verified'])
+    ->name('api.public.rental-requests.available-equipment');
+
+    // Этот маршрут будет обрабатывать отправку предложения
+Route::post('/rental-requests/{rentalRequest}/proposals', [PublicProposalController::class, 'store'])
+    ->middleware(['auth:sanctum', 'company.verified'])
+    ->name('api.public.rental-requests.proposals.store');
 
 // УДАЛИТЕ ЭТУ ЧАСТЬ (СТРОКИ 24-39)
 // КЛАСС DeliveryController УЖЕ ОПРЕДЕЛЕН В ОТДЕЛЬНОМ ФАЙЛЕ
@@ -131,7 +142,80 @@ Route::prefix('public')->group(function () {
 Route::middleware(['auth:sanctum', 'company.verified'])->group(function () {
     Route::post('/rental-requests/{rentalRequest}/proposals',
         [\App\Http\Controllers\API\PublicRentalRequestController::class, 'createProposal']);
+    Route::post('/lessor/equipment/available-for-request',
+        [\App\Http\Controllers\API\LessorEquipmentController::class, 'getAvailableForRequest']);
 
     // ВРЕМЕННО ЗАКОММЕНТИРОВАТЬ - контроллера нет
     // Route::get('/lessor/proposals', [LessorProposalController::class, 'index']);
 });
+
+Route::get('/debug/equipment-check/{rentalRequestId}', function ($rentalRequestId) {
+    try {
+        $user = auth()->user();
+        $rentalRequest = \App\Models\RentalRequest::find($rentalRequestId);
+
+        if (!$rentalRequest) {
+            return response()->json(['error' => 'Заявка не найдена'], 404);
+        }
+
+        // Получаем категории из заявки
+        $requestCategoryIds = $rentalRequest->items->pluck('category_id')->toArray();
+
+        // Получаем оборудование компании
+        $companyEquipment = \App\Models\Equipment::where('company_id', $user->company_id)
+            ->with('category')
+            ->get();
+
+        // Оборудование, соответствующее категориям заявки
+        $matchingEquipment = $companyEquipment->filter(function($equipment) use ($requestCategoryIds) {
+            return in_array($equipment->category_id, $requestCategoryIds);
+        });
+
+        return response()->json([
+            'user' => [
+                'id' => $user->id,
+                'company_id' => $user->company_id,
+                'company_name' => $user->company->legal_name,
+            ],
+            'rental_request' => [
+                'id' => $rentalRequest->id,
+                'categories' => $rentalRequest->items->map(function($item) {
+                    return [
+                        'category_id' => $item->category_id,
+                        'category_name' => $item->category->name ?? 'Unknown',
+                    ];
+                }),
+                'category_ids' => $requestCategoryIds,
+            ],
+            'company_equipment' => [
+                'total' => $companyEquipment->count(),
+                'items' => $companyEquipment->map(function($equipment) {
+                    return [
+                        'id' => $equipment->id,
+                        'title' => $equipment->title,
+                        'category_id' => $equipment->category_id,
+                        'category_name' => $equipment->category->name ?? 'Unknown',
+                        'status' => $equipment->status,
+                    ];
+                }),
+            ],
+            'matching_equipment' => [
+                'count' => $matchingEquipment->count(),
+                'items' => $matchingEquipment->map(function($equipment) {
+                    return [
+                        'id' => $equipment->id,
+                        'title' => $equipment->title,
+                        'category' => $equipment->category->name ?? 'Unknown',
+                    ];
+                }),
+            ],
+            'availability_check' => [
+                'rental_period_start' => $rentalRequest->rental_period_start,
+                'rental_period_end' => $rentalRequest->rental_period_end,
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+})->middleware(['auth:sanctum', 'company.verified']);

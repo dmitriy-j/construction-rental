@@ -131,10 +131,13 @@ class RequestMatchingService
             return collect();
         }
 
+        // Исправленный запрос - фильтрация через связь с items
         $recommendedRequests = RentalRequest::active()
-            ->whereIn('category_id', $lessorCategoryIds)
+            ->whereHas('items', function ($query) use ($lessorCategoryIds) {
+                $query->whereIn('category_id', $lessorCategoryIds);
+            })
             ->where('created_at', '>', now()->subDays(30))
-            ->with(['category', 'location', 'user.company'])
+            ->with(['items.category', 'location', 'user.company']) // Добавляем загрузку items с категориями
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();

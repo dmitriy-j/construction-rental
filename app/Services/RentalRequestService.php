@@ -141,4 +141,41 @@ class RentalRequestService
             throw $e;
         }
     }
+
+    public function getActiveRequestsForLessor(User $user, array $filters = [], int $perPage = 15)
+    {
+        $query = RentalRequest::active()
+            ->public()
+            ->with(['items.category', 'location']);
+
+        // Применяем фильтры
+        if (!empty($filters['category_id'])) {
+            $query->whereHas('items', function ($q) use ($filters) {
+                $q->where('category_id', $filters['category_id']);
+            });
+        }
+
+        if (!empty($filters['location_id'])) {
+            $query->where('location_id', $filters['location_id']);
+        }
+
+        if (!empty($filters['budget_max'])) {
+            $query->where('total_budget', '<=', $filters['budget_max']);
+        }
+
+        // Сортировка
+        if (!empty($filters['sort_by'])) {
+            switch ($filters['sort_by']) {
+                case 'budget':
+                    $query->orderBy('total_budget', 'desc');
+                    break;
+                case 'newest':
+                default:
+                    $query->orderBy('created_at', 'desc');
+            }
+        }
+
+        // ИСПРАВЛЕНИЕ: Возвращаем пагинатор вместо коллекции
+        return $query->paginate($perPage);
+    }
 }

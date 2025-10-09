@@ -1,6 +1,5 @@
-<!-- resources/js/components/Public/PublicCategoryGroup.vue -->
 <template>
-    <div class="public-category-group" :id="`category-${category.category_id}`">
+    <div class="public-category-group">
         <div class="category-header" @click="toggleExpanded">
             <div class="header-content">
                 <h5 class="category-name">
@@ -23,13 +22,14 @@
                     <strong>Количество: {{ item.quantity || 1 }}</strong>
                 </div>
 
-                <!-- Технические спецификации -->
-                <div v-if="item.specifications && item.specifications.length > 0"
+                <!-- 🔥 ИСПРАВЛЕННОЕ ОТОБРАЖЕНИЕ СПЕЦИФИКАЦИЙ -->
+                <div v-if="hasSpecifications(item)"
                      class="specifications mt-2">
-                    <div v-for="spec in getFormattedSpecifications(item)"
-                         :key="spec.key"
+                    <div v-for="spec in getDisplaySpecifications(item)"
+                         :key="getSpecKey(spec)"
                          class="spec-item small text-muted">
-                        {{ spec.formatted || spec.label || spec }}
+                         <!-- 🔥 ВЫВОДИМ ТОЛЬКО ФОРМАТИРОВАННЫЙ ТЕКСТ -->
+                         {{ getSpecDisplayText(spec) }}
                     </div>
                 </div>
 
@@ -64,41 +64,55 @@ export default {
             this.isExpanded = !this.isExpanded;
         },
 
-        getFormattedSpecifications(item) {
-            if (!item.specifications) return [];
-
-            // Если спецификации уже отформатированы API
-            if (Array.isArray(item.specifications) && item.specifications[0]?.formatted) {
-                return item.specifications;
-            }
-
-            // Форматируем на клиенте если нужно
-            return this.formatRawSpecifications(item.specifications);
+        // 🔥 ПРОВЕРКА НАЛИЧИЯ СПЕЦИФИКАЦИЙ
+        hasSpecifications(item) {
+            return item.formatted_specs &&
+                   Array.isArray(item.formatted_specs) &&
+                   item.formatted_specs.length > 0;
         },
 
-        formatRawSpecifications(specs) {
-            if (!specs || !Array.isArray(specs)) return [];
+        // 🔥 ПОЛУЧЕНИЕ СПЕЦИФИКАЦИЙ ДЛЯ ОТОБРАЖЕНИЯ
+        getDisplaySpecifications(item) {
+            if (!this.hasSpecifications(item)) return [];
 
-            return specs.map(spec => {
+            // Если это массив объектов - используем его
+            if (typeof item.formatted_specs[0] === 'object') {
+                return item.formatted_specs;
+            }
+
+            // Если это массив строк - преобразуем в объекты
+            return item.formatted_specs.map(spec => {
                 if (typeof spec === 'string') {
                     return { formatted: spec };
                 }
-
-                if (spec.formatted) {
-                    return spec;
-                }
-
-                // Создаем читаемое представление
-                if (spec.label && spec.value) {
-                    const unit = spec.unit ? ` ${spec.unit}` : '';
-                    return {
-                        ...spec,
-                        formatted: `${spec.label}: ${spec.value}${unit}`
-                    };
-                }
-
-                return { formatted: JSON.stringify(spec) };
+                return spec;
             });
+        },
+
+        // 🔥 ПОЛУЧЕНИЕ КЛЮЧА ДЛЯ v-for
+        getSpecKey(spec) {
+            if (typeof spec === 'string') return spec;
+            if (spec.key) return spec.key;
+            if (spec.formatted) return spec.formatted;
+            return JSON.stringify(spec);
+        },
+
+        // 🔥 ПОЛУЧЕНИЕ ТЕКСТА ДЛЯ ОТОБРАЖЕНИЯ
+        getSpecDisplayText(spec) {
+            // Если это строка - возвращаем как есть
+            if (typeof spec === 'string') return spec;
+
+            // Если есть formatted - используем его
+            if (spec.formatted) return spec.formatted;
+
+            // Если есть label и value - форматируем
+            if (spec.label && spec.value !== undefined) {
+                const unit = spec.unit ? ` ${spec.unit}` : '';
+                return `${spec.label}: ${spec.value}${unit}`;
+            }
+
+            // Резервный вариант
+            return JSON.stringify(spec);
         }
     }
 }
@@ -155,10 +169,6 @@ export default {
 .expand-icon {
     color: #6c757d;
     transition: transform 0.3s ease;
-}
-
-.category-group:not(.collapsed) .expand-icon {
-    transform: rotate(180deg);
 }
 
 .category-items {

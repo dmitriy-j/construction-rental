@@ -30,6 +30,8 @@ class RentalRequestItem extends Model
         'use_individual_conditions' => 'boolean'
     ];
 
+    protected $appends = ['formatted_specifications'];
+
     protected function specifications(): Attribute
     {
         return Attribute::make(

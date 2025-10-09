@@ -28,9 +28,13 @@ class RentalRequestSearchController extends Controller
     {
         $filters = $request->only(['category_id', 'location_id', 'budget_max', 'sort_by']);
 
+        // ИСПРАВЛЕНИЕ: Добавляем пагинацию вместо get()
+        $perPage = $request->get('per_page', 15);
+
         $rentalRequests = $this->rentalRequestService->getActiveRequestsForLessor(
             auth()->user(),
-            $filters
+            $filters,
+            $perPage // Передаем параметр пагинации
         );
 
         // Получаем рекомендуемые заявки на основе оборудования арендодателя
@@ -40,7 +44,13 @@ class RentalRequestSearchController extends Controller
             return response()->json([
                 'requests' => $rentalRequests,
                 'recommended' => $recommendedRequests,
-                'filters' => $filters
+                'filters' => $filters,
+                'pagination' => [
+                    'total' => $rentalRequests->total(),
+                    'per_page' => $rentalRequests->perPage(),
+                    'current_page' => $rentalRequests->currentPage(),
+                    'last_page' => $rentalRequests->lastPage(),
+                ]
             ]);
         }
 

@@ -1,5 +1,8 @@
 <template>
     <div class="public-rental-requests">
+         <!-- Теперь роль определяется правильно -->
+        <h2 v-if="userRole === 'lessor'">Панель арендодателя: {{ authUser?.company?.legal_name }}</h2>
+        <h2 v-else>Публичные заявки на аренду</h2>
         <!-- Фильтры (остается без изменений) -->
         <div class="filters-section bg-light p-4 mb-4">
             <div class="row g-3">
@@ -93,14 +96,31 @@
                             </div>
 
                             <!-- Бюджет -->
-                            <div v-if="isAuthenticatedLessor" class="budget-info mt-3 p-3 bg-light rounded">
+                            <div v-if="isAuthenticatedLessor && request.lessor_pricing" class="budget-info mt-3 p-3 bg-light rounded">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <span class="fw-bold">Бюджет заявки:</span>
-                                    <span class="text-success fw-bold">{{ formatCurrency(request.total_budget || 0) }}</span>
+                                    <span class="fw-bold">Бюджет для вас:</span>
+                                    <span class="text-success fw-bold">
+                                        {{ formatCurrency(request.lessor_pricing.total_lessor_budget || 0) }}
+                                    </span>
                                 </div>
-                                <div class="d-flex justify-content-between text-muted small">
-                                    <span>Ставка в час:</span>
-                                    <span>до {{ formatCurrency(request.max_hourly_rate || request.hourly_rate || 0) }}/час</span>
+                                <div class="pricing-details mt-2">
+                                    <div v-for="item in request.lessor_pricing.items" :key="item.item_id"
+                                         class="price-item small text-muted mb-1">
+                                        {{ item.category_name }}: {{ item.quantity }} шт. ×
+                                        {{ formatCurrency(item.lessor_price) }}/час
+                                    </div>
+                                </div>
+                                <div class="rental-info small text-muted mt-2">
+                                    <i class="fas fa-clock me-1"></i>
+                                    {{ request.lessor_pricing.working_hours }} часов
+                                    ({{ request.lessor_pricing.rental_days }} дней)
+                                </div>
+                            </div>
+
+                            <div v-else-if="isAuthenticatedLessor" class="budget-info mt-3 p-3 bg-light rounded">
+                                <div class="text-center text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Бюджет заявки доступен при просмотре деталей
                                 </div>
                             </div>
 
@@ -111,30 +131,30 @@
                                 </div>
                             </div>
                         </div>
+                         <!-- 🔥 ДОБАВИТЬ ЭТОТ CARD-FOOTER -->
+                            <div class="card-footer">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <button class="btn btn-outline-primary btn-sm" @click="viewRequest(request.id)">
+                                        <i class="fas fa-eye me-1"></i>Подробнее
+                                    </button>
 
-                        <div class="card-footer">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <button class="btn btn-outline-primary btn-sm" @click="viewRequest(request.id)">
-                                    <i class="fas fa-eye me-1"></i>Подробнее
-                                </button>
+                                    <button v-if="isAuthenticatedLessor"
+                                            class="btn btn-primary btn-sm"
+                                            @click="showProposalModal(request)"
+                                            :disabled="!canMakeProposal(request)">
+                                        <i class="fas fa-paper-plane me-1"></i>Предложить
+                                    </button>
 
-                                <button v-if="isAuthenticatedLessor"
-                                        class="btn btn-primary btn-sm"
-                                        @click="showProposalModal(request)"
-                                        :disabled="!canMakeProposal(request)">
-                                    <i class="fas fa-paper-plane me-1"></i>Предложить
-                                </button>
-
-                                <button v-else class="btn btn-outline-secondary btn-sm"
-                                        @click="redirectToLogin">
-                                    Войдите для предложения
-                                </button>
+                                    <button v-else class="btn btn-outline-secondary btn-sm"
+                                            @click="redirectToLogin">
+                                        Войдите для предложения
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+
 
         <!-- Пагинация -->
         <nav v-if="requests.meta && requests.meta.last_page > 1" class="mt-4">
@@ -162,6 +182,7 @@
             @close="showModal = false"
             @proposal-created="onProposalCreated" />
     </div>
+</div>
 </template>
 
 <script>
@@ -170,6 +191,11 @@ import ProposalModal from '../components/ProposalModal.vue';
 export default {
     name: 'PublicRentalRequests',
     components: { ProposalModal },
+
+     props: {
+        userRole: String,
+        authUser: Object
+    },
 
     data() {
         return {
@@ -215,55 +241,43 @@ export default {
             return pages;
         },
 
-        isAuthenticatedLessor() {
-            return this.currentUser && this.currentUser.is_lessor;
+          isAuthenticatedLessor() {
+            // Проверяем, что authUser существует и является арендодателем
+            return this.authUser &&
+                this.authUser.company &&
+                this.authUser.company.is_lessor;
         },
 
         // 🎯 Ключевое исправление: обрабатываем данные заявок
-        processedRequests() {
+         processedRequests() {
             if (!this.requests.data || !Array.isArray(this.requests.data)) {
                 return [];
             }
 
             return this.requests.data.map(request => {
-                // Обрабатываем период аренды
-                const rentalPeriodDisplay = this.getRentalPeriodDisplay(
-                    request.rental_period_start,
-                    request.rental_period_end
-                );
-
-                // Вычисляем количество дней аренды
-                const rentalDays = this.calculateRentalDays(
-                    request.rental_period_start,
-                    request.rental_period_end
-                );
-
-                // Форматируем дату создания
-                const createdAtDisplay = this.formatDate(request.created_at);
-
-                // Обрабатываем спецификации для каждого item
-                const processedItems = (request.items || []).map(item => {
-                    // Если спецификации уже отформатированы API, используем их
-                    // Иначе форматируем на клиенте
-                    let formattedSpecs = item.formatted_specifications;
-
-                    if (!formattedSpecs && item.specifications) {
-                        formattedSpecs = this.formatSpecifications(item.specifications);
-                    }
-
-                    return {
-                        ...item,
-                        formatted_specifications: formattedSpecs || []
-                    };
-                });
-
-                return {
+                const processed = {
                     ...request,
-                    rental_period_display: rentalPeriodDisplay,
-                    rental_days: rentalDays,
-                    created_at_display: createdAtDisplay,
-                    items: processedItems
+                    rental_period_display: this.getRentalPeriodDisplay(
+                        request.rental_period_start,
+                        request.rental_period_end
+                    ),
+                    rental_days: this.calculateRentalDays(
+                        request.rental_period_start,
+                        request.rental_period_end
+                    ),
+                    created_at_display: this.formatDate(request.created_at),
+                    items: (request.items || []).map(item => ({
+                        ...item,
+                        formatted_specifications: item.formatted_specifications || this.formatSpecifications(item.specifications)
+                    }))
                 };
+
+                // Добавляем преобразованные цены для арендодателей
+                if (this.isAuthenticatedLessor && request.lessor_pricing) {
+                    processed.lessor_pricing = request.lessor_pricing;
+                }
+
+                return processed;
             });
         }
     },
@@ -369,16 +383,12 @@ export default {
             this.error = null;
 
             try {
-                console.log('🔄 Загружаем публичные заявки...');
-
                 const params = new URLSearchParams({
                     page,
                     ...this.filters
                 });
 
                 const apiUrl = `/api/public/rental-requests?${params}`;
-                console.log('📡 API URL:', apiUrl);
-
                 const response = await fetch(apiUrl, {
                     headers: {
                         'Accept': 'application/json',
@@ -387,33 +397,24 @@ export default {
                     credentials: 'include'
                 });
 
-                console.log('📊 Ответ сервера:', response.status, response.statusText);
-
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('❌ Текст ошибки:', errorText.substring(0, 500));
                     throw new Error(`HTTP ошибка! Статус: ${response.status}`);
                 }
 
                 const data = await response.json();
-                console.log('📦 Данные заявок:', data);
-
-                // 🎯 Детальный лог структуры данных для отладки
-                if (data.success && data.data && data.data.data) {
-                    console.log('🔍 Структура первой заявки:', {
-                        id: data.data.data[0]?.id,
-                        rental_period_start: data.data.data[0]?.rental_period_start,
-                        rental_period_end: data.data.data[0]?.rental_period_end,
-                        items: data.data.data[0]?.items,
-                        raw_data: data.data.data[0]
-                    });
-                }
 
                 if (data.success) {
                     this.requests = data.data;
                     this.filterCategories = data.filters?.categories || [];
                     this.locations = data.filters?.locations || [];
-                    console.log('✅ Успешно загружено заявок:', data.data.data?.length || 0);
+
+                    console.log('✅ Заявки загружены с преобразованными ценами:',
+                        this.requests.data.map(r => ({
+                            id: r.id,
+                            has_lessor_pricing: !!r.lessor_pricing,
+                            lessor_budget: r.lessor_pricing?.total_lessor_budget
+                        }))
+                    );
                 } else {
                     throw new Error(data.message || 'Ошибка сервера');
                 }
@@ -421,13 +422,7 @@ export default {
             } catch (error) {
                 console.error('❌ Ошибка загрузки заявок:', error);
                 this.error = `Не удалось загрузить заявки: ${error.message}`;
-
-                this.requests = {
-                    data: [],
-                    meta: { total: 0, current_page: 1, last_page: 1 }
-                };
-                this.filterCategories = [];
-                this.locations = [];
+                this.requests = { data: [], meta: { total: 0, current_page: 1, last_page: 1 } };
             } finally {
                 this.loading = false;
             }
@@ -448,7 +443,8 @@ export default {
                 console.error('ID заявки не указан');
                 return;
             }
-            window.open(`/public/rental-requests/${id}`, '_blank');
+            // Открываем в той же вкладке
+            window.location.href = `/public/rental-requests/${id}`;
         },
 
         showProposalModal(request) {
@@ -498,6 +494,9 @@ export default {
     async mounted() {
         await this.loadUser();
         await this.loadRequests();
+        console.log('Vue Component mounted. User role prop:', this.userRole);
+        console.log('Auth user prop:', this.authUser);
+        console.log('Is authenticated lessor (computed):', this.isAuthenticatedLessor);
 
         // Детальный лог обработанных данных
         console.log('📋 Обработанные заявки:', this.processedRequests);

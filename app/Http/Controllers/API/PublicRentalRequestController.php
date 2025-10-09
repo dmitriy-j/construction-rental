@@ -7,11 +7,22 @@ use App\Http\Controllers\Controller;
 use App\Models\RentalRequest;
 use App\Models\Category;
 use App\Models\Location;
+use App\Services\RentalRequestPricingService;
+use App\Services\EquipmentSpecificationService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class PublicRentalRequestController extends Controller
 {
+
+      protected $specificationService;
+
+    // 🔥 ДОБАВЛЕНО: Внедрение сервиса спецификаций
+    public function __construct(EquipmentSpecificationService $specificationService)
+    {
+        $this->specificationService = $specificationService;
+    }
+
     public function index(Request $request): JsonResponse
     {
         try {
@@ -20,7 +31,7 @@ class PublicRentalRequestController extends Controller
             $query = RentalRequest::where('status', 'active')
                 ->where('visibility', 'public')
                 ->where('expires_at', '>', now())
-                ->with(['items.category', 'location'])
+                ->with(['items.category', 'location', 'user.company']) // Добавили user.company
                 ->withCount(['responses as active_proposals_count' => function ($q) {
                     $q->where('status', 'pending')->where('expires_at', '>', now());
                 }]);
@@ -51,9 +62,37 @@ class PublicRentalRequestController extends Controller
 
             $requests = $query->paginate($request->get('per_page', 15));
 
-            // ИСПРАВЛЕНО: для категорий используем is_active, для локаций - все
+            // 🔥 ДОБАВЛЕНО: Преобразование цен для арендодателей
+            $user = auth()->user();
+            $isLessor = $user && $user->company && $user->company->is_lessor;
+
+            if ($isLessor) {
+                $pricingService = app(\App\Services\RentalRequestPricingService::class);
+
+                $requests->getCollection()->transform(function ($rentalRequest) use ($pricingService) {
+                    try {
+                        $lessorPricing = $pricingService->calculateLessorPrices($rentalRequest);
+                        $rentalRequest->lessor_pricing = $lessorPricing;
+
+                        // Скрываем оригинальные цены от арендодателя
+                        unset(
+                            $rentalRequest->hourly_rate,
+                            $rentalRequest->max_hourly_rate,
+                            $rentalRequest->total_budget
+                        );
+
+                    } catch (\Exception $e) {
+                        \Log::error('Error transforming request prices: ' . $e->getMessage(), [
+                            'request_id' => $rentalRequest->id
+                        ]);
+                    }
+
+                    return $rentalRequest;
+                });
+            }
+
             $filterCategories = Category::where('is_active', true)->get();
-            $locations = Location::all(); // Все локации, так как нет поля is_active
+            $locations = Location::all();
 
             return response()->json([
                 'success' => true,
@@ -80,75 +119,120 @@ class PublicRentalRequestController extends Controller
     public function show($id): JsonResponse
     {
         try {
+            \Log::info('PublicRentalRequestController show called', ['id' => $id]);
+
             $request = RentalRequest::where('status', 'active')
                 ->where('visibility', 'public')
                 ->where('expires_at', '>', now())
                 ->with([
-                    'items.category', // Убедимся что категории загружаются
+                    'items.category',
                     'location',
                     'user.company'
                 ])
                 ->findOrFail($id);
 
-            // Детальная отладка
-            \Log::debug('Public rental request items data', [
-                'request_id' => $request->id,
-                'items_count' => $request->items->count(),
-                'items_with_category' => $request->items->where('category_id', '!=', null)->count(),
-                'categories_loaded' => $request->items->pluck('category')->filter()->count()
-            ]);
+            \Log::info('Request found', ['request_id' => $request->id]);
 
-            // Увеличиваем счетчик просмотров
+            // 🔥 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Используем аксессор модели
+            $request->items->each(function ($item) {
+                // Просто используем аксессор formatted_specifications из модели
+                // который УЖЕ правильно обрабатывает структуру с labels/values
+                $item->formatted_specs = $item->formatted_specifications;
+
+                // Гарантируем, что категория будет строкой
+                $item->category_name = $item->category->name ?? 'Без категории';
+
+                \Log::debug('Item processed', [
+                    'item_id' => $item->id,
+                    'has_specs' => !empty($item->specifications),
+                    'formatted_specs_count' => count($item->formatted_specs),
+                    'specifications_structure' => $item->specifications
+                ]);
+            });
+
+            // Группируем items по категориям для фронтенда
+            $request->grouped_items = $request->items->groupBy('category_name')->map(function ($items, $categoryName) {
+                return [
+                    'category_name' => $categoryName,
+                    'items' => $items,
+                    'items_count' => $items->count(),
+                    'total_quantity' => $items->sum('quantity')
+                ];
+            })->values();
+
+            $user = auth()->user();
+            $isLessor = $user && $user->company && $user->company->is_lessor;
+
+            if ($isLessor) {
+                try {
+                    $pricingService = app(RentalRequestPricingService::class);
+                    $lessorPricing = $pricingService->calculateLessorPrices($request);
+                    $request->lessor_pricing = $lessorPricing;
+                } catch (\Exception $e) {
+                    \Log::error('Pricing service error: ' . $e->getMessage());
+                }
+            }
+
             $request->increment('views_count');
 
             return response()->json([
                 'success' => true,
-                'data' => $this->transformForPublic($request, auth()->check())
+                'data' => $request
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Error in PublicRentalRequestController show: ' . $e->getMessage());
+            \Log::error('Error in PublicRentalRequestController show: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Заявка не найдена или недоступна'
-            ], 404);
+                'message' => 'Ошибка загрузки заявки',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         }
     }
 
-    private function transformForPublic(RentalRequest $request, bool $isAuthenticated = false): array
+    private function formatItemSpecifications($item): array
     {
-        $data = [
-            'id' => $request->id,
-            'title' => $request->title,
-            'description' => $request->description,
-            'rental_period' => [
-                'start' => $request->rental_period_start,
-                'end' => $request->rental_period_end,
-                'days' => $request->rental_period_start->diffInDays($request->rental_period_end) + 1
-            ],
-            'location' => $request->location,
-            'items' => $request->items->map(function ($item) {
-                return [
-                    'category' => $item->category->name,
-                    'quantity' => $item->quantity,
-                    'specifications' => $item->formatted_specifications
-                ];
-            }),
-            'active_proposals_count' => $request->active_proposals_count ?? 0,
-            'views_count' => $request->views_count,
-            'created_at' => $request->created_at,
-        ];
-
-        // Для авторизованных арендодателей показываем больше данных
-        if ($isAuthenticated && auth()->check() && auth()->user()->is_lessor) {
-            $data['hourly_rate'] = $request->hourly_rate;
-            $data['max_hourly_rate'] = $request->max_hourly_rate;
-            $data['rental_conditions'] = $request->rental_conditions;
-            $data['total_budget'] = $request->total_budget;
+        if (empty($item->specifications)) {
+            return [];
         }
 
-        return $data;
+        try {
+            $formatted = [];
+            $specsArray = is_array($item->specifications) ? $item->specifications : [];
+            $categoryName = $item->category->name ?? '';
+
+            // Обрабатываем оба формата данных
+            if (isset($specsArray['values']) && is_array($specsArray['values'])) {
+                // Новый формат с metadata (values/labels)
+                foreach ($specsArray['values'] as $key => $value) {
+                    if ($value !== null && $value !== '' && $value !== 'null') {
+                        $formatted[] = $this->specificationService->formatSpecification($key, $value, $categoryName);
+                    }
+                }
+            } else {
+                // Старый формат - простой ассоциативный массив
+                foreach ($specsArray as $key => $value) {
+                    if ($key !== 'labels' && $value !== null && $value !== '' && $value !== 'null') {
+                        $formatted[] = $this->specificationService->formatSpecification($key, $value, $categoryName);
+                    }
+                }
+            }
+
+            return $formatted;
+
+        } catch (\Exception $e) {
+            \Log::error('Error formatting item specifications: ' . $e->getMessage(), [
+                'item_id' => $item->id,
+                'category' => $item->category->name ?? 'unknown'
+            ]);
+            return [];
+        }
     }
+
+
 
     // Временная заглушка для createProposal - реализуем позже
     public function createProposal(Request $request, $rentalRequestId): JsonResponse

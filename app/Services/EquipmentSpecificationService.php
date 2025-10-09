@@ -303,12 +303,197 @@ class EquipmentSpecificationService
         }
     }
 
+     public function formatSpecificationsWithCustom($specifications, $categoryName = ''): array
+    {
+        if (empty($specifications)) {
+            return [];
+        }
+
+        try {
+            $formatted = [];
+            $specsArray = is_array($specifications) ? $specifications : [];
+
+            // Обрабатываем новый формат с labels/values
+            if (isset($specsArray['values']) && is_array($specsArray['values'])) {
+                $values = $specsArray['values'];
+                $labels = $specsArray['labels'] ?? [];
+
+                foreach ($values as $key => $value) {
+                    if ($value !== null && $value !== '' && $value !== 'null') {
+
+                        // 🔥 ОСНОВНОЕ ИСПРАВЛЕНИЕ: Используем label из labels если он есть
+                        if (isset($labels[$key]) && !empty($labels[$key])) {
+                            // Если в labels есть название параметра - используем его
+                            $label = $labels[$key];
+                            $unit = $this->getUnitForParameter($key);
+                            $formatted[] = "{$label}: {$value}{$unit}";
+                        }
+                        // 🔥 ОБРАБОТКА КАСТОМНЫХ ПАРАМЕТРОВ БЕЗ LABEL
+                        else if (strpos($key, 'custom_') === 0 || strpos($key, 'Custom') === 0) {
+                            $label = $this->extractCustomParameterName($key);
+                            $formatted[] = "{$label}: {$value}";
+                        }
+                        // СТАНДАРТНЫЕ ПАРАМЕТРЫ
+                        else {
+                            $formatted[] = $this->formatSpecification($key, $value, $categoryName);
+                        }
+                    }
+                }
+            }
+            // Старый формат (без labels/values)
+            else {
+                foreach ($specsArray as $key => $value) {
+                    if ($key !== 'labels' && $value !== null && $value !== '') {
+                        if (strpos($key, 'custom_') === 0 || strpos($key, 'Custom') === 0) {
+                            $label = $this->extractCustomParameterName($key);
+                            $formatted[] = "{$label}: {$value}";
+                        } else {
+                            $formatted[] = $this->formatSpecification($key, $value, $categoryName);
+                        }
+                    }
+                }
+            }
+
+            return $formatted;
+
+        } catch (\Exception $e) {
+            \Log::error('Error formatting specifications with custom: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    private function extractCustomParameterName($customKey): string
+    {
+        // Для ключей вида "custom_1760023038696" возвращаем "Дополнительный параметр"
+        // Но в нашем случае это не будет использоваться, т.к. есть labels
+        if (preg_match('/^custom_\d+$/', $customKey)) {
+            return 'Дополнительный параметр';
+        }
+
+        return 'Дополнительный параметр';
+    }
+
     /**
      * Get template for category slug
      */
     public function getTemplateForCategory($categorySlug): array
     {
         return $this->specificationTemplates[$categorySlug] ?? [];
+    }
+
+    private function getUnitForParameter($key): string
+    {
+        $units = [
+            // Общие параметры
+            'engine_power' => ' л.с.',
+            'operating_weight' => ' т',
+            'max_speed' => ' км/ч',
+            'fuel_tank_capacity' => ' л',
+            'weight' => ' т',
+            'length' => ' м',
+            'width' => ' м',
+            'height' => ' м',
+
+            // Экскаваторы
+            'bucket_volume' => ' м³',
+            'max_digging_depth' => ' м',
+            'max_reach' => ' м',
+            'bucket_width' => ' м',
+            'arm_force' => ' кН',
+            'boom_force' => ' кН',
+            'digging_force' => ' кН',
+
+            // Бульдозеры
+            'blade_width' => ' м',
+            'blade_height' => ' м',
+            'blade_capacity' => ' м³',
+            'max_cutting_depth' => ' м',
+            'max_lifting_height' => ' м',
+
+            // Самосвалы
+            'load_capacity' => ' т',
+            'body_volume' => ' м³',
+            'body_length' => ' м',
+            'body_width' => ' м',
+            'body_height' => ' м',
+            'unloading_angle' => '°',
+            'payload' => ' т',
+
+            // Краны
+            'lifting_capacity' => ' т',
+            'boom_length' => ' м',
+            'outreach' => ' м',
+            'rotation_angle' => '°',
+            'counterweight_weight' => ' т',
+
+            // Погрузчики
+            'fork_length' => ' м',
+            'lifting_height' => ' м',
+            'center_of_gravity' => ' мм',
+            'tilting_angle' => '°',
+            'breakout_force' => ' кН',
+
+            // Катки
+            'roller_width' => ' м',
+            'roller_diameter' => ' м',
+            'vibration_frequency' => ' Гц',
+            'amplitude' => ' мм',
+            'compaction_width' => ' м',
+            'compaction_force' => ' кН',
+
+            // Бетононасосы
+            'concrete_output' => ' м³/ч',
+            'max_pressure' => ' бар',
+            'pipe_diameter' => ' мм',
+            'vertical_reach' => ' м',
+            'horizontal_reach' => ' м',
+
+            // Генераторы
+            'power' => ' кВт',
+            'voltage' => ' В',
+            'current' => ' А',
+            'frequency' => ' Гц',
+
+            // Компрессоры
+            'air_flow' => ' м³/мин',
+            'working_pressure' => ' бар',
+            'receiver_volume' => ' л',
+
+            // Сварочные аппараты
+            'welding_current' => ' А',
+            'duty_cycle' => '%',
+            'power_consumption' => ' кВт',
+
+            // Автогрейдеры
+            'blade_length' => ' м',
+            'blade_height' => ' м',
+
+            // Манипуляторы
+            'max_reach' => ' м',
+            'rotation_angle' => '°',
+
+            // Дополнительные параметры
+            'axle_configuration' => '',
+            'transmission' => '',
+            'drive_type' => '',
+            'blade_type' => '',
+
+            // English variants
+            'Engine power' => ' л.с.',
+            'Operating weight' => ' т',
+            'Bucket volume' => ' м³',
+            'Max digging depth' => ' м',
+            'Blade width' => ' м',
+            'Blade height' => ' м',
+            'Load capacity' => ' т',
+            'Body volume' => ' м³',
+            'Max speed' => ' км/ч',
+            'Lifting capacity' => ' т',
+            'Boom length' => ' м',
+            'Power' => ' кВт'
+        ];
+
+        return $units[$key] ?? '';
     }
 
     /**

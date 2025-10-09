@@ -12,6 +12,12 @@ return new class extends Migration
         // Временно отключаем проверку внешних ключей
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
 
+        // Удаляем внешние ключи
+        Schema::table('orders', function (Blueprint $table) {
+            $table->dropForeign(['lessee_company_id']); // Замените на фактическое имя колонки
+            $table->dropForeign(['lessor_company_id']); // Замените на фактическое имя колонки
+        });
+
         // Проверяем существование индексов и удаляем их, если они есть
         $indexes = DB::select('SHOW INDEXES FROM orders');
         $indexNames = array_column($indexes, 'Key_name');
@@ -34,8 +40,6 @@ return new class extends Migration
 
     public function down()
     {
-        // Операция down может быть не нужна, если это исправление
-        // Но для целостности миграции можно оставить пустой метод
-        // или реализовать обратное создание индексов, если потребуется
+        // Реализуйте обратные операции, если это необходимо
     }
 };

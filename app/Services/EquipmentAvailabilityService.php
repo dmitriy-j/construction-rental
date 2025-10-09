@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Equipment;
 use App\Models\EquipmentAvailability;
 use App\Models\Order;
+use App\Models\RentalRequest;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\DB;
@@ -359,4 +360,60 @@ class EquipmentAvailabilityService
                 ]);
         }
     }
+
+    public function isAvailableForPeriod(int $equipmentId, string $startDate, string $endDate): bool
+    {
+        try {
+            $start = Carbon::parse($startDate);
+            $end = Carbon::parse($endDate);
+
+            // Используем существующую таблицу equipment_availability
+            $conflictingAvailability = \App\Models\EquipmentAvailability::where('equipment_id', $equipmentId)
+                ->whereBetween('date', [$start->format('Y-m-d'), $end->format('Y-m-d')])
+                ->where('status', 'booked')
+                ->exists();
+
+            // Дополнительная проверка через заказы
+            $conflictingOrders = \App\Models\Order::whereHas('items', function($query) use ($equipmentId) {
+                    $query->where('equipment_id', $equipmentId);
+                })
+                ->where(function($query) use ($start, $end) {
+                    $query->whereBetween('start_date', [$start, $end])
+                          ->orWhereBetween('end_date', [$start, $end])
+                          ->orWhere(function($q) use ($start, $end) {
+                              $q->where('start_date', '<=', $start)
+                                ->where('end_date', '>=', $end);
+                          });
+                })
+                ->whereIn('status', ['confirmed', 'active', 'in_progress'])
+                ->exists();
+
+            return !$conflictingAvailability && !$conflictingOrders;
+
+        } catch (\Exception $e) {
+            \Log::error("Equipment availability check failed: {$e->getMessage()}");
+            return true;
+        }
+    }
+
+    public function getAvailableEquipmentForRequest(RentalRequest $request, int $companyId): array
+    {
+        $requestCategoryIds = $request->items->pluck('category_id')->toArray();
+
+        // Используем is_approved вместо status
+        $query = Equipment::where('company_id', $companyId)
+            ->whereIn('category_id', $requestCategoryIds)
+            ->where('is_approved', 1); // Одобренное оборудование
+
+        return $query->get()
+            ->filter(function($equipment) use ($request) {
+                return $this->isAvailableForPeriod(
+                    $equipment->id,
+                    $request->rental_period_start,
+                    $request->rental_period_end
+                );
+            })
+            ->toArray();
+    }
+
 }
