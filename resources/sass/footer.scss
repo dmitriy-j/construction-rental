@@ -1,0 +1,268 @@
+/* УЛУЧШЕННЫЙ FOOTER ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ БЕЗ ПОЛОМКИ ДЕСКТОПА */
+.site-footer {
+  padding: 2rem 0 1rem;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--divider);
+  color: var(--text-primary);
+  flex-shrink: 0;
+  min-height: auto; // УБИРАЕМ фиксированную высоту
+  height: auto;
+  overflow: visible; // УБИРАЕМ любые overflow
+  position: relative;
+  z-index: 1;
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    overflow: visible; // УБИРАЕМ overflow
+  }
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 var(--content-padding);
+  position: relative;
+  z-index: 2;
+  overflow: visible; // УБИРАЕМ overflow
+
+  // ТОЛЬКО НА МОБИЛЬНЫХ - переходим на один столбец
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+    padding: 0 1rem !important;
+  }
+
+  @media (max-width: 576px) {
+    gap: 1rem !important;
+    padding: 0 0.75rem !important;
+  }
+}
+
+.footer-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: var(--primary-500);
+  position: relative;
+  display: inline-block;
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    width: 50px;
+    height: 3px;
+    background: var(--accent-400);
+  }
+
+  // АДАПТИВНОСТЬ ТОЛЬКО ДЛЯ МОБИЛЬНЫХ
+  @media (max-width: 768px) {
+    font-size: 1.1rem !important;
+    margin-bottom: 1rem !important;
+    text-align: center !important;
+    display: block !important;
+
+    &::after {
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      width: 40px !important;
+    }
+  }
+}
+
+.footer-logo {
+  .logo-main {
+    font-size: 2.2rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--primary-500), var(--accent-400));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    display: inline-block;
+    margin-bottom: 0.5rem;
+
+    @media (max-width: 768px) {
+      font-size: 1.8rem !important;
+      text-align: center !important;
+      display: block !important;
+    }
+  }
+
+  .logo-subtitle {
+    font-size: 0.95rem;
+    font-weight: 500;
+    max-width: 300px;
+    line-height: 1.5;
+
+    @media (max-width: 768px) {
+      text-align: center !important;
+      max-width: 100% !important;
+      margin: 0 auto !important;
+    }
+  }
+}
+
+.footer-column {
+  position: relative;
+  z-index: 2;
+  overflow: visible; // УБИРАЕМ overflow
+
+  // ЦЕНТРИРОВАНИЕ ТОЛЬКО НА МОБИЛЬНЫХ
+  @media (max-width: 768px) {
+    text-align: center !important;
+  }
+}
+
+.footer-links {
+  list-style: none;
+  padding: 0;
+  overflow: visible; // УБИРАЕМ overflow
+
+  li {
+    margin-bottom: 1rem;
+    transition: transform 0.3s ease;
+
+    &:hover {
+      transform: translateX(5px);
+    }
+
+    // АДАПТИВНОСТЬ ТОЛЬКО ДЛЯ МОБИЛЬНЫХ
+    @media (max-width: 768px) {
+      margin-bottom: 0.75rem !important;
+
+      &:hover {
+        transform: translateY(-2px) !important;
+      }
+    }
+  }
+
+  a {
+    color: var(--text-primary);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    transition: color 0.3s ease;
+
+    &::before {
+      content: '›';
+      margin-right: 10px;
+      color: var(--primary-500);
+      transition: transform 0.3s ease;
+    }
+
+    &:hover {
+      color: var(--primary-500);
+
+      &::before {
+        transform: translateX(5px);
+      }
+    }
+
+    // ВЫРАВНИВАНИЕ ТОЛЬКО НА МОБИЛЬНЫХ
+    @media (max-width: 768px) {
+      justify-content: center !important;
+    }
+  }
+}
+
+.footer-contacts {
+  li {
+    display: flex;
+    margin-bottom: 1.2rem;
+
+    i {
+      color: var(--primary-500);
+      font-size: 1.2rem;
+      min-width: 30px;
+    }
+
+    // ВЫРАВНИВАНИЕ ТОЛЬКО НА МОБИЛЬНЫХ
+    @media (max-width: 768px) {
+      justify-content: center !important;
+      text-align: center !important;
+    }
+  }
+}
+
+.footer-social {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  overflow: visible; // УБИРАЕМ overflow
+
+  .social-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: rgba(var(--primary-500), 0.1);
+    border-radius: 50%;
+    color: var(--primary-500);
+    text-decoration: none;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: var(--primary-500);
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    i {
+      font-size: 1.2rem;
+    }
+  }
+
+  // ЦЕНТРИРОВАНИЕ ТОЛЬКО НА МОБИЛЬНЫХ
+  @media (max-width: 768px) {
+    justify-content: center !important;
+  }
+}
+
+.footer-bottom {
+  margin-top: 3rem;
+  text-align: center;
+  padding-top: 2rem;
+  border-top: 1px solid var(--divider);
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  overflow: visible; // УБИРАЕМ overflow
+
+  @media (max-width: 768px) {
+    flex-direction: column !important;
+    gap: 1rem !important;
+    margin-top: 2rem !important;
+    padding-top: 1.5rem !important;
+  }
+}
+
+// УБИРАЕМ ДЕКОРАТИВНЫЕ ЭЛЕМЕНТЫ НА МОБИЛЬНЫХ
+.site-footer::after {
+  @media (max-width: 768px) {
+    content: none !important;
+  }
+}
+
+// ФИКС ДЛЯ ТЕМНОЙ ТЕМЫ
+[data-theme="dark"] {
+  .site-footer {
+    background: var(--bg-secondary);
+  }
+}
+
+// КРИТИЧЕСКИЙ ФИКС: Убираем все возможные причины двойного скроллбара
+.site-footer,
+.site-footer * {
+  box-sizing: border-box;
+  max-height: none !important;
+  overflow: visible !important;
+}

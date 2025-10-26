@@ -1,0 +1,1077 @@
+// =====================
+// STABLE NAVBAR VERSION
+// =====================
+
+$navbar-zindex: 1100;
+$navbar-bg: linear-gradient(135deg, #0b5ed7, #0d6efd);
+$navbar-dark-bg: linear-gradient(135deg, #0a4cb5, #0b5ed7);
+$navbar-accent: #00d2ff;
+$navbar-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+$navbar-divider: rgba(255, 255, 255, 0.1);
+
+.navbar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: var(--navbar-height) !important;
+    z-index: $navbar-zindex;
+    padding: 0;
+    background: $navbar-bg;
+    backdrop-filter: blur(10px);
+    box-shadow: $navbar-shadow;
+    border-bottom: 1px solid $navbar-divider;
+    transform: translateY(0);
+    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.5, 1);
+    display: flex;
+    align-items: center;
+    will-change: transform;
+
+    [data-theme="dark"] & {
+        background: $navbar-dark-bg;
+    }
+
+    &--scrolled {
+        backdrop-filter: blur(12px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    }
+
+    &--hidden {
+        transform: translateY(-100%) !important;
+        pointer-events: none;
+    }
+}
+
+// Гарантия видимости навбара
+.navbar-container {
+    display: flex !important;
+    width: 100% !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 1rem !important;
+}
+
+// Логотип - гарантированная видимость
+.navbar-brand {
+    display: flex !important;
+    align-items: center !important;
+    z-index: 1200 !important;
+
+    .navbar-logo-text {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        color: white !important;
+        text-decoration: none !important;
+        font-family: 'Roboto', 'Arial', sans-serif !important;
+
+        .logo-acronym {
+            font-size: 1.5rem !important;
+            font-weight: 700 !important;
+            line-height: 1 !important;
+            color: white !important;
+        }
+
+        .logo-full-name {
+            font-size: 0.65rem !important;
+            font-weight: 400 !important;
+            line-height: 1.1 !important;
+            opacity: 0.9 !important;
+            color: white !important;
+        }
+    }
+}
+
+// Основное меню - скрываем на мобильных
+.main-menu {
+    @media (max-width: 991.98px) {
+        display: none !important;
+    }
+}
+
+// Правое меню - адаптируем для мобильных
+.right-menu {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+
+    .nav-link {
+        color: white !important;
+        display: flex !important;
+        align-items: center !important;
+
+        i {
+            color: white !important;
+        }
+
+        span {
+            color: white !important;
+        }
+    }
+}
+
+// Кнопка входа - гарантированная видимость
+.btn-auth {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
+    border-radius: 6px !important;
+    padding: 0.5rem 1rem !important;
+    transition: all 0.3s ease !important;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.3) !important;
+        color: white !important;
+    }
+}
+
+// Мобильный тогглер
+.navbar-toggler {
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    padding: 0.25rem 0.5rem !important;
+
+    .navbar-toggler-icon {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255, 255, 255, 0.8)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") !important;
+    }
+}
+
+// =====================
+// MOBILE STYLES
+// =====================
+
+@media (max-width: 991.98px) {
+    .navbar {
+        height: 60px !important;
+
+        .navbar-container {
+            padding: 0 0.75rem !important;
+        }
+
+        .navbar-brand {
+            .navbar-logo-text {
+                .logo-acronym {
+                    font-size: 1.3rem !important;
+                }
+                .logo-full-name {
+                    display: none !important;
+                }
+            }
+        }
+
+        .right-menu {
+            .nav-link {
+                span {
+                    display: none !important;
+                }
+
+                i {
+                    font-size: 1.2rem !important;
+                    margin-right: 0 !important;
+                }
+            }
+
+            .btn-auth {
+                padding: 0.4rem 0.8rem !important;
+                font-size: 0.9rem !important;
+
+                span {
+                    display: inline !important;
+                }
+            }
+        }
+    }
+}
+
+@media (max-width: 576px) {
+    .navbar {
+        height: 55px !important;
+
+        .navbar-container {
+            padding: 0 0.5rem !important;
+        }
+
+        .navbar-brand {
+            .navbar-logo-text .logo-acronym {
+                font-size: 1.1rem !important;
+            }
+        }
+
+        .right-menu {
+            gap: 0.25rem !important;
+
+            .btn-auth {
+                padding: 0.35rem 0.6rem !important;
+                font-size: 0.8rem !important;
+
+                span {
+                    font-size: 0.8rem !important;
+                }
+            }
+        }
+    }
+}
+
+// Гарантия что навбар всегда поверх всего
+.navbar {
+    z-index: 9999 !important;
+}
+
+// Фикс для body padding
+body {
+    padding-top: var(--navbar-height) !important;
+
+    @media (max-width: 991.98px) {
+        padding-top: 60px !important;
+    }
+
+    @media (max-width: 576px) {
+        padding-top: 55px !important;
+    }
+}
+
+// Гарантия фиксации
+.navbar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+}
+
+// Гарантия возвращения навбара в верхней позиции
+html[data-at-top="true"] .navbar {
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+.navbar:not(.navbar--hidden) {
+    .logo-main {
+        font-size: 1.8rem !important;
+        opacity: 1 !important;
+    }
+
+    .logo-subtitle {
+        font-size: 0.75rem !important;
+        opacity: 0.85 !important;
+        display: block !important;
+    }
+
+    &::before {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: var(--accent-400);
+        transform: translateX(0) !important;
+    }
+}
+
+.navbar--scrolled {
+    .logo-main {
+        font-size: 1.6rem;
+    }
+
+    .logo-subtitle {
+        font-size: 0.65rem;
+        opacity: 0.8;
+    }
+
+    &::before {
+        transform: translateX(-100%);
+    }
+}
+
+// Логотип контейнер
+.logo-container {
+    position: relative;
+    overflow: hidden;
+    padding: 0.8rem 1.2rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    .logo-text-container {
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.3s ease;
+
+        .navbar--scrolled & {
+            transform: scale(0.95);
+        }
+    }
+
+    &::before {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: $navbar-accent;
+        transform: translateX(-100%);
+        transition: transform 0.4s ease;
+    }
+
+    &:hover::before {
+        transform: translateX(0);
+    }
+}
+
+.logo-main {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: white;
+    line-height: 1.2;
+}
+
+.logo-subtitle {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.85);
+    margin-top: 0.2rem;
+    transition: all 0.3s ease;
+
+    .navbar--scrolled & {
+        font-size: 0.65rem;
+        opacity: 0.8;
+    }
+}
+
+.nav-link {
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0 1.2rem;
+
+    &::before {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: $navbar-accent;
+        transform: scaleX(0);
+        transform-origin: right;
+        transition: transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+
+    &:hover::before {
+        transform: scaleX(1);
+        transform-origin: left;
+    }
+}
+
+.theme-switcher {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: rotate(15deg);
+    }
+
+    i {
+        font-size: 1.2rem;
+        color: white;
+        transition: all 0.3s ease;
+    }
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+            45deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.1) 50%,
+            transparent 100%
+        );
+        transform: translateX(-100%);
+        transition: transform 0.6s ease;
+    }
+
+    &:hover::before {
+        transform: translateX(100%);
+    }
+}
+
+.notification-badge {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+    70% { box-shadow: 0 0 0 8px rgba(255, 71, 87, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+}
+
+// Адаптивность для разных экранов
+@media (max-width: 992px) {
+    .navbar-collapse {
+        background: rgba(10, 30, 50, 0.95);
+        backdrop-filter: blur(20px);
+    }
+
+    .dropdown-menu {
+        position: absolute;
+        right: 0;
+        left: auto;
+        z-index: $navbar-zindex + 10;
+
+        @media (max-width: 992px) {
+            position: static;
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+    }
+
+    .user-dropdown {
+        .dropdown-menu {
+            min-width: 220px;
+            right: 0;
+            left: auto;
+            z-index: $navbar-zindex + 10;
+
+            @media (max-width: 992px) {
+                position: static;
+                width: 100%;
+                margin-top: 0.5rem;
+            }
+        }
+
+        .dropdown-content {
+            padding: 0.5rem 0;
+        }
+
+        .dropdown-item {
+            position: relative;
+            padding: 0.5rem 1.5rem;
+
+            .badge {
+                top: 50%;
+                transform: translateY(-50%);
+            }
+        }
+    }
+
+    .navbar {
+        height: 60px !important;
+
+        .navbar-container {
+            padding: 0 0.75rem !important;
+        }
+
+        .navbar-brand {
+            .navbar-logo-text {
+                .logo-acronym {
+                    font-size: 1.3rem !important;
+                }
+                .logo-full-name {
+                    display: none !important;
+                }
+            }
+        }
+
+        .right-menu {
+            .nav-link {
+                span {
+                    display: none !important;
+                }
+
+                i {
+                    font-size: 1.2rem !important;
+                    margin-right: 0 !important;
+                }
+            }
+
+            .btn-auth {
+                padding: 0.4rem 0.8rem !important;
+                font-size: 0.9rem !important;
+
+                span {
+                    display: inline !important;
+                }
+            }
+        }
+    }
+}
+
+@media (max-width: 576px) {
+    .navbar {
+        height: 55px !important;
+
+        .navbar-container {
+            padding: 0 0.5rem !important;
+        }
+
+        .navbar-brand {
+            .navbar-logo-text .logo-acronym {
+                font-size: 1.1rem !important;
+            }
+        }
+
+        .right-menu {
+            gap: 0.25rem !important;
+
+            .btn-auth {
+                padding: 0.35rem 0.6rem !important;
+                font-size: 0.8rem !important;
+
+                span {
+                    font-size: 0.8rem !important;
+                }
+            }
+        }
+    }
+}
+
+// Гарантия фиксации
+.navbar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+}
+
+// Гарантия возвращения навбара в верхней позиции
+html[data-at-top="true"] .navbar {
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+.navbar:not(.navbar--hidden) {
+    .logo-main {
+        font-size: 1.8rem !important;
+        opacity: 1 !important;
+    }
+
+    .logo-subtitle {
+        font-size: 0.75rem !important;
+        opacity: 0.85 !important;
+        display: block !important;
+    }
+
+    &::before {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: var(--accent-400);
+        transform: translateX(0) !important;
+    }
+}
+
+.navbar--scrolled {
+    .logo-main {
+        font-size: 1.6rem;
+    }
+
+    .logo-subtitle {
+        font-size: 0.65rem;
+        opacity: 0.8;
+    }
+
+    &::before {
+        transform: translateX(-100%);
+    }
+}
+
+// Логотип контейнер
+.logo-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .logo-main {
+        width: 180px; /* Фиксированная ширина */
+        height: auto; /* Автоматическая высота */
+        max-height: 70px; /* Максимальная высота */
+        transition: all 0.3s ease;
+
+        &.dark-logo {
+            display: none;
+        }
+    }
+
+    .logo-subtitle {
+        font-size: 0.8rem; /* Увеличили размер текста */
+        line-height: 1.2;
+        margin-top: 5px;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+}
+
+[data-theme="dark"] {
+    .logo-main {
+        &.light-logo {
+            display: none;
+        }
+
+        &.dark-logo {
+            display: block !important;
+        }
+    }
+}
+
+/* Адаптивность для разных экранов */
+@media (min-width: 992px) {
+    .logo-container {
+        .logo-main {
+            width: 200px; /* Увеличиваем на больших экранах */
+            max-height: 80px;
+        }
+
+        .logo-subtitle {
+            font-size: 0.85rem;
+        }
+    }
+}
+
+@media (max-width: 768px) {
+    .logo-container {
+        flex-direction: row; /* Меняем направление на мобильных */
+        align-items: center;
+
+        .logo-main {
+            width: 140px;
+            max-height: 60px;
+            margin-right: 10px; /* Отступ справа */
+        }
+
+        .logo-subtitle {
+            font-size: 0.7rem;
+            margin-top: 0;
+            text-align: left;
+        }
+    }
+}
+
+@media (max-width: 576px) {
+    .logo-container {
+        .logo-main {
+            width: 120px;
+            max-height: 50px;
+        }
+
+        .logo-subtitle {
+            display: none; /* Скрываем подзаголовок на маленьких экранах */
+        }
+    }
+}
+
+.navbar-logo {
+    height: 60px; // Оптимальный размер для навбара
+    width: auto;
+    max-width: 180px;
+    transition: all 0.3s ease;
+    object-fit: contain;
+
+    // Для светлой темы
+    &.light-logo {
+        display: block;
+    }
+
+    // Для темной темы
+    &.dark-logo {
+        display: none;
+    }
+
+    // Адаптация для разных экранов
+    @media (min-width: 992px) {
+        height: 70px;
+        max-width: 200px;
+    }
+
+    @media (max-width: 768px) {
+        height: 50px;
+        max-width: 150px;
+    }
+
+    @media (max-width: 576px) {
+        height: 45px;
+        max-width: 130px;
+    }
+}
+
+[data-theme="dark"] {
+    .navbar-logo {
+        &.light-logo {
+            display: none;
+        }
+
+        &.dark-logo {
+            display: block !important;
+        }
+    }
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 0 15px;
+
+    @media (max-width: 768px) {
+        padding: 0 10px;
+    }
+}
+
+.navbar-logo-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    color: white;
+    text-decoration: none;
+    font-family: 'Roboto', 'Arial', sans-serif;
+    padding: 0.5rem 0;
+
+    .logo-acronym {
+        font-size: 1.8rem;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.1rem;
+    }
+
+    .logo-full-name {
+        font-size: 0.75rem;
+        font-weight: 400;
+        line-height: 1.1;
+        opacity: 0.9;
+        white-space: nowrap;
+    }
+
+    &:hover {
+        color: white;
+        text-decoration: none;
+        opacity: 0.9;
+    }
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 768px) {
+    .navbar-logo-text {
+        .logo-acronym {
+            font-size: 1.5rem;
+        }
+
+        .logo-full-name {
+            font-size: 0.65rem;
+        }
+    }
+}
+
+/* Для темной темы (если используется) */
+[data-bs-theme="dark"] .navbar-logo-text {
+    color: white;
+}
+
+/* Для светлой темы */
+[data-bs-theme="light"] .navbar-logo-text {
+    color: #2c3e50;
+
+    &:hover {
+        color: #2c3e50;
+    }
+}
+
+.navbar {
+    transition: all 0.3s ease-in-out;
+}
+
+.navbar--hidden {
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none;
+}
+
+// НОВЫЙ КОД (ДОБАВИТЬ):
+.navbar--scrolled {
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+
+  // Сохраняем исходный градиентный фон при скролле
+  background: linear-gradient(135deg, #0b5ed7, #0d6efd) !important;
+
+  [data-theme="dark"] & {
+    background: linear-gradient(135deg, #0a4cb5, #0b5ed7) !important;
+  }
+
+  .logo-main {
+    font-size: 1.6rem;
+  }
+
+  .logo-subtitle {
+    font-size: 0.65rem;
+    opacity: 0.8;
+  }
+
+  &::before {
+    transform: translateX(-100%);
+  }
+}
+
+.navbar {
+    // Гарантируем, что навбар не создает контекст для dropdown
+    transform-style: preserve-3d;
+
+    .dropdown-menu {
+        // Принудительно устанавливаем высокий z-index
+        z-index: 9999 !important;
+
+        // Гарантия видимости даже при скрытом навбаре
+        &.show {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+    }
+}
+
+// Переопределение позиционирования для dropdown
+.user-dropdown {
+    position: relative;
+
+    .dropdown-menu {
+        position: absolute !important;
+        top: 100% !important;
+        right: 0 !important;
+        left: auto !important;
+        transform: none !important;
+        margin-top: 0.5rem !important;
+        z-index: 9999 !important;
+
+        // Гарантия видимости
+        visibility: visible !important;
+        opacity: 1 !important;
+
+        @media (max-width: 992px) {
+            position: fixed !important;
+            top: var(--navbar-height) !important;
+            left: 0 !important;
+            width: 100vw !important;
+            right: auto !important;
+        }
+    }
+}
+
+// Добавить в конец файла
+@media (max-width: 768px) {
+    .navbar-container {
+        padding: 0 1rem !important;
+    }
+
+    .navbar-logo-text {
+        .logo-acronym {
+            font-size: 1.3rem !important;
+        }
+        .logo-full-name {
+            display: none !important;
+        }
+    }
+
+    .main-menu {
+        display: none !important;
+    }
+
+    .right-menu {
+        .nav-link span {
+            display: none !important;
+        }
+    }
+}
+
+// =====================
+// MOBILE NAVBAR FIXES
+// =====================
+
+@media (max-width: 991.98px) {
+  .navbar {
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+
+    &.navbar--hidden {
+      transform: translateY(0) !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      visibility: visible !important;
+    }
+  }
+
+  // Гарантия что навбар всегда видим на мобильных
+  body {
+    padding-top: 60px !important;
+
+    .navbar--hidden ~ & {
+      padding-top: 60px !important;
+    }
+  }
+}
+
+@media (max-width: 576px) {
+  body {
+    padding-top: 55px !important;
+
+    .navbar--hidden ~ & {
+      padding-top: 55px !important;
+    }
+  }
+}
+
+.user-dropdown {
+  position: relative;
+
+  .dropdown-menu {
+    position: absolute !important;
+    top: 100% !important;
+    right: 0 !important;
+    left: auto !important;
+    z-index: 10002 !important; // Повышаем z-index
+    margin-top: 0.5rem !important;
+    min-width: 220px;
+
+    // Гарантия что dropdown не выходит за экран
+    @media (max-width: 992px) {
+      position: fixed !important;
+      top: var(--navbar-height) !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      width: 90vw !important;
+      max-width: 300px !important;
+      right: auto !important;
+    }
+  }
+}
+
+// Гарантия что навбар создает stacking context
+.navbar {
+  position: fixed !important;
+  z-index: 9999 !important;
+  isolation: isolate; // Создаем новый stacking context
+}
+.navbar {
+  // Гарантируем правильное позиционирование для всех dropdown
+  .dropdown {
+    position: relative;
+
+    .dropdown-menu {
+      position: absolute !important;
+      top: 100% !important;
+      right: 0 !important;
+      left: auto !important;
+      z-index: 10050 !important; // Очень высокий z-index
+      margin-top: 0.5rem !important;
+      min-width: 220px;
+      background: var(--bg-surface) !important;
+      border: 1px solid var(--divider) !important;
+      border-radius: 8px !important;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+      overflow: visible !important;
+
+      // Гарантия что dropdown не выходит за экран
+      @media (min-width: 992px) {
+        &[data-bs-popper] {
+          position: absolute !important;
+          inset: 0px auto auto 0px !important;
+          margin: 0px !important;
+          transform: translate3d(-180px, 40px, 0px) !important;
+        }
+      }
+
+      .dropdown-item {
+        color: var(--text-primary) !important;
+        padding: 0.75rem 1rem !important;
+        border-bottom: 1px solid var(--divider) !important;
+        transition: all 0.3s ease !important;
+
+        &:last-child {
+          border-bottom: none !important;
+        }
+
+        &:hover {
+          background: var(--primary-500) !important;
+          color: white !important;
+        }
+
+        i {
+          margin-right: 0.5rem !important;
+          width: 16px !important;
+          text-align: center !important;
+        }
+      }
+    }
+  }
+}
+
+// Специальный фикс для dropdown профиля в навбаре
+.user-dropdown {
+  .dropdown-menu {
+    right: 0 !important;
+    left: auto !important;
+
+    // Принудительное позиционирование для десктопа
+    @media (min-width: 992px) {
+      position: absolute !important;
+      top: 100% !important;
+      right: 0 !important;
+      left: auto !important;
+      transform: translate3d(0px, 40px, 0px) !important;
+    }
+  }
+}
+
+// Переопределение Bootstrap стилей для dropdown
+.dropdown-menu.show {
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translate3d(0, 0, 0) !important;
+}
+
+// Гарантия что навбар создает stacking context
+.navbar {
+  position: fixed !important;
+  z-index: 9999 !important;
+  isolation: isolate; // Создаем новый stacking context
+}
+
+// Фикс для мобильных dropdown
+@media (max-width: 991.98px) {
+  .navbar .dropdown-menu {
+    position: fixed !important;
+    top: var(--navbar-height) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 90vw !important;
+    max-width: 300px !important;
+    right: auto !important;
+    z-index: 10050 !important;
+  }
+}

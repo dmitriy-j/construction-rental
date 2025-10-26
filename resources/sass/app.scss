@@ -1,0 +1,873 @@
+// =====================
+// Глобальные переменные
+// =====================
+@use 'navbar';
+@use 'sidebar';
+@use 'footer';
+
+:root {
+  // Размеры элементов
+  --navbar-height: 80px;
+  --sidebar-width: 280px;
+  --sidebar-mini-width: 80px;
+  --footer-height: auto; // Меняем на auto
+
+  // Отступы
+  --content-padding: 1.5rem;
+  --section-spacing: 2rem;
+}
+
+[data-theme="dark"] {
+  --primary-500: #3d8bfd;
+  --primary-600: #0d6efd;
+  --accent-400: #00e5ff;
+  --text-primary: #f8f9fa;
+  --text-secondary: #e9ecef;
+  --bg-surface: #212529;
+  --bg-secondary: #2b3035;
+  --divider: #495057;
+}
+
+// ================
+// БАЗОВЫЕ СТИЛИ - ПРОСТАЯ СТРУКТУРА
+// ================
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  font-family: 'Nunito', sans-serif;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+
+  .navbar--hidden ~ & {
+    padding-top: 0 !important;
+  }
+}
+
+#app {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+// =================
+// ОСНОВНАЯ СТРУКТУРА - УПРОЩЕННАЯ
+// =================
+
+// Главный контейнер контента
+.main-container {
+  flex: 1;
+  display: flex;
+  min-height: calc(100vh - var(--navbar-height));
+}
+
+// Боковая панель
+.sidebar-container {
+  width: var(--sidebar-width);
+  background: var(--bg-surface);
+  border-right: 1px solid var(--divider);
+  transition: width 0.3s ease;
+  z-index: 900;
+  height: calc(100vh - var(--navbar-height));
+  overflow-y: auto;
+  position: sticky;
+  top: var(--navbar-height);
+  align-self: flex-start;
+
+  &.sidebar-mini {
+    width: var(--sidebar-mini-width);
+  }
+
+  @media (max-width: 992px) {
+    position: fixed;
+    height: calc(100vh - var(--navbar-height));
+    transform: translateX(-100%);
+    top: var(--navbar-height);
+
+    &.mobile-open {
+      transform: translateX(0);
+    }
+
+    .navbar--hidden ~ & {
+      top: 0;
+      height: 100vh;
+    }
+  }
+}
+
+// ОСНОВНАЯ ОБЛАСТЬ КОНТЕНТА - БЕЗ ФИКСИРОВАННОЙ ВЫСОТЫ
+.content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-left: var(--sidebar-width);
+  transition: margin-left 0.3s ease;
+  min-height: calc(100vh - var(--navbar-height));
+
+  // УБИРАЕМ ВСЕ overflow - прокрутка будет на уровне body
+  overflow: visible;
+
+  // МОБИЛЬНАЯ АДАПТАЦИЯ
+  @media (max-width: 991.98px) {
+    margin-left: 0 !important;
+    min-height: calc(100vh - 60px);
+  }
+
+  @media (max-width: 576px) {
+    min-height: calc(100vh - 55px);
+  }
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+// КОНТЕЙНЕР КОНТЕНТА - РАСТЯГИВАЕТСЯ ПО СОДЕРЖИМОМУ
+.content-container {
+  flex: 1;
+  padding: 1rem;
+  max-width: 100%;
+
+  // Жесткое ограничение для ВСЕХ внутренних элементов
+  * {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  // Принудительный перенос длинных слов
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+
+  @media (max-width: 768px) {
+    padding: 0.75rem;
+  }
+
+  @media (max-width: 576px) {
+    padding: 0.5rem;
+    font-size: 14px;
+
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.3rem; }
+    h3 { font-size: 1.1rem; }
+    h4 { font-size: 1rem; }
+  }
+
+  @media (max-width: 360px) {
+    padding: 0.25rem;
+    font-size: 13px;
+  }
+}
+
+// ФУТЕР - ЧАСТЬ ОСНОВНОГО КОНТЕНТА, ПОЯВЛЯЕТСЯ В КОНЦЕ
+.site-footer {
+  background: var(--bg-surface);
+  border-top: 1px solid var(--divider);
+  padding: var(--content-padding);
+  color: var(--text-primary);
+  width: 100%;
+  margin-top: auto; // Будет после основного контента
+
+  .footer-content {
+    max-width: 1400px;
+    margin: 0 auto;
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 2.5rem;
+    }
+
+    .footer-bottom {
+      text-align: center;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--divider);
+      margin-top: 1.5rem;
+    }
+  }
+}
+
+// =====================
+// КОМПОНЕНТЫ КОНТЕНТА
+// =====================
+.content-section {
+  background: var(--bg-surface);
+  border-radius: 12px;
+  padding: var(--content-padding);
+  margin-bottom: var(--section-spacing);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--divider);
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+  }
+
+  @media (max-width: 576px) {
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    border-radius: 6px;
+  }
+}
+
+.card {
+  background: var(--bg-surface);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  border: 1px solid var(--divider);
+  margin-bottom: 1.5rem;
+
+  @media (max-width: 768px) {
+    margin-bottom: 1rem;
+    border-radius: 8px;
+  }
+
+  @media (max-width: 576px) {
+    margin-bottom: 0.75rem;
+    border-radius: 6px;
+  }
+}
+
+// =====================
+// АДАПТИВНЫЕ СТИЛИ
+// =====================
+@media (max-width: 1200px) {
+  :root {
+    --content-padding: 1.25rem;
+    --section-spacing: 1.5rem;
+  }
+}
+
+@media (max-width: 992px) {
+  .main-container {
+    flex-direction: column;
+  }
+
+  .site-footer {
+    .footer-content .footer-grid {
+      gap: 1.5rem;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --content-padding: 1rem;
+    --section-spacing: 1.25rem;
+    --navbar-height: 70px;
+  }
+}
+
+// =====================
+// СПЕЦИАЛЬНЫЕ ФИКСЫ ДЛЯ САЙДБАРА
+// =====================
+
+// Принудительная адаптивность для таблиц
+.table-responsive-custom {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 1rem;
+
+  table {
+    min-width: 768px;
+
+    @media (min-width: 992px) {
+      min-width: auto;
+      width: 100%;
+    }
+  }
+}
+
+// Адаптивные карточки
+.responsive-card {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 1rem 0;
+
+  .card-body {
+    padding: 1rem;
+
+    @media (max-width: 768px) {
+      padding: 0.75rem;
+    }
+
+    @media (max-width: 576px) {
+      padding: 0.5rem;
+    }
+  }
+}
+
+// Адаптивные формы
+.responsive-form {
+  .form-group {
+    margin-bottom: 1rem;
+  }
+
+  .form-control, .form-select {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .row {
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+
+    > [class*="col-"] {
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+  }
+}
+
+// Адаптивные кнопки
+.btn-mobile {
+  @media (max-width: 576px) {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    padding: 0.75rem 1rem;
+  }
+}
+
+// Скрытие неважных колонок
+@media (max-width: 768px) {
+  .mobile-hidden {
+    display: none;
+  }
+}
+
+@media (max-width: 576px) {
+  .xs-mobile-hidden {
+    display: none;
+  }
+}
+
+// Специальные стили для страниц с сайдбаром
+.sidebar-layout {
+  .content-area {
+    min-height: calc(100vh - var(--navbar-height));
+
+    @media (max-width: 991.98px) {
+      min-height: calc(100vh - 60px);
+    }
+
+    @media (max-width: 576px) {
+      min-height: calc(100vh - 55px);
+    }
+  }
+}
+
+// =====================
+// СУЩЕСТВУЮЩИЕ СТИЛИ (сохранены)
+// =====================
+
+.ripple-effect {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(0);
+  animation: ripple 0.6s linear;
+  pointer-events: none;
+}
+
+@keyframes ripple {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+[data-theme="dark"] .ripple-effect {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme] {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body {
+  transition: background-color 0.3s ease;
+}
+
+[data-theme="dark"] {
+  background: linear-gradient(135deg, #1a1c23 0%, #232630 50%, #1a1c23 100%);
+
+  .content-section,
+  .card,
+  .site-footer {
+    background: rgba(30, 32, 40, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .navbar {
+    background: linear-gradient(135deg, rgba(25, 55, 109, 0.9) 0%, rgba(15, 45, 99, 0.9) 100%);
+    backdrop-filter: blur(10px);
+  }
+
+  .sidebar-container {
+    background: linear-gradient(135deg, rgba(25, 55, 109, 0.3) 0%, #1a1c23 100%);
+  }
+
+  body {
+    color: #e0e3ff;
+  }
+
+  a {
+    color: #82b1ff;
+    &:hover {
+      color: #448aff;
+    }
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #3d8bfd, #0d6efd);
+    border: none;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+// Переходы для плавности
+.sidebar-container,
+body {
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.5, 1);
+}
+
+.nav-link,
+.sidebar-controls button,
+.theme-switcher,
+.footer-links a {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+}
+
+// Иконки
+.bi {
+  transition: transform 0.3s ease;
+
+  &:hover {
+    transform: scale(1.15);
+  }
+}
+
+body.auth-layout {
+  padding-top: 0;
+  background: var(--auth-bg-light);
+
+  [data-theme="dark"] & {
+    background: var(--auth-bg-dark);
+  }
+}
+
+#sidebarContainer {
+  .nav-icon {
+    font-size: 1.1rem;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    padding: 0.4rem;
+    transform: none;
+    scale: 1;
+    will-change: auto;
+    transition: none;
+    animation: none;
+  }
+
+  .nav-link:hover .nav-icon {
+    transform: none;
+    scale: 1;
+  }
+}
+
+.sidebar-mini {
+  #sidebarContainer {
+    .nav-menu .nav-link .nav-icon {
+      width: 44px;
+      height: 44px;
+      font-size: 1.4rem;
+      padding: 0.5rem;
+      transform: none;
+    }
+  }
+}
+
+.completion-act-page {
+  background-color: #f8f9fa;
+}
+
+.completion-act-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.badge-warning {
+  color: #000;
+  background-color: #ffc107;
+}
+
+.badge-success {
+  color: #000;
+  background-color: #28a745;
+}
+
+.badge-danger {
+  color: #000;
+  background-color: #dc3545;
+}
+
+.badge-info {
+  color: #000;
+  background-color: #17a2b8;
+}
+
+.badge-secondary {
+  color: #000;
+  background-color: #6c757d;
+}
+
+// Гарантированные стили для автономного сайдбара
+body.sidebar-mini {
+  --sidebar-width: 80px;
+}
+
+body:not(.sidebar-mini) {
+  --sidebar-width: 280px;
+}
+
+.content-area {
+  margin-left: var(--sidebar-width);
+  transition: margin-left 0.3s ease;
+}
+
+@media (max-width: 992px) {
+  .content-area {
+    margin-left: 0;
+  }
+}
+
+.sidebar-mini {
+  --sidebar-width: 80px;
+}
+
+.sidebar-mini .content-area {
+  margin-left: 80px;
+}
+
+@media (max-width: 991.98px) {
+  .content-area {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .sidebar-minify-btn {
+    display: none;
+  }
+}
+
+.rotate-180 {
+  transform: rotate(180deg);
+  transition: transform 0.3s ease;
+}
+
+.navbar {
+  z-index: 9999;
+}
+
+#sidebarContainer {
+  z-index: 10001;
+}
+
+.sidebar-overlay {
+  z-index: 10000;
+}
+
+@media (max-width: 991.98px) {
+  @auth {
+    #navbarContent {
+      display: none;
+    }
+  }
+}
+
+// =====================
+// ФИНАЛЬНЫЕ КРИТИЧЕСКИЕ ФИКСЫ
+// =====================
+
+// ГАРАНТИЯ: Один скроллбар на всю страницу
+html {
+  overflow-y: scroll; // Всегда показываем скроллбар чтобы не прыгал контент
+}
+
+body {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+// Убираем все лишние скроллбары
+#app,
+.main-container,
+.content-area,
+.main-content,
+.content-container {
+  overflow: visible !important;
+}
+
+// ФИКС ДЛЯ ТЕМЫ - навбар не меняет цвет
+.navbar--scrolled {
+  background: linear-gradient(135deg, #0b5ed7, #0d6efd);
+
+  [data-theme="dark"] & {
+    background: linear-gradient(135deg, #0a4cb5, #0b5ed7);
+  }
+}
+
+// ЭКСТРЕННЫЙ ФИКС ДЛЯ МОБИЛЬНЫХ
+@media (max-width: 991.98px) {
+  .navbar {
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+
+    &.navbar--hidden {
+      transform: translateY(0);
+      opacity: 1;
+      visibility: visible;
+    }
+  }
+}
+
+// АБСОЛЮТНАЯ ГАРАНТИЯ ОГРАНИЧЕНИЯ РАЗМЕРОВ
+* {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+// ФИКС: Убеждаемся что футер всегда внизу контента
+.site-footer {
+  position: relative;
+  z-index: 10;
+}
+
+// ФИКС ДЛЯ САЙДБАРА НА МОБИЛЬНЫХ
+@media (max-width: 992px) {
+  .sidebar-container {
+    height: calc(100vh - var(--navbar-height));
+  }
+}
+
+// ГАРАНТИЯ: Футер не занимает лишнее место
+.site-footer {
+  min-height: auto;
+  height: auto;
+}
+
+// =====================
+// КРИТИЧЕСКИЕ ИСПРАВЛЕНИЯ ДЛЯ МОБИЛЬНОЙ ШИРИНЫ
+// =====================
+
+// ЖЕСТКОЕ ОГРАНИЧЕНИЕ ДЛЯ ВСЕХ ЭЛЕМЕНТОВ
+@media (max-width: 991.98px) {
+  // Принудительно сбрасываем все возможные проблемы с шириной
+  * {
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+  }
+
+  // Гарантия что корневые элементы не создают прокрутку
+  html, body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    position: relative;
+  }
+
+  #app {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  // КРИТИЧЕСКИЙ ФИКС: Принудительное ограничение для всех контейнеров
+  .container,
+  .container-fluid,
+  .row,
+  .col,
+  [class*="col-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  // Особое внимание для content-container
+  .content-container {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    padding: 0.75rem !important;
+
+    // Принудительно оборачиваем ВСЕ элементы
+    * {
+      max-width: 100% !important;
+      word-wrap: break-word !important;
+      overflow-wrap: break-word !important;
+    }
+
+    // Фикс для изображений
+    img {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+
+    // Фикс для таблиц
+    table {
+      width: 100% !important;
+      max-width: 100% !important;
+      display: block !important;
+      overflow-x: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+
+    // Фикс для flex-контейнеров
+    .d-flex {
+      flex-wrap: wrap !important;
+    }
+
+    // Фикс для абсолютно позиционированных элементов
+    .position-absolute,
+    .position-fixed,
+    .position-sticky {
+      max-width: 100vw !important;
+      left: 0 !important;
+      right: 0 !important;
+    }
+  }
+
+  // Специальный фикс для сайдбара на мобильных
+  .sidebar-container {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    transform: translateX(-100%);
+
+    &.mobile-open {
+      transform: translateX(0);
+    }
+  }
+
+  // Фикс для навбара
+  .navbar {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    left: 0 !important;
+    right: 0 !important;
+  }
+
+  // Фикс для футера
+  .site-footer {
+    width: 100vw !important;
+    max-width: 100vw !important;
+
+    .container,
+    .footer-grid {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      padding-left: 0.75rem !important;
+      padding-right: 0.75rem !important;
+    }
+  }
+}
+
+// Дополнительные фиксы для очень маленьких экранов
+@media (max-width: 576px) {
+  .content-container {
+    padding: 0.5rem !important;
+  }
+
+  .site-footer .container {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .content-container {
+    padding: 0.25rem !important;
+  }
+}
+
+// =====================
+// ЭКСТРЕННЫЙ ФИКС ДЛЯ КОНКРЕТНЫХ КОМПОНЕНТОВ
+// =====================
+
+// Если проблема в конкретных компонентах Vue
+@media (max-width: 768px) {
+  #rental-requests-app,
+  #public-rental-request-show-app,
+  #rental-request-edit-app {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+
+    * {
+      max-width: 100% !important;
+    }
+  }
+}
+
+// Фикс для любых кастомных компонентов
+@media (max-width: 768px) {
+  [class*="component"],
+  [class*="widget"],
+  [class*="module"] {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+// =====================
+// ДИАГНОСТИЧЕСКИЕ СТИЛИ (можно удалить после фикса)
+// =====================
+
+// Временно добавить для диагностики - подсвечивает проблемные элементы
+@media (max-width: 768px) {
+  .content-container * {
+    // outline: 1px solid rgba(255, 0, 0, 0.3) !important;
+  }
+
+  // Подсвечивает элементы, которые выходят за пределы
+  .content-container {
+    background: linear-gradient(90deg,
+      transparent 0%,
+      transparent calc(100% - 2px),
+      rgba(255, 0, 0, 0.1) calc(100% - 2px),
+      rgba(255, 0, 0, 0.3) 100%
+    ) !important;
+  }
+}
