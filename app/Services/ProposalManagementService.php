@@ -56,31 +56,6 @@ class ProposalManagementService
         });
     }
 
-    // УДАЛЕН дублирующий метод acceptProposal - оставляем только acceptProposalAndCreateOrder
-    public function acceptProposal(RentalRequestResponse $proposal): Order
-    {
-        return DB::transaction(function () use ($proposal) {
-            // Проверяем, что предложение еще не было принято
-            if ($proposal->status === 'accepted') {
-                throw new \Exception('Предложение уже было принято');
-            }
-
-            // Отклоняем все другие предложения по этой заявке
-            RentalRequestResponse::where('rental_request_id', $proposal->rental_request_id)
-                ->where('id', '!=', $proposal->id)
-                ->update(['status' => 'rejected']);
-
-            // Принимаем выбранное предложение
-            $proposal->update(['status' => 'accepted']);
-
-            // Обновляем статус заявки
-            $proposal->rentalRequest->update(['status' => 'processing']);
-
-            // Только теперь создаем заказ
-            return $this->createOrderFromProposal($proposal);
-        });
-    }
-
     private function createOrderFromProposal(RentalRequestResponse $proposal): Order
     {
         try {
@@ -184,12 +159,6 @@ class ProposalManagementService
     public static function getNewProposalsCount(User $lessee): int
     {
         try {
-            // Проверяем существование необходимых моделей
-            if (!class_exists('App\Models\RentalRequestResponse') ||
-                !class_exists('App\Models\RentalRequest')) {
-                return 0;
-            }
-
             return RentalRequestResponse::whereHas('rentalRequest', function($query) use ($lessee) {
                     $query->where('user_id', $lessee->id);
                 })
@@ -206,15 +175,6 @@ class ProposalManagementService
     public function getProposalStatistics(User $user): array
     {
         try {
-            if (!class_exists('App\Models\RentalRequestResponse')) {
-                return [
-                    'total' => 0,
-                    'pending' => 0,
-                    'accepted' => 0,
-                    'rejected' => 0
-                ];
-            }
-
             $query = RentalRequestResponse::whereHas('rentalRequest', function($query) use ($user) {
                 $query->where('user_id', $user->id);
             });
@@ -269,12 +229,12 @@ class ProposalManagementService
                 'rental_request_id' => $request->id,
                 'lessor_id' => $lessor->id,
                 'equipment_id' => $pricingData['equipment_id'] ?? null,
-                'proposed_price' => $pricingData['lessor_price_per_unit'] ?? 0, // Цена арендодателя
+                'proposed_price' => $pricingData['lessor_price_per_unit'] ?? 0,
                 'proposed_quantity' => $pricingData['quantity'] ?? 1,
                 'message' => $message,
                 'price_breakdown' => $pricingData,
                 'platform_markup_details' => $pricingData['platform_markup'] ?? [],
-                'final_customer_price' => $pricingData['final_price_per_unit'] ?? 0, // Цена для арендатора
+                'final_customer_price' => $pricingData['final_price_per_unit'] ?? 0,
                 'status' => 'pending',
                 'expires_at' => now()->addDays(14)
             ]);
@@ -368,23 +328,132 @@ class ProposalManagementService
         // 1. Check equipment belongs to lessor
         $equipment = Equipment::find($proposalData['equipment_id']);
         if (!$equipment || $equipment->company_id !== $lessor->company_id) {
-            $errors[] = 'The selected equipment does not belong to your company.';
+            $errors[] = 'Выбранное оборудование не принадлежит вашей компании.';
         }
 
         // 2. Check category match
         $requestCategoryIds = $rentalRequest->items->pluck('category_id')->toArray();
         if (!in_array($equipment->category_id, $requestCategoryIds)) {
-            $errors[] = 'The equipment category does not match the request.';
+            $errors[] = 'Категория оборудования не соответствует заявке.';
         }
 
         // 3. Check availability
-        // ... (Use your existing availability check logic)
+        // ... (Используйте вашу существующую логику проверки доступности)
 
         // 4. Validate proposed quantity
         if ($proposalData['quantity'] > $rentalRequest->getRequiredQuantityForCategory($equipment->category_id)) {
-            $errors[] = 'The proposed quantity exceeds the requested amount.';
+            $errors[] = 'Предложенное количество превышает запрашиваемое.';
         }
 
         return $errors;
     }
+
+    // Новые методы для аналитики предложений
+    public function getLessorProposalAnalytics($lessorId)
+    {
+        return [
+            'total_proposals' => RentalRequestResponse::where('lessor_id', $lessorId)->count(),
+            'accepted_proposals' => RentalRequestResponse::where('lessor_id', $lessorId)
+                ->where('status', 'accepted')->count(),
+            'pending_proposals' => RentalRequestResponse::where('lessor_id', $lessorId)
+                ->where('status', 'pending')->count(),
+            'rejected_proposals' => RentalRequestResponse::where('lessor_id', $lessorId)
+                ->where('status', 'rejected')->count(),
+            'conversion_rate' => $this->calculateConversionRate($lessorId),
+            'total_revenue' => $this->calculateTotalRevenue($lessorId),
+            'recent_activity' => $this->getRecentProposalActivity($lessorId)
+        ];
+    }
+
+    public function getProposalHistoryForRequest($rentalRequestId, $lessorId)
+    {
+        return RentalRequestResponse::with(['equipment', 'bulkItems.equipment'])
+            ->where('rental_request_id', $rentalRequestId)
+            ->where('lessor_id', $lessorId)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($proposal) {
+                return [
+                    'id' => $proposal->id,
+                    'proposed_price' => $proposal->proposed_price,
+                    'status' => $proposal->status,
+                    'created_at' => $proposal->created_at->format('d.m.Y H:i'),
+                    'equipment_title' => $proposal->equipment->title ?? 'Комплексное предложение',
+                    'is_bulk' => $proposal->is_bulk_main,
+                    'bulk_items_count' => $proposal->bulkItems->count(),
+                    'response_time' => $proposal->created_at->diffForHumans()
+                ];
+            });
+    }
+
+    private function calculateConversionRate($lessorId)
+    {
+        $total = RentalRequestResponse::where('lessor_id', $lessorId)->count();
+        $accepted = RentalRequestResponse::where('lessor_id', $lessorId)
+            ->where('status', 'accepted')->count();
+
+        return $total > 0 ? round(($accepted / $total) * 100, 1) : 0;
+    }
+
+    private function calculateTotalRevenue($lessorId)
+    {
+        return RentalRequestResponse::where('lessor_id', $lessorId)
+            ->where('status', 'accepted')
+            ->sum('proposed_price');
+    }
+
+    private function getRecentProposalActivity($lessorId)
+    {
+        return RentalRequestResponse::with('rentalRequest')
+            ->where('lessor_id', $lessorId)
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function($proposal) {
+                return [
+                    'request_title' => $proposal->rentalRequest->title ?? 'Заявка удалена',
+                    'status' => $proposal->status,
+                    'price' => $proposal->proposed_price,
+                    'time' => $proposal->created_at->diffForHumans()
+                ];
+            });
+    }
+
+    public function getRequestProposalAnalytics($requestId, $lessorId)
+    {
+        $totalProposals = RentalRequestResponse::where('rental_request_id', $requestId)->count();
+        $myProposals = RentalRequestResponse::where('rental_request_id', $requestId)
+            ->where('lessor_id', $lessorId)->count();
+
+        $myAcceptedProposals = RentalRequestResponse::where('rental_request_id', $requestId)
+            ->where('lessor_id', $lessorId)
+            ->where('status', 'accepted')->count();
+
+        return [
+            'total_proposals' => $totalProposals,
+            'my_proposals' => $myProposals,
+            'my_accepted_proposals' => $myAcceptedProposals,
+            'my_conversion_rate' => $myProposals > 0 ? round(($myAcceptedProposals / $myProposals) * 100, 1) : 0,
+            'market_conversion_rate' => $totalProposals > 0 ? round(($myAcceptedProposals / $totalProposals) * 100, 1) : 0,
+            'price_comparison' => $this->getPriceComparison($requestId, $lessorId)
+        ];
+    }
+
+    private function getPriceComparison($requestId, $lessorId)
+    {
+        $myAvgPrice = RentalRequestResponse::where('rental_request_id', $requestId)
+            ->where('lessor_id', $lessorId)
+            ->avg('proposed_price');
+
+        $marketAvgPrice = RentalRequestResponse::where('rental_request_id', $requestId)
+            ->avg('proposed_price');
+
+        return [
+            'my_avg_price' => $myAvgPrice,
+            'market_avg_price' => $marketAvgPrice,
+            'price_difference_percent' => $marketAvgPrice > 0 ?
+                round((($myAvgPrice - $marketAvgPrice) / $marketAvgPrice) * 100, 1) : 0
+        ];
+    }
+
 }

@@ -18,7 +18,7 @@ class Equipment extends Model
     protected $fillable = [
         'title', 'slug', 'description', 'company_id', 'category_id',
         'location_id', 'brand', 'model', 'year', 'hours_worked',
-        'rating', 'is_featured', 'is_approved', 'views',
+        'rating', 'is_featured', 'is_approved', 'views', 'equipment_import_id'
     ];
 
     protected $casts = [
@@ -31,6 +31,11 @@ class Equipment extends Model
         return $this->belongsTo(Company::class)->withDefault([
             'legal_name' => 'Компания недоступна',
         ]);
+    }
+
+    public function equipmentImport()
+    {
+        return $this->belongsTo(EquipmentImport::class);
     }
 
     public function user(): BelongsTo

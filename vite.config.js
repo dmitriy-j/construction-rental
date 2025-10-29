@@ -12,19 +12,21 @@ export default defineConfig({
                 'resources/sass/footer.scss',
                 'resources/sass/navbar.scss',
                 'resources/js/app.js',
-                'resources/js/vue-manager.js', // 🔥 ДОБАВЛЯЕМ МЕНЕДЖЕР
+                'resources/js/vue-manager.js',
                 'resources/js/components/SidebarComponent.js',
                 'resources/js/stores/sidebarStore.js',
                 'resources/js/theme.js',
                 'resources/js/ripple.js',
                 'resources/js/cart/index.js',
                 'resources/js/navbar.js',
-                'resources/js/components.js', // 🔥 ОБНОВЛЕННЫЙ КОМПОНЕНТЫ
+                'resources/js/components.js',
                 'resources/js/pages/rental-request-create.js',
                 'resources/js/pages/rental-request-show.js',
                 'resources/js/pages/public-rental-request-show.js',
                 'resources/js/pages/rental-request-edit.js',
                 'resources/js/pages/rental-requests.js',
+                'resources/js/pages/lessor-rental-requests.js',
+                'resources/js/pages/lessor-rental-request-detail.js', // 🔥 ДОБАВЛЕНО
             ],
             refresh: true,
         }),
@@ -43,7 +45,8 @@ export default defineConfig({
             'vue': 'vue/dist/vue.esm-bundler.js',
             '~components': '/resources/js/components',
             '~views': '/resources/js/views',
-            '~pages': '/resources/js/pages'
+            '~pages': '/resources/js/pages',
+            '~lessor': '/resources/js/components/Lessor', // 🔥 ДОБАВЛЕНО
         },
     },
     server: {
@@ -72,11 +75,15 @@ export default defineConfig({
                 manualChunks: {
                     vendor: ['vue', 'axios', 'bootstrap'],
                     charts: ['chart.js'],
-                    manager: ['resources/js/vue-manager.js'], // 🔥 ОТДЕЛЬНЫЙ ЧАНК
+                    manager: ['resources/js/vue-manager.js'],
                     'public-requests': [
                         'resources/js/views/PublicRentalRequestShow.vue',
                         'resources/js/components/Public/PublicRentalConditionsDisplay.vue',
                         'resources/js/components/Public/PublicCategoryGroup.vue'
+                    ],
+                    'lessor-components': [ // 🔥 ДОБАВЛЕНО
+                        'resources/js/components/Lessor/RentalRequestDetail.vue',
+                        'resources/js/components/Lessor/ProposalTemplates.vue'
                     ]
                 },
             },

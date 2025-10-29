@@ -18,6 +18,7 @@ class AuthServiceProvider extends ServiceProvider
         Equipment::class => EquipmentPolicy::class,
         Operator::class => OperatorPolicy::class,
         Waybill::class => WaybillPolicy::class,
+        EquipmentImport::class => EquipmentImportPolicy::class,
     ];
 
     /**

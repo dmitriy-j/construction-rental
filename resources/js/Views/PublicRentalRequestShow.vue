@@ -493,8 +493,8 @@ export default {
             const path = window.location.pathname;
             console.log('🔍 Анализ пути:', path);
 
-            // Обрабатываем разные форматы URL
-            const matches = path.match(/\/public\/rental-requests\/(\d+)/);
+            // Обрабатываем новый формат URL с /portal/
+            const matches = path.match(/\/portal\/rental-requests\/(\d+)/);
             const requestId = matches ? matches[1] : null;
 
             console.log('📋 Извлеченный ID заявки:', requestId);

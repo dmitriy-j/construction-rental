@@ -7,6 +7,8 @@ use App\Http\Controllers\Admin\BankStatementController;
 use App\Http\Controllers\Admin\CompletionActController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExcelMappingController;
+use App\Http\Controllers\Admin\DocumentTemplateController;
+use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\Catalog\CatalogController;
@@ -24,11 +26,14 @@ use App\Http\Controllers\Lessor\OperatorController;
 use App\Http\Controllers\Lessor\ShiftController;
 use App\Http\Controllers\Lessor\UpdController;
 use App\Http\Controllers\Lessor\WaybillController;
+use App\Http\Controllers\Lessor\EquipmentMassImportController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RentalConditionController;
 use App\Http\Controllers\RentalRequestController;
+use App\Http\Controllers\Lessor\RentalRequestController as LessorRentalRequestController;
+use App\Http\Controllers\Lessor\ProposalTemplateController as LessorProposalTemplateController;
 use App\Http\Controllers\NewsController; // Добавлено для публичных новостей
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
@@ -40,11 +45,11 @@ Route::get('/', function () {
 
 // Заявки
 Route::get('/requests', [RentalRequestController::class, 'index'])->name('rental-requests.index');
-Route::get('/public/rental-requests/{id}', function ($id) {
+Route::get('/portal/rental-requests/{id}', function ($id) {
     return view('public.rental-request-show', [
         'rentalRequestId' => $id
     ]);
-})->name('public.rental-requests.show');
+})->name('portal.rental-requests.show');
 
 // Маршрут для страницы контактов
 Route::get('/contacts', [PageController::class, 'contacts'])->name('pages.contacts');
@@ -114,6 +119,22 @@ Route::prefix('lessor')
                 'update' => 'equipment.update',
                 'destroy' => 'equipment.destroy',
             ]);
+        Route::prefix('equipment-mass-import')->name('equipment.mass-import.')->group(function () {
+            Route::get('create', [EquipmentMassImportController::class, 'create'])->name('create');
+            Route::post('store', [EquipmentMassImportController::class, 'store'])->name('store');
+            Route::get('download-template', [EquipmentMassImportController::class, 'downloadTemplate'])->name('download-template');
+            Route::get('{import}', [EquipmentMassImportController::class, 'show'])->name('show');
+        });
+
+        // 🔥 ШАБЛОНЫ ПРЕДЛОЖЕНИЙ - ДОБАВЛЕНЫ МАРШРУТЫ
+        Route::prefix('proposal-templates')->name('proposal-templates.')->group(function () {
+            Route::get('/', [LessorProposalTemplateController::class, 'index'])->name('index');
+            Route::get('/create', [LessorProposalTemplateController::class, 'create'])->name('create');
+            Route::post('/', [LessorProposalTemplateController::class, 'store'])->name('store');
+            Route::get('/{proposalTemplate}/edit', [LessorProposalTemplateController::class, 'edit'])->name('edit');
+            Route::put('/{proposalTemplate}', [LessorProposalTemplateController::class, 'update'])->name('update');
+            Route::delete('/{proposalTemplate}', [LessorProposalTemplateController::class, 'destroy'])->name('destroy');
+        });
 
         // Операторы
         Route::prefix('operators')->name('operators.')->group(function () {
@@ -184,11 +205,10 @@ Route::prefix('lessor')
             Route::delete('{shift}', [ShiftController::class, 'destroy'])->name('destroy');
         });
 
-        // Поиск заявок
-        Route::get('rental-requests', [\App\Http\Controllers\Lessor\RentalRequestSearchController::class, 'index'])
+        // 🔥ЗАЯВКИ ИСПРАВЛЕНИЕ: Используем правильный контроллер для ЛК арендодателя
+        Route::get('/rental-requests', [\App\Http\Controllers\Lessor\RentalRequestController::class, 'index'])
             ->name('rental-requests.index');
-
-        Route::get('rental-requests/{request}', [\App\Http\Controllers\Lessor\RentalRequestSearchController::class, 'show'])
+        Route::get('/rental-requests/{id}', [\App\Http\Controllers\Lessor\RentalRequestController::class, 'show'])
             ->name('rental-requests.show');
     });
 
@@ -456,9 +476,23 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
 });
 
 // Профиль пользователя
+
 Route::middleware('auth')->group(function () {
+    // Основной маршрут профиля
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+
+    // Обновление персональных данных (стандартный Breeze)
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    // 🔥 ДОБАВЛЯЕМ МАРШРУТ ДЛЯ БАНКОВСКИХ РЕКВИЗИТОВ
+    Route::patch('/profile/bank-details', [ProfileController::class, 'updateBankDetails'])
+         ->name('profile.bank-details.update');
+
+    // Экспорт в PDF
+    Route::get('/profile/export-pdf', [ProfileController::class, 'exportToPdf'])
+         ->name('profile.export.pdf');
+
+    // Существующие маршруты
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Маршруты для уведомлений
@@ -471,39 +505,5 @@ Route::middleware('auth')->group(function () {
     // Добавьте этот отдельный маршрут для совместимости со старым кодом
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications');
 });
-
-// Временный маршрут для проверки данных
-Route::get('/debug/rental-requests-data', function () {
-    $user = auth()->user();
-
-    if (!$user) {
-        return response()->json(['error' => 'Не авторизован']);
-    }
-
-    $requests = \App\Models\RentalRequest::with(['items.category'])
-        ->where('user_id', $user->id)
-        ->get();
-
-    return response()->json([
-        'user' => $user->email,
-        'user_id' => $user->id,
-        'requests_count' => $requests->count(),
-        'requests' => $requests->map(function($request) {
-            return [
-                'id' => $request->id,
-                'title' => $request->title,
-                'status' => $request->status,
-                'items_count' => $request->items->count(),
-                'items' => $request->items->map(function($item) {
-                    return [
-                        'id' => $item->id,
-                        'category_id' => $item->category_id,
-                        'category' => $item->category ? $item->category->name : 'NULL'
-                    ];
-                })
-            ];
-        })
-    ]);
-})->middleware(['auth']);
 
 require __DIR__.'/auth.php';

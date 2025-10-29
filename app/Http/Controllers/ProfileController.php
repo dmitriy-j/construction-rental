@@ -1,82 +1,98 @@
 <?php
+// app/Http/Controllers/ProfileController.php
 
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Http\Requests\UpdateCompanyBankDetailsRequest; // 🔥 ДОБАВЬТЕ ЭТОТ ИМПОРТ
+use App\Models\BankDetailsAudit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB; // 🔥 ДОБАВЬТЕ ЭТОТ ИМПОРТ
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
-    /**
-     * Display the user's profile form.
-     */
     public function edit(Request $request): View
     {
-        return view('profile.edit', [
-            'user' => $request->user(),
-        ]);
-    }
+        \Log::info('ProfileController edit called', ['user_id' => $request->user()->id]);
 
-    /**
-     * Update the user's profile information.
-     */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
-    {
-        $request->user()->fill($request->validated());
+        $user = $request->user()->load(['company', 'roles']);
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
-        }
-
-        $request->user()->save();
-
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
-    }
-
-    /**
-     * Delete the user's account.
-     */
-    public function destroy(Request $request): RedirectResponse
-    {
-        $request->validateWithBag('userDeletion', [
-            'password' => ['required', 'current_password'],
+        \Log::info('User company data:', [
+            'has_company' => !is_null($user->company),
+            'company_id' => $user->company?->id,
+            'company_name' => $user->company?->legal_name
         ]);
 
+        $auditHistory = $user->company ?
+            BankDetailsAudit::where('company_id', $user->company->id)
+                ->with('changedBy')
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get() :
+            collect();
+
+        \Log::info('Audit history count:', ['count' => $auditHistory->count()]);
+
+        return view('profile.edit', compact('user', 'auditHistory'));
+    }
+
+    public function updateBankDetails(UpdateCompanyBankDetailsRequest $request): RedirectResponse
+    {
         $user = $request->user();
 
-        Auth::logout();
+        if (!$user->company) {
+            return back()->withErrors(['error' => 'Компания не найдена']);
+        }
 
-        $user->delete();
+        DB::transaction(function () use ($user, $request) {
+            $company = $user->company;
+            $oldValues = $company->only([
+                'bank_name', 'bank_account', 'bik', 'correspondent_account'
+            ]);
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+            $company->update($request->validated());
 
-        return Redirect::to('/');
+            // Запись в аудит
+            BankDetailsAudit::create([
+                'company_id' => $company->id,
+                'changed_by' => $user->id,
+                'old_values' => $oldValues,
+                'new_values' => $request->validated(),
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+
+            // Отложенная синхронизация с 1С
+            \App\Jobs\SyncCompanyWith1C::dispatch($company)->delay(now()->addMinutes(1));
+        });
+
+        return redirect()->route('profile.edit')
+            ->with('success', 'Банковские реквизиты успешно обновлены');
     }
 
-    // Автоматическое создание зеркальной накладной
-    public function createMirrorNote(): DeliveryNote
+    public function exportToPdf(Request $request)
     {
-        return DeliveryNote::create([
-            'original_note_id' => $this->id,
-            'delivery_scenario' => $this->delivery_scenario,
-            'type' => DeliveryNote::TYPE_PLATFORM_TO_LESSEE,
-            'order_id' => $this->order_id,
-            'order_item_id' => $this->order_item_id,
-            'sender_company_id' => Platform::main()->id,
-            'receiver_company_id' => $this->order->lessee_company_id,
-            'delivery_from_id' => $this->delivery_to_id, // Из склада платформы
-            'delivery_to_id' => $this->order->delivery_location_id,
-            'cargo_description' => $this->cargo_description,
-            'cargo_weight' => $this->cargo_weight,
-            'cargo_value' => $this->cargo_value,
-            'transport_type' => $this->transport_type,
-            'is_mirror' => true,
-            'status' => self::STATUS_DRAFT,
+        $user = $request->user();
+
+        if (!$user->company) {
+            return back()->withErrors(['error' => 'Компания не найдена']);
+        }
+
+        // Используем новый шаблон только с реквизитами
+        $pdf = \PDF::loadView('profile.pdf.requisites', [
+            'company' => $user->company,
+            'user' => $user
         ]);
+
+        // Устанавливаем имя файла
+        $filename = 'реквизиты_' . Str::slug($user->company->legal_name) . '.pdf';
+
+        return $pdf->download($filename);
     }
 }
+

@@ -1,13 +1,15 @@
 <?php
 
-// use App\Http\Controllers\Admin\NewsController;
 use App\Http\Controllers\DeliveryController;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route; // Импорт контроллера
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\LocationController;
 use App\Http\Controllers\API\PublicProposalController;
 use App\Http\Controllers\API\PublicRentalRequestController;
+use App\Http\Controllers\API\LessorProposalTemplateController;
 use App\Http\Controllers\API\ProposalCartController;
+use App\Http\Controllers\API\LessorDashboardController; // 🔥 ДОБАВЛЕНО
+use App\Http\Controllers\API\LessorRecommendationController;
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user()->load('company');
@@ -28,38 +30,134 @@ Route::prefix('delivery')->group(function () {
     Route::get('/locations', [DeliveryController::class, 'getLocations']);
 });
 
-// Этот маршрут будет загружать доступную технику для заявки
+// Защищенные маршруты для предложений
 Route::get('/rental-requests/{rentalRequest}/available-equipment', [PublicProposalController::class, 'getAvailableEquipment'])
     ->middleware(['auth:sanctum', 'company.verified'])
     ->name('api.public.rental-requests.available-equipment');
 
-// Этот маршрут будет обрабатывать отправку предложения
 Route::post('/rental-requests/{rentalRequest}/proposals', [PublicProposalController::class, 'store'])
     ->middleware(['auth:sanctum', 'company.verified'])
     ->name('api.public.rental-requests.proposals.store');
 
-// Защищенные маршруты (только для админов/редакторов)
-/*Route::middleware(['auth:sanctum', 'role:admin|editor'])->group(function () {
-    Route::post('/news', [NewsController::class, 'store']);
-    Route::put('/news/{news}', [NewsController::class, 'update']);
-    Route::delete('/news/{news}', [NewsController::class, 'destroy']);
-});*/
+// Маршруты для арендаторов
+Route::middleware(['auth:sanctum'])->prefix('lessee')->group(function () {
+    Route::get('/rental-requests', [\App\Http\Controllers\API\RentalRequestController::class, 'index']);
+    Route::get('/rental-requests/{id}', [\App\Http\Controllers\API\RentalRequestController::class, 'show']);
+    Route::post('/rental-requests', [\App\Http\Controllers\API\RentalRequestController::class, 'store']);
+    Route::get('/rental-requests/{id}/show', [\App\Http\Controllers\API\RentalRequestController::class, 'showForVue']);
+    Route::put('/rental-requests/{id}', [\App\Http\Controllers\API\RentalRequestController::class, 'update']);
 
-// Документы
-/*Route::prefix('documents')->group(function () {
-    Route::post('orders/{order}/delivery-notes', [DocumentController::class, 'createDeliveryNote']);
-    Route::post('orders/{order}/waybills', [DocumentController::class, 'createWaybill']);
-    Route::post('orders/{order}/completion-act', [DocumentController::class, 'generateCompletionAct']);
-});*/
+    Route::get('/categories/{categoryId}/specifications',
+        [\App\Http\Controllers\API\SpecificationController::class, 'getTemplate']);
+    Route::post('/specifications/validate',
+        [\App\Http\Controllers\API\SpecificationController::class, 'validateSpecifications']);
 
-// Финансы
-/*Route::prefix('finance')->middleware('auth:api')->group(function () {
-    Route::get('/balance', [API\FinanceController::class, 'balance']);
-    Route::get('/transactions', [API\FinanceController::class, 'transactions']);
-    Route::get('/invoices', [API\FinanceController::class, 'invoices']);
-    Route::get('/reconciliation-acts', [API\FinanceController::class, 'reconciliationActs']);
-});*/
+    Route::post('/rental-requests/{id}/pause', [\App\Http\Controllers\API\RentalRequestController::class, 'pause']);
+    Route::post('/rental-requests/{id}/resume', [\App\Http\Controllers\API\RentalRequestController::class, 'resume']);
+    Route::post('/rental-requests/{id}/cancel', [\App\Http\Controllers\API\RentalRequestController::class, 'cancel']);
+    Route::post('/rental-requests/{request}/proposals/{proposal}/accept', [\App\Http\Controllers\API\RentalRequestController::class, 'acceptProposal']);
+    Route::post('/rental-requests/{request}/proposals/{proposal}/reject', [\App\Http\Controllers\API\RentalRequestController::class, 'rejectProposal']);
+    Route::get('/rental-requests/stats', [\App\Http\Controllers\API\RentalRequestController::class, 'stats']);
+});
 
+// Публичные маршруты
+Route::prefix('public')->group(function () {
+    Route::get('/rental-requests', [PublicRentalRequestController::class, 'index']);
+    Route::get('/rental-requests/{id}', [PublicRentalRequestController::class, 'show']);
+});
+
+// Защищенные маршруты для арендодателей
+Route::middleware(['auth:sanctum', 'company.verified'])->group(function () {
+    Route::get('/rental-requests/{rentalRequest}/available-equipment',
+        [PublicProposalController::class, 'getAvailableEquipment'])
+        ->name('api.public.rental-requests.available-equipment');
+
+    Route::post('/rental-requests/{rentalRequest}/proposals',
+        [PublicProposalController::class, 'store'])
+        ->name('api.public.rental-requests.proposals.store');
+
+    Route::get('/proposals/{proposal}/bulk',
+        [PublicProposalController::class, 'getBulkProposal'])
+        ->name('api.public.proposals.bulk');
+
+    Route::post('/proposals/{proposal}/accept-bulk',
+        [PublicProposalController::class, 'acceptBulkProposal'])
+        ->name('api.public.proposals.accept-bulk');
+
+    Route::post('/lessor/equipment/available-for-request',
+        [\App\Http\Controllers\API\LessorEquipmentController::class, 'getAvailableForRequest']);
+});
+
+// 🔥 ОСНОВНЫЕ МАРШРУТЫ ДЛЯ АРЕНДОДАТЕЛЕЙ
+Route::middleware(['auth:sanctum', 'company.lessor'])->prefix('lessor')->group(function () {
+    // Заявки на аренду
+    Route::get('/rental-requests', [\App\Http\Controllers\API\LessorRentalRequestController::class, 'index']);
+    Route::get('/rental-requests/{id}', [\App\Http\Controllers\API\LessorRentalRequestController::class, 'show']);
+    Route::get('/rental-requests/{id}/analytics', [\App\Http\Controllers\API\LessorRentalRequestController::class, 'analytics']);
+
+    // Шаблоны предложений
+    Route::apiResource('proposal-templates', LessorProposalTemplateController::class);
+    Route::get('proposal-templates/stats', [LessorProposalTemplateController::class, 'stats']);
+    Route::post('proposal-templates/bulk-actions', [LessorProposalTemplateController::class, 'bulkActions']);
+
+    // Применение шаблонов к заявкам
+    Route::post('proposal-templates/{templateId}/preview-apply/{rentalRequestId}', [LessorProposalTemplateController::class, 'previewApplyTemplate']);
+    Route::post('proposal-templates/{templateId}/apply/{rentalRequestId}', [LessorProposalTemplateController::class, 'applyTemplate']);
+    Route::post('rental-requests/{rentalRequest}/apply-template/{template}', [LessorProposalTemplateController::class, 'applyToRequest']);
+
+    // Предложения
+    Route::get('/proposals', [\App\Http\Controllers\API\LessorProposalController::class, 'index']);
+
+    // 🔥 МАРШРУТ ДЛЯ СЧЕТЧИКОВ ДАШБОРДА - ДОБАВЛЕНО
+    Route::get('/dashboard-counters', [LessorDashboardController::class, 'getCounters'])
+        ->name('lessor.dashboard-counters');
+
+     Route::get('/proposal-templates/{id}/ab-test-stats', [LessorProposalTemplateController::class, 'getAbTestStats']);
+    Route::post('/proposal-templates/{id}/start-ab-test', [LessorProposalTemplateController::class, 'startAbTest']);
+    Route::post('/proposal-templates/{id}/stop-ab-test', [LessorProposalTemplateController::class, 'stopAbTest']);
+    Route::post('/proposal-templates/{id}/declare-winner', [LessorProposalTemplateController::class, 'declareWinner']);
+
+    // Рекомендации
+    Route::get('/rental-requests/{rentalRequestId}/recommendations',
+        [LessorRecommendationController::class, 'getRecommendations']);
+    Route::post('/recommendations/quick',
+        [LessorRecommendationController::class, 'getQuickRecommendations']);
+    Route::post('/recommendation-feedback',
+        [LessorRecommendationController::class, 'saveFeedback']);
+    Route::get('/recommendations/stats',
+        [LessorRecommendationController::class, 'getStats']);
+
+        // 🔥 ТЕСТОВЫЙ МАРШРУТ ДЛЯ НЕМЕДЛЕННОЙ ПРОВЕРКИ
+Route::get('/lessor/rental-requests/{rentalRequestId}/test-recommendations',
+    [App\Http\Controllers\API\LessorRecommendationController::class, 'testRecommendations']);
+
+});
+
+// Корзина предложений
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::prefix('cart')->group(function () {
+        Route::get('/proposal', [ProposalCartController::class, 'getProposalCart']);
+        Route::post('/proposal/add', [ProposalCartController::class, 'addToCart']);
+        Route::post('/proposal/extend-reservation', [ProposalCartController::class, 'extendReservation']);
+        Route::get('/request-progress/{requestId}', [ProposalCartController::class, 'getRequestProgress']);
+        Route::delete('/items/{itemId}', [ProposalCartController::class, 'removeItem']);
+        Route::post('/remove-selected', [ProposalCartController::class, 'removeSelected']);
+        Route::post('/proposal/checkout-selected', [ProposalCartController::class, 'checkoutSelected']);
+        Route::post('/proposal/direct-checkout-selected', [ProposalCartController::class, 'directCheckoutSelected']);
+        Route::post('/proposal/simple-checkout-selected', [ProposalCartController::class, 'simpleCheckoutSelected']);
+        Route::delete('/remove-selected-items', [ProposalCartController::class, 'removeSelectedItems']);
+        Route::post('proposal/update-rental-period', [ProposalCartController::class, 'updateRentalPeriod']);
+        Route::post('proposal/test-api', [ProposalCartController::class, 'testApi']);
+    });
+});
+
+// Дополнительные маршруты
+Route::post('/rental-requests/{id}/calculate-delivery', [PublicProposalController::class, 'calculateDelivery'])
+    ->middleware(['auth:sanctum', 'company.verified']);
+Route::post('/proposal-cart/checkout', [ProposalCartController::class, 'checkoutSelected'])
+    ->middleware(['auth:sanctum']);
+
+// 🔥 ДЕБАГ МАРШРУТЫ
 Route::get('/debug/edit-test/{id}', function ($id) {
     \Log::info('API Debug Test', ['id' => $id, 'user' => auth()->user()]);
 
@@ -76,10 +174,6 @@ Route::get('/debug/edit-test/{id}', function ($id) {
 })->middleware('auth:sanctum');
 
 Route::middleware(['auth:sanctum'])->prefix('lessee')->group(function () {
-    // Список заявок с фильтрацией
-    Route::get('/rental-requests', [\App\Http\Controllers\API\RentalRequestController::class, 'index']);
-
-    // Добавляем тестовый маршрут ДО основных маршрутов
     Route::get('/debug/edit-test/{id}', function ($id) {
         \Log::info('API Debug Test', [
             'id' => $id,
@@ -98,102 +192,4 @@ Route::middleware(['auth:sanctum'])->prefix('lessee')->group(function () {
             ]
         ]);
     });
-
-    // Получение одной заявки
-    Route::get('/rental-requests/{id}', [\App\Http\Controllers\API\RentalRequestController::class, 'show']);
-
-    // Создание заявки
-    Route::post('/rental-requests', [\App\Http\Controllers\API\RentalRequestController::class, 'store']);
-
-    // НОВЫЙ маршрут для Vue-компонента
-    Route::get('/rental-requests/{id}/show', [\App\Http\Controllers\API\RentalRequestController::class, 'showForVue']);
-
-    // Технические параметры по категории
-    Route::get('/categories/{categoryId}/specifications',
-        [\App\Http\Controllers\API\SpecificationController::class, 'getTemplate']);
-
-    // Валидация технических параметров
-    Route::post('/specifications/validate',
-        [\App\Http\Controllers\API\SpecificationController::class, 'validateSpecifications']);
-
-    Route::put('/rental-requests/{id}', [\App\Http\Controllers\API\RentalRequestController::class, 'update']);
-
-    // Добавляем новые маршруты для операций с заявками
-    Route::post('/rental-requests/{id}/pause', [\App\Http\Controllers\API\RentalRequestController::class, 'pause']);
-    Route::post('/rental-requests/{id}/resume', [\App\Http\Controllers\API\RentalRequestController::class, 'resume']); // ДОБАВИТЬ
-    Route::post('/rental-requests/{id}/cancel', [\App\Http\Controllers\API\RentalRequestController::class, 'cancel']);
-    Route::post('/rental-requests/{request}/proposals/{proposal}/accept', [\App\Http\Controllers\API\RentalRequestController::class, 'acceptProposal']);
-    Route::post('/rental-requests/{request}/proposals/{proposal}/reject', [\App\Http\Controllers\API\RentalRequestController::class, 'rejectProposal']);
-
-    // Статистика
-    Route::get('/rental-requests/stats', [\App\Http\Controllers\API\RentalRequestController::class, 'stats']);
 });
-
-// Публичные маршруты
-Route::prefix('public')->group(function () {
-    // ИСПРАВЛЕНО: используем полный путь к контроллеру
-    Route::get('/rental-requests', [PublicRentalRequestController::class, 'index']);
-    Route::get('/rental-requests/{id}', [PublicRentalRequestController::class, 'show']);
-});
-
-// Защищенные маршруты для арендодателей
-Route::middleware(['auth:sanctum', 'company.verified'])->group(function () {
-    // ========== МАРШРУТЫ ДЛЯ ПРЕДЛОЖЕНИЙ ==========
-
-    // Получение доступной техники для заявки
-    Route::get('/rental-requests/{rentalRequest}/available-equipment',
-        [PublicProposalController::class, 'getAvailableEquipment'])
-        ->name('api.public.rental-requests.available-equipment');
-
-    // Создание предложения (одиночного или bulk)
-    Route::post('/rental-requests/{rentalRequest}/proposals',
-        [PublicProposalController::class, 'store'])
-        ->name('api.public.rental-requests.proposals.store');
-
-    // Получение деталей bulk-предложения
-    Route::get('/proposals/{proposal}/bulk',
-        [PublicProposalController::class, 'getBulkProposal'])
-        ->name('api.public.proposals.bulk');
-
-    // Принятие bulk-предложения
-    Route::post('/proposals/{proposal}/accept-bulk',
-        [PublicProposalController::class, 'acceptBulkProposal'])
-        ->name('api.public.proposals.accept-bulk');
-
-    // ========== СУЩЕСТВУЮЩИЕ МАРШРУТЫ ==========
-
-    // Получение доступного оборудования для заявки
-    Route::post('/lessor/equipment/available-for-request',
-        [\App\Http\Controllers\API\LessorEquipmentController::class, 'getAvailableForRequest']);
-});
-
-// Новый маршрут для оформления заказа
-Route::middleware(['auth:sanctum'])->group(function () {
-    // API для управления корзиной предложений
-    Route::prefix('cart')->group(function () {
-        Route::get('/proposal', [ProposalCartController::class, 'getProposalCart']);
-        Route::post('/proposal/add', [ProposalCartController::class, 'addToCart']);
-        Route::post('/proposal/extend-reservation', [ProposalCartController::class, 'extendReservation']);
-        Route::get('/request-progress/{requestId}', [ProposalCartController::class, 'getRequestProgress']);
-
-        // 🔥 ДОБАВИТЬ: Маршрут для удаления элементов корзины
-        Route::delete('/items/{itemId}', [ProposalCartController::class, 'removeItem']);
-        Route::post('/remove-selected', [ProposalCartController::class, 'removeSelected']);
-
-        // 🔥 НОВЫЕ МАРШРУТЫ ДЛЯ ОФОРМЛЕНИЯ ЗАКАЗА
-        Route::post('/proposal/checkout-selected', [ProposalCartController::class, 'checkoutSelected']);
-        Route::post('/proposal/direct-checkout-selected', [ProposalCartController::class, 'directCheckoutSelected']);
-        Route::post('/proposal/simple-checkout-selected', [ProposalCartController::class, 'simpleCheckoutSelected']);
-
-        // 🔥 МАРШРУТ ДЛЯ МАССОВОГО УДАЛЕНИЯ
-        Route::delete('/remove-selected-items', [ProposalCartController::class, 'removeSelectedItems']);
-        Route::post('proposal/update-rental-period', [ProposalCartController::class, 'updateRentalPeriod']);
-        Route::post('proposal/test-api', [ProposalCartController::class, 'testApi']);
-    });
-});
-
-// Дополнительные маршруты для предложений
-Route::post('/rental-requests/{id}/calculate-delivery', [PublicProposalController::class, 'calculateDelivery'])
-    ->middleware(['auth:sanctum', 'company.verified']);
-Route::post('/proposal-cart/checkout', [ProposalCartController::class, 'checkoutSelected'])
-    ->middleware(['auth:sanctum']);

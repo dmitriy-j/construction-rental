@@ -1,4 +1,4 @@
-// resources/js/app.js
+// resources/js/app.js (оставляем рабочую версию БЕЗ ЛК арендодателя)
 
 import { createApp } from 'vue';
 import RentalRequests from '/resources/js/Views/RentalRequests.vue';
@@ -32,7 +32,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // УЛУЧШЕННАЯ ИНИЦИАЛИЗАЦИЯ VUE ПРИЛОЖЕНИЙ
 function initializeVueApps() {
-  // 🔥 ИСПРАВЛЕНИЕ: Используем менеджер для проверки
   const appManager = window.vueAppManager;
 
   // Приложение для заявок
@@ -49,9 +48,7 @@ function initializeVueApps() {
     }
   }
 
-  // 🔥 УБИРАЕМ ВСЕ ДУБЛИРУЮЩИЕСЯ ПРИЛОЖЕНИЯ
-  // Приложение для публичной страницы заявки теперь монтируется ТОЛЬКО в public-rental-request-show.js
-
+  // 🔥 УБИРАЕМ ИНИЦИАЛИЗАЦИЮ ЛК АРЕНДОДАТЕЛЯ - она в отдельном файле
   // Приложение для редактирования заявки
   const rentalRequestEditAppElement = document.getElementById('rental-request-edit-app');
   if (rentalRequestEditAppElement) {
@@ -120,3 +117,5 @@ window.addEventListener('error', function(e) {
 window.addEventListener('unhandledrejection', function(e) {
   console.error('🚨 Необработанный Promise rejection:', e.reason);
 });
+
+console.log('🎯 app.js - настроен');

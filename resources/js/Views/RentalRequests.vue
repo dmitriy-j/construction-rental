@@ -444,7 +444,7 @@ export default {
                 return;
             }
             // Открываем в той же вкладке
-            window.location.href = `/public/rental-requests/${id}`;
+            window.location.href = `/portal/rental-requests/${id}`;
         },
 
         showProposalModal(request) {

@@ -1,9 +1,10 @@
+{{-- resources/views/lessor/rental-requests/index.blade.php --}}
 @extends('layouts.app')
 
-@section('title', 'Заявки на аренду')
+@section('title', 'Заявки на аренду - Панель арендодателя')
 
 @section('content')
-<div class="container-fluid px-4">
+<div class="container-fluid px-4 lessor-container">
     <div class="row">
         <div class="col-12">
             <div class="page-header d-flex justify-content-between align-items-center mb-4">
@@ -15,171 +16,73 @@
         </div>
     </div>
 
-    {{-- Компонент поиска --}}
-    <rental-request-search
-        :initial-categories="{{ json_encode($categories) }}"
-        :initial-locations="{{ json_encode($locations) }}"
-        :initial-filters="{{ json_encode($filters) }}"
-        @filters-changed="handleFiltersChanged"
-    ></rental-request-search>
-
-    {{-- Рекомендуемые заявки --}}
-    @if(isset($recommendedRequests) && $recommendedRequests->count() > 0)
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <!-- ... остальной HTML ... -->
-                    <div class="card-body">
-                        @if(method_exists($recommendedRequests, 'items'))
-                            <rental-request-list
-                                :requests="{{ json_encode($recommendedRequests->items()) }}"
-                                :pagination="{{ json_encode($recommendedRequests->toArray()) }}"
-                                :can-respond="true"
-                                @respond="handleRespond"
-                                @page-changed="handlePageChanged"
-                            ></rental-request-list>
-                        @else
-                            <rental-request-list
-                                :requests="{{ json_encode($recommendedRequests) }}"
-                                :pagination="{{ json_encode([]) }}"
-                                :can-respond="true"
-                                @respond="handleRespond"
-                                @page-changed="handlePageChanged"
-                            ></rental-request-list>
-                        @endif
+    {{-- ВРЕМЕННЫЙ HTML FALLBACK (изначально видимый) --}}
+    <div id="lessor-html-fallback">
+        @if($rentalRequests->count() > 0)
+            @foreach($rentalRequests as $request)
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">{{ $request->title ?? 'Без названия' }}</h5>
+                    <p class="card-text">{{ $request->description ?? 'Описание отсутствует' }}</p>
+                    <div class="d-flex justify-content-between text-muted small">
+                        <span><i class="fas fa-map-marker-alt"></i> {{ $request->location->name ?? 'Локация не указана' }}</span>
+                        <span><i class="fas fa-calendar-alt"></i> {{ $request->rental_period_start->format('d.m.Y') }} - {{ $request->rental_period_end->format('d.m.Y') }}</span>
+                        <span class="badge bg-primary">{{ $request->active_proposals_count ?? 0 }} предложений</span>
+                    </div>
+                    <div class="mt-3">
+                        <a href="{{ route('lessor.rental-requests.show', $request->id) }}" class="btn btn-primary btn-sm">Подробнее</a>
+                        <a href="{{ route('portal.rental-requests.show', $request->id) }}" target="_blank" class="btn btn-outline-primary btn-sm">Предложить</a>
                     </div>
                 </div>
             </div>
-        </div>
-    @endif
-
-    {{-- Временный код для проверки --}}
-<div class="container">
-    <h1>Тест: Найдено заявок (коллекция)</h1>
-    <p>{{ $rentalRequests->count() }}</p>
-
-    <h1>Тест: Найдено заявок (пагинатор)</h1>
-    <p>{{ $rentalRequests->total() }}</p>
-
-    <hr>
-    <h2>Содержимое первой заявки (дамп):</h2>
-    @if($rentalRequests->count() > 0)
-        <pre>{{ print_r($rentalRequests->first()->toArray(), true) }}</pre>
-    @else
-        <p>Нет заявок для отображения.</p>
-    @endif
-</div>
-
-<div class="row">
-    @foreach ($rentalRequests->items() as $request)
-        <div class="col-12 mb-3">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">{{ $request->title }}</h5>
-                    <p class="card-text">{{ $request->description }}</p>
-                    <p class="card-text"><small class="text-muted">Бюджет: {{ $request->total_budget }} руб.</small></p>
-                </div>
+            @endforeach
+        @else
+            <div class="alert alert-info text-center">
+                <i class="fas fa-inbox fa-2x mb-3"></i>
+                <h5>Заявки не найдены</h5>
+                <p class="text-muted">Попробуйте изменить параметры фильтрации</p>
             </div>
-        </div>
-    @endforeach
-</div>
+        @endif
+    </div>
 
-{{-- Упрощенный вывод через Vue
-<rental-request-list
-    :requests="{{ json_encode($rentalRequests->items()) }}"
-    :can-respond="true"
->
-</rental-request-list>
-    {{-- Все заявки
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Все заявки</h5>
-                </div>
-                <div class="card-body">
-                    <rental-request-list
-                        :requests="{{ json_encode($rentalRequests->items()) }}"
-                        :pagination="{{ json_encode($rentalRequests->toArray()) }}"
-                        :can-respond="true"
-                        :loading="false"
-                        @respond="handleRespond"
-                        @page-changed="handlePageChanged"
-                        @reset-filters="handleResetFilters"
-                    ></rental-request-list>--}}
-                </div>
-            </div>
-        </div>
+    {{-- Vue компонент для ЛК арендодателя (изначально скрыт) --}}
+    <div id="lessor-rental-requests-app" style="display: none;">
+        <lessor-rental-request-list
+            :initial-requests="{{ json_encode($rentalRequests->items()) }}"
+            :initial-analytics="{{ json_encode($analytics) }}"
+            :categories="{{ json_encode($categories) }}"
+            :locations="{{ json_encode($locations) }}"
+            :filters="{{ json_encode($filters) }}"
+        ></lessor-rental-request-list>
     </div>
 </div>
 @endsection
 
-@push('scripts')
-<script>
-// Инициализация Vue приложения
-const app = Vue.createApp({
-    data() {
-        return {
-            filters: @json($filters),
-            loading: false
-        }
-    },
+@push('styles')
+<style>
+.lessor-container {
+    margin-left: 250px;
+    padding: 20px;
+    min-height: calc(100vh - 60px);
+}
 
-    methods: {
-        handleFiltersChanged(newFilters) {
-            this.filters = newFilters;
-            this.loadRequests();
-        },
+.lessor-container .page-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+}
 
-        handlePageChanged(page) {
-            this.filters.page = page;
-            this.loadRequests();
-        },
-
-        handleResetFilters() {
-            this.filters = {
-                category_id: '',
-                location_id: '',
-                budget_max: '',
-                sort_by: 'newest',
-                page: 1
-            };
-            this.loadRequests();
-        },
-
-        handleRespond(request) {
-            window.location.href = `/lessor/rental-requests/${request.id}/proposals/create`;
-        },
-
-        loadRequests() {
-            this.loading = true;
-
-            const queryString = new URLSearchParams(this.filters).toString();
-
-            fetch(`/lessor/rental-requests?${queryString}`, {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Обновляем список заявок
-                this.$refs.requestList.updateRequests(data.requests);
-                this.loading = false;
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                this.loading = false;
-            });
-        }
+@media (max-width: 768px) {
+    .lessor-container {
+        margin-left: 0;
+        padding: 10px;
     }
-});
+}
+</style>
+@endpush
 
-// Регистрация компонентов
-app.component('rental-request-search', RentalRequestSearch);
-app.component('rental-request-list', RentalRequestList);
-
-// Монтируем приложение
-app.mount('#app');
-</script>
+@push('scripts')
+{{-- 🔥 ПРЯМАЯ ЗАГРУЗКА: Подключаем отдельный файл для ЛК арендодателя --}}
+@vite('resources/js/pages/lessor-rental-requests.js')
 @endpush

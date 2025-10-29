@@ -4,9 +4,14 @@
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Моя техника</h1>
-        <a href="{{ route('lessor.equipment.create') }}" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Добавить технику
-        </a>
+        <div>
+            <a href="{{ route('lessor.equipment.mass-import.create') }}" class="btn btn-info me-2">
+                <i class="bi bi-upload"></i> Массовая загрузка
+            </a>
+            <a href="{{ route('lessor.equipment.create') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Добавить технику
+            </a>
+        </div>
     </div>
 
     @if($equipments->isEmpty())

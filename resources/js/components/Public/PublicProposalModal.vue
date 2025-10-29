@@ -11,21 +11,108 @@
                 </div>
 
                 <div class="modal-body">
-                    <!-- 🔥 ОТЛАДОЧНАЯ ИНФОРМАЦИЯ -->
-                    <div v-if="debugMode" class="debug-info bg-dark text-white p-3 rounded mb-3">
-                        <strong>🐛 Отладка модального окна:</strong>
-                        <div class="row small mt-2">
-                            <div class="col-md-4">
-                                <strong>Request ID:</strong> {{ request?.id }}<br>
-                                <strong>Delivery Required:</strong> {{ request?.delivery_required }}
+                    <!-- 🔥 БЛОК БЫСТРЫХ ШАБЛОНОВ -->
+                    <div class="template-section mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0">
+                                <i class="fas fa-bolt me-2 text-warning"></i>
+                                Быстрые шаблоны
+                            </h6>
+                            <button class="btn btn-outline-secondary btn-sm" @click="showTemplatesModal">
+                                <i class="fas fa-cog me-1"></i>Управление шаблонами
+                            </button>
+                        </div>
+
+                        <div class="template-controls">
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label small">Выберите шаблон</label>
+                                    <select v-model="selectedTemplateId"
+                                            class="form-select form-select-sm"
+                                            @change="onTemplateSelect">
+                                        <option value="">-- Выберите шаблон --</option>
+                                        <option v-for="template in availableTemplates"
+                                                :key="template.id"
+                                                :value="template.id">
+                                            {{ template.name }}
+                                            <span v-if="template.usage_count">(использован {{ template.usage_count }} раз)</span>
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small">&nbsp;</label>
+                                    <button type="button"
+                                            class="btn btn-primary btn-sm w-100"
+                                            :disabled="!selectedTemplateId || templatePreview.loading || selectedEquipmentIds.length === 0"
+                                            @click="applyTemplate">
+                                        <i class="fas fa-magic me-1"></i>
+                                        {{ templatePreview.loading ? 'Применение...' : 'Применить' }}
+                                    </button>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small">&nbsp;</label>
+                                    <button type="button"
+                                            class="btn btn-outline-secondary btn-sm w-100"
+                                            @click="clearTemplate">
+                                        <i class="fas fa-times me-1"></i>
+                                        Очистить
+                                    </button>
+                                </div>
                             </div>
-                            <div class="col-md-4">
-                                <strong>Selected Equipment:</strong> {{ selectedEquipmentIds?.length || 0 }}<br>
-                                <strong>Available Equipment:</strong> {{ availableEquipment?.length || 0 }}
+
+                            <!-- 🔥 ПРЕДПРОСМОТР ИЗМЕНЕНИЙ -->
+                            <div v-if="templatePreview.show" class="template-preview mt-3 p-3 border rounded bg-light">
+                                <h6 class="text-primary mb-2">
+                                    <i class="fas fa-eye me-1"></i>
+                                    Предпросмотр изменений
+                                </h6>
+
+                                <div class="preview-changes">
+                                    <div v-if="templatePreview.data.message" class="preview-item mb-2">
+                                        <strong>Сообщение:</strong>
+                                        <div class="preview-text small text-muted mt-1">
+                                            {{ templatePreview.data.message }}
+                                        </div>
+                                    </div>
+
+                                    <div v-if="templatePreview.data.prices && Object.keys(templatePreview.data.prices).length > 0" class="preview-item">
+                                        <strong>Цены:</strong>
+                                        <div class="preview-prices mt-1">
+                                            <div v-for="(price, equipmentId) in templatePreview.data.prices"
+                                                 :key="equipmentId"
+                                                 class="small text-muted">
+                                                {{ getEquipmentName(equipmentId) }}: {{ formatCurrency(price) }}/час
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div v-if="templatePreview.data.conditions" class="preview-item mt-2">
+                                        <strong>Условия:</strong>
+                                        <div class="preview-conditions small text-muted mt-1">
+                                            {{ templatePreview.data.conditions }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="preview-actions mt-3">
+                                    <button type="button"
+                                            class="btn btn-success btn-sm me-2"
+                                            @click="confirmTemplateApply">
+                                        <i class="fas fa-check me-1"></i>
+                                        Подтвердить применение
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-outline-secondary btn-sm"
+                                            @click="cancelTemplateApply">
+                                        Отмена
+                                    </button>
+                                </div>
                             </div>
-                            <div class="col-md-4">
-                                <strong>Delivery Status:</strong> {{ deliveryCalculation.loading ? 'Loading...' : 'Ready' }}<br>
-                                <strong>Delivery Cost:</strong> {{ deliveryCalculation.delivery_cost }}
+
+                            <!-- Сообщение о необходимости выбора оборудования -->
+                            <div v-if="selectedEquipmentIds.length === 0 && selectedTemplateId" class="alert alert-warning mt-2">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Выберите технику для применения шаблона
                             </div>
                         </div>
                     </div>
@@ -336,6 +423,121 @@
             </div>
         </div>
     </div>
+
+    <!-- 🔥 МОДАЛЬНОЕ ОКНО УПРАВЛЕНИЯ ШАБЛОНАМИ -->
+    <div v-if="showTemplatesManagement" class="modal-overlay" @click.self="showTemplatesManagement = false">
+        <div class="modal-container modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-cogs me-2"></i>
+                        Управление шаблонами предложений
+                    </h5>
+                    <button type="button" class="btn-close" @click="showTemplatesManagement = false" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="templates-management">
+                        <!-- Статистика использования -->
+                        <div class="stats-section mb-4 p-3 bg-light rounded">
+                            <h6>Статистика шаблонов</h6>
+                            <div class="row text-center">
+                                <div class="col-md-4">
+                                    <div class="stat-value text-primary">{{ templatesStats.total_templates || 0 }}</div>
+                                    <div class="stat-label small text-muted">Всего шаблонов</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="stat-value text-success">{{ templatesStats.total_usage || 0 }}</div>
+                                    <div class="stat-label small text-muted">Всего применений</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="stat-value text-info">{{ templatesStats.average_success_rate || 0 }}%</div>
+                                    <div class="stat-label small text-muted">Успешность</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Список шаблонов -->
+                        <div class="templates-list">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0">Мои шаблоны</h6>
+                                <button class="btn btn-primary btn-sm" @click="createNewTemplate">
+                                    <i class="fas fa-plus me-1"></i>Создать шаблон
+                                </button>
+                            </div>
+
+                            <div v-if="templatesLoading" class="text-center py-3">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Загрузка...</span>
+                                </div>
+                            </div>
+
+                            <div v-else-if="availableTemplates.length === 0" class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                У вас пока нет шаблонов предложений
+                            </div>
+
+                            <div v-else class="template-items">
+                                <div v-for="template in availableTemplates"
+                                     :key="template.id"
+                                     class="template-item card mb-3"
+                                     :class="{ 'border-success': template.is_active, 'border-secondary': !template.is_active }">
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-8">
+                                                <h6 class="card-title mb-1">
+                                                    {{ template.name }}
+                                                    <span v-if="!template.is_active" class="badge bg-secondary ms-2">Неактивен</span>
+                                                </h6>
+                                                <p class="card-text small text-muted mb-1">
+                                                    {{ template.message?.substring(0, 100) }}...
+                                                </p>
+                                                <div class="template-meta small text-muted">
+                                                    <span class="me-3">
+                                                        <i class="fas fa-tag me-1"></i>
+                                                        {{ template.category?.name || 'Без категории' }}
+                                                    </span>
+                                                    <span class="me-3">
+                                                        <i class="fas fa-ruble-sign me-1"></i>
+                                                        {{ formatCurrency(template.proposed_price) }}/час
+                                                    </span>
+                                                    <span>
+                                                        <i class="fas fa-play-circle me-1"></i>
+                                                        Использован {{ template.usage_count || 0 }} раз
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 text-end">
+                                                <button class="btn btn-success btn-sm me-1"
+                                                        @click="applyTemplateFromManagement(template)"
+                                                        :disabled="selectedEquipmentIds.length === 0">
+                                                    <i class="fas fa-magic me-1"></i>Применить
+                                                </button>
+                                                <button class="btn btn-outline-primary btn-sm me-1"
+                                                        @click="editTemplate(template)">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger btn-sm"
+                                                        @click="deleteTemplate(template)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @click="showTemplatesManagement = false">
+                        Закрыть
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>
 
 <script>
@@ -378,12 +580,23 @@ export default {
             },
             submitting: false,
             minPrice: 100,
-            maxPrice: 10000
+            maxPrice: 10000,
+
+            // 🔥 ДАННЫЕ ДЛЯ ШАБЛОНОВ
+            availableTemplates: [],
+            selectedTemplateId: null,
+            templatePreview: {
+                show: false,
+                loading: false,
+                data: {}
+            },
+            showTemplatesManagement: false,
+            templatesLoading: false,
+            templatesStats: {}
         };
     },
 
     computed: {
-        // 🔥 ДОБАВЛЕННЫЕ COMPUTED СВОЙСТВА
         isBulkProposal() {
             return this.selectedEquipmentIds.length > 1;
         },
@@ -442,6 +655,7 @@ export default {
                     console.log('🚚 Delivery required:', this.request.delivery_required);
 
                     this.loadAvailableEquipment();
+                    this.loadAvailableTemplates(); // 🔥 ЗАГРУЖАЕМ ШАБЛОНЫ
 
                     if (this.request.delivery_required) {
                         console.log('📦 Calculating delivery because request requires it');
@@ -467,7 +681,253 @@ export default {
     },
 
     methods: {
-        // 🔥 ДОБАВЛЕННЫЕ МЕТОДЫ
+        // 🔥 МЕТОДЫ ДЛЯ РАБОТЫ С ШАБЛОНАМИ
+        async loadAvailableTemplates() {
+            try {
+                const params = {
+                    category_id: this.request.category_id
+                };
+
+                const response = await axios.get('/api/lessor/proposal-templates', {
+                    params,
+                    withCredentials: true
+                });
+
+                if (response.data.success) {
+                    this.availableTemplates = response.data.data || [];
+                    console.log('✅ Templates loaded:', this.availableTemplates.length);
+                } else {
+                    console.error('❌ Failed to load templates:', response.data.message);
+                    this.availableTemplates = [];
+                }
+            } catch (error) {
+                console.error('❌ Error loading templates:', error);
+                this.availableTemplates = [];
+            }
+        },
+
+        async loadTemplatesStats() {
+            try {
+                const response = await axios.get('/api/lessor/proposal-templates/stats', {
+                    withCredentials: true
+                });
+
+                if (response.data.success) {
+                    this.templatesStats = response.data.data || {};
+                }
+            } catch (error) {
+                console.error('Error loading templates stats:', error);
+            }
+        },
+
+        onTemplateSelect() {
+            if (this.selectedTemplateId) {
+                this.previewTemplate();
+            } else {
+                this.templatePreview.show = false;
+            }
+        },
+
+        async previewTemplate() {
+            if (!this.selectedTemplateId || this.selectedEquipmentIds.length === 0) {
+                return;
+            }
+
+            this.templatePreview.loading = true;
+            this.templatePreview.show = false;
+
+            try {
+                const response = await axios.post(
+                    `/api/lessor/proposal-templates/${this.selectedTemplateId}/preview-apply/${this.request.id}`,
+                    {
+                        equipment_ids: this.selectedEquipmentIds
+                    },
+                    {
+                        withCredentials: true
+                    }
+                );
+
+                if (response.data.success) {
+                    this.templatePreview.data = response.data.data;
+                    this.templatePreview.show = true;
+                    console.log('✅ Template preview loaded:', response.data.data);
+                } else {
+                    throw new Error(response.data.message || 'Ошибка предпросмотра шаблона');
+                }
+            } catch (error) {
+                console.error('❌ Error previewing template:', error);
+                alert('Ошибка при предпросмотре шаблона: ' + error.message);
+            } finally {
+                this.templatePreview.loading = false;
+            }
+        },
+
+        async applyTemplate() {
+            if (!this.selectedTemplateId) {
+                return;
+            }
+
+            // Если уже есть предпросмотр, показываем его
+            if (!this.templatePreview.show) {
+                await this.previewTemplate();
+            }
+        },
+
+        async confirmTemplateApply() {
+            try {
+                const response = await axios.post(
+                    `/api/lessor/proposal-templates/${this.selectedTemplateId}/apply/${this.request.id}`,
+                    {
+                        equipment_ids: this.selectedEquipmentIds
+                    },
+                    {
+                        withCredentials: true
+                    }
+                );
+
+                if (response.data.success) {
+                    const templateData = response.data.data;
+
+                    // Применяем данные шаблона
+                    if (templateData.message) {
+                        this.proposalData.message = templateData.message;
+                    }
+
+                    if (templateData.prices) {
+                        Object.keys(templateData.prices).forEach(equipmentId => {
+                            const price = templateData.prices[equipmentId];
+                            if (this.selectedEquipmentItems[equipmentId]) {
+                                this.selectedEquipmentItems[equipmentId].proposed_price = price;
+                            }
+                        });
+                        this.recalculatePricing();
+                    }
+
+                    // Обновляем статистику использования шаблона
+                    await this.loadAvailableTemplates();
+
+                    this.templatePreview.show = false;
+                    console.log('✅ Template applied successfully');
+
+                    // Показываем уведомление об успехе
+                    this.$notify({
+                        type: 'success',
+                        title: 'Шаблон применен',
+                        text: 'Данные шаблона успешно применены к предложению'
+                    });
+                } else {
+                    throw new Error(response.data.message || 'Ошибка применения шаблона');
+                }
+            } catch (error) {
+                console.error('❌ Error applying template:', error);
+                alert('Ошибка при применении шаблона: ' + error.message);
+            }
+        },
+
+        cancelTemplateApply() {
+            this.templatePreview.show = false;
+            this.selectedTemplateId = null;
+        },
+
+        clearTemplate() {
+            this.selectedTemplateId = null;
+            this.templatePreview.show = false;
+            this.templatePreview.data = {};
+        },
+
+        showTemplatesModal() {
+            this.showTemplatesManagement = true;
+            this.loadTemplatesStats();
+        },
+
+        async applyTemplateFromManagement(template) {
+            try {
+                // Применяем шаблон напрямую без предпросмотра
+                this.selectedTemplateId = template.id;
+
+                const response = await axios.post(
+                    `/api/lessor/proposal-templates/${template.id}/apply/${this.request.id}`,
+                    {
+                        equipment_ids: this.selectedEquipmentIds
+                    },
+                    {
+                        withCredentials: true
+                    }
+                );
+
+                if (response.data.success) {
+                    const templateData = response.data.data;
+
+                    if (templateData.message) {
+                        this.proposalData.message = templateData.message;
+                    }
+
+                    if (templateData.prices) {
+                        Object.keys(templateData.prices).forEach(equipmentId => {
+                            const price = templateData.prices[equipmentId];
+                            if (this.selectedEquipmentItems[equipmentId]) {
+                                this.selectedEquipmentItems[equipmentId].proposed_price = price;
+                            }
+                        });
+                        this.recalculatePricing();
+                    }
+
+                    this.showTemplatesManagement = false;
+                    await this.loadAvailableTemplates();
+
+                    this.$notify({
+                        type: 'success',
+                        title: 'Шаблон применен',
+                        text: `Шаблон "${template.name}" успешно применен`
+                    });
+                }
+            } catch (error) {
+                console.error('Error applying template from management:', error);
+                alert('Ошибка применения шаблона');
+            }
+        },
+
+        createNewTemplate() {
+            window.location.href = '/portal/proposal-templates/create';
+        },
+
+        editTemplate(template) {
+            window.location.href = `/portal/proposal-templates/${template.id}/edit`;
+        },
+
+        async deleteTemplate(template) {
+            if (!confirm(`Удалить шаблон "${template.name}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await axios.delete(`/api/lessor/proposal-templates/${template.id}`, {
+                    withCredentials: true
+                });
+
+                if (response.data.success) {
+                    await this.loadAvailableTemplates();
+                    await this.loadTemplatesStats();
+                    this.$notify({
+                        type: 'success',
+                        title: 'Шаблон удален',
+                        text: `Шаблон "${template.name}" успешно удален`
+                    });
+                } else {
+                    throw new Error(response.data.message);
+                }
+            } catch (error) {
+                console.error('Error deleting template:', error);
+                alert('Ошибка удаления шаблона');
+            }
+        },
+
+        getEquipmentName(equipmentId) {
+            const equipment = this.availableEquipment.find(e => e.equipment.id == equipmentId);
+            return equipment ? equipment.equipment.title : `Техника #${equipmentId}`;
+        },
+
+        // 🔥 СУЩЕСТВУЮЩИЕ МЕТОДЫ
         isEquipmentSelected(equipmentId) {
             return this.selectedEquipmentIds.includes(equipmentId);
         },
@@ -763,6 +1223,13 @@ export default {
                 to_location: null,
                 error: null
             };
+            this.selectedTemplateId = null;
+            this.templatePreview = {
+                show: false,
+                loading: false,
+                data: {}
+            };
+            this.showTemplatesManagement = false;
         },
 
         getFormattedSpecifications(equipment) {
@@ -845,6 +1312,59 @@ export default {
 
 .cursor-pointer {
     cursor: pointer;
+}
+
+/* 🔥 СТИЛИ ДЛЯ ШАБЛОНОВ */
+.template-section {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 1rem;
+    background: #f8f9fa;
+}
+
+.template-preview {
+    border-left: 4px solid #28a745 !important;
+    background: #f8fff9 !important;
+}
+
+.preview-changes {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.preview-text, .preview-conditions {
+    background: white;
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+}
+
+.preview-prices {
+    background: white;
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+}
+
+.template-item {
+    transition: all 0.3s ease;
+}
+
+.template-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.template-meta {
+    font-size: 0.8rem;
 }
 
 @media (max-width: 768px) {
