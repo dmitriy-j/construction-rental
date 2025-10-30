@@ -1,47 +1,72 @@
-// ЭКСТРЕННЫЕ ФИКСЫ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ
-@media (max-width: 991.98px) {
-  // Гарантия что навбар всегда виден на мобильных
-  .navbar {
-    transform: translateY(0) !important;
-    opacity: 1 !important;
+/* resources/sass/mobile-navbar-fixes.css */
+/* КРИТИЧЕСКИЕ ФИКСЫ ДЛЯ МОБИЛЬНОГО NAVBAR */
+
+/* ГАРАНТИЯ ВИДИМОСТИ МОБИЛЬНЫХ КНОПОК */
+.mobile-nav {
+    display: flex !important;
     visibility: visible !important;
-
-    &.navbar--hidden {
-      transform: translateY(0) !important;
-      opacity: 1 !important;
-      visibility: visible !important;
-    }
-  }
-
-  // Жесткое ограничение контента для мобильных
-  .content-container {
-    // Принудительное уменьшение отступов
-    padding-left: 0.5rem !important;
-    padding-right: 0.5rem !important;
-
-    // Фикс для таблиц
-    .table-responsive-custom {
-      margin-left: -0.5rem !important;
-      margin-right: -0.5rem !important;
-      width: calc(100% + 1rem) !important;
-    }
-  }
+    opacity: 1 !important;
+    width: auto !important;
+    min-width: 150px !important;
+    max-width: 200px !important;
+    flex-shrink: 0 !important;
 }
 
-@media (max-width: 576px) {
-  .content-container {
-    padding-left: 0.25rem !important;
-    padding-right: 0.25rem !important;
+.mobile-nav-btn {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    height: 36px !important;
+    flex-shrink: 0 !important;
+}
 
-    // Еще более компактные стили
-    .btn {
-      padding: 0.5rem 0.75rem !important;
-      font-size: 0.85rem !important;
+/* ПЕРЕОПРЕДЕЛЕНИЕ ВСЕХ КОНФЛИКТУЮЩИХ СТИЛЕЙ */
+@media (max-width: 991.98px) {
+    .navbar .mobile-nav {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
     }
 
-    .form-control, .form-select {
-      padding: 0.5rem 0.75rem !important;
-      font-size: 0.85rem !important;
+    .navbar .desktop-nav {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
     }
-  }
+}
+
+@media (min-width: 992px) {
+    .navbar .mobile-nav {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+    }
+
+    .navbar .desktop-nav {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+}
+
+/* ОТКЛЮЧЕНИЕ СКРЫТИЯ NAVBAR НА МОБИЛЬНЫХ */
+@media (max-width: 991.98px) {
+    .navbar {
+        transform: translateY(0) !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
+    .navbar--hidden {
+        transform: translateY(0) !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
+    .navbar--scrolled {
+        background: linear-gradient(135deg, #0b5ed7, #0d6efd) !important;
+    }
 }

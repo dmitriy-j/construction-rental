@@ -45,8 +45,8 @@
         @endif
     </div>
 
-    {{-- Vue компонент для ЛК арендодателя (изначально скрыт) --}}
-    <div id="lessor-rental-requests-app" style="display: none;">
+    {{-- Vue компонент для ЛК арендодателя --}}
+    <div id="lessor-rental-requests-app">
         <lessor-rental-request-list
             :initial-requests="{{ json_encode($rentalRequests->items()) }}"
             :initial-analytics="{{ json_encode($analytics) }}"
@@ -83,6 +83,34 @@
 @endpush
 
 @push('scripts')
-{{-- 🔥 ПРЯМАЯ ЗАГРУЗКА: Подключаем отдельный файл для ЛК арендодателя --}}
-@vite('resources/js/pages/lessor-rental-requests.js')
+{{-- Подключаем Vue компонент для ЛК арендодателя --}}
+@if(app()->environment('local') && file_exists(public_path('hot')))
+    @vite('resources/js/pages/lessor-rental-requests.js')
+@else
+    @php
+        try {
+            $manifest = json_decode(file_get_contents(public_path('build/manifest.json')), true);
+        } catch (Exception $e) {
+            $manifest = [];
+        }
+    @endphp
+
+    @if(isset($manifest['resources/js/pages/lessor-rental-requests.js']))
+        <script type="module" src="{{ asset('build/' . $manifest['resources/js/pages/lessor-rental-requests.js']['file']) }}"></script>
+    @endif
+@endif
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Скрываем HTML fallback после загрузки Vue
+    setTimeout(function() {
+        const vueApp = document.getElementById('lessor-rental-requests-app');
+        const fallback = document.getElementById('lessor-html-fallback');
+
+        if (vueApp && vueApp.__vue_app__ && fallback) {
+            fallback.style.display = 'none';
+        }
+    }, 100);
+});
+</script>
 @endpush

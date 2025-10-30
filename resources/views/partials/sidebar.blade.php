@@ -660,6 +660,224 @@ body.rental-request-edit-page .nav-item {
 .sidebar-overlay {
     transition: opacity 0.3s ease !important;
 }
+
+/* ФИКС ДЛЯ ТЕКСТА ПОЛЬЗОВАТЕЛЯ В МОБИЛЬНОЙ ВЕРСИИ */
+@media (max-width: 991.98px) {
+    .user-profile-card {
+        padding: 1rem 0.75rem !important;
+        margin: 0 5px 10px 5px !important;
+        width: calc(100% - 10px) !important;
+        box-sizing: border-box !important;
+    }
+
+    .avatar-container {
+        gap: 8px !important;
+        min-width: 0 !important;
+    }
+
+    .user-info {
+        min-width: 0 !important;
+        flex: 1 !important;
+        overflow: hidden !important;
+        max-width: calc(100% - 60px) !important; /* учитываем аватар + отступ */
+    }
+
+    .user-name {
+        font-size: 0.95rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-width: 100% !important;
+        display: block !important;
+        line-height: 1.2 !important;
+        margin-bottom: 0.2rem !important;
+    }
+
+    .user-role {
+        font-size: 0.7rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-width: 100% !important;
+        display: block !important;
+        padding: 0.15rem 0.35rem !important;
+        line-height: 1.1 !important;
+    }
+
+    .avatar {
+        flex-shrink: 0 !important;
+        width: 40px !important;
+        height: 40px !important;
+        min-width: 40px !important;
+    }
+
+    .profile-avatar {
+        width: 40px !important;
+        height: 40px !important;
+    }
+
+    .bi-person-circle {
+        font-size: 1.5rem !important;
+    }
+}
+
+/* Гарантия что сайдбар не шире экрана */
+#sidebarContainer {
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+}
+
+.user-profile-card {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    overflow: hidden !important;
+}
+/* ДОПОЛНИТЕЛЬНЫЙ ФИКС ДЛЯ ОЧЕНЬ ДЛИННЫХ ИМЕН */
+@media (max-width: 991.98px) {
+    .user-info {
+        position: relative !important;
+    }
+
+    .user-name {
+        /* Принудительное ограничение длины */
+        max-width: min(200px, 65vw) !important;
+    }
+
+    .user-role {
+        /* Принудительное ограничение длины */
+        max-width: min(180px, 60vw) !important;
+    }
+
+    /* Для очень маленьких экранов */
+    @media (max-width: 360px) {
+        .user-name {
+            font-size: 0.9rem !important;
+            max-width: min(150px, 55vw) !important;
+        }
+
+        .user-role {
+            font-size: 0.65rem !important;
+            max-width: min(140px, 50vw) !important;
+        }
+
+        .avatar {
+            width: 35px !important;
+            height: 35px !important;
+            min-width: 35px !important;
+        }
+
+        .profile-avatar {
+            width: 35px !important;
+            height: 35px !important;
+        }
+    }
+}
+/* КРИТИЧЕСКИЙ ФИКС ДЛЯ ПОЗИЦИОНИРОВАНИЯ САЙДБАРА НА МОБИЛЬНЫХ */
+@media (max-width: 991.98px) {
+    #sidebarContainer {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 85vw !important;
+        max-width: 320px !important;
+        height: 100vh !important;
+        background: #f8f9fa !important;
+        z-index: 10001 !important;
+        transform: translateX(-100%) !important;
+        transition: transform 0.3s ease !important;
+        overflow-y: auto !important;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.1) !important;
+    }
+
+    #sidebarContainer.mobile-open {
+        transform: translateX(0) !important;
+    }
+
+    /* Гарантия что контент сайдбара не выходит за пределы */
+    .user-profile-card {
+        position: relative !important;
+        z-index: 1 !important;
+        margin: 0 !important;
+        padding: 1rem !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+    }
+
+    .sidebar-overlay {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        background: rgba(0,0,0,0.5) !important;
+        z-index: 10000 !important;
+        display: none !important;
+    }
+
+    .sidebar-overlay.active {
+        display: block !important;
+    }
+
+    /* ФИКС ДЛЯ ЗАГОЛОВКА - гарантия что он остается внутри */
+    .avatar-container {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    .user-info {
+        flex: 1 !important;
+        min-width: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .user-name {
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+        color: #212529 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        display: block !important;
+        width: 100% !important;
+        line-height: 1.2 !important;
+        margin-bottom: 0.25rem !important;
+    }
+
+    .user-role {
+        font-size: 0.75rem !important;
+        color: #6c757d !important;
+        background: #e9ecef !important;
+        padding: 0.25rem 0.5rem !important;
+        border-radius: 12px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        display: inline-block !important;
+        max-width: 100% !important;
+    }
+}
+
+/* Дополнительный фикс для очень маленьких экранов */
+@media (max-width: 360px) {
+    .user-name {
+        font-size: 0.9rem !important;
+    }
+
+    .user-role {
+        font-size: 0.7rem !important;
+    }
+
+    .avatar {
+        width: 35px !important;
+        height: 35px !important;
+        min-width: 35px !important;
+    }
+}
 </style>
 
 <script>
