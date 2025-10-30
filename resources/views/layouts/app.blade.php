@@ -118,136 +118,151 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 
     @stack('scripts')
-    <script>
-// АГРЕССИВНЫЙ ФИКС ДЛЯ МОБИЛЬНОЙ ШИРИНЫ
+<script>
+// ФИКС ДЛЯ DROPDOWN И САЙДБАРА
 document.addEventListener('DOMContentLoaded', function() {
-  function enforceMobileWidth() {
-    if (window.innerWidth < 992) {
-      console.log('🔧 Applying aggressive mobile width fixes...');
+    // 1. Отключаем агрессивные фиксы для навбара и dropdown
+    function safeMobileFixes() {
+        if (window.innerWidth < 992) {
+            console.log('🔧 Applying safe mobile fixes...');
 
-      // Принудительно ограничиваем ширину всех элементов
-      const allElements = document.querySelectorAll('*');
-      allElements.forEach(el => {
-        const rect = el.getBoundingClientRect();
-        if (rect.right > window.innerWidth) {
-          console.log('⚠️ Element overflowing:', el);
-          el.style.maxWidth = '100%';
-          el.style.overflowX = 'hidden';
+            // НЕ применяем стили к навбару и dropdown
+            const excludedSelectors = [
+                '.navbar', '.main-navbar', '.dropdown-menu',
+                '.profile-dropdown', '.mobile-auth-controls',
+                '.profile-menu', '.profile-menu-mobile'
+            ];
+
+            // Только для контента, не для навбара
+            const contentContainer = document.querySelector('.content-container');
+            if (contentContainer) {
+                const tables = contentContainer.querySelectorAll('table');
+                tables.forEach(table => {
+                    if (!table.closest('.table-responsive-custom') && !table.closest('.table-responsive')) {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'table-responsive-custom';
+                        table.parentNode.insertBefore(wrapper, table);
+                        wrapper.appendChild(table);
+                    }
+                });
+            }
+
+            console.log('✅ Safe mobile fixes applied');
         }
-      });
-
-      // Особое внимание к контейнерам
-      const containers = document.querySelectorAll('.container, .container-fluid, .row, [class*="col-"]');
-      containers.forEach(container => {
-        container.style.maxWidth = '100vw';
-        container.style.width = '100%';
-        container.style.overflowX = 'hidden';
-      });
-
-      console.log('✅ Mobile width fixes applied');
     }
-  }
 
-  // Запускаем сразу и при изменении размера
-  enforceMobileWidth();
-  window.addEventListener('resize', enforceMobileWidth);
-  window.addEventListener('load', enforceMobileWidth);
+    // 2. ФИКС: Закрытие dropdown при ресайзе и гарантия позиционирования
+    function fixDropdownPositioning() {
+        const dropdowns = document.querySelectorAll('.dropdown-menu');
+        dropdowns.forEach(dropdown => {
+            // ГАРАНТИЯ что dropdown не получает лишние стили
+            dropdown.style.maxWidth = '';
+            dropdown.style.overflowX = '';
+            dropdown.style.width = '';
 
-  // Также запускаем с задержкой для динамического контента
-  setTimeout(enforceMobileWidth, 100);
-  setTimeout(enforceMobileWidth, 500);
-  setTimeout(enforceMobileWidth, 1000);
+            // Принудительно устанавливаем правильное позиционирование
+            if (window.innerWidth < 992) {
+                // Мобильные dropdown
+                if (dropdown.classList.contains('profile-menu-mobile')) {
+                    dropdown.style.position = 'fixed';
+                    dropdown.style.top = '60px';
+                    dropdown.style.right = '10px';
+                    dropdown.style.left = 'auto';
+                    dropdown.style.zIndex = '10050';
+                }
+            } else {
+                // Десктоп dropdown
+                if (dropdown.classList.contains('profile-menu')) {
+                    dropdown.style.position = 'absolute';
+                    dropdown.style.top = '100%';
+                    dropdown.style.right = '0';
+                    dropdown.style.left = 'auto';
+                    dropdown.style.zIndex = '10050';
+                }
+            }
+        });
+
+        // ГАРАНТИЯ что навбар не получает лишние стили
+        const navbar = document.querySelector('.main-navbar');
+        const container = document.querySelector('.main-navbar .container-fluid');
+        if (navbar) {
+            navbar.style.overflow = 'visible';
+            navbar.style.maxWidth = '';
+        }
+        if (container) {
+            container.style.overflow = 'visible';
+            container.style.maxWidth = '';
+        }
+    }
+
+    // 3. ФИКС: Закрытие всех dropdown при ресайзе
+    function closeDropdownsOnResize() {
+        const dropdowns = document.querySelectorAll('.dropdown-menu.show');
+        dropdowns.forEach(dropdown => {
+            const dropdownToggle = dropdown.previousElementSibling;
+            if (dropdownToggle && bootstrap.Dropdown.getInstance(dropdownToggle)) {
+                bootstrap.Dropdown.getInstance(dropdownToggle).hide();
+            }
+        });
+    }
+
+    // 4. Сайдбар для мобильных
+    const sidebarToggleMobile = document.getElementById('sidebarToggleMobile');
+    const sidebar = document.getElementById('sidebarContainer');
+    const overlay = document.getElementById('sidebarOverlay');
+
+    if (sidebarToggleMobile && sidebar) {
+        sidebarToggleMobile.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            console.log('📱 Открываем сайдбар');
+            sidebar.classList.add('mobile-open');
+            if (overlay) overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', function() {
+            sidebar.classList.remove('mobile-open');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        });
+    }
+
+    // ЗАПУСК ВСЕХ ФИКСОВ
+    safeMobileFixes();
+    fixDropdownPositioning();
+
+    // Обработчики событий
+    window.addEventListener('resize', function() {
+        closeDropdownsOnResize();
+        setTimeout(fixDropdownPositioning, 100);
+        safeMobileFixes();
+
+        // Закрытие сайдбара при переходе на десктоп
+        if (window.innerWidth >= 992) {
+            if (sidebar) sidebar.classList.remove('mobile-open');
+            if (overlay) overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    });
+
+    // Запуск с задержкой для динамического контента
+    setTimeout(fixDropdownPositioning, 500);
+    setTimeout(safeMobileFixes, 500);
+});
+
+// Гарантия что навбар всегда виден на мобильных
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.innerWidth < 992) {
+        const navbar = document.querySelector('.navbar');
+        if (navbar) {
+            navbar.classList.remove('navbar--hidden');
+        }
+    }
 });
 </script>
 </body>
 </html>
-<script>
-// Временно добавить перед закрывающим </body>
-document.addEventListener('DOMContentLoaded', function() {
-  if (window.innerWidth < 992) {
-    const navbar = document.querySelector('.navbar');
-    if (navbar) {
-      navbar.classList.remove('navbar--hidden');
-    }
-  }
-});
-
-// АГРЕССИВНОЕ УЛУЧШЕНИЕ АДАПТИВНОСТИ ДЛЯ СТРАНИЦ САЙДБАРА
-document.addEventListener('DOMContentLoaded', function() {
-    @auth
-    function enforceMobileResponsiveness() {
-        const contentContainer = document.querySelector('.content-container');
-        if (!contentContainer) return;
-
-        console.log('🔧 Applying aggressive mobile fixes...');
-
-        // 1. Автоматически оборачиваем ВСЕ таблицы
-        const tables = contentContainer.querySelectorAll('table');
-        tables.forEach(table => {
-            if (!table.closest('.table-responsive-custom') && !table.closest('.table-responsive')) {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'table-responsive-custom';
-                table.parentNode.insertBefore(wrapper, table);
-                wrapper.appendChild(table);
-            }
-        });
-
-        // 2. Принудительно добавляем классы ко ВСЕМ карточкам
-        const cards = contentContainer.querySelectorAll('.card, .panel, .widget, .box');
-        cards.forEach(card => {
-            card.classList.add('responsive-card');
-            card.style.maxWidth = '100%';
-            card.style.width = '100%';
-        });
-
-        // 3. Принудительно добавляем классы ко ВСЕМ формам
-        const forms = contentContainer.querySelectorAll('form');
-        forms.forEach(form => {
-            form.classList.add('responsive-form');
-        });
-
-        // 4. Делаем ВСЕ основные кнопки адаптивными
-        const buttons = contentContainer.querySelectorAll('.btn, button[type="submit"], button[type="button"]');
-        buttons.forEach(btn => {
-            btn.classList.add('btn-mobile');
-        });
-
-        // 5. Принудительно ограничиваем ширину всех контейнеров
-        const containers = contentContainer.querySelectorAll('.container, .container-fluid');
-        containers.forEach(container => {
-            container.style.maxWidth = '100%';
-            container.style.width = '100%';
-        });
-
-        // 6. Фикс для строк и колонок Bootstrap
-        const rows = contentContainer.querySelectorAll('.row');
-        rows.forEach(row => {
-            row.style.marginLeft = '0';
-            row.style.marginRight = '0';
-            row.style.maxWidth = '100%';
-        });
-
-        const cols = contentContainer.querySelectorAll('[class*="col-"]');
-        cols.forEach(col => {
-            col.style.paddingLeft = '0.25rem';
-            col.style.paddingRight = '0.25rem';
-            col.style.maxWidth = '100%';
-        });
-
-        console.log('✅ Aggressive mobile fixes applied');
-    }
-
-    // Запускаем сразу и при любых изменениях
-    enforceMobileResponsiveness();
-
-    // Также запускаем при ресайзе и после загрузки всех ресурсов
-    window.addEventListener('resize', enforceMobileResponsiveness);
-    window.addEventListener('load', enforceMobileResponsiveness);
-
-    // Запускаем с задержкой чтобы поймать динамически загруженный контент
-    setTimeout(enforceMobileResponsiveness, 1000);
-    setTimeout(enforceMobileResponsiveness, 3000);
-    @endauth
-});
-
-</script>

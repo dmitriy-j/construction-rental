@@ -2,13 +2,15 @@
 <nav class="navbar navbar-expand-lg navbar-dark fixed-top main-navbar">
     <div class="container-fluid">
         <!-- Логотип -->
-        <a class="navbar-brand" href="{{ url('/') }}">
+       <a class="navbar-brand" href="{{ url('/') }}">
             <div class="d-flex align-items-center">
                 <div class="navbar-logo-icon me-2">
                     <i class="bi bi-building-fill"></i>
                 </div>
                 <div class="navbar-logo-text">
-                    <div class="logo-main">ФАП</div>
+                    <div class="logo-main d-flex align-items-center">
+                        <span class="logo-acronym">ФАП</span>
+                    </div>
                     <div class="logo-subtitle">Федеральная Арендная Платформа</div>
                 </div>
             </div>
@@ -131,7 +133,7 @@
             </ul>
         </div>
 
-        <!-- Мобильная версия для авторизованных - только элементы управления -->
+        <!-- Мобильная версия для авторизованных - кнопки управления -->
         <div class="d-flex d-lg-none align-items-center mobile-auth-controls">
             <!-- Уведомления -->
             <a class="nav-link position-relative me-2" href="/notifications" title="Уведомления">
@@ -149,7 +151,7 @@
                 <i class="bi bi-sun-fill"></i>
             </button>
 
-            <!-- Профиль пользователя - ИСПРАВЛЕННЫЙ DROPDOWN -->
+            <!-- Профиль пользователя -->
             <div class="nav-item dropdown profile-dropdown me-2">
                 <a class="nav-link dropdown-toggle d-flex align-items-center profile-toggle-mobile" href="#"
                    role="button" data-bs-toggle="dropdown" aria-expanded="false" id="profileDropdownMobile">
@@ -193,11 +195,20 @@
         @else
         <!-- ДЛЯ НЕАВТОРИЗОВАННЫХ ПОЛЬЗОВАТЕЛЕЙ -->
 
-        <!-- Кнопка бургер меню для мобильных -->
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMainContent"
-                aria-controls="navbarMainContent" aria-expanded="false" aria-label="Переключить навигацию">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+        <!-- Мобильная версия для неавторизованных - кнопки управления -->
+        <div class="d-flex d-lg-none align-items-center mobile-guest-controls">
+            <!-- Переключатель темы -->
+            <button class="btn btn-outline-light btn-sm me-2 theme-switcher" data-theme-toggle
+                    title="Сменить тему">
+                <i class="bi bi-sun-fill"></i>
+            </button>
+
+            <!-- Бургер для основного меню -->
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMainContent"
+                    aria-controls="navbarMainContent" aria-expanded="false" aria-label="Переключить навигацию">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        </div>
 
         <!-- Основное содержимое меню для неавторизованных -->
         <div class="collapse navbar-collapse" id="navbarMainContent">
@@ -256,7 +267,7 @@
             <!-- Элементы управления для неавторизованных -->
             <ul class="navbar-nav ms-auto nav-controls-guest">
                 <li class="nav-item">
-                    <button class="btn btn-outline-light btn-sm me-2 theme-switcher" data-theme-toggle
+                    <button class="btn btn-outline-light btn-sm me-2 theme-switcher d-none d-lg-block" data-theme-toggle
                             title="Сменить тему">
                         <i class="bi bi-sun-fill"></i>
                     </button>
@@ -281,7 +292,7 @@
 </nav>
 
 <style>
-/* ОСНОВНЫЕ СТИЛИ НАВБАРА */
+/* ТОЛЬКО КРИТИЧЕСКИЕ СТИЛИ ДЛЯ НАВБАРА */
 .main-navbar {
     background: linear-gradient(135deg, #0b5ed7, #0d6efd) !important;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
@@ -289,11 +300,15 @@
     min-height: 70px;
     transition: all 0.3s ease;
     z-index: 9999;
-    /* Гарантируем, что навбар не ограничивает дочерние элементы */
     overflow: visible !important;
 }
 
-/* КРИТИЧЕСКИЙ ФИКС ДЛЯ DROPDOWN ПРОФИЛЯ - ДЕСКТОП */
+/* ФИКС: Убираем overflow у контейнеров */
+.main-navbar .container-fluid {
+    overflow: visible !important;
+}
+
+/* КРИТИЧЕСКИЙ ФИКС ДЛЯ DROPDOWN */
 .profile-dropdown {
     position: relative;
 }
@@ -305,15 +320,8 @@
     right: 0 !important;
     z-index: 10050 !important;
     margin-top: 0.5rem !important;
-    min-width: 220px;
-    background: white !important;
-    border: 1px solid rgba(0,0,0,0.1) !important;
-    border-radius: 8px !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
-    animation: dropdownAppear 0.2s ease-out !important;
 }
 
-/* КРИТИЧЕСКИЙ ФИКС ДЛЯ DROPDOWN ПРОФИЛЯ - МОБИЛЬНЫЕ */
 .profile-menu-mobile {
     position: absolute !important;
     top: 100% !important;
@@ -321,188 +329,205 @@
     right: 0 !important;
     z-index: 10050 !important;
     margin-top: 0.5rem !important;
-    min-width: 220px;
-    background: white !important;
-    border: 1px solid rgba(0,0,0,0.1) !important;
-    border-radius: 8px !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
-    animation: dropdownAppear 0.2s ease-out !important;
 }
 
-@keyframes dropdownAppear {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Логотип */
-.navbar-brand {
-    padding: 0;
-    margin-right: 2rem;
-}
-
+/* УЛУЧШЕННЫЙ ЛОГОТИП С ПИРАМИДОЙ */
 .navbar-logo-icon {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    padding: 0.6rem;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .navbar-logo-icon i {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
     color: white;
+    transform: rotate(0deg);
+    transition: all 0.3s ease;
 }
 
 .navbar-brand:hover .navbar-logo-icon {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.25);
     transform: translateY(-2px) rotate(-5deg);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-.navbar-logo-text {
-    display: flex;
-    flex-direction: column;
+.navbar-brand:hover .navbar-logo-icon i {
+    transform: rotate(10deg);
 }
 
-.logo-main {
-    font-size: 1.5rem;
+.logo-main .logo-acronym {
+    font-size: 1.6rem;
     font-weight: 800;
-    color: white;
-    line-height: 1;
+    background: linear-gradient(135deg, #ffffff 0%, #e3f2fd 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.2);
     letter-spacing: 0.5px;
 }
 
 .logo-subtitle {
     font-size: 0.7rem;
+    font-weight: 500;
     color: rgba(255, 255, 255, 0.9);
-    line-height: 1.1;
-    margin-top: 0.1rem;
+    letter-spacing: 0.2px;
+    line-height: 1.2;
 }
 
-/* ОБЩИЕ СТИЛИ ДЛЯ ВСЕХ ЭЛЕМЕНТОВ */
+/* УЛУЧШЕННЫЕ РАЗДЕЛЫ МЕНЮ - КОМПАКТНЫЕ */
 .navbar-nav .nav-link {
-    color: white !important;
-    padding: 0.5rem 1rem;
+    position: relative;
+    padding: 0.5rem 0.8rem !important;
+    margin: 0 0.1rem;
     border-radius: 6px;
+    font-weight: 500;
+    font-size: 0.9rem;
     transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    white-space: nowrap;
-}
-
-.navbar-nav .nav-link:hover {
-    background: rgba(255, 255, 255, 0.15);
-    transform: translateY(-1px);
-}
-
-/* Переключатель темы */
-.theme-switcher {
-    border: 1px solid rgba(255, 255, 255, 0.3) !important;
-    padding: 0.4rem 0.6rem !important;
     color: white !important;
-    transition: all 0.3s ease;
-}
-
-.theme-switcher:hover {
-    background: rgba(255, 255, 255, 0.15) !important;
-    transform: scale(1.05);
-}
-
-/* Кнопки входа/регистрации */
-.login-btn, .register-btn {
-    padding: 0.5rem 1rem !important;
+    white-space: nowrap !important;
     display: flex !important;
     align-items: center !important;
-    transition: all 0.3s ease !important;
-    white-space: nowrap !important;
-}
 
-.login-btn {
-    border: 1px solid rgba(255, 255, 255, 0.3) !important;
-    color: white !important;
-}
-
-.login-btn:hover {
-    background: rgba(255, 255, 255, 0.15) !important;
-    transform: translateY(-1px);
-}
-
-.register-btn {
-    background: rgba(255, 255, 255, 0.9) !important;
-    color: #0b5ed7 !important;
-    font-weight: 600 !important;
-}
-
-.register-btn:hover {
-    background: white !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
-
-/* Аватар пользователя */
-.user-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.user-avatar i {
-    font-size: 1.2rem;
-    color: white;
-}
-
-.user-name {
-    color: white;
-    font-weight: 500;
-    max-width: 150px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-/* Бейдж уведомлений */
-.navbar .badge {
-    font-size: 0.6rem;
-    padding: 0.2rem 0.4rem;
-}
-
-/* АДАПТИВНОСТЬ */
-
-/* Десктоп (большие экраны) */
-@media (min-width: 992px) {
-    .mobile-auth-controls {
-        display: none !important;
+    i {
+        font-size: 1rem;
+        transition: transform 0.3s ease;
+        margin-right: 0.4rem;
+        flex-shrink: 0;
     }
 
-    .nav-controls-desktop {
-        display: flex !important;
-        gap: 0.8rem;
+    &::before {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        width: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #ffffff, transparent);
+        transition: all 0.3s ease;
+        transform: translateX(-50%);
+    }
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.15);
+        transform: translateY(-1px);
+
+        i {
+            transform: scale(1.1);
+        }
+
+        &::before {
+            width: 70%;
+        }
+
+        color: white !important;
+        text-shadow: 0 0 8px rgba(255,255,255,0.5);
+    }
+}
+
+/* Гарантия что все пункты меню одинаковой высоты */
+.navbar-nav .nav-item {
+    display: flex !important;
+    align-items: center !important;
+}
+
+/* УЛУЧШЕННЫЕ КНОПКИ УПРАВЛЕНИЯ */
+.nav-controls-desktop {
+    .nav-link {
+        padding: 0.4rem 0.7rem !important;
+        border-radius: 50%;
+        margin: 0 0.1rem;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px) scale(1.05);
+        }
+    }
+
+    .theme-switcher {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
         align-items: center;
-    }
+        justify-content: center;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        transition: all 0.3s ease;
 
-    /* Компактное меню для десктопа */
-    .navbar-nav .nav-link {
-        padding: 0.5rem 0.8rem !important;
-        font-size: 0.9rem;
+        &:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: rotate(15deg) scale(1.1);
+        }
     }
 }
 
-/* МОБИЛЬНЫЕ УСТРОЙСТВА - КЛЮЧЕВЫЕ ИСПРАВЛЕНИЯ */
+/* УЛУЧШЕННЫЙ DROPDOWN ПРОФИЛЯ */
+.profile-menu {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    padding: 0.5rem 0;
+    margin-top: 0.5rem !important;
+
+    .dropdown-item {
+        padding: 0.7rem 1rem;
+        margin: 0 0.3rem;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+        color: #333 !important;
+        font-weight: 500;
+
+        i {
+            width: 18px;
+            text-align: center;
+            margin-right: 0.5rem;
+            font-size: 1rem;
+        }
+
+        &:hover {
+            background: linear-gradient(135deg, #0b5ed7, #0d6efd);
+            color: white !important;
+            transform: translateX(3px);
+        }
+    }
+}
+
+/* УЛУЧШЕННЫЕ КНОПКИ ДЛЯ НЕАВТОРИЗОВАННЫХ */
+.nav-controls-guest {
+    .theme-switcher {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        &:hover {
+            transform: rotate(15deg) scale(1.1);
+        }
+    }
+
+    .login-btn, .register-btn {
+        padding: 0.5rem 1rem !important;
+        border-radius: 6px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+    }
+}
+
+/* МОБИЛЬНЫЕ УСТРОЙСТВА */
 @media (max-width: 991.98px) {
     .main-navbar {
         padding: 0.5rem;
-        /* Гарантируем, что навбар не создает скроллбар */
         overflow: visible !important;
     }
 
@@ -510,12 +535,14 @@
         display: none !important;
     }
 
-    .mobile-auth-controls {
+    /* Скрываем десктопные элементы на мобильных */
+    .mobile-auth-controls,
+    .mobile-guest-controls {
         display: flex !important;
-        align-items: center;
-        gap: 0.5rem;
-        /* Важно: гарантируем, что контейнер не ограничивает dropdown */
-        position: relative;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        margin-left: auto !important;
+        position: relative !important;
         overflow: visible !important;
     }
 
@@ -528,100 +555,142 @@
         padding: 0.4rem 0.6rem !important;
     }
 
-    /* ОСНОВНОЕ ИСПРАВЛЕНИЕ: dropdown профиля в мобильной версии */
+    /* ФИКС: Dropdown для мобильных */
     .profile-dropdown {
-        position: static !important; /* Изменяем на static чтобы dropdown позиционировался относительно viewport */
+        position: static !important;
     }
 
     .profile-menu-mobile {
-        position: fixed !important; /* Используем fixed вместо absolute */
-        top: 60px !important; /* Отступ от верха экрана */
-        right: 10px !important; /* Отступ от правого края */
+        position: fixed !important;
+        top: 60px !important;
+        right: 10px !important;
         left: auto !important;
-        transform: none !important;
         width: 280px !important;
         max-width: calc(100vw - 20px) !important;
-        z-index: 10050 !important;
         margin-top: 0 !important;
     }
 
-    /* Стили для collapse меню неавторизованных */
-    .navbar-collapse {
-        background: linear-gradient(135deg, #0b5ed7, #0d6efd);
-        border-radius: 0 0 10px 10px;
-        padding: 1rem;
-        margin-top: 0.5rem;
+    /* Мобильные кнопки для неавторизованных */
+    .mobile-guest-controls {
+        .btn {
+            padding: 0.4rem 0.6rem !important;
+            margin: 0 !important;
+        }
+
+        .navbar-toggler {
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            padding: 0.25rem 0.5rem !important;
+            margin: 0 !important;
+        }
+    }
+
+    /* Мобильное меню для неавторизованных */
+    #navbarMainContent {
+        position: static !important;
+        flex-basis: 100% !important;
+        order: 2 !important;
+        background: linear-gradient(135deg, #0b5ed7, #0d6efd) !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        margin: 0.5rem -0.5rem -0.5rem -0.5rem !important;
+        padding: 1.5rem 1rem !important;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        z-index: 9998;
-        /* Гарантируем, что collapse не ограничивает контент */
-        overflow: visible !important;
+        min-height: auto !important;
+        height: auto !important;
+        max-height: 80vh !important;
+        overflow-y: auto !important;
+
+        &.collapse:not(.show) {
+            display: none !important;
+            height: 0 !important;
+            overflow: hidden !important;
+        }
+
+        &.collapse.show {
+            display: block !important;
+            height: auto !important;
+            animation: slideDown 0.3s ease;
+        }
+
+        .nav-sections {
+            width: 100%;
+            margin-bottom: 1.5rem;
+
+            .nav-item {
+                width: 100%;
+                margin: 0.3rem 0;
+            }
+
+            .nav-link {
+                padding: 1rem 1.2rem !important;
+                margin: 0.2rem 0;
+                justify-content: flex-start;
+                width: 100%;
+                border-radius: 10px;
+                font-size: 1.1rem;
+                color: white !important;
+                background: rgba(255, 255, 255, 0.08);
+                transition: all 0.3s ease;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+
+                &:hover {
+                    background: rgba(255, 255, 255, 0.2);
+                    transform: translateX(8px);
+                    border-color: rgba(255, 255, 255, 0.3);
+                }
+
+                i {
+                    font-size: 1.3rem;
+                    width: 28px;
+                    margin-right: 0.5rem;
+                }
+            }
+        }
+
+        .nav-controls-guest {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            border-top: 1px solid rgba(255,255,255,0.3);
+            padding-top: 1.5rem;
+
+            .nav-item {
+                width: 100%;
+            }
+
+            .theme-switcher {
+                display: none !important;
+            }
+
+            .login-btn,
+            .register-btn {
+                width: 100% !important;
+                justify-content: center !important;
+                padding: 1rem 1.2rem !important;
+                margin: 0.2rem 0 !important;
+                font-size: 1.1rem;
+                border-radius: 10px;
+                font-weight: 600;
+                transition: all 0.3s ease;
+            }
+        }
     }
 
-    .nav-sections {
-        width: 100%;
-        margin-bottom: 1rem;
+    /* Адаптация логотипа для мобильных */
+    .navbar-logo-icon {
+        padding: 0.4rem;
     }
 
-    .nav-sections .nav-item {
-        width: 100%;
-        margin: 0.2rem 0;
+    .navbar-logo-icon i {
+        font-size: 1.2rem;
     }
 
-    .nav-sections .nav-link {
-        padding: 0.8rem 1rem !important;
-        margin: 0.1rem 0;
-        justify-content: flex-start;
-        width: 100%;
-        border-radius: 8px;
-        font-size: 1rem;
-    }
-
-    .nav-controls-guest {
-        width: 100%;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        border-top: 1px solid rgba(255,255,255,0.2);
-        padding-top: 1rem;
-    }
-
-    .nav-controls-guest .nav-item {
-        width: 100%;
-    }
-
-    .nav-controls-guest .theme-switcher,
-    .nav-controls-guest .login-btn,
-    .nav-controls-guest .register-btn {
-        width: 100% !important;
-        justify-content: center !important;
-        padding: 0.8rem 1rem !important;
-        margin: 0.1rem 0 !important;
-        font-size: 1rem;
-    }
-
-    .btn-text {
-        display: inline !important;
-    }
-
-    .logo-main {
+    .logo-main .logo-acronym {
         font-size: 1.3rem;
     }
 
     .logo-subtitle {
-        display: none;
-    }
-
-    .user-name {
-        display: none;
-    }
-
-    .navbar-toggler {
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        padding: 0.25rem 0.5rem;
-    }
-
-    .navbar-toggler-icon {
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255, 255, 255, 0.8)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        font-size: 0.6rem;
     }
 }
 
@@ -631,48 +700,72 @@
         min-height: 60px;
     }
 
-    .logo-main {
-        font-size: 1.2rem;
-    }
-
-    .navbar-logo-icon {
-        padding: 0.3rem;
-    }
-
-    .navbar-logo-icon i {
-        font-size: 1.2rem;
-    }
-
-    .navbar-brand {
-        margin-right: 1rem;
-    }
-
-    .mobile-auth-controls {
-        gap: 0.3rem;
+    .mobile-auth-controls,
+    .mobile-guest-controls {
+        gap: 0.3rem !important;
     }
 
     .mobile-auth-controls .btn {
         padding: 0.3rem 0.5rem !important;
     }
 
-    /* Адаптируем dropdown для очень маленьких экранов */
     .profile-menu-mobile {
         width: 260px !important;
         right: 5px !important;
-        max-width: calc(100vw - 10px) !important;
+    }
+
+    .mobile-guest-controls .btn {
+        padding: 0.3rem 0.5rem !important;
+    }
+
+    .mobile-guest-controls .navbar-toggler {
+        padding: 0.2rem 0.4rem !important;
+    }
+
+    #navbarMainContent {
+        padding: 1rem 0.8rem !important;
+        margin: 0.5rem -0.5rem -0.5rem -0.5rem !important;
+        max-height: 75vh !important;
+
+        .nav-sections .nav-link {
+            padding: 0.9rem 1rem !important;
+            font-size: 1rem;
+        }
+
+        .nav-controls-guest .login-btn,
+        .nav-controls-guest .register-btn {
+            padding: 0.9rem 1rem !important;
+            font-size: 1rem;
+        }
     }
 }
 
-/* Гарантия что навбар всегда виден на мобильных */
+/* Анимация появления меню */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        max-height: 80vh;
+    }
+}
+
+.collapse.show {
+    animation: slideDown 0.4s ease-out !important;
+}
+
+/* Фикс для body padding */
+body {
+    padding-top: 70px !important;
+}
+
 @media (max-width: 991.98px) {
-    .main-navbar {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        transform: translateY(0) !important;
-        opacity: 1 !important;
-        visibility: visible !important;
+    body {
+        padding-top: 60px !important;
     }
 }
 
@@ -697,36 +790,20 @@
     margin: 0.5rem 0;
 }
 
-/* Фикс для body padding */
-body {
-    padding-top: 70px !important;
-}
+/* ФИКС для активного состояния */
+.navbar-nav .nav-link.active {
+    background: rgba(255, 255, 255, 0.2);
+    font-weight: 600;
+    color: white !important;
 
-@media (max-width: 991.98px) {
-    body {
-        padding-top: 60px !important;
+    &::before {
+        width: 80%;
+        background: #ffffff;
     }
-}
-
-/* Анимация появления */
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.navbar-collapse.show {
-    animation: slideDown 0.3s ease;
 }
 </style>
-
 <script>
-// Скрипт для работы навбара
+// СКРИПТ ДЛЯ РАБОТЫ НАВБАРА
 document.addEventListener('DOMContentLoaded', function() {
     // Кнопка сайдбара для авторизованных на мобильных
     const sidebarToggleMobile = document.getElementById('sidebarToggleMobile');
@@ -745,14 +822,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Гарантия что навбар всегда виден на мобильных
-    if (window.innerWidth < 992) {
-        const navbar = document.querySelector('.main-navbar');
-        if (navbar) {
-            navbar.classList.remove('navbar--hidden');
-        }
-    }
-
     // ФИКС: Принудительно показываем dropdown поверх всего
     document.addEventListener('show.bs.dropdown', function(e) {
         const dropdownMenu = e.target.querySelector('.dropdown-menu');
@@ -760,15 +829,18 @@ document.addEventListener('DOMContentLoaded', function() {
             dropdownMenu.style.zIndex = '10050';
         }
     });
-});
 
-// Обработчик ресайза
-window.addEventListener('resize', function() {
-    if (window.innerWidth < 992) {
-        const navbar = document.querySelector('.main-navbar');
-        if (navbar) {
-            navbar.classList.remove('navbar--hidden');
-        }
+    // ФИКС: Закрытие dropdown при ресайзе
+    function closeDropdownsOnResize() {
+        const dropdowns = document.querySelectorAll('.dropdown-menu.show');
+        dropdowns.forEach(dropdown => {
+            const dropdownToggle = dropdown.previousElementSibling;
+            if (dropdownToggle && bootstrap.Dropdown.getInstance(dropdownToggle)) {
+                bootstrap.Dropdown.getInstance(dropdownToggle).hide();
+            }
+        });
     }
+
+    window.addEventListener('resize', closeDropdownsOnResize);
 });
 </script>

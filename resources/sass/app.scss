@@ -1,9 +1,12 @@
 // =====================
 // Глобальные переменные
 // =====================
-@use 'navbar';
-@use 'sidebar';
-@use 'footer';
+@import 'variables';
+@import 'navbar';
+@import 'sidebar';
+@import 'footer';
+@import 'mobile-navbar';
+@import 'mobile-fixes';
 
 :root {
   // Размеры элементов
@@ -871,3 +874,5 @@ body {
     ) !important;
   }
 }
+
+
