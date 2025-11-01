@@ -506,4 +506,5 @@ Route::middleware('auth')->group(function () {
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications');
 });
 
+
 require __DIR__.'/auth.php';

@@ -23,7 +23,7 @@ class CompanyRegistrationRequest extends FormRequest
             'inn' => 'required|digits:10',
             'kpp' => 'required|digits:9',
             'ogrn' => 'required|digits:13',
-            'okpo' => 'nullable|digits:10',
+            'okpo' => 'nullable|digits_between:8,10', // Исправлено с digits:10 на digits_between:8,10
             'legal_address' => 'required|string|max:500',
             'same_as_legal' => 'sometimes|boolean',
             'actual_address' => 'required_if:same_as_legal,false|nullable|string|max:500',
@@ -48,6 +48,7 @@ class CompanyRegistrationRequest extends FormRequest
             'inn.digits' => 'ИНН должен содержать 10 цифр',
             'kpp.digits' => 'КПП должен содержать 9 цифр',
             'ogrn.digits' => 'ОГРН должен содержать 13 цифр',
+            'okpo.digits_between' => 'ОКПО должен содержать 8 или 10 цифр', // Обновлено сообщение для okpo
             'bank_account.digits' => 'Расчетный счет должен содержать 20 цифр',
             'bik.digits' => 'БИК должен содержать 9 цифр',
             'phone.regex' => 'Неверный формат телефона',

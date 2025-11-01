@@ -117,6 +117,24 @@ return [
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
+
+       'queue' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/queue.log'),
+            'level' => 'debug',
+        ],
+
+        'registration' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/registration.log'),
+            'level' => 'debug',
+        ],
+
+        'email' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/email.log'),
+            'level' => 'debug',
+        ],
     ],
 
 ];

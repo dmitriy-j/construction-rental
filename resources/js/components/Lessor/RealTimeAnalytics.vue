@@ -3,28 +3,35 @@
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
         <h6 class="mb-0">📈 Аналитика в реальном времени</h6>
-        <div class="last-update text-muted small">
+        <div class="last-update text-muted small" v-if="!loading">
           Обновлено: {{ lastUpdate }}
+        </div>
+        <div class="last-update text-muted small" v-else>
+          <i class="fas fa-spinner fa-spin"></i> Загрузка...
         </div>
       </div>
       <div class="card-body">
-        <div class="row text-center">
+        <div v-if="loading" class="text-center py-3">
+          <div class="spinner-border spinner-border-sm" role="status"></div>
+          <span class="ms-2">Загрузка данных...</span>
+        </div>
+
+        <div v-else class="row text-center">
           <div class="col-md-2 col-6 mb-3" v-for="metric in realTimeMetrics" :key="metric.id">
             <div class="metric-card" :class="{ 'highlight': metric.highlight }">
               <div class="metric-value" :class="metric.trendClass">
                 {{ metric.value }}
-                <i v-if="metric.trendIcon" :class="metric.trendIcon"></i>
               </div>
               <div class="metric-label">{{ metric.label }}</div>
-              <div class="metric-change small" :class="metric.trendClass">
-                {{ metric.change }}
+              <div class="metric-description small text-muted">
+                {{ metric.description }}
               </div>
             </div>
           </div>
         </div>
 
         <!-- Быстрые действия -->
-        <div class="quick-actions mt-3 pt-3 border-top">
+        <div class="quick-actions mt-3 pt-3 border-top" v-if="!loading">
           <div class="row g-2">
             <div class="col-auto" v-for="action in quickActions" :key="action.id">
               <button class="btn btn-sm" :class="action.class" @click="action.handler">
@@ -44,21 +51,24 @@ export default {
   props: {
     analytics: {
       type: Object,
-      default: () => ({})
-    }
-  },
-  data() {
-    return {
-      lastUpdate: new Date().toLocaleTimeString('ru-RU'),
-      updateInterval: null,
-      realTimeData: {
+      required: true,
+      default: () => ({
         activeRequests: 0,
         newRequestsToday: 0,
         myActiveProposals: 0,
         conversionRate: 0,
-        avgResponseTime: '2.5ч',
-        marketShare: '15%'
-      }
+        avgResponseTime: '0ч',
+        marketShare: '0%'
+      })
+    },
+    loading: {
+      type: Boolean,
+      default: false
+    }
+  },
+  data() {
+    return {
+      lastUpdate: new Date().toLocaleTimeString('ru-RU')
     }
   },
   computed: {
@@ -66,51 +76,46 @@ export default {
       return [
         {
           id: 1,
-          value: this.realTimeData.activeRequests,
+          value: this.analytics.activeRequests || 0,
           label: 'Активных заявок',
-          change: '+3 за сегодня',
-          trendClass: 'text-success',
-          trendIcon: 'fas fa-arrow-up',
+          description: 'Доступно для ответа',
+          trendClass: 'text-primary',
           highlight: true
         },
         {
           id: 2,
-          value: this.realTimeData.newRequestsToday,
+          value: this.analytics.newRequestsToday || 0,
           label: 'Новых сегодня',
-          change: '↗ на 25%',
-          trendClass: 'text-warning',
-          trendIcon: 'fas fa-chart-line'
-        },
-        {
-          id: 3,
-          value: this.realTimeData.myActiveProposals,
-          label: 'Ваших предложений',
-          change: '5 ожидают ответа',
+          description: 'За последние 24 часа',
           trendClass: 'text-info'
         },
         {
+          id: 3,
+          value: this.analytics.myActiveProposals || 0,
+          label: 'Ваших предложений',
+          description: 'Ожидают ответа',
+          trendClass: 'text-warning'
+        },
+        {
           id: 4,
-          value: this.realTimeData.conversionRate + '%',
+          value: (this.analytics.conversionRate || 0) + '%',
           label: 'Конверсия',
-          change: '▲ 5.2%',
-          trendClass: 'text-success',
-          trendIcon: 'fas fa-trend-up'
+          description: 'Принятых предложений',
+          trendClass: this.analytics.conversionRate > 0 ? 'text-success' : 'text-secondary'
         },
         {
           id: 5,
-          value: this.realTimeData.avgResponseTime,
-          label: 'Среднее время ответа',
-          change: '▼ 0.5ч',
-          trendClass: 'text-danger',
-          trendIcon: 'fas fa-trend-down'
+          value: this.analytics.avgResponseTime || '0ч',
+          label: 'Время ответа',
+          description: 'Среднее',
+          trendClass: 'text-secondary'
         },
         {
           id: 6,
-          value: this.realTimeData.marketShare,
+          value: this.analytics.marketShare || '0%',
           label: 'Доля рынка',
-          change: '↗ 2.1%',
-          trendClass: 'text-success',
-          trendIcon: 'fas fa-chart-pie'
+          description: 'Ваша активность',
+          trendClass: 'text-success'
         }
       ]
     },
@@ -159,30 +164,21 @@ export default {
     },
     exportData() {
       this.$emit('quick-action', 'export');
-    },
-    updateRealTimeData() {
-      // Имитация обновления данных в реальном времени
-      this.realTimeData.activeRequests = Math.floor(Math.random() * 50) + 20;
-      this.realTimeData.newRequestsToday = Math.floor(Math.random() * 10) + 5;
-      this.realTimeData.myActiveProposals = Math.floor(Math.random() * 15) + 3;
-      this.realTimeData.conversionRate = Math.floor(Math.random() * 30) + 60;
-      this.lastUpdate = new Date().toLocaleTimeString('ru-RU');
     }
   },
-  mounted() {
-    this.updateRealTimeData();
-    // Обновляем данные каждые 30 секунд
-    this.updateInterval = setInterval(this.updateRealTimeData, 30000);
-  },
-  beforeUnmount() {
-    if (this.updateInterval) {
-      clearInterval(this.updateInterval);
+  watch: {
+    analytics: {
+      handler() {
+        this.lastUpdate = new Date().toLocaleTimeString('ru-RU');
+      },
+      deep: true
     }
   }
 }
 </script>
 
 <style scoped>
+/* Стили остаются без изменений */
 .real-time-analytics {
   margin-bottom: 1.5rem;
 }
@@ -215,9 +211,8 @@ export default {
   margin-bottom: 0.25rem;
 }
 
-.metric-change {
+.metric-description {
   font-size: 0.75rem;
-  font-weight: 500;
 }
 
 .quick-actions .btn {

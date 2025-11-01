@@ -15,12 +15,13 @@ class CompaniesSeeder extends Seeder
         // Удаляем старые данные
         User::where('email', 'admin@stroytech.ru')->delete();
         Company::where('legal_name', 'Тестовая Компания ООО "СтройТех"')->delete();
+        Company::where('inn', '9723125209')->delete(); // Удаляем старую платформу
 
         // Создаем тестовую компанию (арендодатель)
         $company = Company::create([
             'is_lessor' => true,
             'is_lessee' => false,
-            'is_platform' => false, // Добавлено
+            'is_platform' => false,
             'legal_name' => 'Тестовая Компания ООО "СтройТех"',
             'tax_system' => 'vat',
             'inn' => '7701234569',
@@ -53,26 +54,26 @@ class CompaniesSeeder extends Seeder
 
         $user->assignRole('company_admin');
 
-        // Создаем компанию для платформы
+        // Создаем компанию для платформы с новыми реквизитами ФАП
         $platformCompany = Company::create([
-            'is_platform' => true, // Флаг платформы
+            'is_platform' => true,
             'is_lessor' => false,
             'is_lessee' => false,
-            'legal_name' => 'ООО "АНЛИМИТ ПАРТС"',
+            'legal_name' => 'ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ "ФАП"',
             'tax_system' => 'vat',
-            'inn' => '9723125209',
-            'kpp' => '772301001',
-            'ogrn' => '1217700452133',
+            'inn' => '7716254721',
+            'kpp' => '771601001',
+            'ogrn' => '1257700474162',
             'okpo' => '55500712',
-            'legal_address' => '109390, Москва Г., ул. Люблинская, д. 47 пом. IX, ком. 1',
-            'actual_address' => '105275, Москва 9-ая ул. Соколиной горы дом 6 с.2',
+            'legal_address' => '129344, Г.МОСКВА, ВН.ТЕР.Г. МУНИЦИПАЛЬНЫЙ ОКРУГ БАБУШКИНСКИЙ, УЛ ИСКРЫ, Д. 31, К. 1, ПОМЕЩ. 5Ч',
+            'actual_address' => '129344, Г.МОСКВА, ВН.ТЕР.Г. МУНИЦИПАЛЬНЫЙ ОКРУГ БАБУШКИНСКИЙ, УЛ ИСКРЫ, Д. 31, К. 1, ПОМЕЩ. 5Ч',
             'bank_name' => 'ООО "Банк Точка"',
-            'bank_account' => '40702810301500108320',
+            'bank_account' => '40702810820000253434',
             'bik' => '044525104',
             'correspondent_account' => '30101810745374525104',
-            'director_name' => 'Воронцов Евгений Дмитриевич',
-            'phone' => '+7 (495) 790-90-34',
-            'contacts' => 'Дополнительный телефон: +7 (968) 605-39-49',
+            'director_name' => 'Алешин Вячеслав Витальевич',
+            'phone' => '+7 (929) 533-32-06',
+            'contacts' => 'Генеральный директор: Алешин Вячеслав Витальевич',
             'status' => 'verified',
             'rejection_reason' => null,
             'verified_at' => now(),
@@ -88,5 +89,9 @@ class CompaniesSeeder extends Seeder
                 'company_id' => $company->id,
             ]);
         }
+
+        $this->command->info('Компании успешно созданы!');
+        $this->command->info('Платформа: ООО "ФАП" (ИНН: 7716254721)');
+        $this->command->info('Тестовая компания: ООО "СтройТех" (ИНН: 7701234569)');
     }
 }

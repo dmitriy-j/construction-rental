@@ -22,7 +22,6 @@
           Стратегическая
         </button>
 
-        <!-- Добавленная кнопка для шаблонов -->
         <button
           @click="activeMode = 'templates'"
           :class="['tab-button', { active: activeMode === 'templates' }]"
@@ -31,9 +30,8 @@
           Шаблоны
         </button>
 
-        <!-- Кнопка обновления -->
         <button
-          @click="refreshCounters"
+          @click="refreshAllData"
           class="tab-button refresh-btn"
           :disabled="refreshing"
         >
@@ -47,45 +45,46 @@
     <div v-if="activeMode === 'realtime'" class="realtime-mode">
       <RealTimeAnalytics
         :analytics="realTimeData"
+        :loading="loadingRealtime"
         @quick-action="handleQuickAction"
-      />
+        />
 
       <!-- Быстрые действия -->
       <div class="quick-actions-grid mt-3">
         <QuickActionCard
           title="Срочные заявки"
-          :count="dashboardCounters.urgent_requests"
+          :count="dashboardCounters.urgent_requests || 0"
           icon="fas fa-exclamation-circle"
           color="danger"
           @click="showUrgentRequests"
-          :loading="loadingCounters.urgent"
+          :loading="loadingCounters"
           description="Новые за последние 2 часа"
         />
         <QuickActionCard
           title="Активные шаблоны"
-          :count="dashboardCounters.templates"
+          :count="dashboardCounters.templates || 0"
           icon="fas fa-file-alt"
           color="primary"
           @click="showTemplates"
-          :loading="loadingCounters.templates"
+          :loading="loadingCounters"
           description="Готовые предложения"
         />
         <QuickActionCard
           title="Мои предложения"
-          :count="dashboardCounters.my_proposals"
+          :count="dashboardCounters.my_proposals || 0"
           icon="fas fa-paper-plane"
           color="warning"
           @click="showMyProposals"
-          :loading="loadingCounters.proposals"
+          :loading="loadingCounters"
           description="Ожидают ответа"
         />
         <QuickActionCard
           title="Всего заявок"
-          :count="dashboardCounters.active_requests"
+          :count="dashboardCounters.active_requests || 0"
           icon="fas fa-list"
           color="info"
           @click="showAllRequests"
-          :loading="loadingCounters.active"
+          :loading="loadingCounters"
           description="Активные на платформе"
         />
       </div>
@@ -97,10 +96,11 @@
         :conversion-data="conversionData"
         :price-analytics="priceAnalytics"
         :recommendations="strategicRecommendations"
+        :loading="loadingStrategic"
       />
 
       <!-- Дополнительные отчеты -->
-      <div class="reports-section mt-4">
+      <div class="reports-section mt-4" v-if="!loadingStrategic && conversionTrends.length > 0">
         <div class="row">
           <div class="col-md-6">
             <ConversionTrendsChart :data="conversionTrends" />
@@ -119,35 +119,6 @@
         @template-applied="handleTemplateApplied"
         @template-saved="handleTemplateSaved"
       />
-
-      <!-- Дополнительная аналитика шаблонов -->
-      <div class="row mt-4" v-if="templateAnalytics">
-        <div class="col-md-6">
-          <div class="card">
-            <div class="card-header">
-              <h6 class="mb-0">Эффективность по категориям</h6>
-            </div>
-            <div class="card-body">
-              <!-- График эффективности шаблонов -->
-              <div>
-                <p>График эффективности будет здесь.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-6">
-          <div class="card">
-            <div class="card-header">
-              <h6 class="mb-0">Рекомендации</h6>
-            </div>
-            <div class="card-body">
-              <div v-for="rec in templateRecommendations" :key="rec.id" class="alert alert-warning py-2">
-                <small>{{ rec.message }}</small>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- Общие уведомления -->
@@ -168,6 +139,13 @@
         Обновлено: {{ formatLastUpdated(dashboardCounters.last_updated) }}
       </small>
     </div>
+
+    <!-- Индикатор загрузки -->
+    <div v-if="loadingRealtime || loadingStrategic" class="loading-overlay">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Загрузка...</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -178,6 +156,7 @@ import ProposalTemplates from './ProposalTemplates.vue';
 import QuickActionCard from './QuickActionCard.vue';
 import ConversionTrendsChart from './charts/ConversionTrendsChart.vue';
 import PriceComparisonChart from './charts/PriceComparisonChart.vue';
+import Swal from 'sweetalert2';
 
 export default {
   name: 'AnalyticsDashboard',
@@ -191,14 +170,6 @@ export default {
   },
   props: {
     initialData: {
-      type: Object,
-      default: () => ({})
-    },
-    realTimeMetrics: {
-      type: Object,
-      default: () => ({})
-    },
-    strategicMetrics: {
       type: Object,
       default: () => ({})
     },
@@ -223,6 +194,11 @@ export default {
     return {
       activeMode: 'realtime',
       refreshing: false,
+      loadingRealtime: false,
+      loadingStrategic: false,
+      loadingCounters: false,
+
+      // ВСЕ ДАННЫЕ ИНИЦИАЛИЗИРУЕМ НУЛЯМИ - НИКАКИХ ФИКТИВНЫХ ДАННЫХ!
       dashboardCounters: {
         urgent_requests: 0,
         templates: 0,
@@ -230,12 +206,7 @@ export default {
         active_requests: 0,
         last_updated: null
       },
-      loadingCounters: {
-        urgent: false,
-        templates: false,
-        proposals: false,
-        active: false
-      },
+
       realTimeData: {
         activeRequests: 0,
         newRequestsToday: 0,
@@ -244,21 +215,23 @@ export default {
         avgResponseTime: '0ч',
         marketShare: '0%'
       },
+
       conversionData: {
         myConversionRate: 0,
         marketConversionRate: 0,
         trend: 'stable'
       },
+
       priceAnalytics: {
         myAvgPrice: 0,
         marketAvgPrice: 0,
         priceDifferencePercent: 0
       },
+
       strategicRecommendations: [],
       criticalAlerts: [],
       conversionTrends: [],
       priceComparison: [],
-      templateAnalytics: true,
       templateRecommendations: []
     };
   },
@@ -274,23 +247,44 @@ export default {
     }
   },
   methods: {
+    async refreshAllData() {
+      this.refreshing = true;
+      try {
+        await Promise.all([
+          this.loadRealCounters(),
+          this.loadRealTimeData(),
+          this.loadStrategicData()
+        ]);
+
+        Swal.fire({
+          title: '✅ Данные обновлены',
+          text: `Обновлено: ${new Date().toLocaleTimeString()}`,
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end'
+        });
+      } catch (error) {
+        console.error('Ошибка обновления данных:', error);
+        this.showErrorNotification('Не удалось обновить данные');
+      } finally {
+        this.refreshing = false;
+      }
+    },
+
     async loadRealCounters() {
       try {
+        this.loadingCounters = true;
         console.log('📊 Загрузка реальных данных счетчиков...');
-        this.setLoadingState(true);
 
-        const response = await axios.get('/api/lessor/dashboard-counters');
+        const response = await axios.get('/api/lessor/analytics/dashboard-counters');
 
         if (response.data.success) {
           this.dashboardCounters = {
-            ...this.dashboardCounters,
-            ...response.data.data
+            ...response.data.data,
+            last_updated: new Date().toISOString()
           };
-
-          // Обновляем реальные данные
-          this.realTimeData.activeRequests = this.dashboardCounters.active_requests;
-          this.realTimeData.myActiveProposals = this.dashboardCounters.my_proposals;
-
           console.log('✅ Счетчики загружены:', this.dashboardCounters);
         } else {
           throw new Error(response.data.message || 'Ошибка сервера');
@@ -298,37 +292,83 @@ export default {
 
       } catch (error) {
         console.error('❌ Ошибка загрузки счетчиков:', error);
-        this.showErrorNotification(error);
-        this.showFallbackCounters();
+        this.showErrorNotification('Не удалось загрузить данные счетчиков');
+        // Используем только реальные данные из props
+        this.useOnlyRealData();
       } finally {
-        this.setLoadingState(false);
-        this.refreshing = false;
+        this.loadingCounters = false;
       }
     },
 
-    async refreshCounters() {
-      this.refreshing = true;
-      await this.loadRealCounters();
+    async loadRealTimeData() {
+      try {
+        this.loadingRealtime = true;
+        console.log('🔄 Загрузка данных реального времени...');
 
-      this.$notify({
-        title: '✅ Данные обновлены',
-        text: `Обновлено: ${new Date().toLocaleTimeString()}`,
-        type: 'success',
-        duration: 2000
-      });
+        const response = await axios.get('/api/lessor/analytics/realtime');
+
+        if (response.data.success) {
+          this.realTimeData = response.data.data;
+          console.log('✅ Данные реального времени загружены:', this.realTimeData);
+        } else {
+          throw new Error(response.data.message || 'Ошибка сервера');
+        }
+
+      } catch (error) {
+        console.error('❌ Ошибка загрузки данных реального времени:', error);
+        // НЕ ИСПОЛЬЗУЕМ ФИКТИВНЫЕ ДАННЫЕ - только нули
+        this.realTimeData = {
+          activeRequests: 0,
+          newRequestsToday: 0,
+          myActiveProposals: 0,
+          conversionRate: 0,
+          avgResponseTime: '0ч',
+          marketShare: '0%'
+        };
+      } finally {
+        this.loadingRealtime = false;
+      }
     },
 
-    setLoadingState(loading) {
-      this.loadingCounters = {
-        urgent: loading,
-        templates: loading,
-        proposals: loading,
-        active: loading
-      };
+    async loadStrategicData() {
+      try {
+        this.loadingStrategic = true;
+        console.log('📈 Загрузка стратегической аналитики...');
+
+        const response = await axios.get('/api/lessor/analytics/strategic');
+
+        if (response.data.success) {
+          this.conversionData = response.data.data.conversion || {};
+          this.priceAnalytics = response.data.data.pricing || {};
+          this.strategicRecommendations = response.data.data.recommendations || [];
+          this.criticalAlerts = response.data.data.alerts || [];
+          console.log('✅ Стратегическая аналитика загружена');
+        } else {
+          throw new Error(response.data.message || 'Ошибка сервера');
+        }
+
+      } catch (error) {
+        console.error('❌ Ошибка загрузки стратегической аналитики:', error);
+        // НЕ ИСПОЛЬЗУЕМ ФИКТИВНЫЕ ДАННЫЕ - только нули
+        this.conversionData = {
+          myConversionRate: 0,
+          marketConversionRate: 0,
+          trend: 'stable'
+        };
+        this.priceAnalytics = {
+          myAvgPrice: 0,
+          marketAvgPrice: 0,
+          priceDifferencePercent: 0
+        };
+        this.strategicRecommendations = [];
+        this.criticalAlerts = [];
+      } finally {
+        this.loadingStrategic = false;
+      }
     },
 
-    showFallbackCounters() {
-      console.log('🔄 Используем запасные данные счетчиков');
+    useOnlyRealData() {
+      // Используем ТОЛЬКО реальные данные из props
       this.dashboardCounters = {
         urgent_requests: this.urgentRequests.length || 0,
         templates: this.templates.length || 0,
@@ -338,12 +378,15 @@ export default {
       };
     },
 
-    showErrorNotification(error) {
-      this.$notify({
+    showErrorNotification(message) {
+      Swal.fire({
         title: '❌ Ошибка загрузки',
-        text: 'Не удалось загрузить данные счетчиков',
-        type: 'error',
-        duration: 5000
+        text: message,
+        icon: 'error',
+        timer: 5000,
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end'
       });
     },
 
@@ -373,7 +416,7 @@ export default {
           this.exportAnalyticsData();
           break;
         case 'refresh':
-          this.refreshCounters();
+          this.refreshAllData();
           break;
       }
     },
@@ -404,27 +447,31 @@ export default {
 
     handleTemplateApplied(templateData) {
       console.log('Шаблон применен:', templateData);
-      // Обновляем счетчик предложений при применении шаблона
       this.dashboardCounters.my_proposals += 1;
 
-      this.$notify({
+      Swal.fire({
         title: '✅ Шаблон применен',
         text: `Шаблон "${templateData.template.name}" успешно применен`,
-        type: 'success',
-        duration: 3000
+        icon: 'success',
+        timer: 3000,
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end'
       });
     },
 
     handleTemplateSaved() {
       console.log('Шаблон сохранен');
-      // Обновляем счетчик шаблонов при сохранении
       this.dashboardCounters.templates += 1;
 
-      this.$notify({
+      Swal.fire({
         title: '✅ Шаблон сохранен',
         text: 'Новый шаблон успешно создан',
-        type: 'success',
-        duration: 3000
+        icon: 'success',
+        timer: 3000,
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end'
       });
     },
 
@@ -449,110 +496,28 @@ export default {
       a.click();
       URL.revokeObjectURL(url);
 
-      this.$notify({
+      Swal.fire({
         title: '📊 Экспорт завершен',
         text: 'Данные аналитики успешно экспортированы',
-        type: 'success',
-        duration: 3000
+        icon: 'success',
+        timer: 3000,
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end'
       });
     },
 
     async loadData() {
       try {
-        // Загружаем реальные счетчики первыми
-        await this.loadRealCounters();
-
-        // Затем загружаем остальные данные
-        const [realtimeResponse, strategicResponse] = await Promise.all([
-          this.fetchRealTimeData(),
-          this.fetchStrategicData()
+        await Promise.all([
+          this.loadRealCounters(),
+          this.loadRealTimeData(),
+          this.loadStrategicData()
         ]);
-
-        this.realTimeData = { ...this.realTimeData, ...realtimeResponse.data };
-        this.conversionData = strategicResponse.data.conversion;
-        this.priceAnalytics = strategicResponse.data.pricing;
-        this.criticalAlerts = strategicResponse.data.alerts || [];
-
       } catch (error) {
         console.error('Ошибка загрузки данных аналитики:', error);
-        this.showFallbackData();
+        this.showErrorNotification('Не удалось загрузить данные аналитики');
       }
-    },
-
-    showFallbackData() {
-      this.realTimeData = {
-        activeRequests: this.dashboardCounters.active_requests || 24,
-        newRequestsToday: 8,
-        myActiveProposals: this.dashboardCounters.my_proposals || 5,
-        conversionRate: 65,
-        avgResponseTime: '2.1ч',
-        marketShare: '18%'
-      };
-
-      this.conversionData = {
-        myConversionRate: 65,
-        marketConversionRate: 58,
-        trend: 'up'
-      };
-
-      this.priceAnalytics = {
-        myAvgPrice: 2450,
-        marketAvgPrice: 2200,
-        priceDifferencePercent: 11.4
-      };
-
-      this.strategicRecommendations = [
-        {
-          id: 1,
-          icon: 'fas fa-arrow-up text-success',
-          message: `У вас ${this.dashboardCounters.templates || 0} активных шаблонов - отличный результат!`,
-          priority: 'medium'
-        },
-        {
-          id: 2,
-          icon: 'fas fa-bolt text-warning',
-          message: `${this.dashboardCounters.urgent_requests || 0} срочных заявок ждут вашего предложения`,
-          priority: this.dashboardCounters.urgent_requests > 0 ? 'critical' : 'low'
-        }
-      ];
-    },
-
-    async fetchRealTimeData() {
-      return Promise.resolve({
-        data: {
-          activeRequests: this.dashboardCounters.active_requests || 0,
-          newRequestsToday: 8,
-          myActiveProposals: this.dashboardCounters.my_proposals || 0,
-          conversionRate: 65,
-          avgResponseTime: '2.1ч',
-          marketShare: '18%'
-        }
-      });
-    },
-
-    async fetchStrategicData() {
-      return Promise.resolve({
-        data: {
-          conversion: {
-            myConversionRate: 65,
-            marketConversionRate: 58,
-            trend: 'up'
-          },
-          pricing: {
-            myAvgPrice: 2450,
-            marketAvgPrice: 2200,
-            priceDifferencePercent: 11.4
-          },
-          alerts: [
-            {
-              id: 1,
-              message: `У вас ${this.dashboardCounters.my_proposals || 0} активных предложений`,
-              action: () => this.activeMode = 'strategic',
-              actionText: 'Анализировать'
-            }
-          ]
-        }
-      });
     }
   },
   watch: {
@@ -607,6 +572,7 @@ export default {
   border-radius: 8px;
   padding: 1.5rem;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  position: relative;
 }
 
 .dashboard-header {
@@ -681,6 +647,19 @@ export default {
   border-top: 1px solid #e9ecef;
 }
 
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
 @keyframes slideIn {
   from {
     opacity: 0;
@@ -689,26 +668,6 @@ export default {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-.loading-counter {
-  opacity: 0.7;
-  pointer-events: none;
-}
-
-.counter-skeleton {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: loading 1.5s infinite;
-}
-
-@keyframes loading {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
   }
 }
 

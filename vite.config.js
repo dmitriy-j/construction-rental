@@ -28,6 +28,7 @@ export default defineConfig({
                 'resources/js/pages/rental-requests.js',
                 'resources/js/pages/lessor-rental-requests.js',
                 'resources/js/pages/lessor-rental-request-detail.js',
+                'resources/js/yandex-map-fallback.js'
             ],
             refresh: true,
         }),

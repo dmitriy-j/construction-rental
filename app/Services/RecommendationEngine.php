@@ -24,7 +24,7 @@ class RecommendationEngine
         foreach ($templates as $template) {
             $score = $this->calculateTemplateScore($template, $request);
 
-            if ($score >= 60) { // Только релевантные шаблоны
+            if ($score >= 40) { // Только релевантные шаблоны
                 $recommendations[] = [
                     'template' => $template,
                     'score' => $score,
@@ -50,25 +50,34 @@ class RecommendationEngine
     {
         $score = 0;
 
-        // 1. Соответствие категории (+40%)
-        if ($this->hasMatchingCategory($template, $request)) {
-            $score += 40;
+        // 1. Соответствие категории (+35%)
+        $categoryMatch = $this->hasMatchingCategory($template, $request) ? 1.0 : 0.3;
+        $score += $categoryMatch * 35;
+
+        // 2. Историческая успешность (+25%) с бонусом для новых
+        $successScore = ($template->success_rate / 100) * 25;
+        if ($template->usage_count < 3) {
+            $successScore += 15; // Большой бонус для новых шаблонов
         }
+        $score += $successScore;
 
-        // 2. Историческая успешность (+30%)
-        $score += ($template->success_rate / 100) * 30;
-
-        // 3. Соответствие бюджету (+20%)
+        // 3. Соответствие бюджету (+25%)
         $budgetMatch = $this->calculateBudgetMatch($template, $request);
-        $score += $budgetMatch * 20;
+        $score += $budgetMatch * 25;
 
         // 4. Скорость ответа (+10%)
         if ($template->response_time <= 4) {
             $score += 10;
+        } elseif ($template->response_time <= 8) {
+            $score += 7;
+        } elseif ($template->response_time <= 12) {
+            $score += 4;
+        } else {
+            $score += 1;
         }
 
-        // 5. Бонус за A/B тестирование (+5%)
-        if ($template->is_ab_test) {
+        // 5. Бонус за использование (+5%)
+        if ($template->usage_count > 5) {
             $score += 5;
         }
 

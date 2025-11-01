@@ -8,6 +8,38 @@
 @import 'mobile-navbar';
 @import 'mobile-fixes';
 
+// Федеральная цветовая схема ФАП
+:root {
+    --fap-primary: #0056b3;       /* глубокий синий - федеральный */
+    --fap-secondary: #ffc107;     /* золотой - качество */
+    --fap-accent: #dc3545;        /* красный - срочность */
+    --fap-light: #e3f2fd;         /* светлый синий фон */
+    --fap-dark: #002d72;          /* темный синий */
+}
+
+.federal-badge {
+    background: linear-gradient(135deg, var(--fap-primary), var(--fap-dark));
+    color: white;
+    border: 2px solid var(--fap-secondary);
+    font-weight: 600;
+}
+
+.hero-federal {
+    background: linear-gradient(135deg, var(--fap-primary) 0%, var(--fap-dark) 100%);
+    color: white;
+}
+
+/* Переопределение Bootstrap цветов если нужно */
+.btn-primary {
+    background-color: var(--fap-primary);
+    border-color: var(--fap-primary);
+}
+
+.btn-warning {
+    background-color: var(--fap-secondary);
+    border-color: var(--fap-secondary);
+}
+
 :root {
   // Размеры элементов
   --navbar-height: 80px;
@@ -874,5 +906,34 @@ body {
     ) !important;
   }
 }
+/* Гарантия что карта не создает скроллбары */
+.ymaps-map {
+    overflow: hidden !important;
+}
 
+.ymaps-balloon__layout {
+    border-radius: 8px !important;
+}
 
+/* Улучшение для мобильных устройств */
+@media (max-width: 768px) {
+    #map {
+        height: 350px !important;
+        min-height: 350px !important;
+    }
+
+    .ymaps-balloon-content {
+        max-width: 200px !important;
+    }
+}
+/* ГАРАНТИЯ ДЛЯ КОНТЕЙНЕРА КАРТЫ КОНТАКТОВ */
+#contacts-map {
+    min-width: 100% !important;
+    min-height: 400px !important;
+}
+
+/* УБЕДИТЕСЬ ЧТО РОДИТЕЛЬСКИЕ ЭЛЕМЕНТЫ НЕ МЕШАЮТ */
+.card-body.p-0 {
+    min-width: 100% !important;
+    overflow: visible !important;
+}

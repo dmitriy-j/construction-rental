@@ -45,6 +45,7 @@ class Company extends Model
         'is_platform' => 'boolean',
         'credit_limit' => 'decimal:2',
         'current_debt' => 'decimal:2',
+        'verified_at' => 'datetime',
     ];
 
     // Добавляем scope для быстрого поиска платформы

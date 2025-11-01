@@ -44,32 +44,30 @@ class Platform extends Model
         'additional_phones' => 'array',
     ];
 
-    /*protected function settlementAccount(): Attribute
-    {
-        return Attribute::make(
-            set: fn ($value) => encrypt($value),
-            get: fn ($value) => decrypt($value),
-        );
-    }*/
-
-    /*protected function correspondentAccount(): Attribute
-    {
-        return Attribute::make(
-            set: fn ($value) => encrypt($value),
-            get: fn ($value) => decrypt($value),
-        );
-    }*/
-
     public function getCleanPhoneAttribute(): string
     {
-        return preg_replace('/[^0-9]/', '', $this->phone);
+        return preg_replace('/[^0-9]/', '', $this->phone ?? '');
     }
 
     public static function getMain()
     {
-        return static::with('company')->first() ?? new static([
-            'name' => 'Основная платформа',
-        ]);
+        $platform = static::with('company')->first();
+
+        if (!$platform) {
+            // Создаем минимальный корректный экземпляр с безопасными значениями
+            $platform = new static([
+                'name' => 'Федеральная Арендная Платформа',
+                'short_name' => 'ФАП',
+                'legal_address' => 'г. Москва',
+                'phone' => '8 (800) 123-45-67',
+                'email' => 'info@fap24.ru',
+                'website' => 'https://fap24.ru',
+                'ceo_name' => 'Директор',
+                'ceo_position' => 'Генеральный директор',
+            ]);
+        }
+
+        return $platform;
     }
 
     public function company()
@@ -83,44 +81,44 @@ class Platform extends Model
     public function getLegalDetailsAttribute(): array
     {
         return [
-            'name' => $this->name,
-            'short_name' => $this->short_name,
-            'inn' => $this->inn,
-            'kpp' => $this->kpp,
-            'ogrn' => $this->ogrn,
-            'okpo' => $this->okpo,
-            'okved' => $this->okved,
-            'okato' => $this->okato,
-            'legal_address' => $this->legal_address,
+            'name' => $this->name ?? 'Федеральная Арендная Платформа',
+            'short_name' => $this->short_name ?? 'ФАП',
+            'inn' => $this->inn ?? '',
+            'kpp' => $this->kpp ?? '',
+            'ogrn' => $this->ogrn ?? '',
+            'okpo' => $this->okpo ?? '',
+            'okved' => $this->okved ?? '',
+            'okato' => $this->okato ?? '',
+            'legal_address' => $this->legal_address ?? 'г. Москва',
             'bank_details' => [
-                'name' => $this->bank_name,
-                'city' => $this->bank_city,
-                'bic' => $this->bic,
-                'correspondent' => $this->correspondent_account,
-                'settlement' => $this->settlement_account,
+                'name' => $this->bank_name ?? '',
+                'city' => $this->bank_city ?? '',
+                'bic' => $this->bic ?? '',
+                'correspondent' => $this->correspondent_account ?? '',
+                'settlement' => $this->settlement_account ?? '',
             ],
             'management' => [
                 'ceo' => [
-                    'name' => $this->ceo_name,
-                    'position' => $this->ceo_position,
-                    'basis' => $this->ceo_basis,
+                    'name' => $this->ceo_name ?? 'Директор',
+                    'position' => $this->ceo_position ?? 'Генеральный директор',
+                    'basis' => $this->ceo_basis ?? '',
                 ],
                 'accountant' => [
-                    'name' => $this->accountant_name,
-                    'position' => $this->accountant_position,
+                    'name' => $this->accountant_name ?? '',
+                    'position' => $this->accountant_position ?? '',
                 ],
             ],
             'contacts' => [
-                'phone' => $this->phone,
-                'email' => $this->email,
-                'website' => $this->website,
+                'phone' => $this->phone ?? '8 (800) 123-45-67',
+                'email' => $this->email ?? 'info@fap24.ru',
+                'website' => $this->website ?? 'https://fap24.ru',
             ],
-            'certificate' => $this->certificate_number,
+            'certificate' => $this->certificate_number ?? '',
         ];
     }
 
     public function getLegalNameAttribute()
     {
-        return $this->company->legal_name ?? $this->name;
+        return $this->company->legal_name ?? $this->name ?? 'Федеральная Арендная Платформа';
     }
 }

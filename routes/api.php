@@ -126,11 +126,13 @@ Route::middleware(['auth:sanctum', 'company.lessor'])->prefix('lessor')->group(f
         [LessorRecommendationController::class, 'saveFeedback']);
     Route::get('/recommendations/stats',
         [LessorRecommendationController::class, 'getStats']);
+});
 
-        // 🔥 ТЕСТОВЫЙ МАРШРУТ ДЛЯ НЕМЕДЛЕННОЙ ПРОВЕРКИ
-Route::get('/lessor/rental-requests/{rentalRequestId}/test-recommendations',
-    [App\Http\Controllers\API\LessorRecommendationController::class, 'testRecommendations']);
-
+// Аналитика для арендодателя
+Route::prefix('lessor/analytics')->group(function () {
+    Route::get('/realtime', [\App\Http\Controllers\API\LessorAnalyticsController::class, 'getRealTimeData']);
+    Route::get('/strategic', [\App\Http\Controllers\API\LessorAnalyticsController::class, 'getStrategicData']);
+    Route::get('/dashboard-counters', [\App\Http\Controllers\API\LessorAnalyticsController::class, 'getDashboardCounters']);
 });
 
 // Корзина предложений

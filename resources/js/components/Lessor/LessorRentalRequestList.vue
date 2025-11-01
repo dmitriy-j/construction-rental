@@ -1,9 +1,5 @@
 <template>
     <div class="lessor-rental-requests">
-        <div class="alert alert-success mb-4">
-            <h4>✅ Vue компонент ЛК арендодателя загружен!</h4>
-            <p>Заявок: {{ requests.length }}, Шаблонов: {{ templates.length }}, Аналитика: {{ analytics ? 'Есть' : 'Нет' }}</p>
-        </div>
 
         <!-- 🔥 ЗАМЕНА: Единый аналитический дашборд вместо отдельных компонентов -->
         <AnalyticsDashboard
@@ -68,8 +64,47 @@
             </div>
         </div>
 
+        <!-- Селектор количества элементов на странице -->
+        <div class="row align-items-center mb-3">
+            <div class="col-md-6">
+                <div class="d-flex align-items-center">
+                    <label class="form-label mb-0 me-2">Показывать по:</label>
+                    <select
+                        v-model="pagination.perPage"
+                        @change="changePerPage(pagination.perPage)"
+                        class="form-select form-select-sm"
+                        style="width: auto;"
+                    >
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span class="text-muted small ms-2">
+                        заявок на странице
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-6 text-end">
+                <div class="pagination-summary text-muted small">
+                    Найдено заявок: {{ pagination.total }}
+                    <span v-if="pagination.lastPage > 1">
+                        • Страница {{ pagination.currentPage }} из {{ pagination.lastPage }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Индикатор загрузки -->
+        <div v-if="loading" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Загрузка...</span>
+            </div>
+            <div class="mt-3 text-muted">Загрузка заявок...</div>
+        </div>
+
         <!-- 🔥 БЫСТРЫЕ РЕКОМЕНДАЦИИ ДЛЯ ВСЕХ ЗАЯВОК -->
-        <div class="global-recommendations card mb-4" v-if="globalRecommendations.length > 0">
+        <div class="global-recommendations card mb-4" v-if="globalRecommendations.length > 0 && !loading">
             <div class="card-header bg-warning text-dark">
                 <h6 class="mb-0">
                     <i class="fas fa-robot me-2"></i>Лучшие рекомендации для текущих заявок
@@ -114,7 +149,7 @@
         </div>
 
         <!-- Простой список заявок -->
-        <div class="row">
+        <div class="row" v-if="!loading">
             <div class="col-12" v-for="request in requests" :key="request.id">
                 <div class="card mb-3 request-card" :class="getRequestCardClass(request)">
                     <div class="card-body">
@@ -229,7 +264,7 @@
         </div>
 
         <!-- Сообщение если нет заявок -->
-        <div v-if="requests.length === 0" class="alert alert-info text-center py-4">
+        <div v-if="requests.length === 0 && !loading" class="alert alert-info text-center py-4">
             <i class="fas fa-inbox fa-3x mb-3 text-muted"></i>
             <h5>Заявки не найдены</h5>
             <p class="text-muted">Попробуйте изменить параметры фильтрации</p>
@@ -238,28 +273,15 @@
             </button>
         </div>
 
-        <!-- Пагинация (если нужна) -->
-        <div v-if="requests.length > 0" class="d-flex justify-content-center mt-4">
-            <nav>
-                <ul class="pagination">
-                    <li class="page-item disabled">
-                        <a class="page-link" href="#" tabindex="-1">Предыдущая</a>
-                    </li>
-                    <li class="page-item active">
-                        <a class="page-link" href="#">1</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="#">2</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="#">3</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="#">Следующая</a>
-                    </li>
-                </ul>
-            </nav>
-        </div>
+        <!-- Профессиональная пагинация -->
+        <ProfessionalPagination
+            v-if="pagination.total > pagination.perPage && !loading"
+            :current-page="pagination.currentPage"
+            :total-items="pagination.total"
+            :per-page="pagination.perPage"
+            @page-changed="handlePageChange"
+            class="mt-4"
+        />
 
         <!-- 🔥 ДОБАВЛЕНО: Модальное окно применения шаблона -->
         <div class="modal fade" :class="{ 'show d-block': showApplyTemplateModal }" v-if="showApplyTemplateModal" style="background: rgba(0,0,0,0.5)">
@@ -532,11 +554,13 @@
 
 <script>
 import AnalyticsDashboard from './AnalyticsDashboard.vue';
+import ProfessionalPagination from './ProfessionalPagination.vue';
 
 export default {
     name: 'LessorRentalRequestList',
     components: {
-        AnalyticsDashboard
+        AnalyticsDashboard,
+        ProfessionalPagination
     },
     props: {
         initialRequests: {
@@ -570,6 +594,15 @@ export default {
             analytics: this.initialAnalytics,
             templates: this.initialTemplates,
             templatesLoaded: false,
+            loading: false,
+
+            // 🔥 ПАГИНАЦИЯ
+            pagination: {
+                currentPage: 1,
+                perPage: 10,
+                total: this.initialRequests.length,
+                lastPage: 1
+            },
 
             // 🔥 ДОБАВЛЕНО: Данные для рекомендаций
             quickRecommendationsCache: [],
@@ -721,6 +754,68 @@ export default {
             return request?.title || 'Без названия';
         },
 
+        // 🔥 МЕТОДЫ ПАГИНАЦИИ
+        async handlePageChange(page) {
+            this.pagination.currentPage = page;
+            await this.loadRequests();
+
+            // Плавная прокрутка к верху
+            this.$nextTick(() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        },
+
+        async changePerPage(count) {
+            this.pagination.perPage = count;
+            this.pagination.currentPage = 1;
+            await this.loadRequests();
+        },
+
+        // 🔥 ОБНОВЛЕННЫЙ МЕТОД ЗАГРУЗКИ ДАННЫХ
+        async loadRequests() {
+            try {
+                this.loading = true;
+
+                // В реальном приложении здесь будет API запрос
+                // const response = await axios.get('/api/lessor/rental-requests', {
+                //     params: {
+                //         page: this.pagination.currentPage,
+                //         per_page: this.pagination.perPage,
+                //         ...this.localFilters
+                //     }
+                // });
+
+                // Имитация загрузки данных
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // В реальном приложении:
+                // this.requests = response.data.data.requests || [];
+                // this.pagination.total = response.data.data.total || 0;
+                // this.pagination.lastPage = response.data.data.last_page || 1;
+
+                // Для демонстрации используем initialRequests с пагинацией
+                const startIndex = (this.pagination.currentPage - 1) * this.pagination.perPage;
+                const endIndex = startIndex + this.pagination.perPage;
+                this.requests = this.initialRequests.slice(startIndex, endIndex);
+                this.pagination.total = this.initialRequests.length;
+                this.pagination.lastPage = Math.ceil(this.initialRequests.length / this.pagination.perPage);
+
+                // Загружаем рекомендации для текущей страницы
+                await this.loadQuickRecommendations();
+
+            } catch (error) {
+                console.error('Ошибка загрузки заявок:', error);
+                this.$notify({
+                    title: 'Ошибка',
+                    text: 'Не удалось загрузить заявки',
+                    type: 'error',
+                    duration: 3000
+                });
+            } finally {
+                this.loading = false;
+            }
+        },
+
         // 🔥 МЕТОДЫ ДЛЯ РЕКОМЕНДАЦИЙ
         getQuickRecommendations(request) {
             if (!this.quickRecommendationsCache) return [];
@@ -733,20 +828,39 @@ export default {
         async loadQuickRecommendations() {
             try {
                 const requestIds = this.requests.map(req => req.id);
-                if (requestIds.length === 0) return;
+                if (requestIds.length === 0) {
+                    this.quickRecommendationsCache = [];
+                    this.globalRecommendations = [];
+                    return;
+                }
 
+                console.log('🚀 Загрузка быстрых рекомендаций для заявок:', requestIds);
+
+                // 🔥 ПРЯМОЙ ВЫЗОВ РАБОЧЕГО ENDPOINT
                 const response = await axios.post('/api/lessor/recommendations/quick', {
                     request_ids: requestIds
                 });
 
-                this.quickRecommendationsCache = response.data.recommendations || [];
-                console.log('🚀 Быстрые рекомендации загружены:', this.quickRecommendationsCache);
+                console.log('📨 Ответ быстрых рекомендаций:', response);
 
-                // 🔥 ФОРМИРУЕМ ГЛОБАЛЬНЫЕ РЕКОМЕНДАЦИИ
-                this.generateGlobalRecommendations();
+                if (response.data.success) {
+                    this.quickRecommendationsCache = response.data.recommendations || [];
+                    console.log('✅ Быстрые рекомендации загружены:', this.quickRecommendationsCache);
 
+                    // Формируем глобальные рекомендации
+                    this.generateGlobalRecommendations();
+                } else {
+                    console.warn('⚠️ Сервер вернул ошибку:', response.data.message);
+                    this.quickRecommendationsCache = [];
+                    this.globalRecommendations = [];
+                }
             } catch (error) {
-                console.error('❌ Ошибка загрузки быстрых рекомендаций:', error);
+                console.error('💥 ОШИБКА загрузки быстрых рекомендаций:', error);
+                console.error('🔧 Детали ошибки:', error.response?.data);
+
+                // Создаем пустой массив чтобы интерфейс не ломался
+                this.quickRecommendationsCache = [];
+                this.globalRecommendations = [];
             }
         },
 
@@ -1196,47 +1310,8 @@ export default {
 
         // 🔥 ФИЛЬТРАЦИЯ И СОРТИРОВКА
         applyFilters() {
-            let filtered = [...this.initialRequests];
-
-            // Фильтрация по категории
-            if (this.localFilters.category_id) {
-                filtered = filtered.filter(request =>
-                    request.items?.some(item => item.category_id == this.localFilters.category_id)
-                );
-            }
-
-            // Фильтрация по локации
-            if (this.localFilters.location_id) {
-                filtered = filtered.filter(request =>
-                    request.location_id == this.localFilters.location_id
-                );
-            }
-
-            // Фильтрация по моим предложениям
-            if (this.localFilters.my_proposals === 'with_proposals') {
-                filtered = filtered.filter(request => request.my_proposals_count > 0);
-            } else if (this.localFilters.my_proposals === 'without_proposals') {
-                filtered = filtered.filter(request => !request.my_proposals_count || request.my_proposals_count === 0);
-            } else if (this.localFilters.my_proposals === 'with_templates') {
-                filtered = filtered.filter(request => this.hasMatchingTemplates(request));
-            } else if (this.localFilters.my_proposals === 'with_recommendations') {
-                filtered = filtered.filter(request => this.getQuickRecommendations(request).length > 0);
-            }
-
-            // Сортировка
-            if (this.localFilters.sort === 'budget') {
-                filtered.sort((a, b) => (b.total_budget || 0) - (a.total_budget || 0));
-            } else if (this.localFilters.sort === 'proposals') {
-                filtered.sort((a, b) => (b.active_proposals_count || 0) - (a.active_proposals_count || 0));
-            } else if (this.localFilters.sort === 'templates') {
-                filtered.sort((a, b) => this.matchingTemplatesCount(b) - this.matchingTemplatesCount(a));
-            } else if (this.localFilters.sort === 'recommendations') {
-                filtered.sort((a, b) => this.getQuickRecommendations(b).length - this.getQuickRecommendations(a).length);
-            } else {
-                filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            }
-
-            this.requests = filtered;
+            this.pagination.currentPage = 1; // Сбрасываем на первую страницу
+            this.loadRequests();
         },
 
         resetFilters() {
@@ -1246,7 +1321,8 @@ export default {
                 sort: 'newest',
                 my_proposals: ''
             };
-            this.requests = [...this.initialRequests];
+            this.pagination.currentPage = 1;
+            this.loadRequests();
         },
 
         // 🔥 СУЩЕСТВУЮЩИЕ МЕТОДЫ АНАЛИТИКИ

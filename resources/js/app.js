@@ -4,7 +4,7 @@ import { createApp } from 'vue';
 import RentalRequests from '/resources/js/Views/RentalRequests.vue';
 import { initRipple } from './ripple';
 import { initTheme } from './theme';
-//import { initSmartNavbar } from './navbar';
+import { initSmartNavbar } from './navbar';
 import Chart from 'chart.js/auto';
 import './bootstrap';
 import Alpine from 'alpinejs';
