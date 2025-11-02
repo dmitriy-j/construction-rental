@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Carbon\Carbon;
 
 class RentalRequestItem extends Model
@@ -19,12 +20,15 @@ class RentalRequestItem extends Model
         'specifications',
         'individual_conditions',
         'calculated_price',
-        'use_individual_conditions'
+        'use_individual_conditions',
+        'custom_specs_metadata'
     ];
 
+    // ⚠️ ИСПРАВЛЕНИЕ: Добавлено приведение типов для спецификаций
     protected $casts = [
         'specifications' => 'array',
         'individual_conditions' => 'array',
+        'custom_specs_metadata' => 'array',
         'hourly_rate' => 'decimal:2',
         'calculated_price' => 'decimal:2',
         'use_individual_conditions' => 'boolean'
@@ -32,11 +36,37 @@ class RentalRequestItem extends Model
 
     protected $appends = ['formatted_specifications'];
 
+    // ⚠️ ИСПРАВЛЕНИЕ: Улучшенный аксессор для спецификаций
     protected function specifications(): Attribute
     {
         return Attribute::make(
-            get: fn ($value) => json_decode($value, true) ?? [],
-            set: fn ($value) => json_encode($value ?? [])
+            get: function ($value) {
+                $specs = json_decode($value, true) ?? [];
+
+                // Обрабатываем числовые значения в спецификациях
+                if (isset($specs['values']) && is_array($specs['values'])) {
+                    foreach ($specs['values'] as $key => &$val) {
+                        if (is_numeric($val)) {
+                            $val = (float) $val;
+                        }
+                    }
+                }
+
+                return $specs;
+            },
+            set: function ($value) {
+                if (is_array($value)) {
+                    // Обеспечиваем корректное сохранение числовых значений
+                    if (isset($value['values']) && is_array($value['values'])) {
+                        foreach ($value['values'] as $key => &$val) {
+                            if ($val !== null && $val !== '') {
+                                $val = is_numeric($val) ? (float) $val : $val;
+                            }
+                        }
+                    }
+                }
+                return json_encode($value ?? []);
+            }
         );
     }
 
@@ -49,9 +79,11 @@ class RentalRequestItem extends Model
         try {
             $formatted = [];
             $specsArray = $this->specifications;
+            $metadata = $this->custom_specs_metadata ?? [];
 
             \Log::debug('Raw specifications for item ' . $this->id, [
-                'specifications' => $specsArray
+                'specifications' => $specsArray,
+                'metadata' => $metadata
             ]);
 
             // Полный словарь переводов для всех возможных параметров
@@ -101,6 +133,11 @@ class RentalRequestItem extends Model
                 'amplitude' => 'Амплитуда',
                 'compaction_width' => 'Ширина уплотнения',
 
+                // Бетонная техника
+                'concrete_output' => 'Производительность по бетону',
+                'max_pressure' => 'Максимальное давление',
+                'pump_height' => 'Высота подачи',
+
                 // English variants
                 'Bucket volume' => 'Объем ковша',
                 'Engine power' => 'Мощность двигателя',
@@ -112,44 +149,42 @@ class RentalRequestItem extends Model
                 'Body volume' => 'Объем кузова',
                 'Max speed' => 'Максимальная скорость',
                 'Lifting capacity' => 'Грузоподъёмность',
-                'Boom length' => 'Длина стрелы'
+                'Boom length' => 'Длина стрелы',
+                'Fuel tank capacity' => 'Объем топливного бака'
             ];
 
-            // Обрабатываем оба формата данных
-            if (is_array($specsArray) && isset($specsArray['values']) && is_array($specsArray['values'])) {
-                // Новый формат с metadata
-                $values = $specsArray['values'];
-                $labels = $specsArray['labels'] ?? [];
+            // Обрабатываем спецификации с учетом метаданных
+            foreach ($specsArray as $key => $value) {
+                if ($value !== null && $value !== '') {
+                    // Используем название из метаданных или переводим ключ
+                    $label = $metadata[$key]['name'] ?? $russianTranslations[$key] ?? $this->formatLabel($key);
+                    $unit = $metadata[$key]['unit'] ?? $this->getSimpleUnit($key);
 
-                foreach ($values as $key => $value) {
-                    if ($value !== null && $value !== '') {
-                        // Используем переданную метку или переводим ключ
-                        $label = $labels[$key] ?? $russianTranslations[$key] ?? $this->formatLabel($key);
+                    $formattedValue = $value;
 
-                        $formatted[] = [
-                            'key' => $key,
-                            'value' => $value,
-                            'label' => $label,
-                            'unit' => $this->getSimpleUnit($key),
-                            'formatted' => $label . ': ' . $value . ($this->getSimpleUnit($key) ? ' ' . $this->getSimpleUnit($key) : '')
-                        ];
-                    }
-                }
-            } else {
-                // Старый формат - переводим все ключи
-                foreach ($specsArray as $key => $value) {
-                    if ($value !== null && $value !== '') {
-                        $label = $russianTranslations[$key] ?? $this->formatLabel($key);
-                        $formatted[] = [
-                            'key' => $key,
-                            'value' => $value,
-                            'label' => $label,
-                            'unit' => $this->getSimpleUnit($key),
-                            'formatted' => $label . ': ' . $value . ($this->getSimpleUnit($key) ? ' ' . $this->getSimpleUnit($key) : '')
-                        ];
-                    }
+                    // Форматируем значение если есть единица измерения
+                    $displayValue = $unit ? $value . ' ' . $unit : $value;
+
+                    $formatted[] = [
+                        'key' => $key,
+                        'value' => $formattedValue,
+                        'label' => $label,
+                        'unit' => $unit,
+                        'display_value' => $displayValue,
+                        'formatted' => $label . ': ' . $displayValue,
+                        'is_custom' => str_starts_with($key, 'custom_'),
+                        'data_type' => $metadata[$key]['dataType'] ?? 'string'
+                    ];
                 }
             }
+
+            // Сортируем: сначала стандартные параметры, потом кастомные
+            usort($formatted, function ($a, $b) {
+                if ($a['is_custom'] === $b['is_custom']) {
+                    return $a['label'] <=> $b['label'];
+                }
+                return $a['is_custom'] ? 1 : -1;
+            });
 
             \Log::debug('Formatted specifications for item ' . $this->id, [
                 'count' => count($formatted),
@@ -165,7 +200,9 @@ class RentalRequestItem extends Model
 
     private function formatLabel($key): string
     {
-        return ucfirst(str_replace('_', ' ', $key));
+        // Убираем префикс custom_ для красивого отображения
+        $cleanKey = str_replace('custom_', '', $key);
+        return ucfirst(str_replace('_', ' ', $cleanKey));
     }
 
     private function getSimpleUnit($key): string
@@ -187,7 +224,8 @@ class RentalRequestItem extends Model
             'concrete_output' => 'м³/ч',
             'max_pressure' => 'бар',
             'body_volume' => 'м³',
-            'max_speed' => 'км/ч'
+            'max_speed' => 'км/ч',
+            'fuel_tank_capacity' => 'л'
         ];
 
         return $units[$key] ?? '';

@@ -109,21 +109,47 @@ export default {
             // Заглушка для будущей реализации
         },
 
-        onLocationChange() {
-            if (this.selectedLocationId === 'new') {
-                this.showNewLocationForm = true;
-                this.selectedLocationId = null;
+        // ⚠️ ИСПРАВЛЕНИЕ: Обновленный метод onLocationChange с обработкой ошибок
+        onLocationChange(event) {
+            try {
+                const selectedId = event.target.value;
+                console.log('LocationSelector: selected ID:', selectedId);
+
+                // ⚠️ ОБРАБОТАТЬ СЛУЧАЙ ПУСТОГО ВЫБОРА
+                if (!selectedId) {
+                    this.$emit('input', null);
+                    this.$emit('location-selected', null);
+                    this.selectedLocation = null;
+                    return;
+                }
+
+                if (selectedId === 'new') {
+                    this.showNewLocationForm = true;
+                    this.selectedLocationId = null;
+                    this.$emit('input', null);
+                    this.$emit('location-selected', null);
+                    this.selectedLocation = null;
+                } else {
+                    this.showNewLocationForm = false;
+                    const locationId = parseInt(selectedId);
+                    this.$emit('input', locationId);
+                    this.updateSelectedLocation();
+
+                    // Испускаем событие с полным объектом локации
+                    if (this.selectedLocation) {
+                        this.$emit('location-selected', this.selectedLocation);
+                    } else {
+                        // ⚠️ ОБРАБОТАТЬ СЛУЧАЙ НЕНАЙДЕННОЙ ЛОКАЦИИ
+                        console.warn('Location not found for ID:', locationId);
+                        this.$emit('location-selected', null);
+                    }
+                }
+            } catch (error) {
+                console.error('Error in LocationSelector:', error);
+                // ⚠️ ОБЕСПЕЧИТЬ ОБРАБОТКУ ОШИБОК
                 this.$emit('input', null);
                 this.$emit('location-selected', null);
-            } else {
-                this.showNewLocationForm = false;
-                const locationId = parseInt(this.selectedLocationId);
-                this.$emit('input', locationId);
-                this.updateSelectedLocation();
-                // Испускаем событие с полным объектом локации
-                if (this.selectedLocation) {
-                    this.$emit('location-selected', this.selectedLocation);
-                }
+                this.selectedLocation = null;
             }
         },
 

@@ -10,7 +10,7 @@ use Illuminate\Http\JsonResponse;
 
 class RequestResponseController extends Controller
 {
-    public function __construct(private ProposalManagementService $proposalService)
+     public function __construct(private ProposalManagementService $proposalService)
     {
         $this->middleware('auth');
         $this->middleware('check.company.verified');

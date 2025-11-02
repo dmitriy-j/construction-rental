@@ -937,3 +937,60 @@ body {
     min-width: 100% !important;
     overflow: visible !important;
 }
+/* ⚠️ ГЛОБАЛЬНЫЕ СТИЛИ ДЛЯ ПРАВИЛЬНОЙ СТРУКТУРЫ СТРАНИЦ */
+.page-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-main-content {
+  flex: 1 0 auto;
+  padding-bottom: 2rem;
+}
+
+.page-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+}
+
+/* Специальные стили для страниц редактирования */
+.edit-page-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.edit-page-content {
+  flex: 1;
+  padding-bottom: 2rem;
+}
+
+/* Гарантия что футер всегда внизу */
+.site-footer {
+  background: var(--bg-surface);
+  border-top: 1px solid var(--divider);
+  padding: 1rem 0;
+  margin-top: auto;
+}
+
+/* Альтернативное решение - grid layout */
+.layout-grid {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+}
+
+.layout-header {
+  grid-row: 1;
+}
+
+.layout-main {
+  grid-row: 2;
+  padding: 2rem 0;
+}
+
+.layout-footer {
+  grid-row: 3;
+}
+

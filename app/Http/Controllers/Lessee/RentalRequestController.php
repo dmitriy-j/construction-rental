@@ -11,6 +11,8 @@ use App\Services\RentalRequestService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Http\Requests\StoreRentalRequestRequest;
+use Barryvdh\DomPDF\Facade\Pdf; // ⚠️ ДОБАВИТЬ ИМПОРТ
+use Illuminate\Support\Facades\Log; // ⚠️ ДОБАВИТЬ ИМПОРТ
 
 class RentalRequestController extends Controller
 {
@@ -290,7 +292,7 @@ class RentalRequestController extends Controller
                 'location_id' => 'required|exists:locations,id',
                 'rental_conditions' => 'sometimes|array',
                 'items' => 'required|array|min:1',
-                'items.*.category_id' => 'required|exists:equipment_categories,id', // ← ИСПРАВЛЕНО
+                'items.*.category_id' => 'required|exists:equipment_categories,id',
                 'items.*.quantity' => 'required|integer|min:1',
                 'items.*.hourly_rate' => 'sometimes|numeric|min:0',
                 'items.*.specifications' => 'sometimes|array',
@@ -308,11 +310,10 @@ class RentalRequestController extends Controller
                 'items_count' => $updatedRequest->items->count()
             ]);
 
+            // ⚠️ ИСПРАВЛЕНИЕ: Просто возвращаем успех без данных
             return response()->json([
                 'success' => true,
-                'message' => 'Заявка успешно обновлена',
-                'data' => $updatedRequest,
-                'redirect_url' => route('lessee.rental-requests.show', $updatedRequest->id)
+                'message' => 'Заявка успешно обновлена'
             ]);
 
         } catch (\Exception $e) {
@@ -341,5 +342,75 @@ class RentalRequestController extends Controller
             'completed' => RentalRequest::where('user_id', $userId)->where('status', 'completed')->count(),
             'cancelled' => RentalRequest::where('user_id', $userId)->where('status', 'cancelled')->count(),
         ];
+    }
+
+    /**
+     * Экспорт заявки в PDF
+     */
+    public function exportPDF($id)
+    {
+        try {
+            Log::info('PDF Export Started', ['request_id' => $id, 'user_id' => auth()->id()]);
+
+            // Загружаем данные
+            $rentalRequest = RentalRequest::with([
+                'items.category',
+                'location',
+                'user.company'
+            ])
+            ->where('user_id', auth()->id())
+            ->findOrFail($id);
+
+            if ($rentalRequest->items->isEmpty()) {
+                Log::warning('PDF Export: No items found', ['request_id' => $id]);
+                return response()->json([
+                    'error' => 'No items found for export'
+                ], 404);
+            }
+
+            $data = [
+                'rentalRequest' => $rentalRequest,
+                'items' => $rentalRequest->items,
+                'user' => auth()->user(),
+                'exportDate' => now()->format('d.m.Y H:i'),
+            ];
+
+            // Генерируем PDF
+            $pdf = PDF::loadView('lessee.rental_requests.pdf', $data);
+
+            // Настройки PDF
+            $pdf->setPaper('a4', 'portrait');
+            $pdf->setOption('enable_html5_parser', true);
+            $pdf->setOption('isRemoteEnabled', true);
+            $pdf->setOption('defaultFont', 'DejaVu Sans');
+
+            $pdfContent = $pdf->output();
+
+            Log::info('PDF Generated Successfully', [
+                'request_id' => $id,
+                'file_size' => strlen($pdfContent)
+            ]);
+
+            // ✅ ИСПРАВЛЕНИЕ: Возвращаем response с правильными заголовками
+            return response($pdfContent, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="rental-request-' . $id . '.pdf"',
+                'Content-Length' => strlen($pdfContent),
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('PDF Export Error', [
+                'request_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'error' => 'PDF generation failed: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

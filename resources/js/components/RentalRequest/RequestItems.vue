@@ -151,7 +151,12 @@ export default {
         },
         generalHourlyRate: {
             type: Number,
-            default: 0
+            required: true,
+            default: 0,
+            // ⚠️ ИСПРАВЛЕНИЕ: Добавлен валидатор для пропса
+            validator: (value) => {
+                return typeof value === 'number' && value >= 0;
+            }
         },
         generalConditions: {
             type: Object,
@@ -211,6 +216,7 @@ export default {
         },
         generalHourlyRate: {
             handler(newRate) {
+                console.log('🔄 RequestItems: generalHourlyRate изменен:', newRate, typeof newRate);
                 if (this.isInitialized) {
                     this.updateItemsWithGeneralRate(newRate);
                     this.debouncedUpdateItems();
@@ -244,7 +250,6 @@ export default {
                 });
 
                 if (newItems && newItems.length > 0) {
-                    // Сравнить перед обновлением чтобы избежать ненужных циклов
                     const normalizedNew = this.normalizeItems(newItems);
                     const normalizedCurrent = this.normalizeItems(this.items);
 
@@ -262,19 +267,101 @@ export default {
 
     },
     methods: {
-        // Нормализация элемента для единообразия данных
+        // ⚠️ ИСПРАВЛЕНИЕ: Добавлен метод для гарантии числового значения
+        ensureNumber(value) {
+            if (value === null || value === undefined || value === '') {
+                return 0;
+            }
+            const num = Number(value);
+            return isNaN(num) ? 0 : num;
+        },
+
+        prepareSpecifications(specs) {
+            if (!specs || typeof specs !== 'object') {
+                return {};
+            }
+
+            const prepared = {};
+
+            if (specs.values && typeof specs.values === 'object') {
+                Object.keys(specs.values).forEach(key => {
+                    const value = specs.values[key];
+                    prepared[key] = value === '' || value === null ? null : this.convertToNumber(value);
+                });
+            } else {
+                Object.keys(specs).forEach(key => {
+                    const value = specs[key];
+                    prepared[key] = value === '' || value === null ? null : this.convertToNumber(value);
+                });
+            }
+
+            return prepared;
+        },
+
+        // ⚠️ ИСПРАВЛЕНИЕ: Улучшенный метод подготовки спецификаций для отправки
+        prepareSpecificationsForSubmission(specs) {
+            if (!specs || typeof specs !== 'object') {
+                return {};
+            }
+
+            const prepared = {};
+
+            // Обрабатываем новый формат с values/metadata
+            if (specs.values && typeof specs.values === 'object') {
+                Object.keys(specs.values).forEach(key => {
+                    const value = specs.values[key];
+
+                    // Для числовых значений преобразуем в число, для текстовых оставляем как есть
+                    if (specs.metadata?.[key]?.dataType === 'number') {
+                        prepared[key] = value === '' || value === null ? null : Number(value);
+                    } else {
+                        prepared[key] = value === '' || value === null ? null : value;
+                    }
+                });
+            } else {
+                // Обрабатываем старый формат
+                Object.keys(specs).forEach(key => {
+                    const value = specs[key];
+                    prepared[key] = value === '' || value === null ? null : value;
+                });
+            }
+
+            return prepared;
+        },
+
+
+        // ⚠️ ИСПРАВЛЕНИЕ: Метод преобразования в число или null
+        convertToNumberOrNull(value) {
+            if (value === '' || value === null || value === undefined) {
+                return null;
+            }
+
+            const num = Number(value);
+            return isNaN(num) ? null : num;
+        },
+
+        convertToNumber(value) {
+            if (value === '' || value === null || value === undefined) {
+                return null;
+            }
+
+            const num = Number(value);
+            return isNaN(num) ? value : num;
+        },
+
         normalizeItem(item) {
             return {
                 category_id: item.category_id || null,
                 quantity: parseInt(item.quantity) || 1,
-                hourly_rate: item.hourly_rate ? parseFloat(item.hourly_rate) : null,
+                hourly_rate: item.hourly_rate ? this.ensureNumber(item.hourly_rate) : null,
                 use_individual_conditions: Boolean(item.use_individual_conditions),
                 individual_conditions: item.individual_conditions || {},
-                specifications: item.specifications || {}
+                specifications: this.prepareSpecificationsForSubmission(item.specifications),
+                // ⚠️ ДОБАВЛЯЕМ МЕТАДАННЫЕ ДЛЯ КАСТОМНЫХ ПАРАМЕТРОВ
+                custom_specs_metadata: item.specifications?.metadata || {}
             };
         },
 
-        // Нормализация массива элементов
         normalizeItems(items) {
             return items.map(item => this.normalizeItem(item));
         },
@@ -288,13 +375,11 @@ export default {
             this.preventUpdateLoop = true;
             this.emitUpdates();
 
-            // Сбросить защиту после следующего тика
             this.$nextTick(() => {
                 this.preventUpdateLoop = false;
             });
         },
 
-        // Отложенное обновление для предотвращения множественных вызовов
         debouncedUpdateItems() {
             if (this.debounceTimeout) {
                 clearTimeout(this.debounceTimeout);
@@ -312,7 +397,13 @@ export default {
 
         emitUpdates() {
             console.log('📤 RequestItems: отправка обновленных данных', this.items);
-            this.$emit('items-updated', [...this.items]);
+
+            const preparedItems = this.items.map(item => ({
+                ...item,
+                specifications: this.prepareSpecificationsForSubmission(item.specifications)
+            }));
+
+            this.$emit('items-updated', preparedItems);
             this.$emit('total-budget-updated', this.totalBudget);
         },
 
@@ -335,7 +426,7 @@ export default {
             return {
                 category_id: null,
                 quantity: 1,
-                hourly_rate: this.generalHourlyRate || null,
+                hourly_rate: this.ensureNumber(this.generalHourlyRate),
                 use_individual_conditions: false,
                 individual_conditions: {},
                 specifications: {}
@@ -347,9 +438,19 @@ export default {
             this.emitUpdates();
         },
 
+        // В RequestItems.vue - ИСПРАВЛЯЕМ ЭТОТ МЕТОД:
         onSpecificationsUpdate(index, specifications) {
+            console.log('🔄 RequestItems: получены обновленные спецификации для позиции', index, specifications);
+
+            // ⚠️ УБИРАЕМ ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ - ЭТО ВЫЗЫВАЕТ ЦИКЛ
+            // Просто обновляем данные без вызова forceItemsUpdate()
             this.items[index].specifications = specifications;
-            this.emitUpdates();
+
+            // ⚠️ УБИРАЕМ forceItemsUpdate() - данные уже обновлены
+            // this.forceItemsUpdate();
+
+            // Вместо этого просто отмечаем изменения
+            this.hasUnsavedChanges = true;
         },
 
         toggleIndividualConditions(index, event) {
@@ -371,9 +472,12 @@ export default {
         },
 
         updateItemsWithGeneralRate(newRate) {
+            const safeRate = this.ensureNumber(newRate);
+            console.log('🔄 Обновление позиций с новой ставкой:', safeRate);
+
             this.items.forEach(item => {
-                if (!item.hourly_rate && newRate > 0) {
-                    item.hourly_rate = newRate;
+                if (!item.hourly_rate && safeRate > 0) {
+                    item.hourly_rate = safeRate;
                 }
             });
         },
@@ -402,7 +506,7 @@ export default {
         },
 
         getItemHourlyRate(item) {
-            return item.hourly_rate || this.generalHourlyRate;
+            return this.ensureNumber(item.hourly_rate || this.generalHourlyRate);
         },
 
         getItemConditions(item) {
@@ -426,12 +530,12 @@ export default {
             items: this.items,
             categoriesCount: this.categories?.length,
             generalHourlyRate: this.generalHourlyRate,
+            generalHourlyRate_type: typeof this.generalHourlyRate,
             rentalPeriod: this.rentalPeriod
         });
 
         this.isInitialized = true;
 
-        // Если items все еще пустые после инициализации initialItems
         if (this.items.length === 0) {
             this.items = [this.createEmptyItem()];
         }

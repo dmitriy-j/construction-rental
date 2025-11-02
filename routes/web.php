@@ -33,7 +33,6 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RentalConditionController;
 use App\Http\Controllers\RentalRequestController;
 use App\Http\Controllers\Lessor\RentalRequestController as LessorRentalRequestController;
-use App\Http\Controllers\Lessor\ProposalTemplateController as LessorProposalTemplateController;
 use App\Http\Controllers\NewsController; // Добавлено для публичных новостей
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
@@ -128,12 +127,12 @@ Route::prefix('lessor')
 
         // 🔥 ШАБЛОНЫ ПРЕДЛОЖЕНИЙ - ДОБАВЛЕНЫ МАРШРУТЫ
         Route::prefix('proposal-templates')->name('proposal-templates.')->group(function () {
-            Route::get('/', [LessorProposalTemplateController::class, 'index'])->name('index');
-            Route::get('/create', [LessorProposalTemplateController::class, 'create'])->name('create');
-            Route::post('/', [LessorProposalTemplateController::class, 'store'])->name('store');
-            Route::get('/{proposalTemplate}/edit', [LessorProposalTemplateController::class, 'edit'])->name('edit');
-            Route::put('/{proposalTemplate}', [LessorProposalTemplateController::class, 'update'])->name('update');
-            Route::delete('/{proposalTemplate}', [LessorProposalTemplateController::class, 'destroy'])->name('destroy');
+            Route::get('/', [\App\Http\Controllers\API\LessorProposalTemplateController::class, 'index'])->name('index');
+            Route::get('/create', [\App\Http\Controllers\API\LessorProposalTemplateController::class, 'create'])->name('create');
+            Route::post('/', [\App\Http\Controllers\API\LessorProposalTemplateController::class, 'store'])->name('store');
+            Route::get('/{proposalTemplate}/edit', [\App\Http\Controllers\API\LessorProposalTemplateController::class, 'edit'])->name('edit');
+            Route::put('/{proposalTemplate}', [\App\Http\Controllers\API\LessorProposalTemplateController::class, 'update'])->name('update');
+            Route::delete('/{proposalTemplate}', [\App\Http\Controllers\API\LessorProposalTemplateController::class, 'destroy'])->name('destroy');
         });
 
         // Операторы

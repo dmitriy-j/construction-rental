@@ -353,14 +353,14 @@ class ProposalCartController extends Controller
                     // 🔥 ОБНОВЛЯЕМ ВРЕМЕННОЕ РЕЗЕРВИРОВАНИЕ
                     $this->updateEquipmentReservation($cartItem, $startDate, $endDate, $cart);
 
-                    // Остальная логика расчета часов и обновления...
-                    $start = Carbon::parse($startDate);
-                    $end = Carbon::parse($endDate);
-                    $days = $start->diffInDays($end) + 1;
-
-                    $shiftHours = $cartItem->rentalCondition->shift_hours ?? 8;
-                    $shiftsPerDay = $cartItem->rentalCondition->shifts_per_day ?? 1;
-                    $workingHours = $days * $shiftHours * $shiftsPerDay;
+                    // 🔥 ПРОВЕРЯЕМ МЕТОД calculateActualWorkingHours
+                    $workingHours = 0;
+                    if (method_exists($cartItem, 'calculateActualWorkingHours')) {
+                        $workingHours = $cartItem->calculateActualWorkingHours();
+                    } else {
+                        \Log::warning('Метод calculateActualWorkingHours не существует, используем fallback расчет');
+                        $workingHours = $this->calculateFallbackWorkingHours($cartItem, $startDate, $endDate);
+                    }
 
                     $customerPricePerHour = $cartItem->fixed_customer_price;
                     $lessorPricePerHour = $cartItem->fixed_lessor_price;
@@ -414,6 +414,21 @@ class ProposalCartController extends Controller
                 'message' => $e->getMessage()
             ], 422);
         }
+    }
+
+    /**
+     * 🔥 FALLBACK РАСЧЕТ РАБОЧИХ ЧАСОВ
+     */
+    private function calculateFallbackWorkingHours(CartItem $cartItem, string $startDate, string $endDate): int
+    {
+        $start = Carbon::parse($startDate);
+        $end = Carbon::parse($endDate);
+        $days = $start->diffInDays($end) + 1;
+
+        $shiftHours = $cartItem->rentalCondition->shift_hours ?? 8;
+        $shiftsPerDay = $cartItem->rentalCondition->shifts_per_day ?? 1;
+
+        return $days * $shiftHours * $shiftsPerDay;
     }
 
     private function updateEquipmentReservation(CartItem $cartItem, string $startDate, string $endDate, Cart $cart): void

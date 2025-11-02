@@ -11,6 +11,7 @@ use App\Http\Controllers\API\ProposalCartController;
 use App\Http\Controllers\API\LessorDashboardController; // 🔥 ДОБАВЛЕНО
 use App\Http\Controllers\API\LessorRecommendationController;
 
+
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user()->load('company');
 });
@@ -58,6 +59,10 @@ Route::middleware(['auth:sanctum'])->prefix('lessee')->group(function () {
     Route::post('/rental-requests/{request}/proposals/{proposal}/accept', [\App\Http\Controllers\API\RentalRequestController::class, 'acceptProposal']);
     Route::post('/rental-requests/{request}/proposals/{proposal}/reject', [\App\Http\Controllers\API\RentalRequestController::class, 'rejectProposal']);
     Route::get('/rental-requests/stats', [\App\Http\Controllers\API\RentalRequestController::class, 'stats']);
+     // ⚠️ МАРШРУТ ДЛЯ ЭКСПОРТА PDF
+    Route::get('/rental-requests/{id}/export-pdf',
+        [\App\Http\Controllers\Lessee\RentalRequestController::class, 'exportPDF'])
+        ->name('api.lessee.rental-requests.export-pdf');
 });
 
 // Публичные маршруты
@@ -175,23 +180,35 @@ Route::get('/debug/edit-test/{id}', function ($id) {
     ]);
 })->middleware('auth:sanctum');
 
-Route::middleware(['auth:sanctum'])->prefix('lessee')->group(function () {
-    Route::get('/debug/edit-test/{id}', function ($id) {
-        \Log::info('API Debug Test', [
-            'id' => $id,
-            'user_id' => auth()->id(),
-            'user_email' => auth()->user()->email
-        ]);
+// В routes/api.php добавить:
+Route::middleware(['auth:sanctum'])->prefix('debug')->group(function () {
+    Route::get('/rental-requests/{id}/specs-test', function ($id) {
+        try {
+            $rentalRequest = \App\Models\RentalRequest::with('items.category')
+                ->where('user_id', auth()->id())
+                ->findOrFail($id);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'API тест успешен',
-            'data' => [
-                'request_id' => $id,
-                'user_id' => auth()->id(),
-                'user_email' => auth()->user()->email,
-                'timestamp' => now()->toDateTimeString()
-            ]
-        ]);
+            return response()->json([
+                'success' => true,
+                'request_id' => $rentalRequest->id,
+                'items_count' => $rentalRequest->items->count(),
+                'items' => $rentalRequest->items->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'category' => $item->category->name ?? 'N/A',
+                        'quantity' => $item->quantity,
+                        'specifications_raw' => $item->specifications,
+                        'specifications_type' => gettype($item->specifications),
+                        'formatted_specifications' => $item->formatted_specifications,
+                        'has_specifications' => !empty($item->specifications)
+                    ];
+                })
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
     });
 });

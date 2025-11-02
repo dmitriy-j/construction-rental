@@ -23,7 +23,7 @@ class CartService
      /**
      * Добавление подтвержденного предложения в корзину
      */
-    public function addProposalItem(int $proposalId): CartItem
+     public function addProposalItem(int $proposalId): CartItem
     {
         return DB::transaction(function () use ($proposalId) {
             $proposal = RentalRequestResponse::with(['equipment.rentalTerms', 'rentalRequest'])
@@ -39,7 +39,7 @@ class CartService
                 throw new \Exception('Срок действия предложения истек');
             }
 
-           // Получаем или создаем корзину для предложений
+            // Получаем или создаем корзину для предложений
             $cart = Cart::getByType(auth()->id(), Cart::TYPE_PROPOSAL);
 
             // Если у корзины нет rental_request_id, устанавливаем его
@@ -70,7 +70,16 @@ class CartService
 
             // Создаем элемент корзины
             $cartItem = CartItem::createFromProposal($proposal, $cart);
-             // ДОБАВИТЬ ЭТУ СТРОКУ:
+
+            // 🔥 ДОБАВЛЯЕМ ПРОВЕРКУ МЕТОДА calculateActualWorkingHours
+            if (method_exists($cartItem, 'calculateActualWorkingHours')) {
+                $workingHours = $cartItem->calculateActualWorkingHours();
+                \Log::info('Working hours calculated successfully', ['hours' => $workingHours]);
+            } else {
+                \Log::warning('Метод calculateActualWorkingHours не существует в CartItem, используем fallback');
+                $workingHours = $this->calculateFallbackWorkingHours($cartItem);
+            }
+
             $this->recalculateTotals($cart);
 
             // Временное резервирование оборудования
@@ -87,6 +96,23 @@ class CartService
 
             return $cartItem;
         });
+    }
+
+     /**
+     * 🔥 FALLBACK РАСЧЕТ РАБОЧИХ ЧАСОВ
+     */
+    private function calculateFallbackWorkingHours(CartItem $cartItem): int
+    {
+        if (!$cartItem->start_date || !$cartItem->end_date) {
+            return 0;
+        }
+
+        $start = Carbon::parse($cartItem->start_date);
+        $end = Carbon::parse($cartItem->end_date);
+        $days = $start->diffInDays($end) + 1;
+
+        // Стандартные рабочие часы
+        return $days * 8; // 8 часов в день
     }
 
      /**

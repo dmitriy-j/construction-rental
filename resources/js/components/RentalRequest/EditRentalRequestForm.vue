@@ -1,131 +1,134 @@
 <template>
-    <div class="edit-rental-request">
-        <div v-if="loading" class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Загрузка...</span>
+    <!-- ⚠️ ДОБАВЛЕН КЛАСС ДЛЯ ПРАВИЛЬНОЙ СТРУКТУРЫ СТРАНИЦЫ -->
+    <div class="edit-rental-request-page">
+        <div class="main-content">
+            <div v-if="loading" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Загрузка...</span>
+                </div>
+                <p class="mt-2">Загрузка данных заявки...</p>
             </div>
-            <p class="mt-2">Загрузка данных заявки...</p>
-        </div>
 
-        <div v-else-if="error" class="alert alert-danger">
-            {{ error }}
-        </div>
+            <div v-else-if="error" class="alert alert-danger">
+                {{ error }}
+            </div>
 
-        <div v-else>
-            <form @submit.prevent="submitForm">
-                <!-- Основная информация -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Основная информация</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-12">
-                                <label class="form-label">Название заявки *</label>
-                                <input type="text" class="form-control" v-model="formData.title" required>
-                            </div>
+            <div v-else>
+                <form @submit.prevent="submitForm">
+                    <!-- Основная информация -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Основная информация</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label class="form-label">Название заявки *</label>
+                                    <input type="text" class="form-control" v-model="formData.title" required>
+                                </div>
 
-                            <div class="col-md-12">
-                                <label class="form-label">Описание *</label>
-                                <textarea class="form-control" v-model="formData.description" rows="4" required></textarea>
-                            </div>
+                                <div class="col-md-12">
+                                    <label class="form-label">Описание *</label>
+                                    <textarea class="form-control" v-model="formData.description" rows="4" required></textarea>
+                                </div>
 
-                            <div class="col-md-6">
-                                <label class="form-label">Дата начала *</label>
-                                <input type="date" class="form-control" v-model="formData.rental_period_start"
-                                       :min="minDate" required>
-                            </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Дата начала *</label>
+                                    <input type="date" class="form-control" v-model="formData.rental_period_start"
+                                           :min="minDate" required>
+                                </div>
 
-                            <div class="col-md-6">
-                                <label class="form-label">Дата окончания *</label>
-                                <input type="date" class="form-control" v-model="formData.rental_period_end"
-                                       :min="formData.rental_period_start" required>
-                            </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Дата окончания *</label>
+                                    <input type="date" class="form-control" v-model="formData.rental_period_end"
+                                           :min="formData.rental_period_start" required>
+                                </div>
 
-                            <div class="col-md-6">
-                                <label class="form-label">Локация *</label>
-                                <select class="form-select" v-model="formData.location_id" required>
-                                    <option value="">Выберите локацию</option>
-                                    <option v-for="location in locations" :value="location.id" :key="location.id">
-                                        {{ location.name }} - {{ location.address }}
-                                    </option>
-                                </select>
-                            </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Локация *</label>
+                                    <select class="form-select" v-model="formData.location_id" required>
+                                        <option value="">Выберите локацию</option>
+                                        <option v-for="location in locations" :value="location.id" :key="location.id">
+                                            {{ location.name }} - {{ location.address }}
+                                        </option>
+                                    </select>
+                                </div>
 
-                            <div class="col-md-6">
-                                <label class="form-label">Базовая стоимость часа (₽) *</label>
-                                <input type="number" class="form-control" v-model.number="formData.hourly_rate"
-                                       min="0" step="50" required>
-                                <small class="text-muted">Будет использована для позиций без индивидуальной стоимости</small>
+                                <div class="col-md-6">
+                                    <label class="form-label">Базовая стоимость часа (₽) *</label>
+                                    <input type="number" class="form-control" v-model.number="formData.hourly_rate"
+                                           min="0" step="50" required>
+                                    <small class="text-muted">Будет использована для позиций без индивидуальной стоимости</small>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Позиции заявки -->
-                <RequestItems
-                    :categories="categories"
-                    :general-hourly-rate="formData.hourly_rate"
-                    :general-conditions="formData.rental_conditions"
-                    :rental-period="rentalPeriod"
-                    :initial-items="formData.items"
-                    @items-updated="onItemsUpdated"
-                    @total-budget-updated="onTotalBudgetUpdated"
-                />
+                    <!-- Позиции заявки -->
+                    <RequestItems
+                        :categories="categories"
+                        :general-hourly-rate="formData.hourly_rate"
+                        :general-conditions="formData.rental_conditions"
+                        :rental-period="rentalPeriod"
+                        :initial-items="formData.items"
+                        @items-updated="onItemsUpdated"
+                        @total-budget-updated="onTotalBudgetUpdated"
+                    />
 
-                <!-- Общие условия аренды -->
-                <div class="card mb-4">
+                    <!-- Общие условия аренды -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Общие условия аренды</h5>
+                            <small class="text-muted">Применяются ко всем позициям, если не указаны индивидуальные условия</small>
+                        </div>
+                        <div class="card-body">
+                            <RentalConditions
+                                :initial-conditions="formData.rental_conditions"
+                                @conditions-updated="onConditionsUpdated"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- Итоговый бюджет -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-calculator me-2"></i>Итоговый бюджет заявки
+                            </h5>
+                        </div>
+                        <div class="card-body text-center">
+                            <div class="display-4 text-success mb-2">{{ formatCurrency(totalBudget) }}</div>
+                            <p class="text-muted">
+                                Общая стоимость для {{ totalQuantity }} единиц техники
+                                на период {{ rentalDays }} дней
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Кнопки отправки -->
+                    <div class="form-actions mt-4">
+                        <button type="submit" class="btn btn-primary" :disabled="submitting">
+                            <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                            {{ submitting ? 'Сохранение...' : 'Обновить заявку' }}
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary ms-2" @click="cancel">
+                            Отмена
+                        </button>
+
+                        <button type="button" class="btn btn-outline-info ms-auto" @click="showDebug = !showDebug">
+                            {{ showDebug ? 'Скрыть отладку' : 'Показать отладку' }}
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Отладочная информация -->
+                <div v-if="showDebug" class="card mt-4">
                     <div class="card-header">
-                        <h5 class="card-title mb-0">Общие условия аренды</h5>
-                        <small class="text-muted">Применяются ко всем позициям, если не указаны индивидуальные условия</small>
+                        <h6 class="mb-0">Отладочная информация</h6>
                     </div>
                     <div class="card-body">
-                        <RentalConditions
-                            :initial-conditions="formData.rental_conditions"
-                            @conditions-updated="onConditionsUpdated"
-                        />
+                        <pre>{{ debugInfo }}</pre>
                     </div>
-                </div>
-
-                <!-- Итоговый бюджет -->
-                <div class="card mb-4">
-                    <div class="card-header bg-success text-white">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-calculator me-2"></i>Итоговый бюджет заявки
-                        </h5>
-                    </div>
-                    <div class="card-body text-center">
-                        <div class="display-4 text-success mb-2">{{ formatCurrency(totalBudget) }}</div>
-                        <p class="text-muted">
-                            Общая стоимость для {{ totalQuantity }} единиц техники
-                            на период {{ rentalDays }} дней
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Кнопки отправки -->
-                <div class="form-actions mt-4">
-                    <button type="submit" class="btn btn-primary" :disabled="submitting">
-                        <span v-if="submitting" class="spinner-border spinner-border-sm me-2"></span>
-                        {{ submitting ? 'Сохранение...' : 'Обновить заявку' }}
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary ms-2" @click="cancel">
-                        Отмена
-                    </button>
-
-                    <button type="button" class="btn btn-outline-info ms-auto" @click="showDebug = !showDebug">
-                        {{ showDebug ? 'Скрыть отладку' : 'Показать отладку' }}
-                    </button>
-                </div>
-            </form>
-
-            <!-- Отладочная информация -->
-            <div v-if="showDebug" class="card mt-4">
-                <div class="card-header">
-                    <h6 class="mb-0">Отладочная информация</h6>
-                </div>
-                <div class="card-body">
-                    <pre>{{ debugInfo }}</pre>
                 </div>
             </div>
         </div>
@@ -307,19 +310,30 @@ export default {
             console.log('📝 Форма инициализирована с данными:', this.formData);
         },
 
-        onItemsUpdated(items) {
-            // Сравнить перед обновлением чтобы избежать циклов
+       onItemsUpdated(items) {
+            // ⚠️ ДОБАВЛЯЕМ ПРОВЕРКУ НА ЦИКЛ
+            if (this.preventUpdateLoop) {
+                console.log('🛑 Предотвращен циклический вызов');
+                return;
+            }
+
             const currentItemsStr = JSON.stringify(this.formData.items);
             const newItemsStr = JSON.stringify(items);
 
             if (currentItemsStr !== newItemsStr) {
                 console.log('✅ Приняты новые items от RequestItems');
+
+                // ⚠️ ВКЛЮЧАЕМ ЗАЩИТУ ОТ ЦИКЛА
+                this.preventUpdateLoop = true;
                 this.formData.items = items;
                 this.totalQuantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
                 this.calculateTotalBudget();
                 this.hasUnsavedChanges = true;
-            } else {
-                console.log('🔄 Получены идентичные items - пропускаем обновление');
+
+                // ⚠️ ВЫКЛЮЧАЕМ ЗАЩИТУ ЧЕРЕЗ НЕСКОЛЬКО МИЛЛИСЕКУНД
+                setTimeout(() => {
+                    this.preventUpdateLoop = false;
+                }, 100);
             }
         },
 
@@ -475,9 +489,22 @@ export default {
 </script>
 
 <style scoped>
+/* ⚠️ ДОБАВЛЕНЫ СТИЛИ ДЛЯ ПРАВИЛЬНОЙ СТРУКТУРЫ СТРАНИЦЫ */
+.edit-rental-request-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.main-content {
+    flex: 1;
+    padding-bottom: 2rem;
+}
+
 .edit-rental-request {
     max-width: 1200px;
     margin: 0 auto;
+    width: 100%;
 }
 
 .form-actions {
@@ -492,5 +519,22 @@ pre {
     font-size: 0.8rem;
     max-height: 400px;
     overflow-y: auto;
+}
+
+/* Гарантия что контент не выходит за пределы */
+@media (max-width: 768px) {
+    .edit-rental-request {
+        padding: 0 0.75rem;
+    }
+
+    .main-content {
+        padding-bottom: 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .edit-rental-request {
+        padding: 0 0.5rem;
+    }
 }
 </style>

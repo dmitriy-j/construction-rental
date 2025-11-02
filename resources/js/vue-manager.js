@@ -81,6 +81,13 @@ class VueAppManager {
                 throw new Error(`Element #${appId} not found`);
             }
 
+            // ⚠️ ДОБАВЛЕНА ГЛОБАЛЬНАЯ ОБРАБОТКА ОШИБОК
+            appInstance.config.errorHandler = (err, vm, info) => {
+                console.error(`Vue Error in ${appId}:`, err);
+                console.error('Component:', vm);
+                console.error('Info:', info);
+            };
+
             appInstance.mount(appElement);
             this.registerApp(appId, appInstance);
 

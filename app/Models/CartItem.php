@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
 
-
 class CartItem extends Model
 {
     protected $fillable = [
@@ -61,7 +60,7 @@ class CartItem extends Model
     /**
      * Создание элемента корзины из предложения
      */
-   public static function createFromProposal(RentalRequestResponse $proposal, Cart $cart): self
+    public static function createFromProposal(RentalRequestResponse $proposal, Cart $cart): self
     {
         $equipment = $proposal->equipment;
         $rentalRequest = $proposal->rentalRequest;
@@ -183,6 +182,67 @@ class CartItem extends Model
         ]);
     }
 
+    /**
+     * 🔥 РАСЧЕТ РАБОЧИХ ЧАСОВ С УЧЕТОМ УСЛОВИЙ АРЕНДЫ
+     */
+    private static function calculateActualWorkingHours($rentalRequest, $rentalCondition): int
+    {
+        if (!$rentalRequest->rental_period_start || !$rentalRequest->rental_period_end) {
+            return 0;
+        }
+
+        $start = \Carbon\Carbon::parse($rentalRequest->rental_period_start);
+        $end = \Carbon\Carbon::parse($rentalRequest->rental_period_end);
+
+        // Если есть условия аренды, используем их для расчета
+        if ($rentalCondition) {
+            return self::calculateWorkingHoursWithConditions($start, $end, $rentalCondition);
+        }
+
+        // Стандартный расчет: исключаем выходные
+        return self::calculateStandardWorkingHours($start, $end);
+    }
+
+    /**
+     * 🔥 РАСЧЕТ ЧАСОВ С УЧЕТОМ УСЛОВИЙ АРЕНДЫ
+     */
+    private static function calculateWorkingHoursWithConditions($start, $end, $rentalCondition): int
+    {
+        $shiftHours = $rentalCondition->shift_hours ?? 8;
+        $shiftsPerDay = $rentalCondition->shifts_per_day ?? 1;
+        $workingDays = $rentalCondition->working_days ?? [1, 2, 3, 4, 5]; // Пн-Пт по умолчанию
+
+        $totalHours = 0;
+        $current = $start->copy();
+
+        while ($current <= $end) {
+            if (in_array($current->dayOfWeek, $workingDays)) {
+                $totalHours += $shiftHours * $shiftsPerDay;
+            }
+            $current->addDay();
+        }
+
+        return $totalHours;
+    }
+
+    /**
+     * 🔥 СТАНДАРТНЫЙ РАСЧЕТ ЧАСОВ (без учета условий)
+     */
+    private static function calculateStandardWorkingHours($start, $end): int
+    {
+        $totalHours = 0;
+        $current = $start->copy();
+
+        while ($current <= $end) {
+            // Исключаем субботу (6) и воскресенье (0)
+            if (!in_array($current->dayOfWeek, [0, 6])) {
+                $totalHours += 8; // 8 часов в рабочий день
+            }
+            $current->addDay();
+        }
+
+        return $totalHours;
+    }
 
     /**
      * 🔥 ПОЛУЧЕНИЕ УСЛОВИЙ АРЕНДЫ ДЛЯ ПРЕДЛОЖЕНИЯ
@@ -241,7 +301,6 @@ class CartItem extends Model
         ]);
     }
 
-    // Остальные методы остаются без изменений...
     public function getTotalAttribute(): float
     {
         return ($this->base_price + $this->platform_fee) * $this->period_count;

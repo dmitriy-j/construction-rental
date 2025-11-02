@@ -9,12 +9,46 @@ import Chart from 'chart.js/auto';
 import './bootstrap';
 import Alpine from 'alpinejs';
 
+// ⚠️ ИСПРАВЛЕНИЕ: Добавляем импорт SweetAlert2
+import Swal from 'sweetalert2';
+
 // Импортируем менеджер
 import './vue-manager';
 
 window.Alpine = Alpine;
 Alpine.start();
 window.Chart = Chart;
+
+// ⚠️ ИСПРАВЛЕНИЕ: Регистрируем SweetAlert2 глобально
+window.Swal = Swal;
+
+// ⚠️ ДОБАВЛЕНА ГЛОБАЛЬНАЯ ОБРАБОТКА ОШИБОК VUE
+const initVueApp = (elementId, component, props = {}) => {
+  try {
+    const app = createApp(component, props);
+
+    // ⚠️ ИСПРАВЛЕНИЕ: Регистрируем SweetAlert2 как глобальное свойство
+    app.config.globalProperties.$swal = Swal;
+
+    // Глобальная обработка ошибок
+    app.config.errorHandler = (err, vm, info) => {
+      console.error(`Vue Error in ${elementId}:`, err);
+      console.error('Component:', vm);
+      console.error('Info:', info);
+    };
+
+    // Обработчик предупреждений
+    app.config.warnHandler = (msg, vm, trace) => {
+      console.warn(`Vue Warning in ${elementId}:`, msg);
+      console.warn('Trace:', trace);
+    };
+
+    app.mount(`#${elementId}`);
+    return app;
+  } catch (error) {
+    console.error(`Failed to init Vue app ${elementId}:`, error);
+  }
+};
 
 // УНИВЕРСАЛЬНАЯ ИНИЦИАЛИЗАЦИЯ ВСЕХ МОДУЛЕЙ
 document.addEventListener('DOMContentLoaded', function() {
@@ -36,6 +70,17 @@ function initializeVueApps() {
     if (rentalRequestsAppElement && appManager && appManager.canInitialize('rental-requests-app')) {
         try {
             const rentalRequestsApp = createApp({});
+
+            // ⚠️ ИСПРАВЛЕНИЕ: Регистрируем SweetAlert2 для этого приложения
+            rentalRequestsApp.config.globalProperties.$swal = Swal;
+
+            // ⚠️ ДОБАВЛЕНА ГЛОБАЛЬНАЯ ОБРАБОТКА ОШИБОК
+            rentalRequestsApp.config.errorHandler = (err, vm, info) => {
+                console.error('Глобальная ошибка Vue:', err);
+                console.error('Компонент:', vm);
+                console.error('Информация:', info);
+            };
+
             rentalRequestsApp.component('rental-requests', RentalRequests);
             rentalRequestsApp.mount('#rental-requests-app');
             appManager.registerApp('rental-requests-app', rentalRequestsApp);

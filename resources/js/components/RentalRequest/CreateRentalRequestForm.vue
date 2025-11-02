@@ -7,8 +7,9 @@
             <p class="mt-2">Загрузка данных заявки...</p>
         </div>
 
-        <div v-else-if="error" class="alert alert-danger">
-            {{ error }}
+        <!-- ⚠️ ДОБАВЛЕН БЛОК ДЛЯ ОТОБРАЖЕНИЯ ОШИБОК -->
+        <div v-if="error" class="alert alert-danger">
+            <strong>Ошибка:</strong> {{ error }}
         </div>
 
         <div v-else>
@@ -18,7 +19,6 @@
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="card-title mb-0">Основная информация</h5>
-                    <!--<form-tips :active-field="activeField"></form-tips>-->
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
@@ -55,8 +55,14 @@
 
                         <div class="col-md-6">
                             <label class="form-label">Базовая стоимость часа (₽) *</label>
-                            <input type="number" class="form-control" v-model.number="formData.hourly_rate"
-                                   min="0" step="50" required>
+                            <!-- ⚠️ ИСПРАВЛЕНИЕ: Добавлен модификатор .number и обработчик -->
+                            <input type="number"
+                                   class="form-control"
+                                   v-model.number="formData.hourly_rate"
+                                   min="0"
+                                   step="50"
+                                   @change="onHourlyRateChange($event.target.value)"
+                                   required>
                             <small class="text-muted">Будет использована для позиций без индивидуальной стоимости</small>
                         </div>
                     </div>
@@ -66,7 +72,7 @@
             <!-- Позиции заявки -->
             <RequestItems
                 :categories="categories"
-                :general-hourly-rate="formData.hourly_rate"
+                :general-hourly-rate="generalHourlyRate"
                 :general-conditions="formData.rental_conditions"
                 :rental-period="rentalPeriod"
                 @items-updated="onItemsUpdated"
@@ -95,7 +101,8 @@
                     </h5>
                 </div>
                 <div class="card-body text-center">
-                    <div class="display-4 text-success mb-2">{{ formatCurrency(totalBudget) }}</div>
+                    <!-- ⚠️ ИСПРАВЛЕНИЕ: Используем вычисляемое свойство для форматирования -->
+                    <div class="display-4 text-success mb-2">{{ formattedBudget }}</div>
                     <p class="text-muted">
                         Общая стоимость для {{ totalQuantity }} единиц техники
                         на период {{ rentalDays }} дней
@@ -167,11 +174,10 @@ export default {
         }
     },
     data() {
-        // ИСПРАВЛЕНИЕ: Убрано дублирование formData
         const defaultFormData = {
             title: '',
             description: '',
-            hourly_rate: 0,
+            hourly_rate: 0, // ⚠️ ИСПРАВЛЕНО: число вместо строки
             rental_period_start: '',
             rental_period_end: '',
             location_id: '',
@@ -181,7 +187,6 @@ export default {
         };
 
         return {
-            // ИСПРАВЛЕНИЕ: Правильная инициализация formData
             formData: this.editMode && this.initialData
                 ? { ...defaultFormData, ...this.initialData }
                 : { ...defaultFormData },
@@ -190,7 +195,10 @@ export default {
             totalBudget: 0,
             totalQuantity: 0,
             minDate: new Date().toISOString().split('T')[0],
-            submitting: false // ДОБАВЛЕНО: для отслеживания отправки
+            submitting: false,
+            error: null,
+            // ⚠️ ИСПРАВЛЕНИЕ: Убедимся, что это число
+            generalHourlyRate: 0
         }
     },
     computed: {
@@ -215,9 +223,44 @@ export default {
                    this.formData.location_id &&
                    this.formData.items.length > 0 &&
                    this.formData.items.every(item => item.category_id && item.quantity > 0);
+        },
+        // ⚠️ ИСПРАВЛЕНИЕ: Добавлено вычисляемое свойство для форматированного бюджета
+        formattedBudget() {
+            if (typeof this.totalBudget !== 'number' || isNaN(this.totalBudget)) {
+                return '0 ₽';
+            }
+            return this.formatCurrency(this.totalBudget);
+        }
+    },
+    watch: {
+        // ⚠️ ИСПРАВЛЕНИЕ: Следим за изменением hourly_rate и синхронизируем с generalHourlyRate
+        'formData.hourly_rate': {
+            handler(newRate) {
+                console.log('🔄 hourly_rate изменен:', newRate, typeof newRate);
+                this.generalHourlyRate = this.ensureNumber(newRate);
+            },
+            immediate: true
         }
     },
     methods: {
+        // ⚠️ ИСПРАВЛЕНИЕ: Добавлен метод для обработки изменения ставки
+        onHourlyRateChange(value) {
+            console.log('🔧 Обработка изменения hourly rate:', value);
+            // Преобразовать в число, если возможно
+            const numValue = value === '' ? 0 : Number(value);
+            this.formData.hourly_rate = isNaN(numValue) ? 0 : numValue;
+            this.generalHourlyRate = this.formData.hourly_rate;
+        },
+
+        // ⚠️ ИСПРАВЛЕНИЕ: Метод для гарантии числового значения
+        ensureNumber(value) {
+            if (value === null || value === undefined || value === '') {
+                return 0;
+            }
+            const num = Number(value);
+            return isNaN(num) ? 0 : num;
+        },
+
         getDefaultConditions() {
             return {
                 payment_type: 'hourly',
@@ -231,7 +274,6 @@ export default {
             };
         },
 
-        // ИСПРАВЛЕНИЕ: Добавлен метод для получения данных по умолчанию
         getDefaultFormData() {
             return {
                 title: '',
@@ -251,6 +293,81 @@ export default {
                 }],
                 delivery_required: false
             };
+        },
+
+        // ⚠️ ИСПРАВЛЕНИЕ: Глубокая обработка данных формы
+        deepProcessFormData(data) {
+            const processValue = (value) => {
+                if (value === '' || value === null || value === undefined) {
+                    return null;
+                }
+
+                if (typeof value === 'number') {
+                    return value;
+                }
+
+                if (typeof value === 'string') {
+                    // Обработка числовых строк
+                    const num = Number(value);
+                    return isNaN(num) ? value : num;
+                }
+
+                if (Array.isArray(value)) {
+                    return value.map(item => this.deepProcessFormData(item));
+                }
+
+                if (typeof value === 'object') {
+                    const result = {};
+                    Object.keys(value).forEach(key => {
+                        // Особое внимание на спецификации и кастомные поля
+                        if (key === 'specifications' || key.startsWith('custom_')) {
+                            result[key] = this.processSpecifications(value[key]);
+                        } else {
+                            result[key] = this.deepProcessFormData(value[key]);
+                        }
+                    });
+                    return result;
+                }
+
+                return value;
+            };
+
+            return processValue(data);
+        },
+
+        // ⚠️ ИСПРАВЛЕНИЕ: Специальная обработка спецификаций
+        processSpecifications(specs) {
+            if (!specs || typeof specs !== 'object') {
+                return {};
+            }
+
+            const processed = {};
+
+            // Обрабатываем values если есть
+            if (specs.values && typeof specs.values === 'object') {
+                Object.keys(specs.values).forEach(key => {
+                    const value = specs.values[key];
+                    processed[key] = this.convertToNumberOrNull(value);
+                });
+            } else {
+                // Обрабатываем как простой объект
+                Object.keys(specs).forEach(key => {
+                    const value = specs[key];
+                    processed[key] = this.convertToNumberOrNull(value);
+                });
+            }
+
+            return processed;
+        },
+
+        // Вспомогательный метод
+        convertToNumberOrNull(value) {
+            if (value === '' || value === null || value === undefined) {
+                return null;
+            }
+
+            const num = Number(value);
+            return isNaN(num) ? null : num;
         },
 
         onItemsUpdated(items) {
@@ -274,15 +391,13 @@ export default {
                 return;
             }
 
-            // Упрощенный расчет - делегируем детальный расчет компоненту RequestItems
             let total = 0;
             const days = this.rentalDays;
-            const hourlyRate = this.formData.hourly_rate;
+            const hourlyRate = this.ensureNumber(this.formData.hourly_rate);
 
             this.formData.items.forEach(item => {
-                const itemHourlyRate = item.hourly_rate || hourlyRate;
-                // Базовая формула, детали должны быть в RequestItems
-                total += itemHourlyRate * 8 * 1 * days * item.quantity; // 8 часов × 1 смена
+                const itemHourlyRate = item.hourly_rate ? this.ensureNumber(item.hourly_rate) : hourlyRate;
+                total += itemHourlyRate * 8 * 1 * days * item.quantity;
             });
 
             this.totalBudget = total;
@@ -302,16 +417,32 @@ export default {
 
         onLocationSelected(location) {
             console.log('Selected location:', location);
-            this.formData.location_id = location.id;
-            console.log('Location ID updated:', this.formData.location_id);
+
+            if (location && location.id) {
+                console.log('Selected location id:', location.id);
+                this.formData.location_id = location.id;
+            } else {
+                console.log('Location is null, resetting location_id');
+                this.formData.location_id = null;
+            }
         },
 
-        // ИСПРАВЛЕНИЕ: Объединены дублирующиеся методы submitForm
         async submitForm() {
-            if (this.editMode) {
-                await this.updateRequest();
-            } else {
-                await this.createRequest();
+            try {
+                this.error = null;
+
+                if (this.editMode) {
+                    await this.updateRequest();
+                } else {
+                    await this.createRequest();
+                }
+            } catch (error) {
+                console.error('Ошибка при отправке формы:', error);
+                this.error = error.message || 'Произошла ошибка при отправке формы';
+
+                if (error.response?.data?.errors) {
+                    console.error('Детали ошибки:', error.response.data.errors);
+                }
             }
         },
 
@@ -320,7 +451,7 @@ export default {
             this.submitting = true;
 
             if (!this.isFormValid) {
-                alert('Пожалуйста, заполните все обязательные поля и добавьте хотя бы одну позицию');
+                this.error = 'Пожалуйста, заполните все обязательные поля и добавьте хотя бы одну позицию';
                 this.$emit('loading-end');
                 this.submitting = false;
                 return;
@@ -347,7 +478,8 @@ export default {
                 }
             } catch (error) {
                 console.error('Error:', error);
-                this.showError(error.message);
+                this.error = error.message || 'Произошла ошибка при создании заявки';
+                throw error;
             } finally {
                 this.submitting = false;
                 this.$emit('loading-end');
@@ -380,44 +512,51 @@ export default {
                 }
             } catch (error) {
                 console.error('Update error:', error);
-                this.showError(error.message);
+                this.error = error.message || 'Произошла ошибка при обновлении заявки';
+                throw error;
             } finally {
                 this.submitting = false;
             }
         },
 
         prepareFormData() {
-            const formData = {
+            let formData = {
                 title: this.formData.title,
                 description: this.formData.description,
-                hourly_rate: parseFloat(this.formData.hourly_rate) || 0,
+                hourly_rate: this.ensureNumber(this.formData.hourly_rate),
                 rental_period_start: this.formData.rental_period_start,
                 rental_period_end: this.formData.rental_period_end,
                 location_id: this.formData.location_id,
                 rental_conditions: this.formData.rental_conditions,
-                items: this.formData.items.map(item => ({
-                    category_id: item.category_id,
-                    quantity: parseInt(item.quantity) || 1,
-                    hourly_rate: item.hourly_rate ? parseFloat(item.hourly_rate) : null,
-                    use_individual_conditions: Boolean(item.use_individual_conditions),
-                    individual_conditions: item.use_individual_conditions ? item.individual_conditions : {},
-                    specifications: item.specifications || {}
-                })),
+                items: this.formData.items.map(item => {
+                    const preparedItem = {
+                        category_id: item.category_id,
+                        quantity: parseInt(item.quantity) || 1,
+                        hourly_rate: item.hourly_rate ? this.ensureNumber(item.hourly_rate) : null,
+                        use_individual_conditions: Boolean(item.use_individual_conditions),
+                        individual_conditions: item.use_individual_conditions ? item.individual_conditions : {},
+                        specifications: item.specifications || {}
+                    };
+
+                    // ⚠️ ИСПРАВЛЕНИЕ: Гарантируем правильную структуру спецификаций
+                    if (preparedItem.specifications && preparedItem.specifications.values) {
+                        preparedItem.specifications = { ...preparedItem.specifications.values };
+                    }
+
+                    return preparedItem;
+                }),
                 delivery_required: Boolean(this.formData.delivery_required)
             };
 
-            // Для edit mode добавляем метод
+            // ⚠️ ИСПРАВЛЕНИЕ: Применяем глубокую обработку
+            formData = this.deepProcessFormData(formData);
+
             if (this.editMode) {
                 formData._method = 'PUT';
             }
 
             console.log('Prepared form data:', formData);
             return formData;
-        },
-
-        showError(message) {
-            // Можно использовать SweetAlert или другой способ показа ошибок
-            alert('Ошибка: ' + message);
         },
 
         cancel() {
@@ -438,10 +577,8 @@ export default {
             }).format(amount);
         },
 
-        // ДОБАВЛЕНО: Инициализация формы данными для редактирования
         initializeFormWithData() {
             if (this.editMode && this.initialData) {
-                // Дополнительная обработка данных для режима редактирования
                 console.log('Initializing form with data:', this.initialData);
             }
         }
@@ -453,8 +590,13 @@ export default {
             requestId: this.requestId,
             categories: this.categories?.length,
             locations: this.locations?.length,
-            formData: this.formData
+            formData: this.formData,
+            generalHourlyRate: this.generalHourlyRate,
+            hourly_rate_type: typeof this.formData.hourly_rate
         });
+
+        // ⚠️ ИСПРАВЛЕНИЕ: Гарантируем числовое значение при монтировании
+        this.generalHourlyRate = this.ensureNumber(this.formData.hourly_rate);
 
         if (this.editMode) {
             this.initializeFormWithData();
