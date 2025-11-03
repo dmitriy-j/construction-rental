@@ -6,12 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreRentalRequestRequest extends FormRequest
 {
-    public function authorize()
-    {
-        return true;
-    }
-
-    public function rules()
+     public function rules()
     {
         return [
             'title' => 'required|string|max:255',
@@ -27,18 +22,22 @@ class StoreRentalRequestRequest extends FormRequest
             'items.*.category_id' => 'required|exists:equipment_categories,id',
             'items.*.quantity' => 'required|integer|min:1|max:1000',
             'items.*.hourly_rate' => 'sometimes|numeric|min:0',
-            'items.*.specifications' => 'sometimes|array',
 
-            // ⚠️ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обновленные правила для спецификаций и метаданных
+            // ✅ УЛУЧШЕННАЯ ВАЛИДАЦИЯ: Разрешаем nullable для unit
+            'items.*.standard_specifications' => 'sometimes|array',
+            'items.*.standard_specifications.*' => 'nullable',
+
+            'items.*.custom_specifications' => 'sometimes|array',
+            'items.*.custom_specifications.*' => 'sometimes|array',
+            'items.*.custom_specifications.*.label' => 'sometimes|string|max:255',
+            'items.*.custom_specifications.*.value' => 'sometimes',
+            'items.*.custom_specifications.*.unit' => 'nullable|string|max:50', // ✅ ИЗМЕНЕНИЕ: nullable вместо sometimes
+            'items.*.custom_specifications.*.dataType' => 'sometimes|in:string,number',
+
+            // Для обратной совместимости
             'items.*.specifications' => 'sometimes|array',
             'items.*.specifications.*' => 'nullable',
-
-            // ⚠️ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правила для метаданных
             'items.*.custom_specs_metadata' => 'sometimes|array',
-            'items.*.custom_specs_metadata.*' => 'sometimes|array',
-            'items.*.custom_specs_metadata.*.name' => 'sometimes|string|max:255',
-            'items.*.custom_specs_metadata.*.dataType' => 'sometimes|in:string,number',
-            'items.*.custom_specs_metadata.*.unit' => 'sometimes|string|max:50',
 
             'items.*.individual_conditions' => 'sometimes|array',
             'items.*.use_individual_conditions' => 'sometimes|boolean',
@@ -56,18 +55,9 @@ class StoreRentalRequestRequest extends FormRequest
         ];
     }
 
-    public function messages()
+     public function prepareForValidation()
     {
-        return [
-            'items.*.specifications.*.numeric' => 'Значение параметра ":attribute" должно быть числом',
-            'items.*.hourly_rate.numeric' => 'Стоимость часа должна быть числом',
-            'hourly_rate.numeric' => 'Базовая стоимость часа должна быть числом',
-        ];
-    }
-
-    public function prepareForValidation()
-    {
-        \Log::debug('🔄 prepareForValidation started', [
+        \Log::debug('🔄 prepareForValidation with IMPROVED structure', [
             'has_items' => !empty($this->items),
             'items_count' => count($this->items ?? [])
         ]);
@@ -86,61 +76,69 @@ class StoreRentalRequestRequest extends FormRequest
             }
         }
 
-        // ⚠️ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Улучшенная обработка спецификаций и метаданных
+        // ✅ УЛУЧШЕННАЯ ОБРАБОТКА СПЕЦИФИКАЦИЙ С ЗАЩИТОЙ ОТ NULL
         $items = $this->input('items', []);
+
         foreach ($items as &$item) {
-            \Log::debug('🔧 Processing item', [
+            \Log::debug('🔧 IMPROVED Processing item with specs', [
                 'category_id' => $item['category_id'] ?? 'unknown',
-                'has_specifications' => !empty($item['specifications']),
-                'has_metadata' => !empty($item['custom_specs_metadata']),
-                'metadata_keys' => array_keys($item['custom_specs_metadata'] ?? [])
+                'has_standard_specs' => !empty($item['standard_specifications']),
+                'has_custom_specs' => !empty($item['custom_specifications']),
+                'standard_specs_keys' => array_keys($item['standard_specifications'] ?? []),
+                'custom_specs_keys' => array_keys($item['custom_specifications'] ?? [])
             ]);
 
-            // Обрабатываем спецификации
-            if (isset($item['specifications']) && is_array($item['specifications'])) {
-                $item['specifications'] = collect($item['specifications'])->map(function ($value, $key) use ($item) {
-                    if ($value === '' || $value === null) {
-                        return null;
-                    }
-
-                    // ⚠️ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Определяем тип данных из метаданных
-                    $dataType = $item['custom_specs_metadata'][$key]['dataType'] ?? null;
-
-                    if ($dataType === 'number') {
-                        return is_numeric($value) ? (float) $value : null;
-                    }
-
-                    // Для текстовых значений оставляем как есть
-                    return $value;
-                })->filter(function ($value) {
-                    return $value !== null && $value !== '';
-                })->toArray();
+            // 🔄 КОНВЕРТАЦИЯ ИЗ СТАРОЙ СТРУКТУРЫ В НОВУЮ (для обратной совместимости)
+            if (empty($item['standard_specifications']) && empty($item['custom_specifications']) && !empty($item['specifications'])) {
+                \Log::debug('🔄 Converting legacy specifications to new structure');
+                $this->convertLegacySpecifications($item);
             }
 
-            // ⚠️ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обрабатываем метаданные
-            if (isset($item['custom_specs_metadata']) && is_array($item['custom_specs_metadata'])) {
-                $item['custom_specs_metadata'] = collect($item['custom_specs_metadata'])->map(function ($metadata, $key) {
-                    return [
-                        'name' => $metadata['name'] ?? '',
-                        'dataType' => $metadata['dataType'] ?? 'string',
-                        'unit' => $metadata['unit'] ?? ''
+            // ✅ УЛУЧШЕННАЯ ОБРАБОТКА СТАНДАРТНЫХ СПЕЦИФИКАЦИЙ
+            $item['standard_specifications'] = $this->processStandardSpecifications(
+                $item['standard_specifications'] ?? []
+            );
+
+            // ✅ УЛУЧШЕННАЯ ОБРАБОТКА КАСТОМНЫХ СПЕЦИФИКАЦИЙ С ЗАЩИТОЙ ОТ NULL
+            $item['custom_specifications'] = $this->processCustomSpecifications(
+                $item['custom_specifications'] ?? []
+            );
+
+            // 🔄 ОБНОВЛЯЕМ МЕТАДАННЫЕ ДЛЯ ОБРАТНОЙ СОВМЕСТИМОСТИ
+            $customMetadata = [];
+            foreach ($item['custom_specifications'] as $key => $customSpec) {
+                // ✅ ИСПРАВЛЕНИЕ: Проверяем структуру кастомной спецификации
+                if (is_array($customSpec) && isset($customSpec['label'])) {
+                    $customMetadata[$key] = [
+                        'name' => $customSpec['label'],
+                        'dataType' => $customSpec['dataType'] ?? 'string',
+                        'unit' => $customSpec['unit'] ?? ''
                     ];
-                })->filter(function ($metadata) {
-                    // Убираем пустые метаданные
-                    return !empty($metadata['name']) || !empty($metadata['unit']);
-                })->toArray();
-            } else {
-                $item['custom_specs_metadata'] = [];
+                }
             }
+            $item['custom_specs_metadata'] = $customMetadata;
+
+            // 🔄 ОБНОВЛЯЕМ СТАРУЮ СТРУКТУРУ ДЛЯ ОБРАТНОЙ СОВМЕСТИМОСТИ
+            $legacySpecs = array_merge(
+                $item['standard_specifications'] ?? [],
+                $this->extractCustomSpecValues($item['custom_specifications'] ?? [])
+            );
+            $item['specifications'] = $legacySpecs;
 
             // Обрабатываем hourly_rate
             if (isset($item['hourly_rate'])) {
                 $item['hourly_rate'] = (float) str_replace(',', '.', $item['hourly_rate']);
             }
 
-            \Log::debug('✅ Item processed', [
-                'final_specs_count' => count($item['specifications'] ?? []),
-                'final_metadata_count' => count($item['custom_specs_metadata'] ?? [])
+            // Обрабатываем use_individual_conditions как boolean
+            if (isset($item['use_individual_conditions'])) {
+                $item['use_individual_conditions'] = in_array($item['use_individual_conditions'], ['true', '1', 'on', true], true);
+            }
+
+            \Log::debug('✅ IMPROVED Item processed', [
+                'final_standard_specs_count' => count($item['standard_specifications'] ?? []),
+                'final_custom_specs_count' => count($item['custom_specifications'] ?? []),
+                'final_legacy_specs_count' => count($item['specifications'] ?? [])
             ]);
         }
 
@@ -151,9 +149,151 @@ class StoreRentalRequestRequest extends FormRequest
             'items' => $items,
         ]);
 
-        \Log::debug('✅ prepareForValidation completed', [
+        \Log::debug('✅ IMPROVED prepareForValidation completed', [
             'final_items_count' => count($items),
-            'has_metadata_in_final' => !empty($items[0]['custom_specs_metadata'] ?? [])
+            'first_item_standard_specs' => array_keys($items[0]['standard_specifications'] ?? []),
+            'first_item_custom_specs' => array_keys($items[0]['custom_specifications'] ?? []),
+            'first_item_legacy_specs' => array_keys($items[0]['specifications'] ?? [])
         ]);
+    }
+
+    // 🔥 ДОБАВЛЕННЫЙ МЕТОД: Обработка стандартных спецификаций
+    private function processStandardSpecifications(array $specs): array
+    {
+        $processed = [];
+
+        foreach ($specs as $key => $value) {
+            // Пропускаем пустые значения
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            // Обрабатываем числовые значения
+            if (is_numeric($value)) {
+                $processed[$key] = (float) $value;
+            } else {
+                $processed[$key] = $value;
+            }
+        }
+
+        \Log::debug('✅ Standard specifications processed', [
+            'original_count' => count($specs),
+            'processed_count' => count($processed),
+            'processed_keys' => array_keys($processed)
+        ]);
+
+        return $processed;
+    }
+
+    // ✅ МЕТОД: Обработка кастомных спецификаций с защитой от null
+    private function processCustomSpecifications(array $specs): array
+    {
+        $processed = [];
+
+        foreach ($specs as $key => $spec) {
+            // ✅ ИСПРАВЛЕНИЕ: Проверяем что это валидная кастомная спецификация
+            if (!is_array($spec)) {
+                \Log::warning("Invalid custom specification format", ['key' => $key, 'spec' => $spec]);
+                continue;
+            }
+
+            // Проверяем обязательные поля
+            if (!isset($spec['label']) || empty(trim($spec['label']))) {
+                \Log::warning("Custom specification missing label", ['key' => $key, 'spec' => $spec]);
+                continue;
+            }
+
+            $value = $spec['value'] ?? '';
+
+            // Пропускаем пустые значения
+            if ($value === '' || $value === null) {
+                continue;
+            }
+
+            // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Гарантируем что unit всегда строка, не null
+            $unitValue = '';
+            if (isset($spec['unit']) && $spec['unit'] !== null) {
+                $unitValue = (string) $spec['unit'];
+            }
+
+            $processedSpec = [
+                'label' => trim($spec['label']),
+                'value' => $value,
+                'unit' => $unitValue, // ✅ Всегда строка
+                'dataType' => $spec['dataType'] ?? 'string'
+            ];
+
+            // ✅ ИСПРАВЛЕНИЕ: Правильная обработка числовых значений
+            if ($processedSpec['dataType'] === 'number' || is_numeric($value)) {
+                if (is_string($value) && str_contains($value, ',')) {
+                    $normalizedValue = str_replace(',', '.', $value);
+                    if (is_numeric($normalizedValue)) {
+                        $processedSpec['value'] = (float) $normalizedValue;
+                        $processedSpec['dataType'] = 'number';
+                    }
+                } elseif (is_numeric($value)) {
+                    $processedSpec['value'] = (float) $value;
+                    $processedSpec['dataType'] = 'number';
+                }
+            }
+
+            $processed[$key] = $processedSpec;
+        }
+
+        \Log::debug('✅ Custom specifications processed', [
+            'original_count' => count($specs),
+            'processed_count' => count($processed)
+        ]);
+
+        return $processed;
+    }
+
+    // 🔥 ДОБАВЛЕННЫЙ МЕТОД: Конвертация из старой структуры в новую
+    private function convertLegacySpecifications(array &$item)
+    {
+        $legacySpecs = $item['specifications'] ?? [];
+        $standardSpecs = [];
+        $customSpecs = [];
+
+        foreach ($legacySpecs as $key => $value) {
+            // Если ключ начинается с 'custom_', это кастомная спецификация
+            if (str_starts_with($key, 'custom_')) {
+                // Получаем метаданные из custom_specs_metadata
+                $metadata = $item['custom_specs_metadata'][$key] ?? [];
+
+                $customSpecs[$key] = [
+                    'label' => $metadata['name'] ?? $key,
+                    'value' => $value,
+                    'unit' => $metadata['unit'] ?? '',
+                    'dataType' => $metadata['dataType'] ?? 'string'
+                ];
+            } else {
+                // Это стандартная спецификация
+                $standardSpecs[$key] = $value;
+            }
+        }
+
+        $item['standard_specifications'] = $standardSpecs;
+        $item['custom_specifications'] = $customSpecs;
+
+        \Log::debug('🔄 Legacy specifications converted', [
+            'legacy_count' => count($legacySpecs),
+            'standard_count' => count($standardSpecs),
+            'custom_count' => count($customSpecs)
+        ]);
+    }
+
+    // 🔥 ДОБАВЛЕННЫЙ МЕТОД: Извлечение значений из кастомных спецификаций для обратной совместимости
+    private function extractCustomSpecValues(array $customSpecs): array
+    {
+        $values = [];
+
+        foreach ($customSpecs as $key => $spec) {
+            if (is_array($spec) && isset($spec['value'])) {
+                $values[$key] = $spec['value'];
+            }
+        }
+
+        return $values;
     }
 }

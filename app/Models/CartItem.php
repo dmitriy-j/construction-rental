@@ -28,6 +28,7 @@ class CartItem extends Model
         'rental_request_item_id',
         'is_proposal_item',
         'proposal_data',
+        'actual_working_hours', // ✅ ДОБАВЛЕНО
     ];
 
     protected $casts = [
@@ -159,6 +160,7 @@ class CartItem extends Model
             'fixed_customer_price' => $customerPricePerHour,
             'fixed_lessor_price' => $lessorPricePerHour,
             'platform_fee' => $platformFeePerHour,
+            'actual_working_hours' => $workingHours, // ✅ ДОБАВЛЕНО
             'start_date' => $rentalRequest->rental_period_start,
             'end_date' => $rentalRequest->rental_period_end,
             'delivery_cost' => $deliveryCost, // 🔥 СОХРАНЯЕМ СТОИМОСТЬ ДОСТАВКИ
@@ -184,8 +186,9 @@ class CartItem extends Model
 
     /**
      * 🔥 РАСЧЕТ РАБОЧИХ ЧАСОВ С УЧЕТОМ УСЛОВИЙ АРЕНДЫ
+     * ✅ ИСПРАВЛЕНО: Сделано публичным методом
      */
-    private static function calculateActualWorkingHours($rentalRequest, $rentalCondition): int
+    public static function calculateActualWorkingHours($rentalRequest, $rentalCondition = null): int
     {
         if (!$rentalRequest->rental_period_start || !$rentalRequest->rental_period_end) {
             return 0;
@@ -205,8 +208,9 @@ class CartItem extends Model
 
     /**
      * 🔥 РАСЧЕТ ЧАСОВ С УЧЕТОМ УСЛОВИЙ АРЕНДЫ
+     * ✅ ИСПРАВЛЕНО: Сделано публичным методом
      */
-    private static function calculateWorkingHoursWithConditions($start, $end, $rentalCondition): int
+    public static function calculateWorkingHoursWithConditions($start, $end, $rentalCondition): int
     {
         $shiftHours = $rentalCondition->shift_hours ?? 8;
         $shiftsPerDay = $rentalCondition->shifts_per_day ?? 1;
@@ -227,8 +231,9 @@ class CartItem extends Model
 
     /**
      * 🔥 СТАНДАРТНЫЙ РАСЧЕТ ЧАСОВ (без учета условий)
+     * ✅ ИСПРАВЛЕНО: Сделано публичным методом
      */
-    private static function calculateStandardWorkingHours($start, $end): int
+    public static function calculateStandardWorkingHours($start, $end): int
     {
         $totalHours = 0;
         $current = $start->copy();
@@ -319,5 +324,26 @@ class CartItem extends Model
     public function deliveryTo(): BelongsTo
     {
         return $this->belongsTo(Location::class, 'delivery_to_id');
+    }
+
+    /**
+     * ✅ НОВЫЙ МЕТОД: Расчет рабочих часов для существующего CartItem
+     */
+    public function calculateWorkingHoursForCartItem(): int
+    {
+        if (!$this->start_date || !$this->end_date) {
+            return 0;
+        }
+
+        $start = \Carbon\Carbon::parse($this->start_date);
+        $end = \Carbon\Carbon::parse($this->end_date);
+
+        // Используем условия аренды если они есть
+        if ($this->rentalCondition) {
+            return self::calculateWorkingHoursWithConditions($start, $end, $this->rentalCondition);
+        }
+
+        // Стандартный расчет
+        return self::calculateStandardWorkingHours($start, $end);
     }
 }

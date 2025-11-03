@@ -4,7 +4,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='15' fill='%230b5ed7'/><text x='50' y='70' font-family='Raleway' font-weight='700' font-size='50' text-anchor='middle' fill='white'>ФАП</text></svg>">
     <link rel="icon" type="image/png" sizes="16x16" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABPklEQVQ4y6WTsUoDQRCGPxMkFQoWFiJYKJjKQhBsrS0s7Sz9B76Jj2BjZWdnYWNhY2UhCIKQShBUsLARBEVQ0CJcYXHX3J7cJYlPst3O/PvPzM7sCv9ZAnwD74W3gXngDngB3oBz4AqYAD6AeaBdAq0a4BQY1oBd4BQ4kQHXwGkNuAP2gA3gCJgD1oB74AC4BJrVJ6rAGrAPdIFJYAFoA+vALrAI9IBmFZgEtoF1YAMYAXrAErAJdIFVYFgF2sAOsAQsA6/AKtABloEOMAMMqkAPmAFmw8gK0AeWgFZ4TgODKvAItIF2eN4As8B8eE4B0zVgADwAc8B9eE4C9+F9CgxrwCPwDLwAL8Ab8Ay8hvdL4KkGPAHfxFfh/QN8F97f1Y8a8A58Fv5f4bPw/qx+1IBn4KPwfg8fhfdH9aMGPAMfhfc78F54vwGfNeAVeCm8X4G3wvsF+KoBb8Bb4f0MvBbez8B3DfgAPgvvT+Cz8P4H/gBQeC0ZQqjT9AAAAABJRU5ErkJggg==">
     <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAA7EAAAOxAGVKw4bAAABdElEQVRYw+2Wv0oDQRCGPxMkFQoWFiJYKJjKQhBsrS0s7Sz9B76Jj2BjZWdnYWNhY2UhCIKQShBUsLARBEVQ0CJcYXHX3J7cJYlPst3O/PvPzM7sCv9ZAnwD74W3gXngDngB3oBz4AqYAD6AeaBdAq0a4BQY1oBd4BQ4kQHXwGkNuAP2gA3gCJgD1oB74AC4BJrVJ6rAGrAPdIFJYAFoA+vALrAI9IBmFZgEtoF1YAMYAXrAErAJdIFVYFgF2sAOsAQsA6/AKtABloEOMAMMqkAPmAFmw8gK0AeWgFZ4TgODKvAItIF2eN4As8B8eE4B0zVgADwAc8B9eM4C9+F9CgxrwCPwDLwAL8Ab8Ay8hvdL4KkGPAHfwFfh/QN8F97f1Y8a8A58Fv5f4bPw/qx+1IBn4KPwfg8fhfdH9aMGPAMfhfc78F54vwGfNeAVeCm8X4G3wvsF+KoBb8Bb4f0MvBbez8B3DfgAPgvvT+Cz8P4H/gBQeC0ZQqjT9AAAAABJRU5ErkJggg==">
-    <link rel="icon" type="image/png" sizes="64x64" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAA7EAAAOxAGVKw4bAAACFUlEQVR4nO2Yv0rbURTHPydBqg4FJ0fBwcG/QRwEQRB0cRAcBEEQdHQQHBwEB0EQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBMFBcBAcBEEQBMFyHc41j5d7k3wXfMn9wIG8e+8593d/3XvPPQH+YwXwA7wX3gbmgTvgBfgCzoErYAL4AOaBdgm0aoBTYFgDdoFT4KQGXAOnNeAO2AM2gCNgDlgD7oED4BJoVp+oAmrAPtAFJYAFoA+vALrAI9IBmFZgEtoF1oAMYAXrAEvAJtAFVoFhFWgDO8ASsAy8AqtAB1gGOsAMMKgCPWAGmA0jK0AfWAJa4TkNDKrAI9AG2uF5A8wC8+E5BUzXgAHwAMwB9+E5CdyH9ykwrAGPwDPwArwAb8Az8BreL4GnGvAEfANfhfcP8F14f1c/asA78Fn4f4XPwvuz+lEDnoGPwvs9fBTeH9WPGvAMfBTe78F74f0GfNaAV+Cl8H4F3grvF+CrBrwBb4X3M/BaeD8D3zXgA/gsvD+Bz8L7H/gDQOG1ZAihTtMAAAAASUVORK5CYII=">
+    <link rel="icon" type="image/png" sizes="64x64" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAA7EAAAOxAGVKw4bAAACFUlEQVR4nO2Yv0rbURTHPydBqg4FJ0fBwcG/QRwEQRB0cRAcBEEQdHQQHBwEB0EQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBMFBcBAcBEEQBMFyHc41j5d7k3wXfMn9wIG8e+8593d/3XvPPQH+YwXwA7wX3gbmgTvgBfgCzoErYAL4AOaBdgm0aoBTYFgDdoFT4KQGXAOnNeAO2AM2gCNgDlgD7oED4BJoVp+oAmrAPtAFJYAFoA+vALrAI9IBmFZgEtoF1oAMYAXrAEvAJtAFVoFhFWgDO8ASsAy8AqtAB1gGOsAMMKgCPWAGmA0jK0AfWAJa4TkNDKrAI9AG2uF5A8wC8+E5BUzXgAHwAMwB9+E5CdyH9ykwrAGPwDLwArwAb8Az8Ay8hvdL4KkGPAHfwFfh/QN8F97f1Y8a8A58Fv5f4bPw/qx+1IBn4KPwfg8fhfdH9aMGPAMfhfc78F54vwGfNeAVeCm8X4G3wvsF+KoBb8Bb4X3M/BaeD8D3zXgA/gsvD+Bz8L7H/gDQOG1ZAihTtMAAAAASUVORK5CYII=">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <meta charset="utf-8">
@@ -82,31 +82,137 @@
                 margin-left: 0 !important;
             }
         }
+
+        /* НОВЫЕ СТИЛИ ДЛЯ ПРАВИЛЬНОЙ СТРУКТУРЫ */
+        .main-content-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: calc(100vh - var(--navbar-height));
+        }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            min-height: 100%;
+        }
+
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 100%;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .content-container {
+            flex: 1;
+            padding: 1rem;
+            max-width: 100%;
+        }
+
+        .site-footer {
+            background: var(--bg-surface);
+            border-top: 1px solid var(--divider);
+            padding: var(--content-padding);
+            color: var(--text-primary);
+            width: 100%;
+            margin-top: auto;
+            flex-shrink: 0;
+        }
+
+        /* ГАРАНТИЯ: Футер всегда внизу даже при малом контенте */
+        #app {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Убираем все лишние ограничения высоты */
+        .main-container,
+        .content-area,
+        .main-content,
+        .content-container {
+            min-height: auto !important;
+            height: auto !important;
+        }
+
+        /* ЭКСТРЕННЫЙ ФИКС ДЛЯ СТРАНИЦ РЕДАКТИРОВАНИЯ */
+        #rental-request-edit-app {
+            min-height: auto !important;
+            height: auto !important;
+            flex: 1 !important;
+            display: block !important;
+        }
+
+        /* ГАРАНТИЯ ЧТО КОНТЕЙНЕРЫ НЕ МЕШАЮТ */
+        .main-content-wrapper,
+        .main-container,
+        .content-area,
+        .main-content,
+        .content-container {
+            min-height: auto !important;
+            height: auto !important;
+            flex: 1 !important;
+        }
+
+        /* ФИКС ДЛЯ FOOTER - ВСЕГДА ВНИЗУ */
+        .site-footer {
+            margin-top: auto !important;
+            flex-shrink: 0 !important;
+            position: relative !important;
+            z-index: 10 !important;
+        }
+
+        /* ПРИНУДИТЕЛЬНЫЙ ФИКС ДЛЯ СТРАНИЦ С VUE */
+        body:has(#rental-request-edit-app) #app {
+            display: flex !important;
+            flex-direction: column !important;
+            min-height: 100vh !important;
+        }
+
+        body:has(#rental-request-edit-app) .main-content-wrapper {
+            flex: 1 !important;
+        }
     </style>
 </head>
 <body class="@yield('body-class', 'd-flex flex-column min-vh-100') @if(session('sidebar_mini')) sidebar-mini @endif">
-    <div id="app" class="d-flex flex-column flex-grow-1">
+    <div id="app" class="d-flex flex-column min-vh-100">
         <!-- Navbar -->
         @include('components.navbar')
 
-        <div class="main-container d-flex flex-grow-1 @auth sidebar-layout @endauth">
-            <!-- Sidebar -->
-            @auth
-                @include('partials.sidebar')
-            @endauth
+        <!-- Основной контент с правильной структурой -->
+        <div class="main-content-wrapper d-flex flex-column flex-grow-1">
+            <div class="main-container d-flex flex-grow-1 @auth sidebar-layout @endauth">
+                <!-- Sidebar -->
+                @auth
+                    @include('partials.sidebar')
+                @endauth
 
-            <!-- Main Content Area -->
-             <div class="content-area flex-grow-1 d-flex flex-column">
-                <main class="main-content flex-grow-1">
-                    <div class="content-container py-4 px-3 px-lg-4 mobile-padding">
-                        @yield('content')
-                    </div>
-                </main>
+                <!-- Main Content Area -->
+                <div class="content-area flex-grow-1 d-flex flex-column">
+                    <main class="main-content flex-grow-1">
+                        <div class="content-container py-4 px-3 px-lg-4 mobile-padding">
+                            @yield('content')
+                        </div>
+                    </main>
+                </div>
             </div>
         </div>
 
-        <!-- Site Footer -->
-        <footer class="site-footer mt-auto">
+        <!-- Site Footer - ТЕПЕРЬ ВНЕ основного контента -->
+        <footer class="site-footer">
             @include('components.footer')
         </footer>
     </div>
@@ -264,6 +370,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// ФИКС ДЛЯ СТРУКТУРЫ СТРАНИЦЫ - гарантия что футер всегда внизу
+document.addEventListener('DOMContentLoaded', function() {
+    function ensureFooterAtBottom() {
+        const app = document.getElementById('app');
+        const mainContent = document.querySelector('.main-content-wrapper');
+        const footer = document.querySelector('.site-footer');
+
+        if (app && mainContent && footer) {
+            const windowHeight = window.innerHeight;
+            const appHeight = app.offsetHeight;
+
+            if (appHeight < windowHeight) {
+                // Если контента мало, добавляем класс для растягивания
+                app.classList.add('min-vh-100');
+            } else {
+                // Если контента много, убираем фиксированную высоту
+                app.classList.remove('min-vh-100');
+            }
+        }
+    }
+
+    ensureFooterAtBottom();
+    window.addEventListener('resize', ensureFooterAtBottom);
+});
 </script>
 </body>
 </html>

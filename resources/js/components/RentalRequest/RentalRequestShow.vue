@@ -89,39 +89,6 @@
                 </div>
             </div>
 
-            <!-- ⚠️ КОМПОНЕНТ ПРОГРЕССА ЭКСПОРТА PDF -->
-            <div v-if="isExportingPDF" class="row mb-3">
-                <div class="col-12">
-                    <div class="export-progress-container">
-                        <div class="alert alert-info d-flex align-items-center">
-                            <div class="spinner-border spinner-border-sm me-3" role="status">
-                                <span class="visually-hidden">Загрузка...</span>
-                            </div>
-                            <div class="flex-grow-1">
-                                <div class="fw-bold">Идет экспорт PDF...</div>
-                                <div class="progress mt-2" style="height: 6px;">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
-                                         :style="{ width: pdfExportProgress + '%' }"></div>
-                                </div>
-                                <small class="text-muted">{{ pdfExportProgress }}%</small>
-                            </div>
-                            <button type="button" class="btn-close" @click="cancelExportPDF"></button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ⚠️ ОШИБКА ЭКСПОРТА PDF -->
-            <div v-if="exportError" class="row mb-3">
-                <div class="col-12">
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Ошибка экспорта:</strong> {{ exportError }}
-                        <button type="button" class="btn-close" @click="exportError = null"></button>
-                    </div>
-                </div>
-            </div>
-
             <div class="row">
                 <!-- Основная информация -->
                 <div class="col-lg-8">
@@ -237,11 +204,7 @@
                     />
 
                     <!-- Быстрые действия -->
-                    <QuickActions
-                        ref="quickActions"
-                        :request-id="request.id"
-                        @export-pdf="handleExportPDF"
-                    />
+                    <QuickActions :request-id="request.id" />
                 </div>
             </div>
         </div>
@@ -341,13 +304,7 @@ export default {
                 total_items: 0,
                 total_quantity: 0,
                 categories_count: 0
-            },
-            // ⚠️ ДАННЫЕ ДЛЯ УПРАВЛЕНИЯ ЭКСПОРТОМ PDF
-            isExportingPDF: false,
-            exportError: null,
-            pdfExportProgress: 0,
-            pdfExportController: null,
-            pdfExportTimeout: null
+            }
         }
     },
     computed: {
@@ -360,138 +317,6 @@ export default {
         }
     },
     methods: {
-        // ⚠️ МЕТОД ДЛЯ ПОЛУЧЕНИЯ ОТОБРАЖАЕМОГО ИМЕНИ ПАРАМЕТРА
-        getParameterDisplayName(key, item) {
-              if (!key) return 'Неизвестный параметр';
-
-                // Если это кастомный параметр и есть метаданные с названием
-                if (key.startsWith('custom_') && item.custom_specs_metadata?.[key]?.name) {
-                    const customName = item.custom_specs_metadata[key].name;
-                    return customName.trim() || this.formatCustomParameterName(key);
-                }
-
-            // Стандартные параметры - полный маппинг
-            const standardNames = {
-                // Экскаваторы
-                'bucket_volume': 'Объем ковша',
-                'engine_power': 'Мощность двигателя',
-                'operating_weight': 'Рабочий вес',
-                'max_digging_depth': 'Максимальная глубина копания',
-                'max_reach': 'Максимальный вылет стрелы',
-                'bucket_width': 'Ширина ковша',
-                'arm_force': 'Усилие на рукояти',
-                'boom_force': 'Усилие на стреле',
-
-                // Бульдозеры
-                'blade_width': 'Ширина отвала',
-                'blade_height': 'Высота отвала',
-                'blade_capacity': 'Объем отвала',
-                'max_cutting_depth': 'Максимальная глубина резания',
-                'max_lifting_height': 'Максимальная высота подъема',
-
-                // Самосвалы
-                'load_capacity': 'Грузоподъемность',
-                'body_volume': 'Объем кузова',
-                'body_length': 'Длина кузова',
-                'body_width': 'Ширина кузова',
-                'body_height': 'Высота кузова',
-                'unloading_angle': 'Угол разгрузки',
-                'axle_configuration': 'Колёсная формула',
-
-                // Краны
-                'lifting_capacity': 'Грузоподъёмность',
-                'boom_length': 'Длина стрелы',
-                'outreach': 'Вылет стрелы',
-                'rotation_angle': 'Угол поворота',
-
-                // Катки
-                'roller_width': 'Ширина вальца',
-                'roller_diameter': 'Диаметр вальца',
-                'vibration_frequency': 'Частота вибрации',
-                'amplitude': 'Амплитуда',
-                'compaction_width': 'Ширина уплотнения',
-
-                // Общие
-                'max_speed': 'Максимальная скорость',
-                'fuel_tank_capacity': 'Объем топливного бака',
-                'transmission': 'Трансмиссия',
-                'drive_type': 'Тип привода',
-
-                // Бетонная техника
-                'concrete_output': 'Производительность по бетону',
-                'max_pressure': 'Максимальное давление',
-                'pump_height': 'Высота подачи'
-            };
-
-            return standardNames[key] || this.formatParameterKey(key);
-        },
-
-        // ⚠️ ВСПОМОГАТЕЛЬНЫЙ МЕТОД ДЛЯ ФОРМАТИРОВАНИЯ КЛЮЧЕЙ КАСТОМНЫХ ПАРАМЕТРОВ
-        formatCustomParameterName(key) {
-            if (!key.startsWith('custom_')) return key;
-            let cleanKey = key.replace(/^custom_/, '');
-            cleanKey = cleanKey.replace(/_\d+$/, '');
-            return cleanKey
-                .split('_')
-                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                .join(' ');
-        },
-
-        // ⚠️ ВСПОМОГАТЕЛЬНЫЙ МЕТОД ДЛЯ ФОРМАТИРОВАНИЯ СТАНДАРТНЫХ КЛЮЧЕЙ
-        formatParameterKey(key) {
-            return key
-                .split('_')
-                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                .join(' ');
-        },
-
-        // ⚠️ МЕТОД ДЛЯ ФОРМАТИРОВАННОГО ОТОБРАЖЕНИЯ ЗНАЧЕНИЯ
-        getFormattedValue(value, key, item) {
-            if (value === null || value === '' || value === undefined) {
-                return 'Не указано';
-            }
-
-            // Для кастомных параметров добавляем единицу измерения из метаданных
-            if (key.startsWith('custom_') && item.custom_specs_metadata?.[key]?.unit) {
-                const unit = item.custom_specs_metadata[key].unit;
-                return unit ? `${value} ${unit}` : value;
-            }
-
-            // Для стандартных параметров используем предопределенные единицы
-            const standardUnits = {
-                'bucket_volume': 'м³',
-                'engine_power': 'л.с.',
-                'operating_weight': 'т',
-                'max_digging_depth': 'м',
-                'blade_width': 'м',
-                'blade_height': 'м',
-                'load_capacity': 'т',
-                'body_volume': 'м³',
-                'max_speed': 'км/ч'
-            };
-
-            const unit = standardUnits[key] || '';
-            return unit ? `${value} ${unit}` : value;
-        },
-
-        // ⚠️ ДОПОЛНИТЕЛЬНЫЙ МЕТОД ДЛЯ ПОЛУЧЕНИЯ ТИПА ДАННЫХ ПАРАМЕТРА
-        getParameterDataType(key, item) {
-            if (key.startsWith('custom_') && item.custom_specs_metadata?.[key]?.dataType) {
-                return item.custom_specs_metadata[key].dataType;
-            }
-
-            // Для стандартных параметров определяем по ключу
-            const numericParameters = [
-                'bucket_volume', 'engine_power', 'operating_weight', 'max_digging_depth',
-                'blade_width', 'blade_height', 'load_capacity', 'body_volume', 'max_speed',
-                'lifting_capacity', 'boom_length', 'max_lifting_height', 'max_reach',
-                'rotation_angle', 'drum_width', 'vibration_frequency', 'concrete_output',
-                'max_pressure', 'fuel_tank_capacity'
-            ];
-
-            return numericParameters.includes(key) ? 'number' : 'string';
-        },
-
         async loadRequest() {
             this.loading = true;
             this.error = null;
@@ -533,6 +358,116 @@ export default {
                     };
 
                     this.proposals = this.request.responses || [];
+
+                    // 🔥 РАСШИРЕННАЯ ДИАГНОСТИКА ДАННЫХ ОТ БЭКЕНДА
+                    console.log('🔍 ДЕТАЛЬНАЯ ДИАГНОСТИКА ДАННЫХ ОТ БЭКЕНДА:');
+                    if (this.request.items && this.request.items.length > 0) {
+                        this.request.items.forEach((item, index) => {
+                            console.log(`📦 Позиция ${index + 1} (ID: ${item.id}):`, {
+                                // Основная информация
+                                title: item.title,
+                                category: item.category?.name,
+
+                                // Спецификации - что приходит с бэкенда
+                                raw_specifications: item.specifications,
+                                formatted_specifications: item.formatted_specifications,
+
+                                // Детальный анализ спецификаций
+                                specs_type: typeof item.specifications,
+                                specs_is_array: Array.isArray(item.specifications),
+                                specs_keys: item.specifications ? Object.keys(item.specifications) : [],
+
+                                // Форматированные спецификации
+                                has_formatted_specs: !!item.formatted_specifications,
+                                formatted_specs_count: item.formatted_specifications ? item.formatted_specifications.length : 0,
+
+                                // Пример первого параметра для проверки
+                                first_spec_if_any: item.specifications && Object.keys(item.specifications).length > 0 ?
+                                    Object.entries(item.specifications)[0] : 'нет'
+                            });
+
+                            // 🔥 ПРОВЕРКА КОНКРЕТНО ПАРАМЕТРА "weight"
+                            if (item.specifications) {
+                                // Проверка в разных местах где может быть weight
+                                const weightInStandard = item.specifications.standard_specifications?.weight;
+                                const weightInCustom = item.specifications.custom_specifications?.weight;
+                                const weightDirect = item.specifications.weight;
+
+                                if (weightInStandard || weightInCustom || weightDirect) {
+                                    console.log('⚖️ НАЙДЕН ПАРАМЕТР WEIGHT:', {
+                                        key: 'weight',
+                                        value: weightDirect || weightInStandard || weightInCustom,
+                                        in_standard_specs: weightInStandard,
+                                        in_custom_specs: weightInCustom,
+                                        direct_access: weightDirect,
+                                        location: weightInStandard ? 'standard_specifications' :
+                                                weightInCustom ? 'custom_specifications' :
+                                                weightDirect ? 'direct' : 'not_found'
+                                    });
+                                }
+                            }
+
+                            // Проверка formatted_specifications
+                            if (item.formatted_specifications) {
+                                const weightSpec = item.formatted_specifications.find(spec =>
+                                    spec.key === 'weight' || spec.label?.toLowerCase().includes('weight')
+                                );
+                                if (weightSpec) {
+                                    console.log('⚖️ WEIGHT В FORMATTED_SPECIFICATIONS:', weightSpec);
+                                }
+
+                                // Проверка всех labels в formatted_specifications
+                                console.log('🏷️ Все labels в formatted_specifications:',
+                                    item.formatted_specifications.map(spec => ({
+                                        key: spec.key,
+                                        label: spec.label,
+                                        value: spec.value
+                                    }))
+                                );
+                            }
+                        });
+                    }
+
+                    // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обеспечиваем наличие formatted_specifications с русскими названиями
+                    if (this.request.items && this.request.items.length > 0) {
+                        this.request.items.forEach(item => {
+                            // Если бэкенд не предоставил formatted_specifications, создаем их на фронтенде
+                            if (!item.formatted_specifications && item.specifications) {
+                                item.formatted_specifications = this.formatSpecificationsFrontend(item.specifications);
+                            }
+
+                            // 🔥 ПРИНУДИТЕЛЬНОЕ ИСПРАВЛЕНИЕ: Если formatted_specifications есть но содержат английские названия
+                            if (item.formatted_specifications) {
+                                item.formatted_specifications = this.fixRussianLabels(item.formatted_specifications);
+                            }
+
+                            // Логируем для отладки
+                            console.log(`📦 Позиция ${item.id} после обработки:`, {
+                                has_formatted_specs: !!item.formatted_specifications,
+                                formatted_specs_count: item.formatted_specifications ? item.formatted_specifications.length : 0,
+                                formatted_specs_sample: item.formatted_specifications ?
+                                    item.formatted_specifications.map(spec => `${spec.label}: ${spec.value}`) : []
+                            });
+                        });
+                    }
+
+                    // Также обрабатываем groupedByCategory
+                    if (this.groupedByCategory && this.groupedByCategory.length > 0) {
+                        this.groupedByCategory.forEach(category => {
+                            if (category.items && category.items.length > 0) {
+                                category.items.forEach(item => {
+                                    if (!item.formatted_specifications && item.specifications) {
+                                        item.formatted_specifications = this.formatSpecificationsFrontend(item.specifications);
+                                    }
+                                    if (item.formatted_specifications) {
+                                        item.formatted_specifications = this.fixRussianLabels(item.formatted_specifications);
+                                    }
+                                });
+                            }
+                        });
+                    }
+
+                    console.log('✅ Заявка успешно загружена и обработана');
                 } else {
                     throw new Error(data.message || 'Ошибка загрузки заявки');
                 }
@@ -545,152 +480,232 @@ export default {
             }
         },
 
-        // ⚠️ ОБНОВЛЕННЫЙ МЕТОД ДЛЯ ОБРАБОТКИ ЭКСПОРТА PDF
-        async handleExportPDF() {
-            if (this.isExportingPDF) {
-                console.log('🟡 Экспорт уже выполняется, пропускаем');
-                return;
-            }
+        // 🔥 НОВЫЙ МЕТОД: Принудительное исправление русских названий
+        fixRussianLabels(specifications) {
+            if (!Array.isArray(specifications)) return specifications;
 
-            this.isExportingPDF = true;
-            this.exportError = null;
-            this.pdfExportProgress = 0;
+            console.log('🔧 Исправление русских названий в спецификациях:', specifications);
 
-            // Создаем AbortController для возможности отмены
-            this.pdfExportController = new AbortController();
+            const labelMappings = {
+                'weight': 'Вес',
+                'Weight': 'Вес',
+                'power': 'Мощность',
+                'Power': 'Мощность',
+                'bucket_volume': 'Объем ковша',
+                'load_capacity': 'Грузоподъемность',
+                'axle_configuration': 'Колесная формула',
+                'body_volume': 'Объем кузова',
+                'max_digging_depth': 'Макс. глубина копания',
+                'engine_power': 'Мощность двигателя',
+                'operating_weight': 'Эксплуатационный вес',
+                'transport_length': 'Длина транспортировки',
+                'transport_width': 'Ширина транспортировки',
+                'transport_height': 'Высота транспортировки',
+                'engine_type': 'Тип двигателя',
+                'fuel_tank_capacity': 'Емкость топливного бака',
+                'max_speed': 'Макс. скорость',
+                'bucket_capacity': 'Емкость ковша'
+            };
 
-            try {
-                console.log('🟡 Начало экспорта PDF для заявки:', this.requestId);
+            const fixedSpecs = specifications.map(spec => {
+                let fixedLabel = spec.label;
 
-                // Симулируем прогресс для лучшего UX
-                const progressInterval = setInterval(() => {
-                    if (this.pdfExportProgress < 90) {
-                        this.pdfExportProgress += 10;
+                // Исправляем по label
+                if (spec.label && labelMappings[spec.label]) {
+                    fixedLabel = labelMappings[spec.label];
+                    console.log(`🔄 Исправлен label: "${spec.label}" -> "${fixedLabel}"`);
+                }
+
+                // Также проверяем ключ если label не исправлен
+                if (fixedLabel === spec.label && spec.key && labelMappings[spec.key]) {
+                    fixedLabel = labelMappings[spec.key];
+                    console.log(`🔄 Исправлен по key: "${spec.key}" -> "${fixedLabel}"`);
+                }
+
+                // Если все еще английский, пытаемся исправить через ключ
+                if (fixedLabel === spec.label && /^[a-zA-Z_]+$/.test(fixedLabel)) {
+                    const possibleRussian = labelMappings[fixedLabel.toLowerCase()];
+                    if (possibleRussian) {
+                        fixedLabel = possibleRussian;
+                        console.log(`🔄 Исправлен через lowercase: "${spec.label}" -> "${fixedLabel}"`);
                     }
-                }, 500);
-
-                // ⚠️ ТАЙМАУТ ДЛЯ ВСЕГО ПРОЦЕССА ЭКСПОРТА
-                this.pdfExportTimeout = setTimeout(() => {
-                    if (this.isExportingPDF) {
-                        console.warn('🕒 Таймаут экспорта PDF');
-                        this.pdfExportController.abort();
-                        throw new Error('Экспорт занял слишком много времени');
-                    }
-                }, 45000);
-
-                // Вызываем метод экспорта из QuickActions
-                if (this.$refs.quickActions) {
-                    await this.$refs.quickActions.exportToPDF();
-                } else {
-                    throw new Error('Компонент QuickActions не найден');
                 }
 
-                // Успешное завершение
-                clearInterval(progressInterval);
-                this.pdfExportProgress = 100;
+                return {
+                    ...spec,
+                    label: fixedLabel
+                };
+            });
 
-                console.log('✅ Экспорт PDF завершен успешно');
+            console.log('✅ Исправленные спецификации:', fixedSpecs);
+            return fixedSpecs;
+        },
 
-            } catch (error) {
-                console.error('❌ Ошибка экспорта PDF:', error);
-                this.exportError = this.getExportErrorMessage(error);
+        // 🔥 НОВЫЙ МЕТОД: Принудительное форматирование спецификаций
+        forceFormatSpecifications(specifications) {
+            if (!specifications) return [];
 
-                // Показываем детали ошибки в консоли для отладки
-                if (error.response) {
-                    console.error('📡 Ответ сервера:', error.response);
+            console.log('🔧 Принудительное форматирование спецификаций:', specifications);
+
+            const formatted = [];
+            const labelMappings = {
+                'weight': 'Вес',
+                'power': 'Мощность',
+                'bucket_volume': 'Объем ковша',
+                'load_capacity': 'Грузоподъемность',
+                'axle_configuration': 'Колесная формула',
+                'body_volume': 'Объем кузова',
+                'max_digging_depth': 'Макс. глубина копания',
+                'engine_power': 'Мощность двигателя',
+                'operating_weight': 'Эксплуатационный вес',
+                'transport_length': 'Длина транспортировки',
+                'transport_width': 'Ширина транспортировки',
+                'transport_height': 'Высота транспортировки',
+                'engine_type': 'Тип двигателя',
+                'fuel_tank_capacity': 'Емкость топливного бака',
+                'max_speed': 'Макс. скорость',
+                'bucket_capacity': 'Емкость ковша'
+            };
+
+            const unitMappings = {
+                'weight': 'т',
+                'power': 'л.с.',
+                'bucket_volume': 'м³',
+                'load_capacity': 'т',
+                'body_volume': 'м³',
+                'max_digging_depth': 'м',
+                'engine_power': 'кВт',
+                'operating_weight': 'т',
+                'transport_length': 'м',
+                'transport_width': 'м',
+                'transport_height': 'м',
+                'fuel_tank_capacity': 'л',
+                'max_speed': 'км/ч',
+                'bucket_capacity': 'м³'
+            };
+
+            // Обработка разных форматов
+            if (Array.isArray(specifications)) {
+                return specifications.map(spec => ({
+                    ...spec,
+                    label: labelMappings[spec.key] || spec.label || this.formatKeyToLabel(spec.key),
+                    unit: unitMappings[spec.key] || spec.unit || '',
+                    display_value: spec.value + (unitMappings[spec.key] ? ' ' + unitMappings[spec.key] : (spec.unit ? ' ' + spec.unit : ''))
+                }));
+            }
+
+            if (typeof specifications === 'object') {
+                // Обработка стандартных спецификаций
+                if (specifications.standard_specifications && typeof specifications.standard_specifications === 'object') {
+                    Object.entries(specifications.standard_specifications).forEach(([key, value]) => {
+                        if (value !== null && value !== '' && value !== undefined) {
+                            formatted.push({
+                                key: key,
+                                label: labelMappings[key] || this.formatKeyToLabel(key),
+                                value: value,
+                                unit: unitMappings[key] || '',
+                                display_value: value + (unitMappings[key] ? ' ' + unitMappings[key] : '')
+                            });
+                        }
+                    });
                 }
-                if (error.request) {
-                    console.error('🌐 Запрос:', error.request);
+
+                // Обработка кастомных спецификаций
+                if (specifications.custom_specifications && typeof specifications.custom_specifications === 'object') {
+                    Object.entries(specifications.custom_specifications).forEach(([key, spec]) => {
+                        if (spec && spec.value !== null && spec.value !== '' && spec.value !== undefined) {
+                            formatted.push({
+                                key: key,
+                                label: spec.label || 'Дополнительный параметр',
+                                value: spec.value,
+                                unit: spec.unit || '',
+                                display_value: spec.value + (spec.unit ? ' ' + spec.unit : '')
+                            });
+                        }
+                    });
                 }
-            } finally {
-                this.cleanupExport();
-            }
-        },
 
-        // ⚠️ МЕТОД ДЛЯ ОТМЕНЫ ЭКСПОРТА
-        cancelExportPDF() {
-            console.log('🛑 Отмена экспорта PDF пользователем');
-
-            if (this.pdfExportController) {
-                this.pdfExportController.abort();
-            }
-
-            this.cleanupExport();
-            this.exportError = 'Экспорт отменен пользователем';
-        },
-
-        // ⚠️ ОЧИСТКА РЕСУРСОВ ЭКСПОРТА
-        cleanupExport() {
-            this.isExportingPDF = false;
-            this.pdfExportProgress = 0;
-
-            if (this.pdfExportTimeout) {
-                clearTimeout(this.pdfExportTimeout);
-                this.pdfExportTimeout = null;
-            }
-
-            this.pdfExportController = null;
-        },
-
-        // ⚠️ ФОРМИРОВАНИЕ ЧЕЛОВЕКОЧИТАЕМЫХ СООБЩЕНИЙ ОБ ОШИБКАХ
-        getExportErrorMessage(error) {
-            console.log('🔍 Анализ ошибки экспорта:', error);
-
-            if (error.message.includes('canceled') || error.message.includes('abort')) {
-                return 'Экспорт отменен';
-            }
-
-            if (error.message.includes('Timeout') || error.message.includes('timeout')) {
-                return 'Генерация PDF заняла слишком много времени. Попробуйте позже или обратитесь к администратору.';
-            }
-
-            if (error.message.includes('Network Error')) {
-                return 'Проблемы с соединением. Проверьте интернет-подключение.';
-            }
-
-            if (error.response) {
-                const status = error.response.status;
-                switch (status) {
-                    case 404:
-                        return 'Функция экспорта PDF недоступна. Пожалуйста, сообщите администратору.';
-                    case 500:
-                        return 'Ошибка сервера при генерации PDF. Попробуйте позже.';
-                    case 403:
-                        return 'У вас нет прав для экспорта этой заявки';
-                    case 401:
-                        return 'Необходима авторизация для экспорта PDF';
-                    default:
-                        return `Ошибка сервера (${status}). Попробуйте позже.`;
+                // Обработка прямого объекта (старый формат)
+                if (Object.keys(specifications).length > 0 && !specifications.standard_specifications && !specifications.custom_specifications) {
+                    Object.entries(specifications).forEach(([key, value]) => {
+                        if (key !== 'metadata' && value !== null && value !== '' && value !== undefined && typeof value !== 'object') {
+                            formatted.push({
+                                key: key,
+                                label: labelMappings[key] || this.formatKeyToLabel(key),
+                                value: value,
+                                unit: unitMappings[key] || '',
+                                display_value: value + (unitMappings[key] ? ' ' + unitMappings[key] : '')
+                            });
+                        }
+                    });
                 }
             }
 
-            if (error.request) {
-                return 'Не удалось подключиться к серверу. Проверьте соединение.';
-            }
-
-            return error.message || 'Неизвестная ошибка при экспорте PDF';
+            console.log('✅ Принудительно отформатированные спецификации:', formatted);
+            return formatted;
         },
 
-        // ⚠️ МЕТОД ДЛЯ ПРОВЕРКИ ДОСТУПНОСТИ PDF ЭКСПОРТА
-        async checkPDFEndpoint() {
-            try {
-                console.log('🔍 Проверка доступности PDF endpoint');
+        // 🔥 НОВЫЙ МЕТОД: Форматирование спецификаций на фронтенде
+        formatSpecificationsFrontend(specifications) {
+            if (!specifications) return [];
 
-                const response = await fetch(`/api/lessee/rental-requests/${this.requestId}/export-pdf`, {
-                    method: 'HEAD',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/pdf'
-                    },
-                    credentials: 'include'
-                });
+            console.log('🔧 Форматирование спецификаций на фронтенде:', specifications);
 
-                console.log('📡 Статус проверки PDF endpoint:', response.status);
-                return response.ok;
-            } catch (error) {
-                console.error('❌ Ошибка проверки PDF endpoint:', error);
-                return false;
-            }
+            // Сначала используем принудительное форматирование
+            const formatted = this.forceFormatSpecifications(specifications);
+
+            // Затем применяем исправление русских названий
+            return this.fixRussianLabels(formatted);
+        },
+
+       getSpecificationLabel(key) {
+            const labels = {
+                'bucket_volume': 'Объем ковша',
+                'weight': 'Вес', // 🔥 ДОБАВЛЕНО
+                'power': 'Мощность',
+                'max_digging_depth': 'Макс. глубина копания',
+                'engine_power': 'Мощность двигателя',
+                'operating_weight': 'Эксплуатационный вес',
+                'transport_length': 'Длина транспортировки',
+                'transport_width': 'Ширина транспортировки',
+                'transport_height': 'Высота транспортировки',
+                'engine_type': 'Тип двигателя',
+                'fuel_tank_capacity': 'Емкость топливного бака',
+                'max_speed': 'Макс. скорость',
+                'bucket_capacity': 'Емкость ковша',
+                'body_volume': 'Объем кузова',
+                'load_capacity': 'Грузоподъемность',
+                'axle_configuration': 'Колесная формула',
+                'weight': 'Вес' // 🔥 ДОБАВЛЕНО
+            };
+            return labels[key] || this.formatKeyToLabel(key);
+        },
+
+        getSpecificationUnit(key) {
+            const units = {
+                'bucket_volume': 'м³',
+                'weight': 'т',
+                'power': 'л.с.',
+                'max_digging_depth': 'м',
+                'engine_power': 'кВт',
+                'operating_weight': 'т',
+                'transport_length': 'м',
+                'transport_width': 'м',
+                'transport_height': 'м',
+                'fuel_tank_capacity': 'л',
+                'max_speed': 'км/ч',
+                'bucket_capacity': 'м³',
+                'body_volume': 'м³',
+                'load_capacity': 'т'
+            };
+            return units[key] || '';
+        },
+
+        formatKeyToLabel(key) {
+            return key
+                .split('_')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
         },
 
         getStatusBadgeClass(status) {
@@ -947,18 +962,11 @@ export default {
     async mounted() {
         await this.loadRequest();
         this.setupAutoRefresh();
-
-        // ⚠️ ПРОВЕРЯЕМ ДОСТУПНОСТЬ PDF ЭКСПОРТА ПРИ ЗАГРУЗКЕ
-        const isAvailable = await this.checkPDFEndpoint();
-        console.log('📊 PDF экспорт доступен:', isAvailable);
     },
     beforeUnmount() {
         if (this.autoRefreshInterval) {
             clearInterval(this.autoRefreshInterval);
         }
-
-        // ⚠️ ОЧИЩАЕМ РЕСУРСЫ ЭКСПОРТА ПРИ УНИЧТОЖЕНИИ КОМПОНЕНТА
-        this.cleanupExport();
     }
 }
 </script>
@@ -1071,22 +1079,6 @@ export default {
     min-height: 200px;
 }
 
-/* ⚠️ СТИЛИ ДЛЯ КОМПОНЕНТА ЭКСПОРТА PDF */
-.export-progress-container {
-    animation: slideIn 0.3s ease-out;
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
 @media (max-width: 768px) {
     .request-stats-card .stats-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -1111,10 +1103,6 @@ export default {
     .page-header .btn {
         width: 100%;
         justify-content: center;
-    }
-
-    .export-progress-container .alert {
-        padding: 0.75rem;
     }
 }
 </style>

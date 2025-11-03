@@ -267,3 +267,26 @@
   max-height: none !important;
   overflow: visible !important;
 }
+.site-footer {
+  padding: 2rem 0 1rem;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--divider);
+  color: var(--text-primary);
+  flex-shrink: 0; // КРИТИЧЕСКИ ВАЖНО
+  margin-top: auto; // КРИТИЧЕСКИ ВАЖНО
+  position: relative;
+  z-index: 1;
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+}
+
+// ГАРАНТИЯ: Футер не создает скроллбары
+.site-footer,
+.site-footer * {
+  box-sizing: border-box;
+  max-height: none !important;
+  overflow: visible !important;
+}

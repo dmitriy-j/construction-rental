@@ -29,8 +29,22 @@
                 <div class="details-section">
                     <h6 class="section-title">
                         <i class="fas fa-sliders-h me-2"></i>Технические параметры
+                        <small class="text-muted ms-2">
+                            ({{ getFormattedSpecifications().length }} параметров)
+                        </small>
                     </h6>
-                    <SpecificationsDisplay :specifications="item.formatted_specifications || []" />
+
+                    <!-- Диагностическая информация (можно убрать после отладки) -->
+                    <div v-if="getFormattedSpecifications().length > 0" class="alert alert-info py-1 mb-2">
+                        <small>
+                            <i class="fas fa-info-circle me-1"></i>
+                            Используются {{ item.formatted_specifications ? 'готовые' : 'самостоятельно форматированные' }} спецификации
+                        </small>
+                    </div>
+
+                    <SpecificationsDisplay
+                        :specifications="getFormattedSpecifications()"
+                    />
                 </div>
 
                 <!-- Условия аренды -->
@@ -110,6 +124,172 @@ export default {
                 currency: 'RUB',
                 minimumFractionDigits: 0
             }).format(amount);
+        },
+
+        // 🔥 ИСПРАВЛЕННЫЙ МЕТОД: Приоритет готовым отформатированным данным
+        getFormattedSpecifications() {
+            // ПРИОРИТЕТ 1: используем готовые отформатированные спецификации от бэкенда
+            if (this.item.formatted_specifications && this.item.formatted_specifications.length > 0) {
+                console.log('✅ PositionCard: Используем formatted_specifications от бэкенда:', this.item.formatted_specifications);
+                return this.item.formatted_specifications;
+            }
+
+            // ПРИОРИТЕТ 2: форматируем самостоятельно из сырых данных
+            if (!this.item.specifications) {
+                console.log('❌ Нет спецификаций в item:', this.item);
+                return [];
+            }
+
+            console.log('🔍 PositionCard: Анализ спецификаций для самостоятельного форматирования:', {
+                specifications: this.item.specifications,
+                type: typeof this.item.specifications,
+                isArray: Array.isArray(this.item.specifications)
+            });
+
+            const formatted = [];
+
+            // Обрабатываем массив спецификаций
+            if (Array.isArray(this.item.specifications)) {
+                console.log('📋 Обработка массива спецификаций:', this.item.specifications.length);
+                this.item.specifications.forEach(spec => {
+                    if (spec && spec.value !== null && spec.value !== '') {
+                        formatted.push({
+                            key: spec.key || spec.name,
+                            label: spec.label || spec.name || 'Параметр',
+                            value: spec.value,
+                            unit: spec.unit || '',
+                            display_value: spec.value + (spec.unit ? ' ' + spec.unit : ''),
+                            formatted: (spec.label || spec.name || 'Параметр') + ': ' + spec.value + (spec.unit ? ' ' + spec.unit : '')
+                        });
+                    }
+                });
+            }
+            // Обрабатываем объект с новой структурой
+            else if (typeof this.item.specifications === 'object') {
+                const specs = JSON.parse(JSON.stringify(this.item.specifications));
+
+                // Обрабатываем стандартные спецификации
+                if (specs.standard_specifications && typeof specs.standard_specifications === 'object') {
+                    console.log('🏗️ Обработка стандартных спецификаций:', Object.keys(specs.standard_specifications));
+                    Object.entries(specs.standard_specifications).forEach(([key, value]) => {
+                        if (value !== null && value !== '' && value !== undefined) {
+                            formatted.push({
+                                key: key,
+                                label: this.getSpecificationLabel(key),
+                                value: value,
+                                unit: this.getSpecificationUnit(key),
+                                display_value: value + (this.getSpecificationUnit(key) ? ' ' + this.getSpecificationUnit(key) : ''),
+                                formatted: this.getSpecificationLabel(key) + ': ' + value + (this.getSpecificationUnit(key) ? ' ' + this.getSpecificationUnit(key) : '')
+                            });
+                        }
+                    });
+                }
+
+                // Обрабатываем кастомные спецификации
+                if (specs.custom_specifications && typeof specs.custom_specifications === 'object') {
+                    console.log('🎨 Обработка кастомных спецификаций:', Object.keys(specs.custom_specifications));
+                    Object.entries(specs.custom_specifications).forEach(([key, spec]) => {
+                        if (spec && spec.value !== null && spec.value !== '' && spec.value !== undefined) {
+                            formatted.push({
+                                key: key,
+                                label: spec.label || 'Дополнительный параметр',
+                                value: spec.value,
+                                unit: spec.unit || '',
+                                display_value: spec.value + (spec.unit ? ' ' + spec.unit : ''),
+                                formatted: (spec.label || 'Дополнительный параметр') + ': ' + spec.value + (spec.unit ? ' ' + spec.unit : '')
+                            });
+                        }
+                    });
+                }
+
+                // Обрабатываем прямой объект спецификаций (старый формат)
+                if (Object.keys(specs).length > 0 && !specs.standard_specifications && !specs.custom_specifications) {
+                    console.log('🔧 Обработка прямого объекта спецификаций:', Object.keys(specs));
+                    Object.entries(specs).forEach(([key, value]) => {
+                        if (value !== null && value !== '' && value !== undefined && typeof value !== 'object') {
+                            formatted.push({
+                                key: key,
+                                label: this.getSpecificationLabel(key),
+                                value: value,
+                                unit: this.getSpecificationUnit(key),
+                                display_value: value + (this.getSpecificationUnit(key) ? ' ' + this.getSpecificationUnit(key) : ''),
+                                formatted: this.getSpecificationLabel(key) + ': ' + value + (this.getSpecificationUnit(key) ? ' ' + this.getSpecificationUnit(key) : '')
+                            });
+                        }
+                    });
+                }
+            }
+
+            console.log('📊 PositionCard: Итоговые форматированные спецификации:', formatted);
+            return formatted;
+        },
+
+        // Метод для получения читаемых названий спецификаций
+        getSpecificationLabel(key) {
+            const labels = {
+                'bucket_volume': 'Объем ковша',
+                'weight': 'Вес', // 🔥 ДОБАВЛЕНО
+                'power': 'Мощность',
+                'max_digging_depth': 'Макс. глубина копания',
+                'engine_power': 'Мощность двигателя',
+                'operating_weight': 'Эксплуатационный вес',
+                'transport_length': 'Длина транспортировки',
+                'transport_width': 'Ширина транспортировки',
+                'transport_height': 'Высота транспортировки',
+                'engine_type': 'Тип двигателя',
+                'fuel_tank_capacity': 'Емкость топливного бака',
+                'max_speed': 'Макс. скорость',
+                'bucket_capacity': 'Емкость ковша',
+                'body_volume': 'Объем кузова',
+                'load_capacity': 'Грузоподъемность',
+                'axle_configuration': 'Колесная формула',
+                'weight': 'Вес' // 🔥 ДОБАВЛЕНО
+            };
+            return labels[key] || this.formatKeyToLabel(key);
+        },
+
+        // Форматируем ключ в читаемый label
+        formatKeyToLabel(key) {
+            return key
+                .split('_')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+        },
+
+        // Метод для получения единиц измерения
+        getSpecificationUnit(key) {
+            const units = {
+                'bucket_volume': 'м³',
+                'weight': 'т',
+                'power': 'л.с.',
+                'max_digging_depth': 'м',
+                'engine_power': 'кВт',
+                'operating_weight': 'т',
+                'transport_length': 'м',
+                'transport_width': 'м',
+                'transport_height': 'м',
+                'fuel_tank_capacity': 'л',
+                'max_speed': 'км/ч',
+                'bucket_capacity': 'м³',
+                'body_volume': 'м³',
+                'load_capacity': 'т'
+            };
+            return units[key] || '';
+        }
+    },
+
+    mounted() {
+        console.log('🔍 PositionCard mounted: данные для отображения', {
+            id: this.item.id,
+            has_formatted_specs: !!this.item.formatted_specifications,
+            formatted_specs_count: this.item.formatted_specifications ? this.item.formatted_specifications.length : 0,
+            has_raw_specs: !!this.item.specifications,
+            raw_specs_keys: this.item.specifications ? Object.keys(this.item.specifications) : []
+        });
+
+        // Дополнительная диагностика formatted_specifications
+        if (this.item.formatted_specifications) {
+            console.log('📋 PositionCard formatted_specifications:', this.item.formatted_specifications);
         }
     }
 }

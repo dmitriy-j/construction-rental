@@ -519,7 +519,7 @@ export default {
             }
         },
 
-        prepareFormData() {
+       prepareFormData() {
             let formData = {
                 title: this.formData.title,
                 description: this.formData.description,
@@ -529,34 +529,142 @@ export default {
                 location_id: this.formData.location_id,
                 rental_conditions: this.formData.rental_conditions,
                 items: this.formData.items.map(item => {
+                    // ✅ ИСПРАВЛЕНИЕ: Правильная подготовка спецификаций
                     const preparedItem = {
                         category_id: item.category_id,
                         quantity: parseInt(item.quantity) || 1,
                         hourly_rate: item.hourly_rate ? this.ensureNumber(item.hourly_rate) : null,
                         use_individual_conditions: Boolean(item.use_individual_conditions),
                         individual_conditions: item.use_individual_conditions ? item.individual_conditions : {},
-                        specifications: item.specifications || {}
                     };
 
-                    // ⚠️ ИСПРАВЛЕНИЕ: Гарантируем правильную структуру спецификаций
-                    if (preparedItem.specifications && preparedItem.specifications.values) {
-                        preparedItem.specifications = { ...preparedItem.specifications.values };
+                    // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правильная структура спецификаций
+                    if (item.specifications) {
+                        // Разделяем стандартные и кастомные спецификации
+                        const { standard = {}, custom = {} } = this.prepareSpecifications(item.specifications);
+
+                        preparedItem.standard_specifications = standard;
+                        preparedItem.custom_specifications = custom;
+
+                        // Для обратной совместимости сохраняем и старую структуру
+                        preparedItem.specifications = { ...standard, ...this.extractCustomValues(custom) };
+
+                        // Метаданные для кастомных спецификаций
+                        const customMetadata = {};
+                        Object.keys(custom).forEach(key => {
+                            const spec = custom[key];
+                            customMetadata[key] = {
+                                name: spec.label || key,
+                                dataType: spec.dataType || 'string',
+                                unit: spec.unit || ''
+                            };
+                        });
+                        preparedItem.custom_specs_metadata = customMetadata;
+                    } else {
+                        // Пустые спецификации если нет данных
+                        preparedItem.standard_specifications = {};
+                        preparedItem.custom_specifications = {};
+                        preparedItem.specifications = {};
+                        preparedItem.custom_specs_metadata = {};
                     }
+
+                    console.log('📦 Prepared item specs:', {
+                        standard: Object.keys(preparedItem.standard_specifications),
+                        custom: Object.keys(preparedItem.custom_specifications),
+                        legacy: Object.keys(preparedItem.specifications)
+                    });
 
                     return preparedItem;
                 }),
                 delivery_required: Boolean(this.formData.delivery_required)
             };
 
-            // ⚠️ ИСПРАВЛЕНИЕ: Применяем глубокую обработку
-            formData = this.deepProcessFormData(formData);
-
             if (this.editMode) {
                 formData._method = 'PUT';
             }
 
-            console.log('Prepared form data:', formData);
+            console.log('📤 Final prepared form data:', formData);
             return formData;
+        },
+
+        prepareSpecifications(specs) {
+            if (!specs || typeof specs !== 'object') {
+                return { standard: {}, custom: {} };
+            }
+
+            const standard = {};
+            const custom = {};
+
+            Object.keys(specs).forEach(key => {
+                const value = specs[key];
+
+                // Определяем тип спецификации по ключу или структуре
+                if (this.isStandardSpecification(key)) {
+                    standard[key] = this.normalizeSpecValue(value);
+                } else {
+                    // Обрабатываем кастомные спецификации
+                    if (typeof value === 'object' && value !== null) {
+                        // Уже в правильном формате
+                        custom[key] = {
+                            label: value.label || key,
+                            value: this.normalizeSpecValue(value.value),
+                            unit: value.unit || '',
+                            dataType: value.dataType || 'string'
+                        };
+                    } else {
+                        // Простое значение - конвертируем в структуру
+                        custom[key] = {
+                            label: this.formatLabel(key),
+                            value: this.normalizeSpecValue(value),
+                            unit: '',
+                            dataType: typeof value === 'number' ? 'number' : 'string'
+                        };
+                    }
+                }
+            });
+
+            return { standard, custom };
+        },
+
+        isStandardSpecification(key) {
+            const standardKeys = [
+                'bucket_volume', 'max_digging_depth', 'power', 'weight',
+                'engine_power', 'lifting_capacity', 'boom_length'
+            ];
+            return standardKeys.includes(key) || !key.startsWith('custom_');
+        },
+
+        normalizeSpecValue(value) {
+            if (value === null || value === undefined || value === '') {
+                return null;
+            }
+
+            // Преобразуем строки с запятыми в числа
+            if (typeof value === 'string' && value.includes(',')) {
+                const numValue = parseFloat(value.replace(',', '.'));
+                return isNaN(numValue) ? value : numValue;
+            }
+
+            // Преобразуем числовые строки
+            if (typeof value === 'string' && !isNaN(value) && value.trim() !== '') {
+                return parseFloat(value);
+            }
+
+            return value;
+        },
+
+        extractCustomValues(customSpecs) {
+            const values = {};
+            Object.keys(customSpecs).forEach(key => {
+                values[key] = customSpecs[key].value;
+            });
+            return values;
+        },
+
+        formatLabel(key) {
+            // Преобразуем snake_case в Normal Case
+            return key.replace(/_/g, ' ')
+                    .replace(/(?:^|\s)\S/g, char => char.toUpperCase());
         },
 
         cancel() {

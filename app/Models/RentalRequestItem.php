@@ -15,23 +15,26 @@ class RentalRequestItem extends Model
     protected $fillable = [
         'rental_request_id',
         'category_id',
-        'hourly_rate',
         'quantity',
-        'specifications',
-        'individual_conditions',
-        'calculated_price',
+        'hourly_rate',
         'use_individual_conditions',
-        'custom_specs_metadata'
+        'individual_conditions',
+        'specifications',
+        'standard_specifications', // ✅ НОВОЕ
+        'custom_specifications', // ✅ НОВОЕ
+        'custom_specs_metadata',
+        'calculated_price'
     ];
 
     // ⚠️ ИСПРАВЛЕНИЕ: Добавлено приведение типов для спецификаций
-    protected $casts = [
-        'specifications' => 'array',
+     protected $casts = [
+        'use_individual_conditions' => 'boolean',
         'individual_conditions' => 'array',
+        'specifications' => 'array',
+        'standard_specifications' => 'array', // ✅ НОВОЕ
+        'custom_specifications' => 'array', // ✅ НОВОЕ
         'custom_specs_metadata' => 'array',
-        'hourly_rate' => 'decimal:2',
-        'calculated_price' => 'decimal:2',
-        'use_individual_conditions' => 'boolean'
+        'calculated_price' => 'decimal:2'
     ];
 
     protected $appends = ['formatted_specifications'];
@@ -70,6 +73,66 @@ class RentalRequestItem extends Model
         );
     }
 
+    // Метод для преобразования старой структуры в новую
+    public function getUnifiedSpecificationsAttribute()
+    {
+        // Если уже есть новая структура - используем её
+        if (!empty($this->standard_specifications) || !empty($this->custom_specifications)) {
+            return [
+                'standard' => $this->standard_specifications ?? [],
+                'custom' => $this->custom_specifications ?? []
+            ];
+        }
+
+        // Конвертируем старую структуру в новую
+        return $this->convertLegacySpecifications();
+    }
+
+    private function convertLegacySpecifications()
+    {
+        $standard = [];
+        $custom = [];
+
+        if (!empty($this->specifications)) {
+            foreach ($this->specifications as $key => $value) {
+                if (str_starts_with($key, 'custom_')) {
+                    $metadata = $this->custom_specs_metadata[$key] ?? [];
+                    $custom[$key] = [
+                        'label' => $metadata['name'] ?? $key,
+                        'value' => $value,
+                        'unit' => $metadata['unit'] ?? '',
+                        'dataType' => $metadata['dataType'] ?? 'string'
+                    ];
+                } else {
+                    $standard[$key] = $value;
+                }
+            }
+        }
+
+        return [
+            'standard' => $standard,
+            'custom' => $custom
+        ];
+    }
+
+     // Сеттер для унифицированных спецификаций
+    public function setUnifiedSpecificationsAttribute($value)
+    {
+        $standard = $value['standard'] ?? [];
+        $custom = $value['custom'] ?? [];
+
+        $this->attributes['standard_specifications'] = json_encode($standard);
+        $this->attributes['custom_specifications'] = json_encode($custom);
+
+        // Также обновляем старую структуру для обратной совместимости
+        $legacySpecs = array_merge($standard, []);
+        foreach ($custom as $key => $customSpec) {
+            $legacySpecs[$key] = $customSpec['value'];
+        }
+        $this->attributes['specifications'] = json_encode($legacySpecs);
+    }
+
+
     public function getFormattedSpecificationsAttribute(): array
     {
         if (empty($this->specifications)) {
@@ -77,123 +140,56 @@ class RentalRequestItem extends Model
         }
 
         try {
-            $formatted = [];
-            $specsArray = $this->specifications;
+            // ✅ ИСПРАВЛЕНИЕ: Используем сервис с передачей метаданных
+            $rentalRequestService = app(\App\Services\RentalRequestService::class);
+
+            // Подготавливаем данные для сервиса форматирования
+            $specsData = $this->specifications;
             $metadata = $this->custom_specs_metadata ?? [];
 
-            \Log::debug('Raw specifications for item ' . $this->id, [
-                'specifications' => $specsArray,
-                'metadata' => $metadata
+            \Log::debug('🔧 Форматирование спецификаций с метаданными', [
+                'item_id' => $this->id,
+                'specifications_type' => gettype($specsData),
+                'metadata_count' => count($metadata),
+                'metadata_sample' => array_slice($metadata, 0, 2)
             ]);
 
-            // Полный словарь переводов для всех возможных параметров
-            $russianTranslations = [
-                // Общие параметры
-                'engine_power' => 'Мощность двигателя',
-                'operating_weight' => 'Рабочий вес',
-                'max_speed' => 'Максимальная скорость',
-                'fuel_tank_capacity' => 'Объем топливного бака',
-                'transmission' => 'Трансмиссия',
-                'drive_type' => 'Тип привода',
+            // Если это старая структура, преобразуем в новую
+            if (!isset($specsData['standard_specifications']) && !isset($specsData['custom_specifications'])) {
+                $standardSpecs = [];
+                $customSpecs = [];
 
-                // Экскаваторы
-                'bucket_volume' => 'Объем ковша',
-                'max_digging_depth' => 'Максимальная глубина копания',
-                'max_reach' => 'Максимальный вылет стрелы',
-                'bucket_width' => 'Ширина ковша',
-                'arm_force' => 'Усилие на рукояти',
-                'boom_force' => 'Усилие на стреле',
-
-                // Бульдозеры
-                'blade_width' => 'Ширина отвала',
-                'blade_height' => 'Высота отвала',
-                'blade_capacity' => 'Объем отвала',
-                'max_cutting_depth' => 'Максимальная глубина резания',
-                'max_lifting_height' => 'Максимальная высота подъема',
-
-                // Самосвалы
-                'load_capacity' => 'Грузоподъемность',
-                'body_volume' => 'Объем кузова',
-                'body_length' => 'Длина кузова',
-                'body_width' => 'Ширина кузова',
-                'body_height' => 'Высота кузова',
-                'unloading_angle' => 'Угол разгрузки',
-                'axle_configuration' => 'Колёсная формула',
-
-                // Краны
-                'lifting_capacity' => 'Грузоподъёмность',
-                'boom_length' => 'Длина стрелы',
-                'outreach' => 'Вылет стрелы',
-                'rotation_angle' => 'Угол поворота',
-
-                // Катки
-                'roller_width' => 'Ширина вальца',
-                'roller_diameter' => 'Диаметр вальца',
-                'vibration_frequency' => 'Частота вибрации',
-                'amplitude' => 'Амплитуда',
-                'compaction_width' => 'Ширина уплотнения',
-
-                // Бетонная техника
-                'concrete_output' => 'Производительность по бетону',
-                'max_pressure' => 'Максимальное давление',
-                'pump_height' => 'Высота подачи',
-
-                // English variants
-                'Bucket volume' => 'Объем ковша',
-                'Engine power' => 'Мощность двигателя',
-                'Operating weight' => 'Рабочий вес',
-                'Max digging depth' => 'Максимальная глубина копания',
-                'Blade width' => 'Ширина отвала',
-                'Blade height' => 'Высота отвала',
-                'Load capacity' => 'Грузоподъемность',
-                'Body volume' => 'Объем кузова',
-                'Max speed' => 'Максимальная скорость',
-                'Lifting capacity' => 'Грузоподъёмность',
-                'Boom length' => 'Длина стрелы',
-                'Fuel tank capacity' => 'Объем топливного бака'
-            ];
-
-            // Обрабатываем спецификации с учетом метаданных
-            foreach ($specsArray as $key => $value) {
-                if ($value !== null && $value !== '') {
-                    // Используем название из метаданных или переводим ключ
-                    $label = $metadata[$key]['name'] ?? $russianTranslations[$key] ?? $this->formatLabel($key);
-                    $unit = $metadata[$key]['unit'] ?? $this->getSimpleUnit($key);
-
-                    $formattedValue = $value;
-
-                    // Форматируем значение если есть единица измерения
-                    $displayValue = $unit ? $value . ' ' . $unit : $value;
-
-                    $formatted[] = [
-                        'key' => $key,
-                        'value' => $formattedValue,
-                        'label' => $label,
-                        'unit' => $unit,
-                        'display_value' => $displayValue,
-                        'formatted' => $label . ': ' . $displayValue,
-                        'is_custom' => str_starts_with($key, 'custom_'),
-                        'data_type' => $metadata[$key]['dataType'] ?? 'string'
-                    ];
+                foreach ($specsData as $key => $value) {
+                    if (str_starts_with($key, 'custom_')) {
+                        $customSpecs[$key] = $value;
+                    } else {
+                        $standardSpecs[$key] = $value;
+                    }
                 }
+
+                $specsData = [
+                    'standard_specifications' => $standardSpecs,
+                    'custom_specifications' => $customSpecs
+                ];
             }
 
-            // Сортируем: сначала стандартные параметры, потом кастомные
-            usort($formatted, function ($a, $b) {
-                if ($a['is_custom'] === $b['is_custom']) {
-                    return $a['label'] <=> $b['label'];
-                }
-                return $a['is_custom'] ? 1 : -1;
-            });
+            // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Передаем метаданные в сервис форматирования
+            $formatted = $rentalRequestService->formatSpecifications($specsData, $metadata);
 
-            \Log::debug('Formatted specifications for item ' . $this->id, [
-                'count' => count($formatted),
-                'formatted' => $formatted
+            \Log::debug('✅ Item specs formatted with metadata', [
+                'item_id' => $this->id,
+                'formatted_count' => count($formatted),
+                'custom_specs_count' => count(array_filter($formatted, fn($spec) => $spec['is_custom'])),
+                'custom_specs_sample' => array_slice(array_filter($formatted, fn($spec) => $spec['is_custom']), 0, 2)
             ]);
 
             return $formatted;
+
         } catch (\Exception $e) {
-            \Log::error('Error formatting specifications for item ' . $this->id . ': ' . $e->getMessage());
+            \Log::error('Error formatting specifications for item ' . $this->id . ': ' . $e->getMessage(), [
+                'specifications' => $this->specifications,
+                'metadata' => $this->custom_specs_metadata ?? []
+            ]);
             return [];
         }
     }
@@ -252,7 +248,7 @@ class RentalRequestItem extends Model
 
     public function category(): BelongsTo
     {
-        return $this->belongsTo(Category::class, 'category_id');
+        return $this->belongsTo(Category::class);
     }
 
     public function rentalRequest(): BelongsTo

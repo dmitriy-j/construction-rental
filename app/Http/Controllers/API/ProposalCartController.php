@@ -353,14 +353,8 @@ class ProposalCartController extends Controller
                     // 🔥 ОБНОВЛЯЕМ ВРЕМЕННОЕ РЕЗЕРВИРОВАНИЕ
                     $this->updateEquipmentReservation($cartItem, $startDate, $endDate, $cart);
 
-                    // 🔥 ПРОВЕРЯЕМ МЕТОД calculateActualWorkingHours
-                    $workingHours = 0;
-                    if (method_exists($cartItem, 'calculateActualWorkingHours')) {
-                        $workingHours = $cartItem->calculateActualWorkingHours();
-                    } else {
-                        \Log::warning('Метод calculateActualWorkingHours не существует, используем fallback расчет');
-                        $workingHours = $this->calculateFallbackWorkingHours($cartItem, $startDate, $endDate);
-                    }
+                    // ✅ ИСПРАВЛЕНО: Используем публичный метод модели CartItem
+                    $workingHours = $cartItem->calculateWorkingHoursForCartItem();
 
                     $customerPricePerHour = $cartItem->fixed_customer_price;
                     $lessorPricePerHour = $cartItem->fixed_lessor_price;
@@ -374,6 +368,7 @@ class ProposalCartController extends Controller
                         'fixed_customer_price' => $customerPricePerHour,
                         'fixed_lessor_price' => $lessorPricePerHour,
                         'platform_fee' => $platformFeePerHour,
+                        'actual_working_hours' => $workingHours, // ✅ Сохраняем фактические рабочие часы
                     ];
 
                     $cartItem->update($updateData);

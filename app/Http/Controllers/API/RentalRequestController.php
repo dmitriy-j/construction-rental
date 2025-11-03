@@ -140,20 +140,44 @@ class RentalRequestController extends Controller
                 return $response->status === 'comment' || $response->equipment_id === null;
             });
 
-            // Обработка items с метаданными
-            $request->items->each(function ($item) {
+            // 🔥 ИСПРАВЛЕНИЕ: Используем единый сервис для форматирования спецификаций
+            $rentalRequestService = app(\App\Services\RentalRequestService::class);
+
+            // Обработка items с использованием единого сервиса
+            $request->items->each(function ($item) use ($rentalRequestService) {
                 try {
-                    // ⚠️ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Форматируем спецификации с учетом метаданных
+                    // 🔥 УБЕДИТЕСЬ ЧТО ИСПОЛЬЗУЕТСЯ ПРАВИЛЬНЫЙ МЕТОД
                     if (!empty($item->specifications)) {
-                        $item->formatted_specifications = $item->formatted_specifications;
+                        \Log::debug('🔧 API: Formatting specifications for item', [
+                            'item_id' => $item->id,
+                            'raw_specifications' => $item->specifications,
+                            'specifications_type' => gettype($item->specifications)
+                        ]);
+
+                       $item->formatted_specifications = $rentalRequestService->formatSpecifications(
+                            $item->specifications,
+                            $item->custom_specs_metadata ?? []
+                        );
+
+                        \Log::debug('✅ API: Item specs formatted with service', [
+                            'item_id' => $item->id,
+                            'formatted_count' => count($item->formatted_specifications),
+                            'weight_translated' => collect($item->formatted_specifications)->contains(function($spec) {
+                                return $spec['key'] === 'weight' && $spec['label'] === 'Вес';
+                            }),
+                            'all_specs_sample' => array_slice($item->formatted_specifications, 0, 3)
+                        ]);
                     } else {
                         $item->formatted_specifications = [];
+                        \Log::debug('🔧 API: No specifications to format for item', [
+                            'item_id' => $item->id
+                        ]);
                     }
 
                     $item->conditions_type = $item->conditions_type;
                     $item->display_conditions = $item->display_conditions;
 
-                    \Log::debug('✅ Item processed with metadata', [
+                    \Log::debug('✅ Item processed with unified service', [
                         'item_id' => $item->id,
                         'specs_count' => count($item->formatted_specifications),
                         'metadata_count' => count($item->custom_specs_metadata ?? [])
@@ -206,7 +230,13 @@ class RentalRequestController extends Controller
 
             \Log::info('✅ API response prepared with metadata support', [
                 'request_id' => $request->id,
-                'items_with_metadata' => $request->items->filter(fn($item) => !empty($item->custom_specs_metadata))->count()
+                'items_with_metadata' => $request->items->filter(fn($item) => !empty($item->custom_specs_metadata))->count(),
+                'items_with_formatted_specs' => $request->items->filter(fn($item) => !empty($item->formatted_specifications))->count(),
+                'weight_translation_success' => $request->items->filter(function($item) {
+                    return collect($item->formatted_specifications ?? [])->contains(function($spec) {
+                        return $spec['key'] === 'weight' && $spec['label'] === 'Вес';
+                    });
+                })->count()
             ]);
 
             return response()->json($responseData);
@@ -362,10 +392,10 @@ class RentalRequestController extends Controller
         }
     }
 
-    public function update(Request $request, $id)
+     public function update(Request $request, $id)
     {
         try {
-            \Log::info('🔧 API UPDATE METHOD START', [
+            \Log::info('🔧 API RentalRequest UPDATE with metadata', [
                 'request_id' => $id,
                 'user_id' => auth()->id(),
                 'items_count' => count($request->items ?? []),
@@ -375,7 +405,7 @@ class RentalRequestController extends Controller
             $rentalRequest = RentalRequest::where('user_id', auth()->id())
                 ->findOrFail($id);
 
-            // Валидация данных с учетом метаданных
+            // Валидация с поддержкой метаданных
             $validated = $request->validate([
                 'title' => 'required|string|max:255',
                 'description' => 'required|string',
@@ -383,49 +413,32 @@ class RentalRequestController extends Controller
                 'rental_period_start' => 'required|date',
                 'rental_period_end' => 'required|date|after_or_equal:rental_period_start',
                 'location_id' => 'required|exists:locations,id',
-                'rental_conditions' => 'sometimes|array',
                 'items' => 'required|array|min:1',
                 'items.*.category_id' => 'required|exists:equipment_categories,id',
                 'items.*.quantity' => 'required|integer|min:1',
                 'items.*.hourly_rate' => 'sometimes|numeric|min:0',
                 'items.*.specifications' => 'sometimes|array',
-                'items.*.use_individual_conditions' => 'sometimes|boolean',
-                'items.*.individual_conditions' => 'sometimes|array',
-
-                // ⚠️ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Добавляем правила для метаданных
-                'items.*.custom_specs_metadata' => 'sometimes|array',
-                'items.*.custom_specs_metadata.*' => 'sometimes|array',
-                'items.*.custom_specs_metadata.*.name' => 'sometimes|string|max:255',
-                'items.*.custom_specs_metadata.*.dataType' => 'sometimes|in:string,number',
-                'items.*.custom_specs_metadata.*.unit' => 'sometimes|string|max:50'
+                'items.*.custom_specs_metadata' => 'sometimes|array', // ⚠️ ДОБАВЛЕНО
             ]);
 
-            \Log::debug('✅ Validated data with metadata support', [
+            \Log::debug('✅ Validated data for update:', [
                 'items_count' => count($validated['items']),
-                'metadata_example' => $validated['items'][0]['custom_specs_metadata'] ?? 'none'
+                'first_item_metadata' => $validated['items'][0]['custom_specs_metadata'] ?? 'none'
             ]);
 
-            // ⚠️ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обновляем через сервис с передачей ВСЕХ данных
+            // ⚠️ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем сервис с поддержкой метаданных
             $updatedRequest = $this->rentalRequestService->updateRentalRequest($rentalRequest, $validated);
 
-            \Log::info('✅ Rental request updated with metadata', [
-                'request_id' => $updatedRequest->id,
-                'items_count' => $updatedRequest->items->count(),
-                'first_item_metadata' => $updatedRequest->items->first()->custom_specs_metadata ?? 'none'
-            ]);
-
-            // ⚠️ ИСПРАВЛЕНИЕ: Просто возвращаем успех без данных для редиректа
             return response()->json([
                 'success' => true,
-                'message' => 'Заявка успешно обновлена'
+                'message' => 'Заявка успешно обновлена',
+                'data' => $updatedRequest
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('❌ Error updating rental request: ' . $e->getMessage(), [
+            \Log::error('❌ API Error updating rental request: ' . $e->getMessage(), [
                 'request_id' => $id,
-                'user_id' => auth()->id(),
-                'trace' => $e->getTraceAsString(),
-                'request_data' => $request->all()
+                'user_id' => auth()->id()
             ]);
 
             return response()->json([
@@ -450,6 +463,61 @@ class RentalRequestController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Ошибка при отмене заявки'
+            ], 500);
+        }
+    }
+
+    public function store(Request $request)
+    {
+        try {
+            \Log::info('🔧 API RentalRequest STORE with metadata', [
+                'user_id' => auth()->id(),
+                'items_count' => count($request->items ?? []),
+                'has_metadata' => !empty($request->items[0]['custom_specs_metadata'] ?? [])
+            ]);
+
+            // Валидация с поддержкой метаданных
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'required|string',
+                'hourly_rate' => 'required|numeric|min:0',
+                'rental_period_start' => 'required|date',
+                'rental_period_end' => 'required|date|after_or_equal:rental_period_start',
+                'location_id' => 'required|exists:locations,id',
+                'items' => 'required|array|min:1',
+                'items.*.category_id' => 'required|exists:equipment_categories,id',
+                'items.*.quantity' => 'required|integer|min:1',
+                'items.*.hourly_rate' => 'sometimes|numeric|min:0',
+                'items.*.specifications' => 'sometimes|array',
+                'items.*.custom_specs_metadata' => 'sometimes|array', // ⚠️ ДОБАВЛЕНО
+            ]);
+
+            \Log::debug('✅ Validated data for store:', [
+                'items_count' => count($validated['items']),
+                'first_item_metadata' => $validated['items'][0]['custom_specs_metadata'] ?? 'none'
+            ]);
+
+            // ⚠️ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем сервис с поддержкой метаданных
+            $rentalRequest = $this->rentalRequestService->createRentalRequestFromApi(
+                $validated,
+                auth()->user()
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Заявка успешно создана',
+                'data' => $rentalRequest
+            ], 201);
+
+        } catch (\Exception $e) {
+            \Log::error('❌ API Error creating rental request: ' . $e->getMessage(), [
+                'user_id' => auth()->id(),
+                'request_data' => $request->all()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при создании заявки: ' . $e->getMessage()
             ], 500);
         }
     }

@@ -994,3 +994,118 @@ body {
   grid-row: 3;
 }
 
+// =====================
+// ИСПРАВЛЕНИЯ СТРУКТУРЫ СТРАНИЦЫ
+// =====================
+
+// ГЛАВНЫЙ ОБЕРТОЧНЫЙ КОНТЕЙНЕР
+.main-content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--navbar-height));
+}
+
+// ОСНОВНАЯ СТРУКТУРА - УПРОЩЕННАЯ
+.main-container {
+  flex: 1;
+  display: flex;
+  min-height: 100%; // УБИРАЕМ фиксированную высоту
+}
+
+// ОСНОВНАЯ ОБЛАСТЬ КОНТЕНТА
+.content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-left: var(--sidebar-width);
+  transition: margin-left 0.3s ease;
+  min-height: 100%; // УБИРАЕМ фиксированную высоту
+
+  @media (max-width: 991.98px) {
+    margin-left: 0 !important;
+  }
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+// КОНТЕЙНЕР КОНТЕНТА - РАСТЯГИВАЕТСЯ ПО СОДЕРЖИМОМУ
+.content-container {
+  flex: 1;
+  padding: 1rem;
+  max-width: 100%;
+
+  // Жесткое ограничение для ВСЕХ внутренних элементов
+  * {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+// ФУТЕР - ВСЕГДА ВНИЗУ, НЕЗАВИСИМО ОТ КОНТЕНТА
+.site-footer {
+  background: var(--bg-surface);
+  border-top: 1px solid var(--divider);
+  padding: var(--content-padding);
+  color: var(--text-primary);
+  width: 100%;
+  margin-top: auto; // Важно: автоматический отступ сверху
+  flex-shrink: 0; // Важно: не сжимается
+
+  .footer-content {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+}
+
+// СПЕЦИАЛЬНЫЕ СТИЛИ ДЛЯ СТРАНИЦ РЕДАКТИРОВАНИЯ
+.edit-rental-request-page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+// ГАРАНТИЯ: Футер всегда внизу даже при малом контенте
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+// ФИКС ДЛЯ СТРАНИЦ С МАЛЫМ КОНТЕНТОМ
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+
+  #app {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+// КРИТИЧЕСКИЙ ФИКС: Убеждаемся что контент растягивается правильно
+.content-area .main-content {
+  min-height: auto !important;
+  height: auto !important;
+}
+
+// Убираем все лишние ограничения высоты
+.main-container,
+.content-area,
+.main-content,
+.content-container {
+  min-height: auto !important;
+  height: auto !important;
+}

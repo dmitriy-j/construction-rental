@@ -8,13 +8,18 @@ use App\Http\Controllers\API\PublicProposalController;
 use App\Http\Controllers\API\PublicRentalRequestController;
 use App\Http\Controllers\API\LessorProposalTemplateController;
 use App\Http\Controllers\API\ProposalCartController;
-use App\Http\Controllers\API\LessorDashboardController; // 🔥 ДОБАВЛЕНО
+use App\Http\Controllers\API\LessorDashboardController;
 use App\Http\Controllers\API\LessorRecommendationController;
-
+use App\Http\Controllers\API\SpecificationController;
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user()->load('company');
 });
+
+// ✅ ДОБАВЛЕН НОВЫЙ МАРШРУТ ДЛЯ ШАБЛОНОВ СПЕЦИФИКАЦИЙ
+Route::get('/specifications/template/{categoryId}', [SpecificationController::class, 'getTemplateByCategory'])
+    ->middleware(['auth:sanctum'])
+    ->name('api.specifications.template');
 
 // Публичные маршруты
 Route::prefix('public')->group(function () {
@@ -181,34 +186,21 @@ Route::get('/debug/edit-test/{id}', function ($id) {
 })->middleware('auth:sanctum');
 
 // В routes/api.php добавить:
-Route::middleware(['auth:sanctum'])->prefix('debug')->group(function () {
-    Route::get('/rental-requests/{id}/specs-test', function ($id) {
-        try {
-            $rentalRequest = \App\Models\RentalRequest::with('items.category')
-                ->where('user_id', auth()->id())
-                ->findOrFail($id);
-
-            return response()->json([
-                'success' => true,
-                'request_id' => $rentalRequest->id,
-                'items_count' => $rentalRequest->items->count(),
-                'items' => $rentalRequest->items->map(function($item) {
-                    return [
-                        'id' => $item->id,
-                        'category' => $item->category->name ?? 'N/A',
-                        'quantity' => $item->quantity,
-                        'specifications_raw' => $item->specifications,
-                        'specifications_type' => gettype($item->specifications),
-                        'formatted_specifications' => $item->formatted_specifications,
-                        'has_specifications' => !empty($item->specifications)
-                    ];
-                })
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], 500);
-        }
+Route::get('/categories/{category}/specifications', function (Category $category) {
+    $standardSpecs = $category->specifications()->where('type', 'standard')->get()->map(function($spec) {
+        return [
+            'key' => $spec->key,
+            'label' => $spec->name,
+            'dataType' => $spec->data_type,
+            'unit' => $spec->unit,
+            'required' => $spec->is_required
+        ];
     });
+
+    return response()->json([
+        'success' => true,
+        'data' => [
+            'standard_specifications' => $standardSpecs
+        ]
+    ]);
 });

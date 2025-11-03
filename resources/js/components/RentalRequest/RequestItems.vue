@@ -153,7 +153,6 @@ export default {
             type: Number,
             required: true,
             default: 0,
-            // ⚠️ ИСПРАВЛЕНИЕ: Добавлен валидатор для пропса
             validator: (value) => {
                 return typeof value === 'number' && value >= 0;
             }
@@ -177,7 +176,10 @@ export default {
             items: [],
             isInitialized: false,
             preventUpdateLoop: false,
-            debounceTimeout: null
+            debounceTimeout: null,
+            hasUnsavedChanges: false,
+            // ✅ ДОБАВЛЕНО: Флаг для предотвращения циклических обновлений
+            isProcessingExternalUpdate: false
         }
     },
     computed: {
@@ -208,7 +210,8 @@ export default {
     watch: {
         items: {
             handler(newItems) {
-                if (this.isInitialized && !this.preventUpdateLoop) {
+                if (this.isInitialized && !this.preventUpdateLoop && !this.isProcessingExternalUpdate) {
+                    console.log('🔄 RequestItems: изменения в items, запуск дебаунса');
                     this.debouncedUpdateItems();
                 }
             },
@@ -242,7 +245,10 @@ export default {
         },
         initialItems: {
             handler(newItems) {
-                if (this.preventUpdateLoop) return;
+                if (this.preventUpdateLoop || this.isProcessingExternalUpdate) {
+                    console.log('🛑 RequestItems: предотвращена циклическая обработка initialItems');
+                    return;
+                }
 
                 console.log('🔄 RequestItems: initialItems изменены', {
                     newItemsLength: newItems?.length,
@@ -250,13 +256,20 @@ export default {
                 });
 
                 if (newItems && newItems.length > 0) {
+                    this.isProcessingExternalUpdate = true;
+
                     const normalizedNew = this.normalizeItems(newItems);
                     const normalizedCurrent = this.normalizeItems(this.items);
 
                     if (JSON.stringify(normalizedNew) !== JSON.stringify(normalizedCurrent)) {
-                        console.log('✅ Загружаем initialItems в items');
+                        console.log('✅ RequestItems: загружаем initialItems в items');
                         this.items = normalizedNew;
                     }
+
+                    // ✅ СБРАСЫВАЕМ ФЛАГ ЧЕРЕЗ НЕСКОЛЬКО МИЛЛИСЕКУНД
+                    setTimeout(() => {
+                        this.isProcessingExternalUpdate = false;
+                    }, 100);
                 } else if (this.items.length === 0) {
                     this.items = [this.createEmptyItem()];
                 }
@@ -267,7 +280,6 @@ export default {
 
     },
     methods: {
-        // ⚠️ ИСПРАВЛЕНИЕ: Добавлен метод для гарантии числового значения
         ensureNumber(value) {
             if (value === null || value === undefined || value === '') {
                 return 0;
@@ -329,8 +341,6 @@ export default {
             return prepared;
         },
 
-
-        // ⚠️ ИСПРАВЛЕНИЕ: Метод преобразования в число или null
         convertToNumberOrNull(value) {
             if (value === '' || value === null || value === undefined) {
                 return null;
@@ -350,16 +360,31 @@ export default {
         },
 
         normalizeItem(item) {
-            return {
+            const normalized = {
                 category_id: item.category_id || null,
                 quantity: parseInt(item.quantity) || 1,
                 hourly_rate: item.hourly_rate ? this.ensureNumber(item.hourly_rate) : null,
                 use_individual_conditions: Boolean(item.use_individual_conditions),
                 individual_conditions: item.individual_conditions || {},
-                specifications: this.prepareSpecificationsForSubmission(item.specifications),
-                // ⚠️ ДОБАВЛЯЕМ МЕТАДАННЫЕ ДЛЯ КАСТОМНЫХ ПАРАМЕТРОВ
-                custom_specs_metadata: item.specifications?.metadata || {}
+                specifications: {
+                    standard_specifications: item.specifications?.standard_specifications || {},
+                    custom_specifications: item.specifications?.custom_specifications || {}
+                },
+                custom_specs_metadata: item.custom_specs_metadata || {}
             };
+
+            console.log('🔄 Нормализована позиция с новой структурой:', {
+                category_id: normalized.category_id,
+                standard_specs_count: Object.keys(normalized.specifications.standard_specifications).length,
+                custom_specs_count: Object.keys(normalized.specifications.custom_specifications).length,
+                metadata_count: Object.keys(normalized.custom_specs_metadata).length
+            });
+
+            return normalized;
+        },
+
+        isEmptyObject(obj) {
+            return obj && Object.keys(obj).length === 0 && obj.constructor === Object;
         },
 
         normalizeItems(items) {
@@ -380,6 +405,7 @@ export default {
             });
         },
 
+        // ✅ ИСПРАВЛЕННЫЙ МЕТОД: Дебаунс для обновления items
         debouncedUpdateItems() {
             if (this.debounceTimeout) {
                 clearTimeout(this.debounceTimeout);
@@ -395,16 +421,49 @@ export default {
             return category?.name || 'Категория не найдена';
         },
 
+        // ✅ ИСПРАВЛЕННЫЙ МЕТОД: Эмит обновлений с защитой от циклов
         emitUpdates() {
-            console.log('📤 RequestItems: отправка обновленных данных', this.items);
+            // Защита от циклических обновлений
+            if (this.preventUpdateLoop || this.isProcessingExternalUpdate) {
+                console.log('🛑 RequestItems: предотвращена циклическая отправка в emitUpdates');
+                return;
+            }
 
-            const preparedItems = this.items.map(item => ({
-                ...item,
-                specifications: this.prepareSpecificationsForSubmission(item.specifications)
-            }));
+            console.log('📤 RequestItems: отправка обновленных данных');
 
-            this.$emit('items-updated', preparedItems);
-            this.$emit('total-budget-updated', this.totalBudget);
+            try {
+                const preparedItems = this.items.map((item, index) => {
+                    const preparedItem = {
+                        ...item,
+                        specifications: {
+                            standard_specifications: item.specifications?.standard_specifications || {},
+                            custom_specifications: item.specifications?.custom_specifications || {}
+                        },
+                        custom_specs_metadata: item.custom_specs_metadata || {}
+                    };
+
+                    // Диагностика каждой позиции
+                    console.log(`📦 Позиция ${index} для отправки:`, {
+                        category_id: preparedItem.category_id,
+                        standard_specs_count: Object.keys(preparedItem.specifications.standard_specifications).length,
+                        custom_specs_count: Object.keys(preparedItem.specifications.custom_specifications).length,
+                        metadata_count: Object.keys(preparedItem.custom_specs_metadata).length
+                    });
+
+                    return preparedItem;
+                });
+
+                this.$emit('items-updated', preparedItems);
+                this.$emit('total-budget-updated', this.totalBudget);
+
+                console.log('✅ RequestItems: данные успешно отправлены', {
+                    items_count: preparedItems.length,
+                    total_budget: this.totalBudget
+                });
+
+            } catch (error) {
+                console.error('❌ RequestItems: ошибка при отправке данных:', error);
+            }
         },
 
         addItem() {
@@ -429,28 +488,115 @@ export default {
                 hourly_rate: this.ensureNumber(this.generalHourlyRate),
                 use_individual_conditions: false,
                 individual_conditions: {},
-                specifications: {}
+                specifications: {},
+                custom_specs_metadata: {}
             };
         },
 
         onCategoryChange(item, index) {
             this.items[index].specifications = {};
+            this.items[index].custom_specs_metadata = {};
             this.emitUpdates();
         },
 
-        // В RequestItems.vue - ИСПРАВЛЯЕМ ЭТОТ МЕТОД:
-        onSpecificationsUpdate(index, specifications) {
-            console.log('🔄 RequestItems: получены обновленные спецификации для позиции', index, specifications);
+        // ✅ ИСПРАВЛЕННЫЙ МЕТОД: Обработка обновлений спецификаций
+       onSpecificationsUpdate(index, specifications) {
+            console.log('🔄 RequestItems: получены обновленные спецификации для позиции', index, {
+                стандартные_ключи: Object.keys(specifications?.standard_specifications || {}),
+                кастомные_ключи: Object.keys(specifications?.custom_specifications || {}),
+                кастомные_количество: Object.keys(specifications?.custom_specifications || {}).length
+            });
 
-            // ⚠️ УБИРАЕМ ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ - ЭТО ВЫЗЫВАЕТ ЦИКЛ
-            // Просто обновляем данные без вызова forceItemsUpdate()
-            this.items[index].specifications = specifications;
+            // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Гарантируем правильные типы данных для кастомных спецификаций
+            if (specifications?.custom_specifications) {
+                let hasNullUnit = false;
+                Object.keys(specifications.custom_specifications).forEach(key => {
+                    const spec = specifications.custom_specifications[key];
+                    if (spec) {
+                        // ✅ ГАРАНТИРУЕМ ЧТО UNIT ВСЕГДА СТРОКА, А НЕ NULL
+                        if (spec.unit === null || spec.unit === undefined) {
+                            console.error(`❌ RequestItems: КРИТИЧЕСКАЯ ОШИБКА - unit null/undefined для ${key}`);
+                            specifications.custom_specifications[key].unit = '';
+                            hasNullUnit = true;
+                        } else if (typeof spec.unit !== 'string') {
+                            console.warn(`⚠️ RequestItems: исправляем тип unit для ${key}`, spec.unit);
+                            specifications.custom_specifications[key].unit = String(spec.unit);
+                        }
 
-            // ⚠️ УБИРАЕМ forceItemsUpdate() - данные уже обновлены
-            // this.forceItemsUpdate();
+                        if (typeof spec.label !== 'string') {
+                            specifications.custom_specifications[key].label = String(spec.label || '');
+                        }
+                        if (typeof spec.dataType !== 'string') {
+                            specifications.custom_specifications[key].dataType = 'string';
+                        }
 
-            // Вместо этого просто отмечаем изменения
-            this.hasUnsavedChanges = true;
+                        // Для числовых значений проверяем валидность
+                        if (spec.dataType === 'number' && spec.value !== null && spec.value !== undefined) {
+                            const numValue = Number(spec.value);
+                            if (isNaN(numValue)) {
+                                console.warn(`⚠️ RequestItems: невалидное числовое значение для ${key}`, spec.value);
+                                specifications.custom_specifications[key].value = null;
+                            }
+                        }
+                    }
+                });
+
+                if (hasNullUnit) {
+                    console.error('🚨 RequestItems: ВНИМАНИЕ - были обнаружены null значения unit в полученных данных от EquipmentSpecifications');
+                }
+            }
+
+            // ✅ ЗАЩИТА ОТ ЦИКЛИЧЕСКИХ ОБНОВЛЕНИЙ
+            if (this.preventUpdateLoop) {
+                console.log('🛑 RequestItems: предотвращен циклический вызов onSpecificationsUpdate');
+                return;
+            }
+
+            this.preventUpdateLoop = true;
+
+            try {
+                // ✅ ОБНОВЛЯЕМ СПЕЦИФИКАЦИИ С НОВОЙ СТРУКТУРОЙ
+                this.items[index].specifications = { ...specifications };
+
+                // ✅ СОХРАНЯЕМ МЕТАДАННЫЕ ИЗ КАСТОМНЫХ СПЕЦИФИКАЦИЙ
+                if (specifications && specifications.custom_specifications) {
+                    const customMetadata = {};
+                    Object.keys(specifications.custom_specifications).forEach(key => {
+                        const spec = specifications.custom_specifications[key];
+                        // ✅ ГАРАНТИРУЕМ ЧТО UNIT ВСЕГДА СТРОКА В МЕТАДАННЫХ
+                        let unitValue = spec.unit || '';
+                        if (unitValue === null || unitValue === undefined) {
+                            unitValue = '';
+                            console.error(`❌ RequestItems: unit null в метаданных для ${key}`);
+                        }
+
+                        customMetadata[key] = {
+                            name: spec.label,
+                            dataType: spec.dataType || 'string',
+                            unit: unitValue
+                        };
+                    });
+                    this.items[index].custom_specs_metadata = customMetadata;
+
+                    console.log('💾 RequestItems: сохранены метаданные для позиции:', {
+                        index,
+                        custom_specs_count: Object.keys(specifications.custom_specifications).length,
+                        metadata_count: Object.keys(customMetadata).length
+                    });
+                }
+
+                this.hasUnsavedChanges = true;
+
+                // ✅ ЭМИТИМ ИЗМЕНЕНИЯ С ЗАДЕРЖКОЙ
+                setTimeout(() => {
+                    this.debouncedUpdateItems();
+                    this.preventUpdateLoop = false;
+                }, 50);
+
+            } catch (error) {
+                console.error('❌ RequestItems: ошибка в onSpecificationsUpdate:', error);
+                this.preventUpdateLoop = false;
+            }
         },
 
         toggleIndividualConditions(index, event) {
@@ -522,6 +668,21 @@ export default {
                 currency: 'RUB',
                 minimumFractionDigits: 0
             }).format(amount);
+        },
+
+        // ✅ МЕТОД ДЛЯ ПРОВЕРКИ СОСТОЯНИЯ (для отладки)
+        checkItemsState() {
+            console.log('🔍 RequestItems: ТЕКУЩЕЕ СОСТОЯНИЕ ITEMS');
+            this.items.forEach((item, index) => {
+                console.log(`  Позиция ${index}:`, {
+                    category_id: item.category_id,
+                    specifications_type: typeof item.specifications,
+                    has_standard_specs: !!item.specifications?.standard_specifications,
+                    has_custom_specs: !!item.specifications?.custom_specifications,
+                    standard_specs_count: Object.keys(item.specifications?.standard_specifications || {}).length,
+                    custom_specs_count: Object.keys(item.specifications?.custom_specifications || {}).length
+                });
+            });
         }
     },
     mounted() {
@@ -540,13 +701,19 @@ export default {
             this.items = [this.createEmptyItem()];
         }
 
-        this.emitUpdates();
+        // ✅ ИСПРАВЛЕНИЕ: Не эмитим сразу при монтировании, чтобы избежать циклов
+        setTimeout(() => {
+            this.emitUpdates();
+        }, 500);
     },
 
+    // ✅ ГЛОБАЛЬНАЯ ЗАЩИТА ОТ ЦИКЛОВ
     beforeUnmount() {
+        // Очищаем все таймеры при размонтировании
         if (this.debounceTimeout) {
             clearTimeout(this.debounceTimeout);
         }
+        console.log('🔧 RequestItems: компонент размонтируется, таймеры очищены');
     }
 }
 </script>

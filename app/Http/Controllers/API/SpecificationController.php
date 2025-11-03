@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Services\EquipmentSpecificationService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class SpecificationController extends Controller
 {
@@ -17,7 +18,222 @@ class SpecificationController extends Controller
     }
 
     /**
-     * Get specification template for category
+     * Get specification template for category (новый метод для фронтенда)
+     */
+    public function getTemplateByCategory($categoryId): JsonResponse
+    {
+        try {
+            \Log::info('🔧 API: Получение шаблона спецификаций для категории', ['category_id' => $categoryId]);
+
+            // Проверяем существование категории
+            $category = Category::find($categoryId);
+            if (!$category) {
+                \Log::warning('❌ Категория не найдена', ['category_id' => $categoryId]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Категория не найдена',
+                    'template' => []
+                ], 404);
+            }
+
+            // Получаем стандартные спецификации для категории
+            $standardSpecs = $this->getStandardSpecsForCategory($categoryId);
+
+            // Формируем ответ в формате, ожидаемом фронтендом
+            $template = [
+                'success' => true,
+                'data' => [
+                    'category' => [
+                        'id' => $category->id,
+                        'name' => $category->name
+                    ],
+                    'standard_specifications' => $standardSpecs
+                ]
+            ];
+
+            \Log::info('✅ API: Шаблон успешно загружен', [
+                'category_id' => $categoryId,
+                'specs_count' => count($standardSpecs)
+            ]);
+
+            return response()->json($template);
+
+        } catch (\Exception $e) {
+            \Log::error('❌ API: Ошибка загрузки шаблона спецификаций', [
+                'category_id' => $categoryId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при загрузке шаблона параметров',
+                'template' => []
+            ], 500);
+        }
+    }
+
+    /**
+     * Получение стандартных спецификаций для категории
+     */
+    private function getStandardSpecsForCategory($categoryId): array
+    {
+        // Базовые спецификации для всех категорий
+        $commonSpecs = [
+            [
+                'key' => 'weight',
+                'label' => 'Вес',
+                'unit' => 'т',
+                'type' => 'number',
+                'placeholder' => 'Введите значение в т'
+            ],
+            [
+                'key' => 'power',
+                'label' => 'Мощность',
+                'unit' => 'л.с.',
+                'type' => 'number',
+                'placeholder' => 'Введите значение в л.с.'
+            ],
+            [
+                'key' => 'max_speed',
+                'label' => 'Максимальная скорость',
+                'unit' => 'км/ч',
+                'type' => 'number',
+                'placeholder' => 'Введите значение в км/ч'
+            ]
+        ];
+
+        // Специфические спецификации по категориям
+        $categorySpecificSpecs = [
+            // Экскаваторы (ID 1)
+            1 => [
+                [
+                    'key' => 'bucket_volume',
+                    'label' => 'Объем ковша',
+                    'unit' => 'м³',
+                    'type' => 'number',
+                    'placeholder' => 'Введите значение в м³'
+                ],
+                [
+                    'key' => 'digging_depth',
+                    'label' => 'Глубина копания',
+                    'unit' => 'м',
+                    'type' => 'number',
+                    'placeholder' => 'Введите значение в м'
+                ],
+                [
+                    'key' => 'max_reach',
+                    'label' => 'Максимальный вылет',
+                    'unit' => 'м',
+                    'type' => 'number',
+                    'placeholder' => 'Введите значение в м'
+                ]
+            ],
+            // Самосвалы (ID 3)
+            3 => [
+                [
+                    'key' => 'load_capacity',
+                    'label' => 'Грузоподъемность',
+                    'unit' => 'т',
+                    'type' => 'number',
+                    'placeholder' => 'Введите значение в т'
+                ],
+                [
+                    'key' => 'body_volume',
+                    'label' => 'Объем кузова',
+                    'unit' => 'м³',
+                    'type' => 'number',
+                    'placeholder' => 'Введите значение в м³'
+                ],
+                [
+                    'key' => 'axle_configuration',
+                    'label' => 'Колёсная формула',
+                    'unit' => '',
+                    'type' => 'text',
+                    'placeholder' => 'Например: 6x4, 8x4'
+                ]
+            ],
+            // Грузовики (ID 10)
+            10 => [
+                [
+                    'key' => 'load_capacity',
+                    'label' => 'Грузоподъемность',
+                    'unit' => 'т',
+                    'type' => 'number',
+                    'placeholder' => 'Введите значение в т'
+                ],
+                [
+                    'key' => 'body_volume',
+                    'label' => 'Объем кузова',
+                    'unit' => 'м³',
+                    'type' => 'number',
+                    'placeholder' => 'Введите значение в м³'
+                ],
+                [
+                    'key' => 'axle_configuration',
+                    'label' => 'Колёсная формула',
+                    'unit' => '',
+                    'type' => 'text',
+                    'placeholder' => 'Например: 6x4, 8x4'
+                ]
+            ],
+            // Бульдозеры (ID 2)
+            2 => [
+                [
+                    'key' => 'blade_width',
+                    'label' => 'Ширина отвала',
+                    'unit' => 'м',
+                    'type' => 'number',
+                    'placeholder' => 'Введите значение в м'
+                ],
+                [
+                    'key' => 'blade_height',
+                    'label' => 'Высота отвала',
+                    'unit' => 'м',
+                    'type' => 'number',
+                    'placeholder' => 'Введите значение в м'
+                ],
+                [
+                    'key' => 'blade_capacity',
+                    'label' => 'Объем отвала',
+                    'unit' => 'м³',
+                    'type' => 'number',
+                    'placeholder' => 'Введите значение в м³'
+                ]
+            ],
+            // Краны (ID 4)
+            4 => [
+                [
+                    'key' => 'lifting_capacity',
+                    'label' => 'Грузоподъемность',
+                    'unit' => 'т',
+                    'type' => 'number',
+                    'placeholder' => 'Введите значение в т'
+                ],
+                [
+                    'key' => 'boom_length',
+                    'label' => 'Длина стрелы',
+                    'unit' => 'м',
+                    'type' => 'number',
+                    'placeholder' => 'Введите значение в м'
+                ],
+                [
+                    'key' => 'max_lifting_height',
+                    'label' => 'Максимальная высота подъема',
+                    'unit' => 'м',
+                    'type' => 'number',
+                    'placeholder' => 'Введите значение в м'
+                ]
+            ]
+        ];
+
+        // Объединяем общие и специфические спецификации
+        $specificSpecs = $categorySpecificSpecs[$categoryId] ?? [];
+        return array_merge($commonSpecs, $specificSpecs);
+    }
+
+    /**
+     * Get specification template for category (старый метод - для обратной совместимости)
      */
     public function getTemplate($categoryId): JsonResponse
     {
@@ -203,7 +419,6 @@ class SpecificationController extends Controller
 
         return $placeholderMap[$parameterKey] ?? 'Введите значение';
     }
-
 
     /**
      * Validate specifications
