@@ -1,7 +1,50 @@
-/node_modules 
-/vendor 
-/public/build 
-.env 
-*.zip 
-*.rar 
-*.tar.gz 
+# Dependency directories
+/node_modules/
+/vendor/
+
+# Build directories
+/public/build/           # ← ВАЖНО! Собранные Vite ассеты
+/public/hot
+
+# Environment files
+.env
+.env.backup
+.env.production
+.env.local
+.env.testing
+
+# Storage logs
+/storage/logs/*.log
+/storage/framework/cache/
+/storage/framework/sessions/
+/storage/framework/views/
+
+# Cache files
+bootstrap/cache/*
+
+# Debugging
+.idea/
+.vscode/
+.phpunit.result.cache
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Optional: если используете Homestead
+Homestead.json
+Homestead.yaml
+
+# Optional: тестовые данные
+/tests/_output/
+/tests/_support/_generated/
+
+# Optional: если есть документация
+/docs/_build/

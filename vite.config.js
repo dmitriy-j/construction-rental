@@ -1,33 +1,32 @@
-// vite.config.js - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import vue from '@vitejs/plugin-vue';
 
+// Упрощенная версия БЕЗ glob для надежности
 export default defineConfig({
     plugins: [
         laravel({
             input: [
+                // Основные файлы
                 'resources/sass/app.scss',
-                'resources/sass/sidebar.scss',
-                'resources/sass/footer.scss',
-                'resources/sass/navbar.scss',
-                'resources/sass/mobile-navbar.scss',
                 'resources/js/app.js',
-                'resources/js/vue-manager.js',
-                'resources/js/components/SidebarComponent.js',
-                'resources/js/stores/sidebarStore.js',
-                'resources/js/theme.js',
-                'resources/js/ripple.js',
-                'resources/js/cart/index.js',
-                'resources/js/navbar.js',
-                'resources/js/components.js',
+
+                // Все страницы с Vue компонентами
                 'resources/js/pages/rental-request-create.js',
                 'resources/js/pages/rental-request-show.js',
-                'resources/js/pages/public-rental-request-show.js',
                 'resources/js/pages/rental-request-edit.js',
                 'resources/js/pages/rental-requests.js',
                 'resources/js/pages/lessor-rental-requests.js',
                 'resources/js/pages/lessor-rental-request-detail.js',
+                'resources/js/pages/public-rental-request-show.js',
+
+                // Дополнительные скрипты
+                'resources/js/vue-manager.js',
+                'resources/js/components.js',
+                'resources/js/navbar.js',
+                'resources/js/theme.js',
+                'resources/js/ripple.js',
+                'resources/js/cart/index.js',
                 'resources/js/yandex-map-fallback.js'
             ],
             refresh: true,
@@ -41,38 +40,18 @@ export default defineConfig({
             },
         }),
     ],
-    resolve: {
-        alias: {
-            '@': '/resources/js',
-            'vue': 'vue/dist/vue.esm-bundler.js',
-            '~components': '/resources/js/components',
-            '~views': '/resources/js/views',
-            '~pages': '/resources/js/pages',
-            '~lessor': '/resources/js/components/Lessor',
-        },
-    },
+
     build: {
         target: 'es2015',
+        outDir: 'public/build',
+        emptyOutDir: true,
+        sourcemap: false,
+        minify: false, // Отключаем минификацию для экономии памяти
         rollupOptions: {
             output: {
-                manualChunks: {
-                    vendor: ['vue', 'axios', 'bootstrap'],
-                    charts: ['chart.js'],
-                    manager: ['resources/js/vue-manager.js'],
-                    'public-requests': [
-                        'resources/js/views/PublicRentalRequestShow.vue',
-                        'resources/js/components/Public/PublicRentalConditionsDisplay.vue',
-                        'resources/js/components/Public/PublicCategoryGroup.vue'
-                    ],
-                    'lessor-components': [
-                        'resources/js/components/Lessor/RentalRequestDetail.vue',
-                        'resources/js/components/Lessor/ProposalTemplates.vue'
-                    ]
-                },
+                manualChunks: undefined, // Отключаем разделение на чанки
             },
         },
-        chunkSizeWarningLimit: 600,
-        sourcemap: false,
-        minify: 'esbuild',
+        chunkSizeWarningLimit: 1000,
     },
 });
