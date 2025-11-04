@@ -7,6 +7,7 @@ use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\RentalRequestResponse;
+use App\Models\RentalRequestItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -68,16 +69,26 @@ class CartService
             // Резервируем количество в заявке
             $this->reserveRequestQuantity($proposal);
 
+            // 🔥 ИСПРАВЛЕННЫЙ РАСЧЕТ РАБОЧИХ ЧАСОВ ПЕРЕД СОЗДАНИЕМ CARTITEM
+            $rentalCondition = CartItem::getStaticRentalConditionForProposal($proposal, $proposal->rentalRequest);
+            $workingHours = CartItem::calculateActualWorkingHours($proposal->rentalRequest, $rentalCondition);
+
+            \Log::info('Working hours calculated for proposal', [
+                'proposal_id' => $proposalId,
+                'working_hours' => $workingHours,
+                'method' => 'CartItem::calculateActualWorkingHours'
+            ]);
+
             // Создаем элемент корзины
             $cartItem = CartItem::createFromProposal($proposal, $cart);
 
-            // 🔥 ДОБАВЛЯЕМ ПРОВЕРКУ МЕТОДА calculateActualWorkingHours
-            if (method_exists($cartItem, 'calculateActualWorkingHours')) {
-                $workingHours = $cartItem->calculateActualWorkingHours();
-                \Log::info('Working hours calculated successfully', ['hours' => $workingHours]);
-            } else {
-                \Log::warning('Метод calculateActualWorkingHours не существует в CartItem, используем fallback');
-                $workingHours = $this->calculateFallbackWorkingHours($cartItem);
+            // 🔥 ГАРАНТИРУЕМ, ЧТО actual_working_hours СОХРАНЕНО
+            if ($cartItem->actual_working_hours != $workingHours) {
+                $cartItem->update([
+                    'actual_working_hours' => $workingHours,
+                    'period_count' => $workingHours
+                ]);
+                $cartItem->refresh();
             }
 
             $this->recalculateTotals($cart);
@@ -126,6 +137,33 @@ class CartService
                 $requestItem->increment('reserved_quantity', $proposal->proposed_quantity);
             }
         }
+    }
+
+    /**
+     * 🔥 ОБНОВЛЕНИЕ actual_working_hours ДЛЯ СУЩЕСТВУЮЩИХ ЭЛЕМЕНТОВ КОРЗИНЫ
+     */
+    public function updateActualWorkingHoursForCart(Cart $cart): void
+    {
+        foreach ($cart->items as $item) {
+            if (method_exists($item, 'calculateWorkingHoursForCartItem')) {
+                $actualHours = $item->calculateWorkingHoursForCartItem();
+
+                if ($item->actual_working_hours != $actualHours) {
+                    $item->update([
+                        'actual_working_hours' => $actualHours,
+                        'period_count' => $actualHours
+                    ]);
+
+                    \Log::info('Updated actual working hours for cart item', [
+                        'item_id' => $item->id,
+                        'old_hours' => $item->actual_working_hours,
+                        'new_hours' => $actualHours
+                    ]);
+                }
+            }
+        }
+
+        $this->recalculateTotals($cart);
     }
 
     public function fixProposalCartPrices(): void
@@ -182,6 +220,7 @@ class CartService
                 // Обновляем запись
                 $item->update([
                     'period_count' => $workingHours,
+                    'actual_working_hours' => $workingHours, // 🔥 ОБНОВЛЯЕМ actual_working_hours
                     'base_price' => $customerPricePerHour,
                     'fixed_customer_price' => $customerPricePerHour,
                     'fixed_lessor_price' => $lessorPricePerHour,
@@ -414,6 +453,7 @@ class CartService
         return $cart->items()->create([
             'rental_term_id' => $rentalTermId,
             'period_count' => $periodCount,
+            'actual_working_hours' => $periodCount, // 🔥 СОХРАНЯЕМ actual_working_hours
             'base_price' => $basePrice,
             'platform_fee' => $platformFee,
             'start_date' => $startDate,
@@ -465,6 +505,7 @@ class CartService
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'period_count' => $workingHours,
+                'actual_working_hours' => $workingHours, // 🔥 ОБНОВЛЯЕМ actual_working_hours
                 'base_price' => $pricing['base_price_per_unit'],
                 'platform_fee' => $pricing['platform_fee'],
             ]);
@@ -483,6 +524,22 @@ class CartService
 
         $cart->load('items');
 
+        // 🔥 ПРОВЕРЯЕМ СОГЛАСОВАННОСТЬ actual_working_hours И period_count
+        foreach ($cart->items as $item) {
+            if ($item->actual_working_hours && $item->actual_working_hours != $item->period_count) {
+                \Log::warning('Cart item hours mismatch', [
+                    'item_id' => $item->id,
+                    'actual_working_hours' => $item->actual_working_hours,
+                    'period_count' => $item->period_count
+                ]);
+
+                // Автоматически исправляем расхождение
+                $item->update([
+                    'period_count' => $item->actual_working_hours
+                ]);
+            }
+        }
+
         // 🔥 ПРАВИЛЬНЫЙ РАСЧЕТ: base_price * period_count для каждого элемента
         $cart->total_base_amount = $cart->items->sum(function ($item) {
             $total = $item->base_price * $item->period_count;
@@ -490,6 +547,7 @@ class CartService
                 'item_id' => $item->id,
                 'base_price' => $item->base_price,
                 'period_count' => $item->period_count,
+                'actual_working_hours' => $item->actual_working_hours,
                 'total' => $total
             ]);
             return $total;
@@ -544,6 +602,7 @@ class CartService
             'start_date' => Carbon::parse($startDate),
             'end_date' => Carbon::parse($endDate),
             'period_count' => $item->rentalTerm->calculatePeriodCount($startDate, $endDate),
+            'actual_working_hours' => $item->rentalTerm->calculatePeriodCount($startDate, $endDate), // 🔥 ОБНОВЛЯЕМ actual_working_hours
         ]);
 
         $this->recalculateTotals($item->cart);
@@ -571,6 +630,7 @@ class CartService
                     'start_date' => $startDate,
                     'end_date' => $endDate,
                     'period_count' => $workingHours,
+                    'actual_working_hours' => $workingHours, // 🔥 ОБНОВЛЯЕМ actual_working_hours
                     'base_price' => $pricing['base_price_per_unit'],
                     'platform_fee' => $pricing['platform_fee'],
                 ]);
@@ -615,7 +675,14 @@ class CartService
         $end = Carbon::parse($item->end_date);
         $days = $start->diffInDays($end) + 1;
 
-        return $days * $item->rentalCondition->shift_hours * $item->rentalCondition->shifts_per_day;
+        $workingHours = $days * $item->rentalCondition->shift_hours * $item->rentalCondition->shifts_per_day;
+
+        // 🔥 ОБНОВЛЯЕМ actual_working_hours
+        $item->update([
+            'actual_working_hours' => $workingHours
+        ]);
+
+        return $workingHours;
     }
 
     /**

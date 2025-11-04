@@ -100,7 +100,8 @@ class ProposalCartController extends Controller
                 'message' => 'Предложение принято и добавлено в корзину',
                 'data' => [
                     'cart_item' => $cartItem->load('proposal.equipment'),
-                    'reserved_until' => $cartItem->cart->reserved_until
+                    'reserved_until' => $cartItem->cart->reserved_until,
+                    'actual_working_hours' => $cartItem->actual_working_hours // 🔥 ВОЗВРАЩАЕМ actual_working_hours
                 ]
             ]);
 
@@ -277,7 +278,7 @@ class ProposalCartController extends Controller
     }
 
     /**
-     * 🔥 ОБНОВЛЕННЫЙ МЕТОД С ГАРАНТИЕЙ JSON ОТВЕТА
+     * 🔥 ОБНОВЛЕННЫЙ МЕТОД С ГАРАНТИЕЙ JSON ОТВЕТА И actual_working_hours
      */
    public function updateRentalPeriod(Request $request): JsonResponse
     {
@@ -353,22 +354,30 @@ class ProposalCartController extends Controller
                     // 🔥 ОБНОВЛЯЕМ ВРЕМЕННОЕ РЕЗЕРВИРОВАНИЕ
                     $this->updateEquipmentReservation($cartItem, $startDate, $endDate, $cart);
 
-                    // ✅ ИСПРАВЛЕНО: Используем публичный метод модели CartItem
+                    // 🔥 РАСЧЕТ АКТУАЛЬНЫХ РАБОЧИХ ЧАСОВ С ИСПОЛЬЗОВАНИЕМ ПУБЛИЧНОГО МЕТОДА
                     $workingHours = $cartItem->calculateWorkingHoursForCartItem();
+
+                    \Log::info('[PROPOSAL_CART_UPDATE] Calculated working hours', [
+                        'item_id' => $itemId,
+                        'working_hours' => $workingHours,
+                        'start_date' => $startDate,
+                        'end_date' => $endDate
+                    ]);
 
                     $customerPricePerHour = $cartItem->fixed_customer_price;
                     $lessorPricePerHour = $cartItem->fixed_lessor_price;
                     $platformFeePerHour = $cartItem->platform_fee;
 
+                    // 🔥 ОБНОВЛЯЕМ ДАННЫЕ С actual_working_hours
                     $updateData = [
                         'start_date' => $startDate,
                         'end_date' => $endDate,
                         'period_count' => $workingHours,
+                        'actual_working_hours' => $workingHours, // ✅ ГАРАНТИРУЕМ СОХРАНЕНИЕ
                         'base_price' => $customerPricePerHour,
                         'fixed_customer_price' => $customerPricePerHour,
                         'fixed_lessor_price' => $lessorPricePerHour,
                         'platform_fee' => $platformFeePerHour,
-                        'actual_working_hours' => $workingHours, // ✅ Сохраняем фактические рабочие часы
                     ];
 
                     $cartItem->update($updateData);
@@ -393,7 +402,8 @@ class ProposalCartController extends Controller
                     'data' => [
                         'cart' => $updatedCart,
                         'reserved_until' => $cart->reserved_until,
-                        'updated_items_count' => count($updatedItems)
+                        'updated_items_count' => count($updatedItems),
+                        'actual_working_hours_updated' => true // 🔥 ПОДТВЕРЖДАЕМ ОБНОВЛЕНИЕ
                     ]
                 ]);
 

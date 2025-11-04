@@ -48,18 +48,12 @@ class RentalRequestController extends Controller
         try {
             $validated = $request->validated();
 
-            Log::debug('📥 STORE METHOD - INCOMING DATA', [
-                'items_count' => count($validated['items'] ?? []),
-                'first_item_data' => $validated['items'][0] ?? 'no items',
-                'specifications_structure' => isset($validated['items'][0]['specifications'])
-                    ? array_keys($validated['items'][0]['specifications'])
-                    : 'no specs',
-                'standard_specs' => isset($validated['items'][0]['standard_specifications'])
-                    ? array_keys($validated['items'][0]['standard_specifications'])
-                    : 'no standard specs',
-                'custom_specs' => isset($validated['items'][0]['custom_specifications'])
-                    ? array_keys($validated['items'][0]['custom_specifications'])
-                    : 'no custom specs'
+            // 🔥 ДЕТАЛЬНАЯ ПРОВЕРКА ДОСТАВКИ
+            Log::debug('🚚 STORE METHOD - DELIVERY DATA', [
+                'delivery_required' => $validated['delivery_required'] ?? 'not_set',
+                'delivery_required_type' => isset($validated['delivery_required']) ? gettype($validated['delivery_required']) : 'not_set',
+                'delivery_required_value' => $validated['delivery_required'] ?? null,
+                'all_validated_keys' => array_keys($validated)
             ]);
 
             $rentalRequest = $this->rentalRequestService->createRentalRequest(
@@ -67,10 +61,12 @@ class RentalRequestController extends Controller
                 auth()->user()
             );
 
-            Log::debug('✅ STORE METHOD - SUCCESS', [
+            // 🔥 ПРОВЕРКА СОХРАНЕННЫХ ДАННЫХ
+            Log::debug('✅ STORE METHOD - DELIVERY SAVED', [
                 'request_id' => $rentalRequest->id,
-                'items_created' => $rentalRequest->items->count(),
-                'first_item_specs_saved' => $rentalRequest->items->first()->specifications ?? 'none'
+                'delivery_required_saved' => $rentalRequest->delivery_required,
+                'delivery_required_type' => gettype($rentalRequest->delivery_required),
+                'delivery_required_in_db' => $rentalRequest->getRawOriginal('delivery_required')
             ]);
 
             DB::commit();
@@ -79,7 +75,10 @@ class RentalRequestController extends Controller
                 'success' => true,
                 'message' => 'Заявка успешно создана',
                 'redirect_url' => route('lessee.rental-requests.show', $rentalRequest->id),
-                'request_id' => $rentalRequest->id
+                'request_id' => $rentalRequest->id,
+                'data' => [
+                    'delivery_required' => $rentalRequest->delivery_required
+                ]
             ]);
 
         } catch (\Exception $e) {
@@ -185,7 +184,8 @@ class RentalRequestController extends Controller
                 'id' => $rentalRequest->id,
                 'title' => $rentalRequest->title,
                 'items_count' => $rentalRequest->items->count(),
-                'first_item_specs' => $rentalRequest->items->first()->specifications ?? 'none'
+                'first_item_specs' => $rentalRequest->items->first()->specifications ?? 'none',
+                'delivery_required' => $rentalRequest->delivery_required // 🔥 ДОБАВЛЕНО
             ]);
 
             $categories = Category::with('children')
@@ -209,7 +209,7 @@ class RentalRequestController extends Controller
         }
     }
 
-    /**
+     /**
      * Принятие предложения по заявке
      */
     public function acceptProposal(Request $request, $requestId, $proposalId): JsonResponse
@@ -252,7 +252,8 @@ class RentalRequestController extends Controller
                 'has_standard_specs' => !empty($processedRequest->items[0]['standard_specifications'] ?? []),
                 'has_custom_specs' => !empty($processedRequest->items[0]['custom_specifications'] ?? []),
                 'standard_specs_structure' => $processedRequest->items[0]['standard_specifications'] ?? [],
-                'custom_specs_structure' => $processedRequest->items[0]['custom_specifications'] ?? []
+                'custom_specs_structure' => $processedRequest->items[0]['custom_specifications'] ?? [],
+                'delivery_required' => $processedRequest->delivery_required ?? false // 🔥 ДОБАВЛЕНО
             ]);
 
             $rentalRequest = RentalRequest::where('user_id', auth()->id())
@@ -267,6 +268,7 @@ class RentalRequestController extends Controller
                 'rental_period_end' => 'required|date|after_or_equal:rental_period_start',
                 'location_id' => 'required|exists:locations,id',
                 'rental_conditions' => 'sometimes|array',
+                'delivery_required' => 'sometimes|boolean', // 🔥 ДОБАВЛЕНО
                 'items' => 'required|array|min:1',
                 'items.*.category_id' => 'required|exists:equipment_categories,id',
                 'items.*.quantity' => 'required|integer|min:1',
@@ -293,7 +295,8 @@ class RentalRequestController extends Controller
                 'first_item_category' => $validated['items'][0]['category_id'] ?? 'unknown',
                 'first_item_standard_specs' => $validated['items'][0]['standard_specifications'] ?? [],
                 'first_item_custom_specs' => $validated['items'][0]['custom_specifications'] ?? [],
-                'first_item_custom_specs_count' => count($validated['items'][0]['custom_specifications'] ?? [])
+                'first_item_custom_specs_count' => count($validated['items'][0]['custom_specifications'] ?? []),
+                'delivery_required' => $validated['delivery_required'] ?? false // 🔥 ДОБАВЛЕНО
             ]);
 
             // Обновление заявки через сервис
@@ -307,7 +310,8 @@ class RentalRequestController extends Controller
                 'first_item_id' => $updatedRequest->items->first()->id ?? 'none',
                 'first_item_standard_specs' => $updatedRequest->items->first()->standard_specifications ?? 'none',
                 'first_item_custom_specs' => $updatedRequest->items->first()->custom_specifications ?? 'none',
-                'first_item_legacy_specs' => $updatedRequest->items->first()->specifications ?? 'none'
+                'first_item_legacy_specs' => $updatedRequest->items->first()->specifications ?? 'none',
+                'delivery_required' => $updatedRequest->delivery_required // 🔥 ДОБАВЛЕНО
             ]);
 
             return response()->json([
@@ -338,7 +342,7 @@ class RentalRequestController extends Controller
      * ✅ НОВЫЙ МЕТОД: Предварительная обработка данных запроса
      * Гарантирует что все unit поля будут строками (не null)
      */
-    private function preprocessRequestData(Request $request): Request
+     private function preprocessRequestData(Request $request): Request
     {
         $items = $request->input('items', []);
 
@@ -368,6 +372,13 @@ class RentalRequestController extends Controller
         // Создаем новый Request с обработанными данными
         $processedData = $request->all();
         $processedData['items'] = $processedItems;
+
+        // 🔥 ОБЕСПЕЧИВАЕМ BOOLEAN ДЛЯ delivery_required
+        if (array_key_exists('delivery_required', $processedData)) {
+            $processedData['delivery_required'] = (bool)$processedData['delivery_required'];
+        } else {
+            $processedData['delivery_required'] = false;
+        }
 
         // Создаем новый Request объект с обработанными данными
         $newRequest = new Request($processedData);
@@ -421,7 +432,8 @@ class RentalRequestController extends Controller
                 'created_at' => $rentalRequest->created_at,
                 'location' => $rentalRequest->location?->name,
                 'items_count' => $rentalRequest->items->count(),
-                'status_text' => $rentalRequest->status_text
+                'status_text' => $rentalRequest->status_text,
+                'delivery_required' => $rentalRequest->delivery_required // 🔥 ДОБАВЛЕНО
             ]);
 
             // Используем сервис для форматирования спецификаций
@@ -461,7 +473,8 @@ class RentalRequestController extends Controller
                 'rental_request_id' => $data['rentalRequest']->id,
                 'rental_request_created_at' => $data['rentalRequest']->created_at?->format('d.m.Y'),
                 'user_name' => $data['user']->name,
-                'items_count' => $data['items']->count()
+                'items_count' => $data['items']->count(),
+                'delivery_required' => $data['rentalRequest']->delivery_required // 🔥 ДОБАВЛЕНО
             ]);
 
             // Генерируем PDF

@@ -13,8 +13,22 @@ class RentalRequestService
     public function createRentalRequest(array $data, User $user): RentalRequest
     {
         return DB::transaction(function () use ($data, $user) {
+            // 🔥 ДОБАВЛЕНО: Логирование входящих данных
+            Log::debug('🚚 RentalRequestService - CREATE DATA', [
+                'delivery_required' => $data['delivery_required'] ?? 'not_set',
+                'delivery_required_type' => isset($data['delivery_required']) ? gettype($data['delivery_required']) : 'not_set',
+                'all_data_keys' => array_keys($data)
+            ]);
+
             $requestData = $this->prepareRequestData($data, $user);
             $rentalRequest = RentalRequest::create($requestData);
+
+            // 🔥 ПРОВЕРКА СОХРАНЕННЫХ ДАННЫХ
+            Log::debug('✅ RentalRequestService - REQUEST CREATED', [
+                'request_id' => $rentalRequest->id,
+                'delivery_required_saved' => $rentalRequest->delivery_required,
+                'delivery_required_raw' => $rentalRequest->getRawOriginal('delivery_required')
+            ]);
 
             $this->createRequestItems($rentalRequest, $data['items']);
             $rentalRequest->load('items');
@@ -23,6 +37,7 @@ class RentalRequestService
             Log::info('Rental request created successfully with new structure', [
                 'request_id' => $rentalRequest->id,
                 'items_count' => $rentalRequest->items->count(),
+                'delivery_required_final' => $rentalRequest->delivery_required,
                 'items_with_standard_specs' => $rentalRequest->items->filter(fn($item) => !empty($item->standard_specifications))->count(),
                 'items_with_custom_specs' => $rentalRequest->items->filter(fn($item) => !empty($item->custom_specifications))->count()
             ]);
@@ -33,6 +48,22 @@ class RentalRequestService
 
     private function prepareRequestData(array $data, User $user): array
     {
+        // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правильная обработка delivery_required
+        $deliveryRequired = $data['delivery_required'] ?? false;
+
+        // Преобразуем разные форматы в boolean
+        if ($deliveryRequired === 'true' || $deliveryRequired === '1' || $deliveryRequired === 1) {
+            $deliveryRequired = true;
+        } elseif ($deliveryRequired === 'false' || $deliveryRequired === '0' || $deliveryRequired === 0) {
+            $deliveryRequired = false;
+        }
+
+        Log::debug('🔧 prepareRequestData - delivery_required processing', [
+            'original' => $data['delivery_required'] ?? 'not_set',
+            'processed' => $deliveryRequired,
+            'type' => gettype($deliveryRequired)
+        ]);
+
         return [
             'user_id' => $user->id,
             'company_id' => $user->company_id,
@@ -43,7 +74,8 @@ class RentalRequestService
             'rental_period_start' => $data['rental_period_start'],
             'rental_period_end' => $data['rental_period_end'],
             'location_id' => $data['location_id'],
-            'delivery_required' => $data['delivery_required'] ?? false,
+            // 🔥 ИСПРАВЛЕНИЕ: Используем обработанное значение
+            'delivery_required' => $deliveryRequired,
             'status' => 'active',
             'expires_at' => now()->addDays(30),
             // Временные значения

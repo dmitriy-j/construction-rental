@@ -65,6 +65,24 @@
                                    required>
                             <small class="text-muted">Будет использована для позиций без индивидуальной стоимости</small>
                         </div>
+
+                        <!-- 🔥 ДОБАВЛЕН ЧЕКБОКС ДОСТАВКИ -->
+                         <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox"
+                                       v-model="formData.delivery_required"
+                                       id="delivery_required"
+                                       true-value="1"
+                                       false-value="0">
+                                <label class="form-check-label" for="delivery_required">
+                                    <i class="fas fa-truck me-2"></i>Требуется доставка техники к объекту
+                                </label>
+                                <small class="form-text text-muted d-block">
+                                    Отметьте, если вам необходима доставка оборудования к месту проведения работ.
+                                    Это повлияет на расчет стоимости аренды.
+                                </small>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -106,6 +124,9 @@
                     <p class="text-muted">
                         Общая стоимость для {{ totalQuantity }} единиц техники
                         на период {{ rentalDays }} дней
+                        <span v-if="formData.delivery_required" class="badge bg-info ms-2">
+                            <i class="fas fa-truck me-1"></i>С доставкой
+                        </span>
                     </p>
                 </div>
             </div>
@@ -177,13 +198,13 @@ export default {
         const defaultFormData = {
             title: '',
             description: '',
-            hourly_rate: 0, // ⚠️ ИСПРАВЛЕНО: число вместо строки
+            hourly_rate: 0,
             rental_period_start: '',
             rental_period_end: '',
             location_id: '',
             rental_conditions: this.getDefaultConditions(),
             items: [],
-            delivery_required: false
+            delivery_required: false // 🔥 ЯВНО УКАЗЫВАЕМ false по умолчанию
         };
 
         return {
@@ -197,7 +218,6 @@ export default {
             minDate: new Date().toISOString().split('T')[0],
             submitting: false,
             error: null,
-            // ⚠️ ИСПРАВЛЕНИЕ: Убедимся, что это число
             generalHourlyRate: 0
         }
     },
@@ -224,7 +244,6 @@ export default {
                    this.formData.items.length > 0 &&
                    this.formData.items.every(item => item.category_id && item.quantity > 0);
         },
-        // ⚠️ ИСПРАВЛЕНИЕ: Добавлено вычисляемое свойство для форматированного бюджета
         formattedBudget() {
             if (typeof this.totalBudget !== 'number' || isNaN(this.totalBudget)) {
                 return '0 ₽';
@@ -233,7 +252,6 @@ export default {
         }
     },
     watch: {
-        // ⚠️ ИСПРАВЛЕНИЕ: Следим за изменением hourly_rate и синхронизируем с generalHourlyRate
         'formData.hourly_rate': {
             handler(newRate) {
                 console.log('🔄 hourly_rate изменен:', newRate, typeof newRate);
@@ -243,16 +261,13 @@ export default {
         }
     },
     methods: {
-        // ⚠️ ИСПРАВЛЕНИЕ: Добавлен метод для обработки изменения ставки
         onHourlyRateChange(value) {
             console.log('🔧 Обработка изменения hourly rate:', value);
-            // Преобразовать в число, если возможно
             const numValue = value === '' ? 0 : Number(value);
             this.formData.hourly_rate = isNaN(numValue) ? 0 : numValue;
             this.generalHourlyRate = this.formData.hourly_rate;
         },
 
-        // ⚠️ ИСПРАВЛЕНИЕ: Метод для гарантии числового значения
         ensureNumber(value) {
             if (value === null || value === undefined || value === '') {
                 return 0;
@@ -295,7 +310,6 @@ export default {
             };
         },
 
-        // ⚠️ ИСПРАВЛЕНИЕ: Глубокая обработка данных формы
         deepProcessFormData(data) {
             const processValue = (value) => {
                 if (value === '' || value === null || value === undefined) {
@@ -307,7 +321,6 @@ export default {
                 }
 
                 if (typeof value === 'string') {
-                    // Обработка числовых строк
                     const num = Number(value);
                     return isNaN(num) ? value : num;
                 }
@@ -319,7 +332,6 @@ export default {
                 if (typeof value === 'object') {
                     const result = {};
                     Object.keys(value).forEach(key => {
-                        // Особое внимание на спецификации и кастомные поля
                         if (key === 'specifications' || key.startsWith('custom_')) {
                             result[key] = this.processSpecifications(value[key]);
                         } else {
@@ -335,7 +347,6 @@ export default {
             return processValue(data);
         },
 
-        // ⚠️ ИСПРАВЛЕНИЕ: Специальная обработка спецификаций
         processSpecifications(specs) {
             if (!specs || typeof specs !== 'object') {
                 return {};
@@ -343,14 +354,12 @@ export default {
 
             const processed = {};
 
-            // Обрабатываем values если есть
             if (specs.values && typeof specs.values === 'object') {
                 Object.keys(specs.values).forEach(key => {
                     const value = specs.values[key];
                     processed[key] = this.convertToNumberOrNull(value);
                 });
             } else {
-                // Обрабатываем как простой объект
                 Object.keys(specs).forEach(key => {
                     const value = specs[key];
                     processed[key] = this.convertToNumberOrNull(value);
@@ -360,7 +369,6 @@ export default {
             return processed;
         },
 
-        // Вспомогательный метод
         convertToNumberOrNull(value) {
             if (value === '' || value === null || value === undefined) {
                 return null;
@@ -458,6 +466,20 @@ export default {
             }
 
             try {
+                const preparedData = this.prepareFormData();
+
+                // 🔥 ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА ПЕРЕД ОТПРАВКОЙ
+                console.log('🚚 Данные доставки при отправке:', {
+                    delivery_required: preparedData.delivery_required,
+                    type: typeof preparedData.delivery_required,
+                    value: preparedData.delivery_required
+                });
+
+                console.log('📤 Final data for create request:', {
+                    delivery_required: preparedData.delivery_required,
+                    full_data: preparedData
+                });
+
                 const response = await fetch(this.storeUrl, {
                     method: 'POST',
                     headers: {
@@ -465,12 +487,18 @@ export default {
                         'X-CSRF-TOKEN': this.csrfToken,
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: JSON.stringify(this.prepareFormData())
+                    body: JSON.stringify(preparedData)
                 });
 
                 const data = await response.json();
 
                 if (data.success) {
+                    // 🔥 ПРОВЕРЯЕМ ОТВЕТ СЕРВЕРА
+                    console.log('✅ Заявка создана успешно:', {
+                        request_id: data.request_id,
+                        delivery_required_in_response: data.data?.delivery_required
+                    });
+
                     this.$emit('saved', data.data);
                     window.location.href = data.redirect_url;
                 } else {
@@ -519,7 +547,7 @@ export default {
             }
         },
 
-       prepareFormData() {
+        prepareFormData() {
             let formData = {
                 title: this.formData.title,
                 description: this.formData.description,
@@ -528,8 +556,9 @@ export default {
                 rental_period_end: this.formData.rental_period_end,
                 location_id: this.formData.location_id,
                 rental_conditions: this.formData.rental_conditions,
+                // 🔥 ГАРАНТИРУЕМ ПРАВИЛЬНЫЙ ФОРМАТ ДЛЯ delivery_required
+                delivery_required: Boolean(this.formData.delivery_required),
                 items: this.formData.items.map(item => {
-                    // ✅ ИСПРАВЛЕНИЕ: Правильная подготовка спецификаций
                     const preparedItem = {
                         category_id: item.category_id,
                         quantity: parseInt(item.quantity) || 1,
@@ -538,18 +567,14 @@ export default {
                         individual_conditions: item.use_individual_conditions ? item.individual_conditions : {},
                     };
 
-                    // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правильная структура спецификаций
                     if (item.specifications) {
-                        // Разделяем стандартные и кастомные спецификации
                         const { standard = {}, custom = {} } = this.prepareSpecifications(item.specifications);
 
                         preparedItem.standard_specifications = standard;
                         preparedItem.custom_specifications = custom;
 
-                        // Для обратной совместимости сохраняем и старую структуру
                         preparedItem.specifications = { ...standard, ...this.extractCustomValues(custom) };
 
-                        // Метаданные для кастомных спецификаций
                         const customMetadata = {};
                         Object.keys(custom).forEach(key => {
                             const spec = custom[key];
@@ -561,7 +586,6 @@ export default {
                         });
                         preparedItem.custom_specs_metadata = customMetadata;
                     } else {
-                        // Пустые спецификации если нет данных
                         preparedItem.standard_specifications = {};
                         preparedItem.custom_specifications = {};
                         preparedItem.specifications = {};
@@ -575,8 +599,7 @@ export default {
                     });
 
                     return preparedItem;
-                }),
-                delivery_required: Boolean(this.formData.delivery_required)
+                })
             };
 
             if (this.editMode) {
@@ -598,13 +621,10 @@ export default {
             Object.keys(specs).forEach(key => {
                 const value = specs[key];
 
-                // Определяем тип спецификации по ключу или структуре
                 if (this.isStandardSpecification(key)) {
                     standard[key] = this.normalizeSpecValue(value);
                 } else {
-                    // Обрабатываем кастомные спецификации
                     if (typeof value === 'object' && value !== null) {
-                        // Уже в правильном формате
                         custom[key] = {
                             label: value.label || key,
                             value: this.normalizeSpecValue(value.value),
@@ -612,7 +632,6 @@ export default {
                             dataType: value.dataType || 'string'
                         };
                     } else {
-                        // Простое значение - конвертируем в структуру
                         custom[key] = {
                             label: this.formatLabel(key),
                             value: this.normalizeSpecValue(value),
@@ -639,13 +658,11 @@ export default {
                 return null;
             }
 
-            // Преобразуем строки с запятыми в числа
             if (typeof value === 'string' && value.includes(',')) {
                 const numValue = parseFloat(value.replace(',', '.'));
                 return isNaN(numValue) ? value : numValue;
             }
 
-            // Преобразуем числовые строки
             if (typeof value === 'string' && !isNaN(value) && value.trim() !== '') {
                 return parseFloat(value);
             }
@@ -662,7 +679,6 @@ export default {
         },
 
         formatLabel(key) {
-            // Преобразуем snake_case в Normal Case
             return key.replace(/_/g, ' ')
                     .replace(/(?:^|\s)\S/g, char => char.toUpperCase());
         },
@@ -700,10 +716,11 @@ export default {
             locations: this.locations?.length,
             formData: this.formData,
             generalHourlyRate: this.generalHourlyRate,
-            hourly_rate_type: typeof this.formData.hourly_rate
+            hourly_rate_type: typeof this.formData.hourly_rate,
+            delivery_required: this.formData.delivery_required,
+            delivery_required_type: typeof this.formData.delivery_required
         });
 
-        // ⚠️ ИСПРАВЛЕНИЕ: Гарантируем числовое значение при монтировании
         this.generalHourlyRate = this.ensureNumber(this.formData.hourly_rate);
 
         if (this.editMode) {

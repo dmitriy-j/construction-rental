@@ -6,7 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreRentalRequestRequest extends FormRequest
 {
-     public function rules()
+    public function rules()
     {
         return [
             'title' => 'required|string|max:255',
@@ -15,7 +15,8 @@ class StoreRentalRequestRequest extends FormRequest
             'rental_period_start' => 'required|date|after:today',
             'rental_period_end' => 'required|date|after:rental_period_start',
             'location_id' => 'required|exists:locations,id',
-            'delivery_required' => 'sometimes',
+            // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Добавлено boolean правило для delivery_required
+            'delivery_required' => 'sometimes|boolean',
 
             // Позиции заявки
             'items' => 'required|array|min:1',
@@ -55,16 +56,41 @@ class StoreRentalRequestRequest extends FormRequest
         ];
     }
 
-     public function prepareForValidation()
+    public function prepareForValidation()
     {
         \Log::debug('🔄 prepareForValidation with IMPROVED structure', [
             'has_items' => !empty($this->items),
-            'items_count' => count($this->items ?? [])
+            'items_count' => count($this->items ?? []),
+            'delivery_required_original' => $this->delivery_required ?? 'not_set',
+            'delivery_required_type' => isset($this->delivery_required) ? gettype($this->delivery_required) : 'not_set'
         ]);
 
-        // Преобразуем все чекбоксы в boolean
-        $deliveryRequired = $this->has('delivery_required') &&
-                        in_array($this->input('delivery_required'), ['true', '1', 'on'], true);
+        // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Улучшенная обработка delivery_required
+        $deliveryRequired = false;
+        if ($this->has('delivery_required')) {
+            $deliveryRequiredValue = $this->input('delivery_required');
+
+            \Log::debug('🔧 Processing delivery_required', [
+                'original_value' => $deliveryRequiredValue,
+                'original_type' => gettype($deliveryRequiredValue)
+            ]);
+
+            // Преобразуем разные форматы в boolean
+            if ($deliveryRequiredValue === true || $deliveryRequiredValue === 'true' || $deliveryRequiredValue === '1' || $deliveryRequiredValue === 1) {
+                $deliveryRequired = true;
+            } elseif ($deliveryRequiredValue === false || $deliveryRequiredValue === 'false' || $deliveryRequiredValue === '0' || $deliveryRequiredValue === 0) {
+                $deliveryRequired = false;
+            } else {
+                // Для любых других значений используем приведение типа
+                $deliveryRequired = (bool)$deliveryRequiredValue;
+            }
+
+            \Log::debug('✅ delivery_required processed', [
+                'original' => $deliveryRequiredValue,
+                'processed' => $deliveryRequired,
+                'processed_type' => gettype($deliveryRequired)
+            ]);
+        }
 
         // Обрабатываем чекбоксы в rental_conditions
         $rentalConditions = $this->input('rental_conditions', []);
@@ -72,7 +98,7 @@ class StoreRentalRequestRequest extends FormRequest
 
         foreach ($checkboxes as $checkbox) {
             if (isset($rentalConditions[$checkbox])) {
-                $rentalConditions[$checkbox] = in_array($rentalConditions[$checkbox], ['true', '1', 'on'], true);
+                $rentalConditions[$checkbox] = in_array($rentalConditions[$checkbox], ['true', '1', 'on', true], true);
             }
         }
 
@@ -144,6 +170,7 @@ class StoreRentalRequestRequest extends FormRequest
 
         $this->merge([
             'hourly_rate' => (float) str_replace(',', '.', $this->hourly_rate),
+            // 🔥 ИСПРАВЛЕНИЕ: Используем обработанное значение delivery_required
             'delivery_required' => $deliveryRequired,
             'rental_conditions' => $rentalConditions,
             'items' => $items,
@@ -151,6 +178,7 @@ class StoreRentalRequestRequest extends FormRequest
 
         \Log::debug('✅ IMPROVED prepareForValidation completed', [
             'final_items_count' => count($items),
+            'delivery_required_final' => $deliveryRequired,
             'first_item_standard_specs' => array_keys($items[0]['standard_specifications'] ?? []),
             'first_item_custom_specs' => array_keys($items[0]['custom_specifications'] ?? []),
             'first_item_legacy_specs' => array_keys($items[0]['specifications'] ?? [])

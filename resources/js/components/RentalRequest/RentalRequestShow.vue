@@ -140,6 +140,18 @@
                                             {{ formatCurrency(request.total_budget || request.calculated_budget_from) }}
                                         </p>
                                     </div>
+
+                                    <!-- 🔥 ДОБАВЛЕНО: Отображение статуса доставки -->
+                                    <div class="info-item mb-3">
+                                        <label class="text-muted small">Доставка</label>
+                                        <p class="mb-0">
+                                            <i class="fas fa-truck text-info me-2"></i>
+                                            {{ request.delivery_required ? 'Требуется доставка техники к объекту' : 'Доставка не требуется' }}
+                                            <span v-if="request.delivery_required" class="badge bg-info ms-2">
+                                                <i class="fas fa-check me-1"></i>Включена
+                                            </span>
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -427,6 +439,12 @@ export default {
                             }
                         });
                     }
+
+                    // 🔥 ЛОГИРОВАНИЕ ДАННЫХ О ДОСТАВКЕ
+                    console.log('🚚 ДАННЫЕ О ДОСТАВКЕ:', {
+                        delivery_required: this.request.delivery_required,
+                        type: typeof this.request.delivery_required
+                    });
 
                     // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Обеспечиваем наличие formatted_specifications с русскими названиями
                     if (this.request.items && this.request.items.length > 0) {
@@ -1010,6 +1028,12 @@ export default {
     justify-content: center;
     margin-bottom: 0.5rem;
     font-weight: bold;
+}
+
+/* 🔥 ДОБАВЛЕН СТИЛЬ ДЛЯ ОТОБРАЖЕНИЯ ДОСТАВКИ */
+.info-item {
+    border-left: 3px solid #0d6efd;
+    padding-left: 1rem;
 }
 
 .step.active .step-number {

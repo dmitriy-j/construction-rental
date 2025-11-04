@@ -58,6 +58,21 @@
                                        min="0" step="50" required>
                                 <small class="text-muted">Будет использована для позиций без индивидуальной стоимости</small>
                             </div>
+
+                            <!-- 🔥 ДОБАВЛЕН ЧЕКБОКС ДОСТАВКИ -->
+                            <div class="col-12">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox"
+                                           v-model="formData.delivery_required"
+                                           id="delivery_required">
+                                    <label class="form-check-label" for="delivery_required">
+                                        <i class="fas fa-truck me-2"></i>Требуется доставка техники к объекту
+                                    </label>
+                                    <small class="form-text text-muted">
+                                        Отметьте, если вам необходима доставка оборудования к месту проведения работ
+                                    </small>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -99,6 +114,9 @@
                         <p class="text-muted">
                             Общая стоимость для {{ totalQuantity }} единиц техники
                             на период {{ rentalDays }} дней
+                            <span v-if="formData.delivery_required" class="badge bg-info ms-2">
+                                <i class="fas fa-truck me-1"></i>С доставкой
+                            </span>
                         </p>
                     </div>
                 </div>
@@ -323,7 +341,7 @@ export default {
                 location_id: '',
                 rental_conditions: this.getDefaultConditions(),
                 items: [],
-                delivery_required: false
+                delivery_required: false // 🔥 ДОБАВЛЕНО
             };
         },
 
@@ -382,6 +400,7 @@ export default {
                 rental_period_end: formatDateForInput(requestData.rental_period_end),
                 location_id: requestData.location_id || '',
                 rental_conditions: requestData.rental_conditions || this.getDefaultConditions(),
+                delivery_required: Boolean(requestData.delivery_required), // 🔥 ДОБАВЛЕНО
                 items: requestData.items ? requestData.items.map(item => ({
                     category_id: item.category_id,
                     quantity: item.quantity,
@@ -392,8 +411,7 @@ export default {
                         standard_specifications: item.standard_specifications || item.specifications?.standard_specifications || {},
                         custom_specifications: item.custom_specifications || item.specifications?.custom_specifications || {}
                     }
-                })) : [],
-                delivery_required: Boolean(requestData.delivery_required)
+                })) : []
             };
 
             this.totalQuantity = this.formData.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
@@ -404,7 +422,8 @@ export default {
                 items_with_custom_specs: this.formData.items.filter(item =>
                     item.specifications?.custom_specifications &&
                     Object.keys(item.specifications.custom_specifications).length > 0
-                ).length
+                ).length,
+                delivery_required: this.formData.delivery_required // 🔥 ДОБАВЛЕНО
             });
         },
 
@@ -528,6 +547,7 @@ export default {
                 rental_period_end: this.formData.rental_period_end,
                 location_id: this.formData.location_id,
                 rental_conditions: this.formData.rental_conditions,
+                delivery_required: Boolean(this.formData.delivery_required), // 🔥 ДОБАВЛЕНО
                 items: this.formData.items.map(item => {
                     const preparedItem = {
                         category_id: item.category_id,
@@ -580,8 +600,7 @@ export default {
                     }
 
                     return preparedItem;
-                }),
-                delivery_required: Boolean(this.formData.delivery_required)
+                })
             };
 
             formData._method = 'PUT';
@@ -619,7 +638,8 @@ export default {
                 ).length,
                 total_custom_specs: formData.items.reduce((sum, item) =>
                     sum + Object.keys(item.custom_specifications || {}).length, 0),
-                total_null_units: totalNullUnits
+                total_null_units: totalNullUnits,
+                delivery_required: formData.delivery_required // 🔥 ДОБАВЛЕНО
             });
 
             return formData;

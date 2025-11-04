@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class CartItem extends Model
 {
@@ -28,7 +29,7 @@ class CartItem extends Model
         'rental_request_item_id',
         'is_proposal_item',
         'proposal_data',
-        'actual_working_hours', // ✅ ДОБАВЛЕНО
+        'actual_working_hours',
     ];
 
     protected $casts = [
@@ -58,157 +59,259 @@ class CartItem extends Model
         return $this->belongsTo(RentalRequestItem::class, 'rental_request_item_id');
     }
 
+    public function rentalCondition(): BelongsTo
+    {
+        return $this->belongsTo(RentalCondition::class, 'rental_condition_id');
+    }
+
+    public function deliveryFrom(): BelongsTo
+    {
+        return $this->belongsTo(Location::class, 'delivery_from_id');
+    }
+
+    public function deliveryTo(): BelongsTo
+    {
+        return $this->belongsTo(Location::class, 'delivery_to_id');
+    }
+
+    public function equipment(): BelongsTo
+    {
+        return $this->belongsTo(Equipment::class, 'equipment_id');
+    }
+
+    /**
+     * 🔥 СТАТИЧЕСКИЙ метод для получения условий аренды для предложения
+     * ✅ ИСПРАВЛЕНО: Переименован для избежания конфликта
+     */
+    public static function getStaticRentalConditionForProposal(RentalRequestResponse $proposal, $rentalRequest)
+    {
+        try {
+            \Log::info('🔄 CartItem::getStaticRentalConditionForProposal() called', [
+                'proposal_id' => $proposal->id,
+                'equipment_id' => $proposal->equipment_id
+            ]);
+
+            // Способ 1: Через оборудование в предложении (ПРОВЕРЯЕМ СУЩЕСТВОВАНИЕ)
+            if ($proposal->equipment && $proposal->equipment->rentalTerms) {
+                $rentalTerm = $proposal->equipment->rentalTerms->first();
+                if ($rentalTerm) {
+                    \Log::info('✅ Found rental term via equipment', ['rental_term_id' => $rentalTerm->id]);
+
+                    // 🔥 ПРОВЕРЯЕМ, ЧТО ЭТО ДЕЙСТВИТЕЛЬНО RentalCondition, а не EquipmentRentalTerm
+                    if ($rentalTerm instanceof \App\Models\RentalCondition) {
+                        return $rentalTerm;
+                    } else {
+                        \Log::warning('⚠️ Found rental term but it is not RentalCondition', [
+                            'type' => get_class($rentalTerm),
+                            'id' => $rentalTerm->id
+                        ]);
+                    }
+                }
+            }
+
+            // Способ 2: Создаем временные условия аренды на основе заявки
+            if ($rentalRequest && $rentalRequest->rental_conditions) {
+                $conditions = is_string($rentalRequest->rental_conditions)
+                    ? json_decode($rentalRequest->rental_conditions, true)
+                    : $rentalRequest->rental_conditions;
+
+                // 🔥 СОЗДАЕМ ВРЕМЕННЫЙ ОБЪЕКТ БЕЗ ID
+                $tempCondition = (object)[
+                    // 🔥 НЕ УКАЗЫВАЕМ ID чтобы избежать foreign key constraint
+                    'shift_hours' => $conditions['hours_per_shift'] ?? 8,
+                    'shifts_per_day' => $conditions['shifts_per_day'] ?? 1,
+                    'transportation' => $conditions['transportation'] ?? 'lessee',
+                    'fuel_responsibility' => $conditions['fuel_responsibility'] ?? 'lessee',
+                    'extension_policy' => $conditions['extension_policy'] ?? 'allowed',
+                    'payment_type' => $conditions['payment_type'] ?? 'hourly'
+                ];
+
+                \Log::info('✅ Created temporary rental condition from request (no ID)', [
+                    'shift_hours' => $tempCondition->shift_hours,
+                    'shifts_per_day' => $tempCondition->shifts_per_day
+                ]);
+
+                return $tempCondition;
+            }
+
+            \Log::warning('❌ No rental condition found, using defaults (no ID)');
+
+            // 🔥 ВОЗВРАЩАЕМ ОБЪЕКТ БЕЗ ID
+            return (object)[
+                'shift_hours' => 8,
+                'shifts_per_day' => 1,
+                'transportation' => 'lessee',
+                'fuel_responsibility' => 'lessee',
+                'extension_policy' => 'allowed',
+                'payment_type' => 'hourly'
+            ];
+
+        } catch (\Exception $e) {
+            \Log::error('❌ Error getting rental condition for proposal: ' . $e->getMessage());
+
+            // 🔥 ВОЗВРАЩАЕМ ОБЪЕКТ БЕЗ ID ПРИ ОШИБКЕ
+            return (object)[
+                'shift_hours' => 8,
+                'shifts_per_day' => 1,
+                'transportation' => 'lessee',
+                'fuel_responsibility' => 'lessee',
+                'extension_policy' => 'allowed',
+                'payment_type' => 'hourly'
+            ];
+        }
+    }
+
+    /**
+     * 🔥 СТАТИЧЕСКИЙ метод для расчета фактических рабочих часов
+     */
+    public static function calculateActualWorkingHours($rentalRequest, $rentalCondition = null): int
+    {
+        try {
+            \Log::info('🔄 CartItem::calculateActualWorkingHours() called statically', [
+                'rental_request_id' => $rentalRequest->id,
+                'start_date' => $rentalRequest->rental_period_start,
+                'end_date' => $rentalRequest->rental_period_end
+            ]);
+
+            $start = Carbon::parse($rentalRequest->rental_period_start);
+            $end = Carbon::parse($rentalRequest->rental_period_end);
+            $days = $start->diffInDays($end) + 1;
+
+            // Получаем настройки смен из условий аренды или используем значения по умолчанию
+            $shiftHours = 8;
+            $shiftsPerDay = 1;
+
+            if ($rentalCondition) {
+                $shiftHours = $rentalCondition->shift_hours ?? 8;
+                $shiftsPerDay = $rentalCondition->shifts_per_day ?? 1;
+
+                \Log::info('📊 Using rental condition hours', [
+                    'shift_hours' => $shiftHours,
+                    'shifts_per_day' => $shiftsPerDay
+                ]);
+            } elseif ($rentalRequest->rental_conditions) {
+                $conditions = is_string($rentalRequest->rental_conditions)
+                    ? json_decode($rentalRequest->rental_conditions, true)
+                    : $rentalRequest->rental_conditions;
+
+                $shiftHours = $conditions['hours_per_shift'] ?? 8;
+                $shiftsPerDay = $conditions['shifts_per_day'] ?? 1;
+
+                \Log::info('📊 Using request condition hours', [
+                    'shift_hours' => $shiftHours,
+                    'shifts_per_day' => $shiftsPerDay
+                ]);
+            }
+
+            $workingHours = $days * $shiftHours * $shiftsPerDay;
+
+            \Log::info('✅ Calculated actual working hours', [
+                'days' => $days,
+                'shift_hours' => $shiftHours,
+                'shifts_per_day' => $shiftsPerDay,
+                'total_hours' => $workingHours
+            ]);
+
+            return $workingHours;
+
+        } catch (\Exception $e) {
+            \Log::error('❌ Error calculating working hours: ' . $e->getMessage());
+
+            // Fallback расчет
+            $start = Carbon::parse($rentalRequest->rental_period_start);
+            $end = Carbon::parse($rentalRequest->rental_period_end);
+            $days = $start->diffInDays($end) + 1;
+
+            $fallbackHours = $days * 8;
+            \Log::info('🔄 Using fallback hours calculation', ['hours' => $fallbackHours]);
+
+            return $fallbackHours;
+        }
+    }
+
     /**
      * Создание элемента корзины из предложения
      */
-    public static function createFromProposal(RentalRequestResponse $proposal, Cart $cart): self
+    public static function createFromProposal(RentalRequestResponse $proposal, Cart $cart): CartItem
     {
-        $equipment = $proposal->equipment;
-        $rentalRequest = $proposal->rentalRequest;
+        \Log::info('🔄 CartItem::createFromProposal() called', [
+            'proposal_id' => $proposal->id,
+            'cart_id' => $cart->id
+        ]);
 
-        // 🔥 ПОЛУЧАЕМ УСЛОВИЯ АРЕНДЫ ИЗ ЗАЯВКИ
-        $rentalCondition = self::getRentalConditionForProposal($proposal, $rentalRequest);
+        // Получаем условия аренды и рабочие часы
+        $rentalCondition = static::getStaticRentalConditionForProposal($proposal, $proposal->rentalRequest);
+        $workingHours = static::calculateActualWorkingHours($proposal->rentalRequest, $rentalCondition);
 
-        // 🔥 РАСЧЕТ РАБОЧИХ ЧАСОВ С УЧЕТОМ РЕАЛЬНЫХ УСЛОВИЙ
-        $workingHours = self::calculateActualWorkingHours($rentalRequest, $rentalCondition);
-
-        // 🔥 ПРИОРИТЕТ 1: Используем price_breakdown если он есть и корректен
+        // Получаем цены из breakdown или используем предложенную цену
         $priceBreakdown = $proposal->price_breakdown;
         if (is_string($priceBreakdown)) {
             $priceBreakdown = json_decode($priceBreakdown, true);
         }
 
-        $customerPricePerHour = null;
-        $lessorPricePerHour = null;
-
-        // 🔥 ИЗВЛЕКАЕМ ДАННЫЕ О ДОСТАВКЕ ИЗ PRICE_BREAKDOWN
-        $deliveryBreakdown = $priceBreakdown['delivery_breakdown'] ?? [];
-        $hasDelivery = $deliveryBreakdown['delivery_required'] ?? false;
-        $deliveryCost = $deliveryBreakdown['delivery_cost'] ?? 0;
-
-        if (!empty($priceBreakdown) && is_array($priceBreakdown)) {
-            // Для обычных предложений
-            if (isset($priceBreakdown['customer_price_per_unit'])) {
-                $customerPricePerHour = $priceBreakdown['customer_price_per_unit'];
-                $lessorPricePerHour = $priceBreakdown['lessor_price_per_unit'] ?? $customerPricePerHour - 100;
-            }
-            // Для bulk-предложений
-            elseif (isset($priceBreakdown['items']) && is_array($priceBreakdown['items'])) {
-                foreach ($priceBreakdown['items'] as $item) {
-                    if ($item['equipment_id'] == $proposal->equipment_id) {
-                        $customerPricePerHour = $item['customer_price_per_unit'] ?? null;
-                        $lessorPricePerHour = $item['lessor_price_per_unit'] ?? null;
-
-                        // 🔥 ИЗВЛЕКАЕМ ДОСТАВКУ ДЛЯ BULK-ПРЕДЛОЖЕНИЙ
-                        $deliveryBreakdown = $item['delivery_breakdown'] ?? [];
-                        $hasDelivery = $deliveryBreakdown['delivery_required'] ?? false;
-                        $deliveryCost = $deliveryBreakdown['delivery_cost'] ?? 0;
-                        break;
-                    }
-                }
-            }
-        }
-
-        // 🔥 ПРИОРИТЕТ 2: Если price_breakdown отсутствует, используем расчет на основе данных заявки
-        if (!$customerPricePerHour || !$lessorPricePerHour) {
-            \Log::warning('Price breakdown missing or incomplete for proposal', [
-                'proposal_id' => $proposal->id,
-                'price_breakdown' => $priceBreakdown
-            ]);
-
-            // Находим соответствующую позицию в заявке для получения hourly_rate
-            $requestItem = $rentalRequest->items->first(function ($item) use ($equipment) {
-                return $item->category_id == $equipment->category_id;
-            });
-
-            if ($requestItem && $requestItem->hourly_rate > 0) {
-                // Используем hourly_rate из заявки как базовую цену
-                $customerPricePerHour = $requestItem->hourly_rate;
-                $lessorPricePerHour = $customerPricePerHour - 100; // Базовая наценка 100 ₽
-            } else {
-                // 🔥 РЕЗЕРВНЫЙ РАСЧЕТ: Делим общую сумму на реальное количество часов
-                if ($proposal->proposed_price > 0 && $workingHours > 0 && $proposal->proposed_quantity > 0) {
-                    $customerPricePerHour = $proposal->proposed_price / ($workingHours * $proposal->proposed_quantity);
-                    $lessorPricePerHour = $customerPricePerHour - 100;
-                } else {
-                    // Последний fallback
-                    $customerPricePerHour = $rentalRequest->hourly_rate ?? 1000;
-                    $lessorPricePerHour = $customerPricePerHour - 100;
-                    \Log::warning('Using fallback price calculation', ['price' => $customerPricePerHour]);
-                }
-            }
-        }
-
-        // 🔥 ВАЛИДАЦИЯ: Проверяем корректность цен
-        if ($customerPricePerHour <= 0 || $lessorPricePerHour <= 0) {
-            throw new \Exception('Некорректные цены в предложении: цена за час должна быть положительной');
-        }
-
-        // Рассчитываем platform_fee (доход платформы)
+        $customerPricePerHour = $priceBreakdown['customer_price_per_unit'] ?? $proposal->proposed_price;
+        $lessorPricePerHour = $priceBreakdown['lessor_price_per_unit'] ?? ($proposal->proposed_price * 0.8);
         $platformFeePerHour = $customerPricePerHour - $lessorPricePerHour;
-        $totalPlatformFee = $platformFeePerHour * $workingHours * ($proposal->proposed_quantity ?? 1);
 
-        return self::create([
+        // 🔥 ИСПРАВЛЕНИЕ: Проверяем существование rental_condition_id
+        $rentalConditionId = null;
+        if ($rentalCondition && isset($rentalCondition->id)) {
+            // Проверяем, что запись существует в базе данных
+            $existingCondition = \App\Models\RentalCondition::find($rentalCondition->id);
+            if ($existingCondition) {
+                $rentalConditionId = $rentalCondition->id;
+            } else {
+                \Log::warning('❌ Rental condition not found in database', ['rental_condition_id' => $rentalCondition->id]);
+            }
+        }
+
+        \Log::info('💰 Price calculation and rental condition', [
+            'proposed_price' => $proposal->proposed_price,
+            'customer_price_per_hour' => $customerPricePerHour,
+            'lessor_price_per_hour' => $lessorPricePerHour,
+            'platform_fee_per_hour' => $platformFeePerHour,
+            'rental_condition_id' => $rentalConditionId,
+            'rental_term_id' => $proposal->equipment->rentalTerms->first()->id ?? null
+        ]);
+
+        // Создаем элемент корзины
+        $cartItem = new static([
             'cart_id' => $cart->id,
-            'rental_term_id' => $equipment->rentalTerms->first()->id,
             'proposal_id' => $proposal->id,
-            'rental_request_item_id' => $proposal->rental_request_item_id,
-            'rental_condition_id' => $rentalCondition->id, // 🔥 ТЕПЕРЬ СОХРАНЯЕМ УСЛОВИЯ
+            'equipment_id' => $proposal->equipment_id,
+            'rental_term_id' => $proposal->equipment->rentalTerms->first()->id ?? null,
+            'rental_condition_id' => $rentalConditionId, // 🔥 ИСПРАВЛЕНО: Может быть null
             'is_proposal_item' => true,
+            'start_date' => $proposal->rentalRequest->rental_period_start,
+            'end_date' => $proposal->rentalRequest->rental_period_end,
             'period_count' => $workingHours,
+            'actual_working_hours' => $workingHours,
             'base_price' => $customerPricePerHour,
             'fixed_customer_price' => $customerPricePerHour,
             'fixed_lessor_price' => $lessorPricePerHour,
             'platform_fee' => $platformFeePerHour,
-            'actual_working_hours' => $workingHours, // ✅ ДОБАВЛЕНО
-            'start_date' => $rentalRequest->rental_period_start,
-            'end_date' => $rentalRequest->rental_period_end,
-            'delivery_cost' => $deliveryCost, // 🔥 СОХРАНЯЕМ СТОИМОСТЬ ДОСТАВКИ
+            'quantity' => $proposal->proposed_quantity ?? 1,
             'proposal_data' => [
-                'original_proposal_price' => $proposal->proposed_price,
-                'lessor_company_id' => $proposal->lessor->company_id,
-                'equipment_title' => $equipment->title,
-                'proposal_message' => $proposal->message,
-                'total_working_hours' => $workingHours,
-                'customer_price_per_hour' => $customerPricePerHour,
-                'lessor_price_per_hour' => $lessorPricePerHour,
-                'platform_fee_per_hour' => $platformFeePerHour,
-                'total_platform_fee' => $totalPlatformFee,
-                'price_breakdown_source' => empty($priceBreakdown) ? 'calculated' : 'from_proposal',
-                'calculation_notes' => empty($priceBreakdown) ? 'Цены рассчитаны на основе hourly_rate из заявки' : 'Цены взяты из breakdown',
-                // 🔥 ДОБАВЛЯЕМ ДАННЫЕ О ДОСТАВКЕ
-                'delivery_breakdown' => $deliveryBreakdown,
-                'has_delivery' => $hasDelivery,
-                'delivery_cost' => $deliveryCost
-            ],
+                'original_proposal_id' => $proposal->id,
+                'proposed_price' => $proposal->proposed_price,
+                'price_breakdown' => $priceBreakdown,
+                'calculated_at' => now()->toDateTimeString()
+            ]
         ]);
-    }
 
-    /**
-     * 🔥 РАСЧЕТ РАБОЧИХ ЧАСОВ С УЧЕТОМ УСЛОВИЙ АРЕНДЫ
-     * ✅ ИСПРАВЛЕНО: Сделано публичным методом
-     */
-    public static function calculateActualWorkingHours($rentalRequest, $rentalCondition = null): int
-    {
-        if (!$rentalRequest->rental_period_start || !$rentalRequest->rental_period_end) {
-            return 0;
-        }
+        $cartItem->save();
 
-        $start = \Carbon\Carbon::parse($rentalRequest->rental_period_start);
-        $end = \Carbon\Carbon::parse($rentalRequest->rental_period_end);
+        \Log::info('✅ CartItem created from proposal', [
+            'cart_item_id' => $cartItem->id,
+            'working_hours' => $workingHours,
+            'rental_condition_id' => $rentalConditionId
+        ]);
 
-        // Если есть условия аренды, используем их для расчета
-        if ($rentalCondition) {
-            return self::calculateWorkingHoursWithConditions($start, $end, $rentalCondition);
-        }
-
-        // Стандартный расчет: исключаем выходные
-        return self::calculateStandardWorkingHours($start, $end);
+        return $cartItem;
     }
 
     /**
      * 🔥 РАСЧЕТ ЧАСОВ С УЧЕТОМ УСЛОВИЙ АРЕНДЫ
-     * ✅ ИСПРАВЛЕНО: Сделано публичным методом
      */
     public static function calculateWorkingHoursWithConditions($start, $end, $rentalCondition): int
     {
@@ -231,7 +334,6 @@ class CartItem extends Model
 
     /**
      * 🔥 СТАНДАРТНЫЙ РАСЧЕТ ЧАСОВ (без учета условий)
-     * ✅ ИСПРАВЛЕНО: Сделано публичным методом
      */
     public static function calculateStandardWorkingHours($start, $end): int
     {
@@ -250,20 +352,83 @@ class CartItem extends Model
     }
 
     /**
-     * 🔥 ПОЛУЧЕНИЕ УСЛОВИЙ АРЕНДЫ ДЛЯ ПРЕДЛОЖЕНИЯ
+     * 🔥 НЕСТАТИЧЕСКИЙ метод для получения условий аренды
+     * ✅ ИСПРАВЛЕНО: Для использования в ProposalCartController
      */
-    private static function getRentalConditionForProposal(RentalRequestResponse $proposal, RentalRequest $rentalRequest)
+    public function getRentalConditionForProposal()
     {
-        // Если есть индивидуальные условия для позиции заявки
-        if ($proposal->rental_request_item_id) {
-            $requestItem = RentalRequestItem::find($proposal->rental_request_item_id);
-            if ($requestItem && $requestItem->use_individual_conditions && !empty($requestItem->individual_conditions)) {
-                return self::createRentalConditionFromIndividual($requestItem, $rentalRequest->user->company);
-            }
+        \Log::info('🔄 getRentalConditionForProposal() called for instance', ['cart_item_id' => $this->id]);
+
+        // Способ 1: Через отношение rentalCondition
+        if ($this->relationLoaded('rentalCondition') && $this->rentalCondition) {
+            \Log::info('✅ Found via rentalCondition relation');
+            return $this->rentalCondition;
         }
 
-        // Используем общие условия заявки
-        return self::createRentalConditionFromRequest($rentalRequest);
+        // Способ 2: Через оборудование
+        if ($this->relationLoaded('proposal.equipment.rentalTerms') &&
+            $this->proposal &&
+            $this->proposal->equipment &&
+            $this->proposal->equipment->rentalTerms) {
+            \Log::info('✅ Found via proposal equipment');
+            return $this->proposal->equipment->rentalTerms->first();
+        }
+
+        // Способ 3: Через ID условия аренды
+        if ($this->rental_term_id) {
+            $condition = RentalCondition::find($this->rental_term_id);
+            \Log::info('✅ Found via rental_term_id', ['rental_term_id' => $this->rental_term_id]);
+            return $condition;
+        }
+
+        \Log::warning('❌ No rental condition found for instance');
+        return null;
+    }
+
+    /**
+     * ✅ НОВЫЙ МЕТОД: Расчет рабочих часов для существующего CartItem
+     * ✅ ИСПРАВЛЕНО: Для использования в ProposalCartController
+     */
+    public function calculateWorkingHoursForCartItem(): int
+    {
+        try {
+            \Log::info('🔄 calculateWorkingHoursForCartItem() called for instance', [
+                'cart_item_id' => $this->id,
+                'start_date' => $this->start_date,
+                'end_date' => $this->end_date
+            ]);
+
+            $start = Carbon::parse($this->start_date);
+            $end = Carbon::parse($this->end_date);
+            $days = $start->diffInDays($end) + 1;
+
+            // Получаем условия аренды
+            $rentalCondition = $this->getRentalConditionForProposal();
+
+            $shiftHours = $rentalCondition->shift_hours ?? 8;
+            $shiftsPerDay = $rentalCondition->shifts_per_day ?? 1;
+
+            $hours = $days * $shiftHours * $shiftsPerDay;
+
+            \Log::info('✅ Instance hours calculated', [
+                'days' => $days,
+                'shift_hours' => $shiftHours,
+                'shifts_per_day' => $shiftsPerDay,
+                'total_hours' => $hours
+            ]);
+
+            return $hours;
+
+        } catch (\Exception $e) {
+            \Log::error('❌ Error calculating working hours for cart item: ' . $e->getMessage());
+
+            // Fallback расчет
+            $start = Carbon::parse($this->start_date);
+            $end = Carbon::parse($this->end_date);
+            $days = $start->diffInDays($end) + 1;
+
+            return $days * 8;
+        }
     }
 
     /**
@@ -309,41 +474,5 @@ class CartItem extends Model
     public function getTotalAttribute(): float
     {
         return ($this->base_price + $this->platform_fee) * $this->period_count;
-    }
-
-    public function rentalCondition()
-    {
-        return $this->belongsTo(RentalCondition::class);
-    }
-
-    public function deliveryFrom(): BelongsTo
-    {
-        return $this->belongsTo(Location::class, 'delivery_from_id');
-    }
-
-    public function deliveryTo(): BelongsTo
-    {
-        return $this->belongsTo(Location::class, 'delivery_to_id');
-    }
-
-    /**
-     * ✅ НОВЫЙ МЕТОД: Расчет рабочих часов для существующего CartItem
-     */
-    public function calculateWorkingHoursForCartItem(): int
-    {
-        if (!$this->start_date || !$this->end_date) {
-            return 0;
-        }
-
-        $start = \Carbon\Carbon::parse($this->start_date);
-        $end = \Carbon\Carbon::parse($this->end_date);
-
-        // Используем условия аренды если они есть
-        if ($this->rentalCondition) {
-            return self::calculateWorkingHoursWithConditions($start, $end, $this->rentalCondition);
-        }
-
-        // Стандартный расчет
-        return self::calculateStandardWorkingHours($start, $end);
     }
 }
