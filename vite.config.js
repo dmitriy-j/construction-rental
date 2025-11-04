@@ -1,4 +1,3 @@
-// vite.config.js - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import vue from '@vitejs/plugin-vue';
@@ -30,7 +29,7 @@ export default defineConfig({
                 'resources/js/pages/lessor-rental-request-detail.js',
                 'resources/js/yandex-map-fallback.js'
             ],
-            refresh: true,
+            refresh: false, // На продакшене отключаем refresh
         }),
         vue({
             template: {
@@ -41,38 +40,29 @@ export default defineConfig({
             },
         }),
     ],
-    resolve: {
-        alias: {
-            '@': '/resources/js',
-            'vue': 'vue/dist/vue.esm-bundler.js',
-            '~components': '/resources/js/components',
-            '~views': '/resources/js/views',
-            '~pages': '/resources/js/pages',
-            '~lessor': '/resources/js/components/Lessor',
-        },
-    },
+    
     build: {
         target: 'es2015',
+        outDir: 'public/build',
+        assetsDir: 'assets',
+        emptyOutDir: true,
+        sourcemap: false,
+        minify: 'terser',
         rollupOptions: {
             output: {
                 manualChunks: {
                     vendor: ['vue', 'axios', 'bootstrap'],
                     charts: ['chart.js'],
-                    manager: ['resources/js/vue-manager.js'],
-                    'public-requests': [
-                        'resources/js/views/PublicRentalRequestShow.vue',
-                        'resources/js/components/Public/PublicRentalConditionsDisplay.vue',
-                        'resources/js/components/Public/PublicCategoryGroup.vue'
-                    ],
-                    'lessor-components': [
-                        'resources/js/components/Lessor/RentalRequestDetail.vue',
-                        'resources/js/components/Lessor/ProposalTemplates.vue'
-                    ]
                 },
             },
         },
-        chunkSizeWarningLimit: 600,
-        sourcemap: false,
-        minify: 'esbuild',
+        chunkSizeWarningLimit: 800,
+    },
+    
+    // Критически важно для продакшена
+    base: '/build/',
+    
+    optimizeDeps: {
+        include: ['vue', 'axios', 'bootstrap']
     },
 });
