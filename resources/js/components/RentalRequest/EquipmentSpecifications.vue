@@ -217,52 +217,38 @@ export default {
             const customSpecs = {};
 
             this.customSpecs.forEach((spec, index) => {
-                // ✅ ИЗМЕНЕНИЕ: Отправляем даже если value пустое, но label заполнен
                 if (spec.label && spec.label.trim()) {
                     const key = spec.id || `custom_${Date.now()}_${index}`;
 
-                    // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Гарантируем что unit всегда строка, НИКОГДА не null
+                    // ✅ Нормализация unit
                     let unitValue = '';
                     if (spec.unit !== null && spec.unit !== undefined && spec.unit !== '') {
                         unitValue = String(spec.unit);
                     }
-                    // Если spec.unit равен null, undefined или пустой строке - unitValue останется пустой строкой
 
-                    // ✅ ДЕТАЛЬНАЯ ОТЛАДКА
-                    console.log('🔍 Подготовка кастомной спецификации для эмита:', {
-                        key,
-                        label: spec.label,
-                        value: spec.value,
-                        originalUnit: spec.unit,
-                        normalizedUnit: unitValue,
-                        unitType: typeof unitValue,
-                        isNull: unitValue === null
-                    });
-
-                    const preparedSpec = {
+                    customSpecs[key] = {
                         label: String(spec.label || ''),
                         value: spec.dataType === 'number' ?
-                              (spec.value === '' ? null : Number(spec.value)) :
-                              String(spec.value || ''),
-                        unit: unitValue, // ✅ Гарантируем строку, не null
+                            (spec.value === '' ? null : Number(spec.value)) :
+                            String(spec.value || ''),
+                        unit: unitValue,
                         dataType: String(spec.dataType || 'string')
                     };
 
-                    // ✅ ФИНАЛЬНАЯ ПРОВЕРКА - unit НИКОГДА не должен быть null
-                    if (preparedSpec.unit === null) {
-                        console.error('❌ КРИТИЧЕСКАЯ ОШИБКА: unit всё равно null после нормализации!');
-                        preparedSpec.unit = '';
-                    }
-
-                    customSpecs[key] = preparedSpec;
+                    console.log('✅ Кастомная спецификация подготовлена:', {
+                        key,
+                        label: customSpecs[key].label,
+                        value: customSpecs[key].value,
+                        unit: customSpecs[key].unit
+                    });
                 }
             });
 
-            console.log('📦 Подготовлены кастомные спецификации для эмита:', {
+            // 🔥 ДОПОЛНИТЕЛЬНОЕ ЛОГИРОВАНИЕ ДЛЯ ПОДТВЕРЖДЕНИЯ
+            console.log('📊 ИТОГИ подготовки кастомных спецификаций:', {
                 количество: Object.keys(customSpecs).length,
                 ключи: Object.keys(customSpecs),
-                данные: customSpecs,
-                units: Object.values(customSpecs).map(s => ({ unit: s.unit, type: typeof s.unit }))
+                данные: customSpecs
             });
 
             return customSpecs;

@@ -17,6 +17,11 @@ class CheckCompanyLessee
             abort(403, 'Требуется авторизация');
         }
 
+        // Пропускаем platform администраторов
+        if ($user->isPlatformAdmin()) {
+            return $next($request);
+        }
+
         if (!$user->company) {
             abort(403, 'Пользователь не привязан к компании');
         }

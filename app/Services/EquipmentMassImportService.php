@@ -146,7 +146,13 @@ class EquipmentMassImportService
                     'validated_data' => $validated
                 ]);
 
-                $slug = $this->generateUniqueSlug($validated['title']);
+                $slug = $this->generateUniqueSlug(
+                    $validated['title'],
+                    $validated['year'],
+                    $validated['model'],
+                    $validated['brand'],
+                    $validated['hours_worked'] // Добавляем hours_worked
+                );
                 Log::debug("Сгенерирован slug", [
                     'absolute_row' => $absoluteRow,
                     'slug' => $slug
@@ -481,19 +487,29 @@ class EquipmentMassImportService
         }
     }
 
-    private function generateUniqueSlug(string $title): string
+    private function generateUniqueSlug(string $title, int $year, string $model, string $brand, float $hoursWorked): string
     {
-        $slug = Str::slug($title);
-        $originalSlug = $slug;
+        // Добавляем hours_worked к базовому slug
+        $baseSlug = Str::slug($title . ' ' . $year . ' ' . $model . ' ' . $brand . ' ' . $hoursWorked);
+        $slug = $baseSlug;
         $counter = 1;
 
         while (Equipment::where('slug', $slug)->exists()) {
-            $slug = $originalSlug . '-' . $counter;
+            $slug = $baseSlug . '-' . $counter;
             $counter++;
+
+            if ($counter > 100) {
+                $slug = $baseSlug . '-' . uniqid();
+                break;
+            }
         }
 
         Log::debug("Сгенерирован уникальный slug", [
             'title' => $title,
+            'year' => $year,
+            'model' => $model,
+            'brand' => $brand,
+            'hours_worked' => $hoursWorked,
             'slug' => $slug,
             'iterations' => $counter - 1
         ]);

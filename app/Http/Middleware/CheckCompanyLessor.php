@@ -14,17 +14,22 @@ class CheckCompanyLessor
         $user = Auth::user();
 
         // Проверяем что пользователь аутентифицирован
-        if (! $user) {
+        if (!$user) {
             abort(403, 'Требуется авторизация');
         }
 
+        // Пропускаем platform администраторов
+        if ($user->isPlatformAdmin()) {
+            return $next($request);
+        }
+
         // Проверяем наличие компании
-        if (! $user->company) {
+        if (!$user->company) {
             abort(403, 'Пользователь не привязан к компании');
         }
 
         // Проверяем что компания является арендодателем
-        if (! $user->company->is_lessor) {
+        if (!$user->company->is_lessor) {
             abort(403, 'Доступ только для компаний-арендодателей');
         }
 

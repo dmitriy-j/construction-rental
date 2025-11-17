@@ -29,7 +29,8 @@ class DocumentController extends Controller
 
         switch ($type) {
             case 'contracts':
-                $documents = Contract::with(['company', 'lessorCompany', 'lesseeCompany'])
+                // ОБНОВЛЕНО: Загружаем правильные отношения
+                $documents = Contract::with(['platformCompany', 'counterpartyCompany'])
                     ->orderBy('created_at', 'desc')
                     ->paginate(20);
                 break;
@@ -47,7 +48,7 @@ class DocumentController extends Controller
                 break;
 
             case 'completion_acts':
-                $documents = CompletionAct::with(['order', 'upd']) // Добавляем загрузку отношения upd
+                $documents = CompletionAct::with(['order', 'upd'])
                     ->orderBy('created_at', 'desc')
                     ->paginate(20);
                 break;
@@ -72,33 +73,28 @@ class DocumentController extends Controller
     {
         switch ($type) {
             case 'contracts':
-                $document = Contract::with(['lessorCompany', 'lesseeCompany'])->findOrFail($id);
-
+                // ОБНОВЛЕНО: Загружаем правильные отношения
+                $document = Contract::with(['platformCompany', 'counterpartyCompany'])->findOrFail($id);
                 return view('admin.documents.contracts.show', compact('document'));
 
             case 'delivery_notes':
                 $document = DeliveryNote::with(['order', 'carrierCompany'])->findOrFail($id);
-
                 return view('admin.documents.delivery_notes.show', compact('document'));
 
             case 'waybills':
                 $document = Waybill::with(['order', 'operator', 'shifts'])->findOrFail($id);
-
                 return view('admin.documents.waybills.show', compact('document'));
 
             case 'completion_acts':
                 $document = CompletionAct::with(['order'])->findOrFail($id);
-
                 return view('admin.documents.completion_acts.show', compact('document'));
 
             case 'upds':
                 $document = Upd::with(['order', 'lessorCompany', 'lesseeCompany', 'items'])->findOrFail($id);
-
                 return view('admin.documents.upds.show', compact('document'));
 
             case 'invoices':
                 $document = Invoice::with(['order', 'company'])->findOrFail($id);
-
                 return view('admin.documents.invoices.show', compact('document'));
 
             default:

@@ -185,6 +185,8 @@
         body:has(#rental-request-edit-app) .main-content-wrapper {
             flex: 1 !important;
         }
+
+
     </style>
 </head>
 <body class="@yield('body-class', 'd-flex flex-column min-vh-100') @if(session('sidebar_mini')) sidebar-mini @endif">

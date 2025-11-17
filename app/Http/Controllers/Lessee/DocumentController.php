@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Lessee;
 
 use App\Http\Controllers\Controller;
 use App\Models\CompletionAct;
+use App\Models\Contract;
 use App\Models\DeliveryNote;
 use App\Models\Order;
 use App\Models\Waybill;
@@ -19,14 +20,14 @@ class DocumentController extends Controller
 
         switch ($type) {
             case 'waybills':
-                $documents = Waybill::where('perspective', 'lessee') // Только документы для арендатора
+                $documents = Waybill::where('perspective', 'lessee')
                     ->whereHas('parentOrder', function ($query) use ($companyId) {
                         $query->where('lessee_company_id', $companyId);
                     })->with(['equipment', 'parentOrder.lessorCompany'])->paginate(10);
                 break;
 
             case 'completion_acts':
-                $documents = CompletionAct::where('perspective', 'lessee') // Только документы для арендатора
+                $documents = CompletionAct::where('perspective', 'lessee')
                     ->whereHas('parentOrder', function ($query) use ($companyId) {
                         $query->where('lessee_company_id', $companyId);
                     })->with(['waybill.equipment', 'parentOrder.lessorCompany'])->paginate(10);
@@ -40,13 +41,18 @@ class DocumentController extends Controller
 
             case 'contracts':
             default:
-                $documents = collect();
+                $documents = Contract::with(['platformCompany', 'counterpartyCompany'])
+                    ->where('counterparty_company_id', $companyId)
+                    ->where('counterparty_type', 'lessee')
+                    ->orderBy('created_at', 'desc')
+                    ->paginate(10);
                 break;
         }
 
         return view('lessee.documents.index', compact('documents', 'type'));
     }
 
+    // ... остальные методы остаются без изменений
     public function waybills(Order $order)
     {
         // Проверка прав доступа

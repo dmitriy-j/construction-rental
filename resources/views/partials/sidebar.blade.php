@@ -527,6 +527,12 @@
                         <span class="nav-text">Шаблоны документов</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->is('admin/markups*') ? 'active' : '' }}" href="{{ route('markups.index') }}">
+                        <i class="nav-icon bi bi-percent"></i>
+                        <span class="nav-text">Наценки платформы</span>
+                    </a>
+                </li>
             @endif
         </ul>
     </nav>

@@ -15,6 +15,14 @@ use Illuminate\Support\Facades\Log;
 
 class PricingService
 {
+
+    protected $markupCalculationService;
+
+    public function __construct(MarkupCalculationService $markupCalculationService)
+    {
+        $this->markupCalculationService = $markupCalculationService;
+    }
+
     public function calculatePrice(
         EquipmentRentalTerm $term,
         Company $lesseeCompany,
@@ -24,20 +32,40 @@ class PricingService
         // Базовая стоимость (цена арендодателя)
         $baseCost = $term->price_per_hour * $workingHours;
 
-        // Наценка платформы
-        $markup = $this->getPlatformMarkup($term->equipment, $lesseeCompany, $workingHours);
-        $platformFee = $this->applyMarkup($baseCost, $markup);
+        // НОВЫЙ РАСЧЕТ: Используем унифицированный сервис наценок
+        $markupResult = $this->markupCalculationService->calculateMarkup(
+            $term->price_per_hour, // цена за час
+            'order', // контекст - заказ
+            $workingHours,
+            $term->equipment_id,
+            $term->equipment->category_id,
+            null, // компания арендодателя не учитывается в наценках
+            $lesseeCompany->id // компания арендатора
+        );
+
+        // Пересчитываем platform_fee на основе общего количества часов
+        $platformFee = $markupResult['markup_amount'];
 
         // Итоговая стоимость (базовая + наценка)
         $totalPrice = $baseCost + $platformFee;
 
-        // Скидка арендатора
+        // Скидка арендатора (оставляем существующую логику)
         $discount = $lesseeCompany->is_lessee
             ? $this->getDiscount($lesseeCompany, $totalPrice)
             : 0;
 
         // Цена за час с учетом наценки
         $pricePerHour = $totalPrice / max(1, $workingHours);
+
+        Log::debug('Pricing calculation with new markup system', [
+            'equipment_id' => $term->equipment_id,
+            'base_price_per_hour' => $term->price_per_hour,
+            'working_hours' => $workingHours,
+            'base_cost' => $baseCost,
+            'platform_fee' => $platformFee,
+            'total_price' => $totalPrice,
+            'markup_details' => $markupResult
+        ]);
 
         return [
             'base_price' => $totalPrice,
@@ -46,8 +74,9 @@ class PricingService
             'final_price' => $totalPrice - $discount,
             'base_price_per_unit' => $pricePerHour,
             'working_hours' => $workingHours,
-            'markup_type' => $markup['type'],
-            'markup_value' => $markup['value'],
+            'markup_type' => $markupResult['markup_type'],
+            'markup_value' => $markupResult['markup_value'],
+            'markup_details' => $markupResult,
         ];
     }
 
@@ -60,12 +89,22 @@ class PricingService
         float $proposedPrice, // Цена арендодателя
         int $workingHours
     ): array {
+        // НОВЫЙ РАСЧЕТ: Используем унифицированный сервис наценок для контекста rental_request
+        $markupResult = $this->markupCalculationService->calculateMarkup(
+            $proposedPrice, // цена арендодателя за час
+            'rental_request', // контекст - заявка
+            $workingHours,
+            $equipment->id,
+            $equipment->category_id,
+            null, // компания арендодателя
+            $request->user->company_id // компания арендатора
+        );
+
         // Базовая стоимость (цена арендодателя)
         $baseCost = $proposedPrice * $workingHours;
 
-        // Наценка платформы
-        $markup = $this->getPlatformMarkup($equipment, $request->user->company, $workingHours);
-        $platformFee = $this->applyMarkup($baseCost, $markup);
+        // Наценка платформы из нового сервиса
+        $platformFee = $markupResult['markup_amount'];
 
         // Итоговая стоимость (базовая + наценка)
         $totalPrice = $baseCost + $platformFee;
@@ -73,12 +112,21 @@ class PricingService
         // Цена за час с учетом наценки
         $pricePerHour = $totalPrice / max(1, $workingHours);
 
+        Log::debug('Proposal pricing calculation with new markup system', [
+            'equipment_id' => $equipment->id,
+            'proposed_price' => $proposedPrice,
+            'working_hours' => $workingHours,
+            'platform_fee' => $platformFee,
+            'total_price' => $totalPrice,
+            'markup_details' => $markupResult
+        ]);
+
         return [
             'calculated_price' => $totalPrice,
             'price_per_hour' => $pricePerHour,
             'platform_fee' => $platformFee,
             'working_hours' => $workingHours,
-            'markup_details' => $markup, // 🔥 ЭТОТ КЛЮЧ ДОЛЖЕН БЫТЬ
+            'markup_details' => $markupResult,
         ];
     }
 
@@ -189,41 +237,22 @@ class PricingService
 
     public function getPlatformMarkup(Equipment $equipment, ?Company $lesseeCompany, int $workingHours): array
     {
-        $markup = $this->findMarkup(Equipment::class, $equipment->id);
-        $source = 'equipment';
+        $markupResult = $this->markupCalculationService->calculateMarkup(
+            $equipment->rentalTerms->first()?->price_per_hour ?? 0,
+            'order',
+            $workingHours,
+            $equipment->id,
+            $equipment->category_id,
+            null,
+            $lesseeCompany?->id
+        );
 
-        if (! $markup) {
-            $markup = $this->findMarkup(EquipmentCategory::class, $equipment->category_id);
-            $source = 'category';
-        }
-
-        if (! $markup && $lesseeCompany && $lesseeCompany->is_lessee) {
-            $markup = $this->findMarkup(Company::class, $lesseeCompany->id);
-            $source = 'company';
-        }
-
-        if (! $markup) {
-            $markup = $this->getDefaultMarkup();
-            $source = 'default';
-        }
-
-        $originalValue = $markup['value'];
-
-        if ($markup['type'] === 'fixed') {
-            $markup['value'] *= $workingHours;
-        }
-
-        Log::debug('Applied platform markup', [
-            'equipment_id' => $equipment->id,
-            'company_id' => $lesseeCompany?->id,
-            'source' => $source,
-            'type' => $markup['type'],
-            'original_value' => $originalValue,
-            'final_value' => $markup['value'],
-            'working_hours' => $workingHours,
-        ]);
-
-        return $markup;
+        return [
+            'type' => $markupResult['markup_type'],
+            'value' => $markupResult['markup_value'],
+            'amount' => $markupResult['markup_amount'],
+            'details' => $markupResult
+        ];
     }
 
     private function findMarkup(string $markupableType, ?int $markupableId): ?array
@@ -260,6 +289,12 @@ class PricingService
 
     public function applyMarkup(float $price, array $markup): float
     {
+        // Для обратной совместимости оставляем старый метод,
+        // но теперь он использует данные из нового сервиса
+        if (isset($markup['amount'])) {
+            return $markup['amount'];
+        }
+
         return $markup['type'] === 'percent'
             ? $price * ($markup['value'] / 100)
             : $markup['value'];

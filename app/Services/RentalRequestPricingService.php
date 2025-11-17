@@ -10,6 +10,14 @@ use Illuminate\Support\Facades\Log;
 
 class RentalRequestPricingService
 {
+
+    protected $markupCalculationService;
+
+    public function __construct(MarkupCalculationService $markupCalculationService)
+    {
+        $this->markupCalculationService = $markupCalculationService;
+    }
+
     /**
      * Преобразует цены заявки для отображения арендодателям
      */
@@ -22,16 +30,28 @@ class RentalRequestPricingService
         foreach ($request->items as $item) {
             $customerPrice = $item->hourly_rate;
 
-            \Log::debug("📊 Processing request item", [
+            Log::debug("📊 Processing request item with new markup system", [
                 'item_id' => $item->id,
                 'category_id' => $item->category_id,
                 'customer_price' => $customerPrice,
                 'quantity' => $item->quantity
             ]);
 
-            // Получаем наценку для заявки
-            $markup = $this->getPlatformMarkupForRentalRequest($item->category_id, $request->user->company);
-            $lessorPrice = $this->reverseApplyMarkup($customerPrice, $markup, $workingHours);
+            // НОВЫЙ РАСЧЕТ: Используем унифицированный сервис для обратного применения наценки
+            $markup = $this->markupCalculationService->findApplicableMarkup(
+                'rental_request',
+                null, // equipment_id - пока не известен
+                $item->category_id,
+                null, // company_id арендодателя
+                $request->user->company_id // компания арендатора
+            );
+
+            // Обратное применение наценки - из цены арендатора получаем цену для арендодателя
+            $lessorPrice = $this->markupCalculationService->reverseApplyMarkup(
+                $customerPrice,
+                $markup,
+                $workingHours
+            );
 
             $itemTotal = $lessorPrice * $item->quantity * $workingHours;
 
@@ -46,13 +66,14 @@ class RentalRequestPricingService
                 'item_total' => $itemTotal,
                 'markup_type' => $markup['type'],
                 'markup_value' => $markup['value'],
+                'markup_source' => $markup['source'],
                 'working_hours' => $workingHours
             ];
 
             $totalLessorBudget += $itemTotal;
         }
 
-        \Log::info("💰 Final lessor prices calculation", [
+        Log::info("💰 Final lessor prices calculation with new system", [
             'request_id' => $request->id,
             'items_count' => count($lessorPrices),
             'total_lessor_budget' => $totalLessorBudget
@@ -65,7 +86,6 @@ class RentalRequestPricingService
             'rental_days' => $this->calculateRentalDays($request)
         ];
     }
-
     /**
      * Обратное применение наценки - из цены арендатора получаем цену для арендодателя
      */
@@ -178,30 +198,22 @@ class RentalRequestPricingService
      */
     public function calculateProposalPrice(float $lessorProposedPrice, array $markup, int $workingHours): float
     {
-        // Прямое применение наценки
-        if ($markup['type'] === 'fixed') {
-            $markupValue = $markup['value']; // фиксированная наценка за час
-            $result = $lessorProposedPrice + $markupValue;
+        // Для предложений используем прямой расчет через новый сервис
+        $markupResult = $this->markupCalculationService->calculateMarkup(
+            $lessorProposedPrice,
+            'proposal', // специальный контекст для предложений
+            $workingHours,
+            null, null, null, null // параметры будут определены в сервисе
+        );
 
-            Log::debug('Proposal price calculation (fixed)', [
-                'lessor_price' => $lessorProposedPrice,
-                'markup' => $markupValue,
-                'customer_price' => $result
-            ]);
+        Log::debug('Proposal price calculation with new system', [
+            'lessor_price' => $lessorProposedPrice,
+            'customer_price' => $markupResult['final_price'],
+            'markup_amount' => $markupResult['markup_amount'],
+            'working_hours' => $workingHours
+        ]);
 
-            return $result;
-        } else {
-            $markupPercent = $markup['value'] / 100;
-            $result = $lessorProposedPrice * (1 + $markupPercent);
-
-            Log::debug('Proposal price calculation (percent)', [
-                'lessor_price' => $lessorProposedPrice,
-                'markup_percent' => $markupPercent,
-                'customer_price' => $result
-            ]);
-
-            return $result;
-        }
+        return $markupResult['final_price'];
     }
 
     /**
@@ -209,9 +221,23 @@ class RentalRequestPricingService
      */
     public function getMarkupForEquipment($equipment, $lesseeCompany): array
     {
-        return $this->getPlatformMarkupForRentalRequest(
+        // Временно используем базовую цену оборудования для расчета
+        $basePrice = $equipment->rentalTerms->first()?->price_per_hour ?? 0;
+
+        $markupResult = $this->markupCalculationService->calculateMarkup(
+            $basePrice,
+            'rental_request',
+            1, // базовый расчет на 1 час
+            $equipment->id,
             $equipment->category_id,
-            $lesseeCompany
+            null,
+            $lesseeCompany?->id
         );
+
+        return [
+            'type' => $markupResult['markup_type'],
+            'value' => $markupResult['markup_value'],
+            'source' => $markupResult['calculation_details']['source']
+        ];
     }
 }
