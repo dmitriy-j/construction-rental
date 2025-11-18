@@ -29,6 +29,7 @@ class RegisteredUserController extends Controller
             'company_name' => $request->legal_name,
             'email' => $request->email,
             'inn' => $request->inn,
+            'legal_type' => $request->legal_type,
             'ip' => $request->ip(),
             'user_agent' => $request->userAgent(),
             'all_request_data' => $request->except(['password', 'password_confirmation'])
@@ -44,6 +45,7 @@ class RegisteredUserController extends Controller
             Log::channel('registration')->info('✅ ДАННЫЕ ПРОШЛИ ВАЛИДАЦИЮ', [
                 'company_type' => $validatedData['company_type'],
                 'tax_system' => $validatedData['tax_system'],
+                'legal_type' => $validatedData['legal_type'],
                 'inn' => $validatedData['inn'],
                 'validated_fields' => array_keys($validatedData)
             ]);
@@ -53,15 +55,25 @@ class RegisteredUserController extends Controller
                 ? $validatedData['legal_address']
                 : $validatedData['actual_address'];
 
+            // Обрабатываем KPP в зависимости от типа организации
+            $kpp = null;
+            if ($validatedData['legal_type'] === 'ooo') {
+                $kpp = $validatedData['kpp'] ?? null;
+                Log::channel('registration')->debug('🔧 KPP сохранен для ООО', ['kpp' => $kpp]);
+            } else {
+                Log::channel('registration')->debug('🔧 KPP пропущен для ИП');
+            }
+
             // Создаем компанию
             Log::channel('registration')->info('🔄 СОЗДАНИЕ КОМПАНИИ В БАЗЕ ДАННЫХ');
             $company = Company::create([
                 'is_lessor' => $validatedData['company_type'] === 'lessor',
                 'is_lessee' => $validatedData['company_type'] === 'lessee',
+                'legal_type' => $validatedData['legal_type'], // Сохраняем тип организации
                 'legal_name' => $validatedData['legal_name'],
                 'tax_system' => $validatedData['tax_system'],
                 'inn' => $validatedData['inn'],
-                'kpp' => $validatedData['kpp'],
+                'kpp' => $kpp, // KPP только для ООО
                 'ogrn' => $validatedData['ogrn'],
                 'okpo' => $validatedData['okpo'] ?? null,
                 'legal_address' => $validatedData['legal_address'],
@@ -79,6 +91,7 @@ class RegisteredUserController extends Controller
             Log::channel('registration')->info('✅ КОМПАНИЯ СОЗДАНА УСПЕШНО', [
                 'company_id' => $company->id,
                 'legal_name' => $company->legal_name,
+                'legal_type' => $company->legal_type,
                 'status' => $company->status
             ]);
 
@@ -132,7 +145,8 @@ class RegisteredUserController extends Controller
             Log::channel('registration')->info('🎉 РЕГИСТРАЦИЯ УСПЕШНО ЗАВЕРШЕНА', [
                 'user_id' => $user->id,
                 'company_id' => $company->id,
-                'company_type' => $validatedData['company_type']
+                'company_type' => $validatedData['company_type'],
+                'legal_type' => $validatedData['legal_type']
             ]);
 
             // Редирект с сообщением о успешной регистрации и отправке верификации

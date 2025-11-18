@@ -472,6 +472,16 @@
                         <span class="nav-text">Главная</span>
                     </a>
                 </li>
+                <!-- ДОБАВЛЕНО: Управление заказами -->
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->is('admin/orders*') ? 'active' : '' }}" href="{{ route('admin.orders.index') }}">
+                        <i class="nav-icon bi bi-receipt"></i>
+                        <span class="nav-text">Управление заказами</span>
+                        @if($pendingOrders ?? 0 > 0)
+                            <span class="badge bg-warning rounded-pill pulse">{{ $pendingOrders }}</span>
+                        @endif
+                    </a>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link {{ request()->is('admin/equipment*') ? 'active' : '' }}" href="{{ route('admin.equipment.index') }}">
                         <i class="nav-icon bi bi-tools"></i>

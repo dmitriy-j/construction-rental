@@ -15,10 +15,21 @@ use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Admin\AdminNewsController;
 use App\Http\Controllers\Admin\UpdController;
 use App\Http\Controllers\Admin\MarkupController;
+use App\Http\Controllers\Admin\AdminOrderController; // ДОБАВИТЬ ЭТУ СТРОЧКУ
 use Illuminate\Support\Facades\Route;
 
 // Админ кабинет
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
+
+// РАЗДЕЛ УПРАВЛЕНИЯ ЗАКАЗАМИ - ИСПРАВЛЕНО: добавлен префикс admin
+Route::prefix('orders')->name('admin.orders.')->group(function () {
+    Route::get('/', [AdminOrderController::class, 'index'])->name('index');
+    Route::get('/{order}', [AdminOrderController::class, 'show'])->name('show');
+    Route::get('/{order}/edit-dates', [AdminOrderController::class, 'editDates'])->name('edit-dates');
+    Route::post('/{order}/check-dates-availability', [AdminOrderController::class, 'checkDatesAvailability'])->name('check-dates-availability');
+    Route::post('/{order}/update-dates', [AdminOrderController::class, 'updateDates'])->name('update-dates');
+    Route::post('/{order}/force-update-dates', [AdminOrderController::class, 'forceUpdateDates'])->name('force-update-dates');
+});
 
 // Оборудование
 Route::get('/equipment', [AdminEquipmentController::class, 'index'])->name('admin.equipment.index');

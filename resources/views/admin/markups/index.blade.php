@@ -253,7 +253,7 @@ function testCalculation() {
     // УСИЛЕННЫЕ ЗАЩИТНЫЕ ПРОВЕРКИ ДОМ ЭЛЕМЕНТОВ
     const form = document.getElementById('testCalculationForm');
     const resultDiv = document.getElementById('testResult');
-    const contentDiv = document.getElementById('resultContent');
+    let contentDiv = document.getElementById('resultContent'); // Используем let для переприсваивания
     const submitBtn = document.querySelector('#testModal .btn-primary');
 
     // Детальная проверка каждого элемента
@@ -267,13 +267,6 @@ function testCalculation() {
     if (!resultDiv) {
         console.error('❌ Result div not found: #testResult');
         console.log('Available divs with testResult:', document.querySelectorAll('#testResult').length);
-
-        // Попробуем найти альтернативные селекторы
-        const alternativeResult = document.querySelector('[id*="testResult"], [class*="test-result"]');
-        if (alternativeResult) {
-            console.log('Found alternative result container:', alternativeResult);
-        }
-
         alert('Ошибка: контейнер результатов не найден. Обновите страницу.');
         return;
     }
@@ -282,7 +275,7 @@ function testCalculation() {
         console.error('❌ Content div not found: #resultContent');
         console.log('Available divs with resultContent:', document.querySelectorAll('#resultContent').length);
 
-        // Попробуем создать элемент, если его нет
+        // Создаем элемент, если его нет
         console.log('🔄 Attempting to create missing resultContent element...');
         const newContentDiv = document.createElement('div');
         newContentDiv.id = 'resultContent';
@@ -293,8 +286,7 @@ function testCalculation() {
             if (alertDiv) {
                 alertDiv.appendChild(newContentDiv);
                 console.log('✅ Created resultContent element dynamically');
-                // Перезаписываем переменную
-                contentDiv = newContentDiv;
+                contentDiv = newContentDiv; // Переприсваиваем переменную
             } else {
                 resultDiv.appendChild(newContentDiv);
                 console.log('✅ Created resultContent element in resultDiv');
@@ -369,7 +361,6 @@ function testCalculation() {
                         errorMessage = errorData.message;
                     }
                 } catch (e) {
-                    // Не JSON ответ, используем текст как есть
                     if (text && text.length < 100) {
                         errorMessage = text;
                     }
@@ -384,15 +375,49 @@ function testCalculation() {
 
         if (data.success && data.result) {
             const result = data.result;
-            // Используем безопасное обращение к свойствам
             const calculationDetails = result.calculation_details || {};
 
+            // ⚠️ ИСПРАВЛЕНИЕ РАСЧЕТА - пересчитываем правильно
+            const baseTotal = (result.base_price || 0) * (result.working_hours || 1);
+            let markupTotal = result.markup_amount || 0;
+
+            // Для фиксированной наценки умножаем на количество часов
+            if (result.markup_type === 'fixed') {
+                markupTotal = (result.markup_value || 0) * (result.working_hours || 1);
+            }
+            // Для процентной наценки рассчитываем от общей базовой стоимости
+            else if (result.markup_type === 'percent') {
+                markupTotal = baseTotal * ((result.markup_value || 0) / 100);
+            }
+
+            const correctFinalPrice = baseTotal + markupTotal;
+            const serverFinalPrice = result.final_price || 0;
+
+            console.log('🔄 CORRECTED CALCULATION:', {
+                basePricePerHour: result.base_price,
+                workingHours: result.working_hours,
+                baseTotal: baseTotal,
+                markupType: result.markup_type,
+                markupValue: result.markup_value,
+                markupTotal: markupTotal,
+                correctFinalPrice: correctFinalPrice,
+                serverFinalPrice: serverFinalPrice
+            });
+
+            // Показываем оба результата для сравнения
             contentDiv.innerHTML = `
                 <div class="calculation-result">
+                    ${serverFinalPrice !== correctFinalPrice ? `
+                    <div class="alert alert-warning mb-3">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Обнаружена ошибка в расчете!</strong> Показан исправленный результат.
+                    </div>
+                    ` : ''}
+
                     <div class="table-responsive">
                         <table class="table table-sm table-bordered">
                             <tr>
-                                <td class="fw-bold" style="width: 40%">Базовая цена:</td>
+                                <td class="fw-bold" style="width: 40%">Базовая цена (за час):</td>
                                 <td class="text-end">${formatCurrency(result.base_price)}</td>
                             </tr>
                             <tr>
@@ -403,20 +428,35 @@ function testCalculation() {
                             </tr>
                             <tr>
                                 <td class="fw-bold">Значение наценки:</td>
-                                <td class="text-end">${escapeHtml(result.markup_value || '0')}</td>
+                                <td class="text-end">${escapeHtml(result.markup_value || '0')}${result.markup_type === 'percent' ? '%' : '₽/час'}</td>
                             </tr>
                             <tr>
-                                <td class="fw-bold">Сумма наценки:</td>
-                                <td class="text-end fw-bold text-primary">${formatCurrency(result.markup_amount || 0)}</td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold">Итоговая цена:</td>
-                                <td class="text-end fw-bold text-success">${formatCurrency(result.final_price || result.base_price)}</td>
-                            </tr>
-                            <tr>
-                                <td>Рабочие часы:</td>
+                                <td class="fw-bold">Рабочие часы:</td>
                                 <td class="text-end">${escapeHtml(result.working_hours || '0')} ч</td>
                             </tr>
+                            <tr>
+                                <td class="fw-bold">Общая базовая стоимость:</td>
+                                <td class="text-end">${formatCurrency(baseTotal)}</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Общая сумма наценки:</td>
+                                <td class="text-end fw-bold text-primary">${formatCurrency(markupTotal)}</td>
+                            </tr>
+                            ${serverFinalPrice !== correctFinalPrice ? `
+                            <tr class="table-success">
+                                <td class="fw-bold">Итоговая цена (ПРАВИЛЬНО):</td>
+                                <td class="text-end fw-bold text-success fs-6">${formatCurrency(correctFinalPrice)}</td>
+                            </tr>
+                            <tr class="table-danger">
+                                <td class="fw-bold">Итоговая цена (с сервера - ОШИБКА):</td>
+                                <td class="text-end fw-bold text-danger">${formatCurrency(serverFinalPrice)}</td>
+                            </tr>
+                            ` : `
+                            <tr class="table-success">
+                                <td class="fw-bold">Итоговая цена:</td>
+                                <td class="text-end fw-bold text-success fs-6">${formatCurrency(correctFinalPrice)}</td>
+                            </tr>
+                            `}
                             <tr>
                                 <td>Источник:</td>
                                 <td class="text-end">
@@ -430,21 +470,23 @@ function testCalculation() {
                         </table>
                     </div>
 
-                    <!-- Визуализация расчета -->
+                    <!-- Детальная визуализация расчета -->
                     <div class="mt-3 p-3 bg-light rounded">
-                        <h6 class="text-muted mb-2">Визуализация расчета:</h6>
+                        <h6 class="text-muted mb-2">Детальный расчет:</h6>
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span>Базовая цена:</span>
-                            <span class="fw-bold">${formatCurrency(result.base_price)}</span>
+                            <span>Базовая цена × часы:</span>
+                            <span>${formatCurrency(result.base_price)} × ${result.working_hours}ч</span>
+                            <span class="fw-bold">${formatCurrency(baseTotal)}</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span>Наценка:</span>
-                            <span class="fw-bold text-primary">+ ${formatCurrency(result.markup_amount || 0)}</span>
+                            <span>Наценка ${result.markup_type === 'percent' ? result.markup_value + '%' : result.markup_value + '₽/час'}:</span>
+                            <span>${result.markup_type === 'fixed' ? formatCurrency(result.markup_value) + ' × ' + result.working_hours + 'ч' : baseTotal.toFixed(2) + ' × ' + result.markup_value + '%'}</span>
+                            <span class="fw-bold text-primary">+ ${formatCurrency(markupTotal)}</span>
                         </div>
                         <hr class="my-2">
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="fw-bold">Итоговая цена:</span>
-                            <span class="fw-bold text-success fs-5">${formatCurrency(result.final_price || result.base_price)}</span>
+                            <span class="fw-bold text-success fs-5">${formatCurrency(correctFinalPrice)}</span>
                         </div>
                     </div>
                 </div>

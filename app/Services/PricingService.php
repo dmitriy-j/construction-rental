@@ -261,7 +261,8 @@ class PricingService
             return null;
         }
 
-        return Cache::remember("markup_{$markupableType}_{$markupableId}", 3600, function () use ($markupableType, $markupableId) {
+        // 🔥 ОБЫЧНОЕ КЕШИРОВАНИЕ: Без тегов для совместимости
+        return Cache::remember("markup_{$markupableType}_{$markupableId}", 300, function () use ($markupableType, $markupableId) {
             $markup = PlatformMarkup::where('platform_id', 1)
                 ->where('markupable_type', $markupableType)
                 ->where('markupable_id', $markupableId)
@@ -289,8 +290,6 @@ class PricingService
 
     public function applyMarkup(float $price, array $markup): float
     {
-        // Для обратной совместимости оставляем старый метод,
-        // но теперь он использует данные из нового сервиса
         if (isset($markup['amount'])) {
             return $markup['amount'];
         }

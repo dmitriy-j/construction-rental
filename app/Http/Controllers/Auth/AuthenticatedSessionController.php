@@ -46,59 +46,41 @@ class AuthenticatedSessionController extends Controller
         $user = Auth::user();
         $company = $user->company;
 
-        // Проверка статуса компании - ДОБАВЛЕНО ВОЗВРАТ РЕДИРЕКТА
-        if ($company && $company->status !== 'verified') {
-            Auth::logout();
-            Log::warning('Company not verified', [
-                'user_id' => $user->id,
-                'company_status' => $company->status,
-            ]);
+        // ✅ ВАЖНО: НЕ блокируем вход для неподтвержденных компаний
+        // Они смогут подтвердить email, но доступ к основному функционалу будет ограничен
 
-            return back()->withErrors([ // ВОЗВРАТ ЗДЕСЬ
-                'email' => 'Ваша компания не прошла верификацию',
-            ]);
-        }
-
-        // Подробное логирование
-        //  Log::debug('User details', [
-        //      'id' => $user->id,
-        //      'email' => $user->email,
-        //      'company_id' => $user->company_id,
-        //      'is_platform_admin' => $user->isPlatformAdmin()
-        //   ]);
-
-        if ($company) {
-            Log::debug('Company details', [
-                'id' => $company->id,
-                'is_lessor' => $company->is_lessor,
-                'is_lessee' => $company->is_lessee,
-                'status' => $company->status,
-            ]);
-        } else {
-            Log::warning('User has no company associated', ['user_id' => $user->id]);
-        }
-
-        // Исправленный блок редиректов с возвратом
+        // Редирект в зависимости от роли и статуса
         if ($user->isPlatformAdmin()) {
             Log::info('Redirecting to admin dashboard');
-
-            return redirect()->route('admin.dashboard'); // ВОЗВРАТ
+            return redirect()->route('admin.dashboard');
         } elseif ($company) {
-            if ($company->is_lessor) {
-                Log::info('Redirecting to lessor dashboard');
+            // ✅ Разрешаем доступ к верификации email даже для неподтвержденных компаний
+            if (!$user->hasVerifiedEmail()) {
+                Log::info('User email not verified, redirecting to verification notice');
+                return redirect()->route('verification.notice');
+            }
 
-                return redirect()->route('lessor.dashboard'); // ВОЗВРАТ
-            } elseif ($company->is_lessee) {
-                Log::info('Redirecting to lessee dashboard');
-
-                return redirect()->route('lessee.dashboard'); // ВОЗВРАТ
+            if ($company->status === 'verified') {
+                if ($company->is_lessor) {
+                    Log::info('Redirecting to lessor dashboard');
+                    return redirect()->route('lessor.dashboard');
+                } elseif ($company->is_lessee) {
+                    Log::info('Redirecting to lessee dashboard');
+                    return redirect()->route('lessee.dashboard');
+                }
+            } else {
+                // ✅ Компания не верифицирована, но пользователь может подтвердить email
+                Log::info('Company not verified, but allowing email verification', [
+                    'company_status' => $company->status
+                ]);
+                return redirect()->route('verification.notice')
+                    ->with('warning', 'Подтвердите ваш email для завершения регистрации компании.');
             }
         }
 
-        // Fallback редирект с возвратом
+        // Fallback редирект
         Log::warning('No valid redirection found, using default');
-
-        return redirect()->intended(RouteServiceProvider::HOME); // ВОЗВРАТ
+        return redirect()->intended(RouteServiceProvider::HOME);
     }
 
     public function destroy(Request $request): RedirectResponse

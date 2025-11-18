@@ -12,7 +12,6 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
-    // Регистрация - раскомментирована, так как используем кастомную регистрацию
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
 
@@ -37,8 +36,9 @@ Route::middleware('guest')->group(function () {
         ->name('password.store');
 });
 
-Route::middleware('auth')->group(function () {
-    // Email Verification Routes - ОСТАВЛЯЕМ стандартные маршруты
+// ✅ ВАЖНО: Маршруты верификации email ДОЛЖНЫ быть доступны даже для неподтвержденных компаний
+Route::middleware(['auth'])->group(function () {
+    // Email Verification Routes
     Route::get('verify-email', [EmailVerificationPromptController::class, '__invoke'])
         ->name('verification.notice');
 
@@ -50,6 +50,12 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:6,1')
         ->name('verification.send');
 
+    Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
+        ->name('logout');
+});
+
+// ✅ ОСТАЛЬНЫЕ защищенные маршруты (требуют подтвержденной компании)
+Route::middleware(['auth', 'company.verified'])->group(function () {
     Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])
         ->name('password.confirm');
 
@@ -57,7 +63,4 @@ Route::middleware('auth')->group(function () {
 
     Route::put('password', [PasswordController::class, 'update'])
         ->name('password.update');
-
-    Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
-        ->name('logout');
 });

@@ -47,12 +47,12 @@ class MarkupCalculationService
     ): array {
         $cacheKey = $this->buildCacheKey($entityType, $equipmentId, $categoryId, $companyId, $lesseeCompanyId);
 
-        return Cache::remember($cacheKey, 3600, function () use (
+        // 🔥 ОБЫЧНОЕ КЕШИРОВАНИЕ: Без тегов для совместимости
+        return Cache::remember($cacheKey, 300, function () use ( // 5 минут для частых изменений
             $entityType, $equipmentId, $categoryId, $companyId, $lesseeCompanyId
         ) {
-            // ИСПРАВЛЕНИЕ: Используем scope из модели вместо дублирования логики
             $markup = PlatformMarkup::forEntityType($entityType)
-                ->active() // ← Используем scope из модели PlatformMarkup
+                ->active()
                 ->forContext($equipmentId, $categoryId, $companyId, $lesseeCompanyId)
                 ->orderBy('priority', 'DESC')
                 ->orderBy('created_at', 'DESC')
@@ -91,78 +91,6 @@ class MarkupCalculationService
         ];
     }
 
-    /**
-     * Сброс кэша наценок при изменении
-     */
-    public function clearAffectedCache(PlatformMarkup $markup): void
-    {
-        // Определяем, какие ключи кэша затронуты этой наценкой
-        $affectedKeys = $this->getAffectedCacheKeys($markup);
-
-        foreach ($affectedKeys as $key) {
-            Cache::forget($key);
-            Log::debug("Cleared markup cache key: {$key}");
-        }
-
-        Log::info("Markup cache cleared for {$markup->id}", [
-            'affected_keys' => count($affectedKeys),
-            'markup_source' => $markup->getMarkupSource()
-        ]);
-    }
-
-    /**
-     * Получение всех затронутых ключей кэша
-     */
-    private function getAffectedCacheKeys(PlatformMarkup $markup): array
-    {
-        $keys = [];
-        $entityType = $markup->entity_type;
-
-        // В зависимости от типа сущности, определяем какие комбинации затронуты
-        switch ($markup->markupable_type) {
-            case Equipment::class:
-                $equipment = $markup->markupable;
-                if ($equipment) {
-                    $keys[] = $this->buildCacheKey($entityType, $equipment->id, $equipment->category_id, null, null);
-                    $keys[] = $this->buildCacheKey($entityType, $equipment->id, null, null, null);
-                }
-                break;
-
-            case EquipmentCategory::class:
-                $keys[] = $this->buildCacheKey($entityType, null, $markup->markupable_id, null, null);
-                // Все оборудование этой категории
-                $equipmentIds = Equipment::where('category_id', $markup->markupable_id)
-                    ->pluck('id')
-                    ->toArray();
-                foreach ($equipmentIds as $equipmentId) {
-                    $keys[] = $this->buildCacheKey($entityType, $equipmentId, $markup->markupable_id, null, null);
-                }
-                break;
-
-            case Company::class:
-                $keys[] = $this->buildCacheKey($entityType, null, null, null, $markup->markupable_id);
-                break;
-
-            default: // Общая наценка
-                $keys[] = $this->buildCacheKey($entityType, null, null, null, null);
-                break;
-        }
-
-        return array_unique($keys);
-    }
-
-    /**
-     * Обновление кэша для конкретной наценки
-     */
-    public function warmUpCache(PlatformMarkup $markup): void
-    {
-        $affectedKeys = $this->getAffectedCacheKeys($markup);
-
-        foreach ($affectedKeys as $key) {
-            // Перестраиваем кэш асинхронно
-            \App\Jobs\WarmUpMarkupCache::dispatch($key, $markup->entity_type);
-        }
-    }
 
     /**
      * Поиск наценки с наивысшим приоритетом
@@ -475,14 +403,5 @@ class MarkupCalculationService
             $companyId ?? 'null',
             $lesseeCompanyId ?? 'null'
         );
-    }
-
-    /**
-     * Сброс кэша наценок
-     */
-    public function clearCache(): void
-    {
-        Cache::flush();
-        Log::info("Markup cache cleared");
     }
 }

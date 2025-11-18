@@ -12,6 +12,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Artisan;
 
 class MarkupController extends Controller
 {
@@ -222,6 +224,10 @@ class MarkupController extends Controller
             $markup = PlatformMarkup::create($validated);
             $markup->logAudit('created', null, $markup->toArray(), 'Создание наценки');
 
+            // 🔥 ПАТТЕРН-ОСНОВАННАЯ ОЧИСТКА: Очистка при создании
+            $this->clearMarkupCache();
+            Log::info('Markup cache cleared after creation', ['markup_id' => $markup->id]);
+
             DB::commit();
 
             return redirect()->route('markups.index')
@@ -233,6 +239,84 @@ class MarkupController extends Controller
 
             return back()->withInput()->with('error',
                 'Ошибка при создании наценки: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 🔥 ОБНОВЛЕННЫЙ МЕТОД ДЛЯ ОЧИСТКИ ВСЕХ КЕШЕЙ НАЦЕНОК
+     */
+    private function clearMarkupCache()
+    {
+        try {
+            // Получаем текущий драйвер кеша
+            $cacheDriver = config('cache.default');
+            Log::info("Clearing markup cache for driver: {$cacheDriver}");
+
+            // Паттерны для очистки
+            $patterns = [
+                'markup_*',
+                'markups_*',
+                'pricing_*',
+                'price_calculation_*'
+            ];
+
+            // Разные стратегии для разных драйверов
+            switch ($cacheDriver) {
+                case 'redis':
+                    $this->clearRedisCache($patterns);
+                    break;
+
+                case 'file':
+                case 'database':
+                case 'array':
+                default:
+                    // Для драйверов без поддержки тегов используем полную очистку
+                    Cache::flush();
+                    Log::info("Full cache flush for driver: {$cacheDriver}");
+                    break;
+            }
+
+            // Дополнительно: очистка через Artisan
+            Artisan::call('cache:clear');
+            Log::info('Artisan cache:clear executed');
+
+            Log::info('Markup cache clearance completed', [
+                'driver' => $cacheDriver,
+                'timestamp' => now()->toDateTimeString()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error clearing markup cache: ' . $e->getMessage());
+
+            // Фолбэк: всегда работает
+            Cache::flush();
+            Log::info('Fallback: Full cache flush executed');
+        }
+    }
+
+     /**
+     * Очистка Redis кеша по паттернам
+     */
+    private function clearRedisCache(array $patterns)
+    {
+        try {
+            $redis = Cache::getRedis();
+
+            foreach ($patterns as $pattern) {
+                $cursor = 0;
+                do {
+                    list($cursor, $chunk) = $redis->scan($cursor, 'MATCH', $pattern, 'COUNT', 100);
+                    if (!empty($chunk)) {
+                        $redis->del(...$chunk);
+                        Log::debug("Cleared Redis keys for pattern: {$pattern}", ['count' => count($chunk)]);
+                    }
+                } while ($cursor != 0);
+            }
+
+            Log::info('Redis pattern clearance completed', ['patterns' => $patterns]);
+        } catch (\Exception $e) {
+            Log::error('Error clearing Redis cache: ' . $e->getMessage());
+            throw $e;
         }
     }
 
@@ -315,6 +399,10 @@ class MarkupController extends Controller
             $markup->update($validated);
             $markup->logAudit('updated', $oldValues, $markup->toArray(), 'Обновление наценки');
 
+            // 🔥 ПАТТЕРН-ОСНОВАННАЯ ОЧИСТКА: Очистка при обновлении
+            $this->clearMarkupCache();
+            Log::info('Markup cache cleared after update', ['markup_id' => $markup->id]);
+
             DB::commit();
 
             return redirect()->route('markups.index')
@@ -382,7 +470,14 @@ class MarkupController extends Controller
             // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Аудит перед удалением
             $markup->logAudit('deleted', $markup->toArray(), null, 'Удаление наценки');
 
+            $markupId = $markup->id;
+            $markupData = $markup->toArray();
+
             $markup->delete();
+
+            // 🔥 ПАТТЕРН-ОСНОВАННАЯ ОЧИСТКА: Очистка при удалении
+            $this->clearMarkupCache();
+            Log::info('Markup cache cleared after deletion', ['markup_id' => $markupId]);
 
             DB::commit();
 

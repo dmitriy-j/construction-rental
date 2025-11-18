@@ -407,13 +407,16 @@ class Order extends Model
             return false;
         }
 
-        // Проверка операторов
+        // Проверка операторов - ИСПРАВЛЕНИЕ: получаем условия аренды из первой позиции
+        $firstItem = $this->items->first();
+        $rentalCondition = $firstItem ? $firstItem->rentalCondition : null;
+        $shiftsPerDay = $rentalCondition ? $rentalCondition->shifts_per_day : ($this->shifts_per_day ?? 1);
+
         foreach ($this->items as $item) {
             if (! $item->equipment->hasActiveDayOperator()) {
                 return false;
             }
-            if ($this->rentalCondition->shifts_per_day > 1 &&
-                ! $item->equipment->hasActiveNightOperator()) {
+            if ($shiftsPerDay > 1 && ! $item->equipment->hasActiveNightOperator()) {
                 return false;
             }
         }
@@ -441,9 +444,10 @@ class Order extends Model
             $errors[] = 'Нельзя начать аренду раньше '.$this->start_date->format('d.m.Y');
         }
 
-        // Проверка операторов
-        $rentalCondition = $this->rentalCondition;
-        $shiftsPerDay = $rentalCondition->shifts_per_day ?? 1;
+        // Проверка операторов - ИСПРАВЛЕНИЕ: получаем условия аренды из первой позиции
+        $firstItem = $this->items->first();
+        $rentalCondition = $firstItem ? $firstItem->rentalCondition : null;
+        $shiftsPerDay = $rentalCondition ? $rentalCondition->shifts_per_day : ($this->shifts_per_day ?? 1);
 
         foreach ($this->items as $item) {
             $equipment = $item->equipment;

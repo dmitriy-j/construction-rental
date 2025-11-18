@@ -90,6 +90,11 @@ Route::get('/orders/{order}/upd/{type}', [\App\Http\Controllers\Lessee\OrderCont
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+
+    // ✅ ДОБАВЬТЕ ЭТОТ МАРШРУТ
+    Route::put('/profile/company-legal-details', [ProfileController::class, 'updateCompanyLegalDetails'])
+         ->name('profile.company-details.update');
+
     Route::patch('/profile/bank-details', [ProfileController::class, 'updateBankDetails'])
          ->name('profile.bank-details.update');
     Route::get('/profile/export-pdf', [ProfileController::class, 'exportToPdf'])

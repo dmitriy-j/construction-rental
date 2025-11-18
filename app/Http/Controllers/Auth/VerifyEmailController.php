@@ -16,15 +16,24 @@ class VerifyEmailController extends Controller
      */
     public function __invoke(EmailVerificationRequest $request): RedirectResponse
     {
-        if ($request->user()->hasVerifiedEmail()) {
+        $user = $request->user();
+
+        Log::channel('registration')->info('VerifyEmailController invoked', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'has_verified_email' => $user->hasVerifiedEmail(),
+            'company_status' => $user->company?->status,
+            'route_params' => $request->route()->parameters()
+        ]);
+
+        if ($user->hasVerifiedEmail()) {
             return redirect()->intended(RouteServiceProvider::HOME.'?verified=1');
         }
 
-        if ($request->user()->markEmailAsVerified()) {
-            event(new Verified($request->user()));
+        if ($user->markEmailAsVerified()) {
+            event(new Verified($user));
 
-            // ДОБАВЛЕНО: Обновляем статус компании после верификации email
-            $user = $request->user();
+            // Обновляем статус компании после верификации email
             if ($user->company) {
                 Log::channel('registration')->info('Обновление статуса компании после верификации email', [
                     'user_id' => $user->id,
@@ -45,6 +54,11 @@ class VerifyEmailController extends Controller
                 ]);
             }
         }
+
+        Log::channel('registration')->info('Email verification completed successfully', [
+            'user_id' => $user->id,
+            'email_verified_at' => $user->email_verified_at
+        ]);
 
         return redirect()->intended(RouteServiceProvider::HOME.'?verified=1');
     }
