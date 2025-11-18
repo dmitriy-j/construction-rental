@@ -1,4 +1,3 @@
-<!-- resources/views/admin/documents/partials/invoices-index.blade.php -->
 <div class="table-responsive">
     <table class="table table-hover">
         <thead>
@@ -39,8 +38,59 @@
                         </span>
                     </td>
                     <td>
-                        <a href="{{ route('admin.documents.show', ['type' => 'invoices', 'id' => $invoice->id]) }}"
-                           class="btn btn-sm btn-info">Просмотр</a>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <!-- Просмотр через существующий маршрут документов -->
+                            <a href="{{ route('admin.documents.show', ['type' => 'invoices', 'id' => $invoice->id]) }}"
+                               class="btn btn-info" title="Просмотр">
+                                <i class="fas fa-eye"></i>
+                            </a>
+
+                            <!-- Скачивание через новый маршрут -->
+                            @if($invoice->file_path)
+                                <a href="{{ route('admin.invoices.download', $invoice) }}"
+                                   class="btn btn-success" title="Скачать счет">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                            @endif
+
+                            <!-- Отмена счета -->
+                            @if($invoice->status !== 'paid' && $invoice->status !== 'canceled')
+                                <button type="button" class="btn btn-danger"
+                                        data-toggle="modal"
+                                        data-target="#cancelInvoiceModal{{ $invoice->id }}"
+                                        title="Отменить счет">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                            @endif
+                        </div>
+
+                        <!-- Модальное окно отмены счета -->
+                        <div class="modal fade" id="cancelInvoiceModal{{ $invoice->id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form action="{{ route('admin.invoices.cancel', $invoice) }}" method="POST">
+                                        @csrf
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Отмена счета #{{ $invoice->number }}</h5>
+                                            <button type="button" class="close" data-dismiss="modal">
+                                                <span>&times;</span>
+                                            </button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="form-group">
+                                                <label>Причина отмены</label>
+                                                <textarea class="form-control" name="reason" rows="3" required
+                                                          placeholder="Укажите причину отмены счета..."></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Отмена</button>
+                                            <button type="submit" class="btn btn-danger">Подтвердить отмену</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
                     </td>
                 </tr>
             @empty

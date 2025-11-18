@@ -18,28 +18,69 @@ $isIncomingUpd = $upd->lessor_company_id !== $platformCompany->id;
         <div class="col-md-6">
             <h1>УПД №{{ $upd->number }}</h1>
         </div>
-        <div class="col-md-6 text-right">
-            <a href="{{ route('admin.upds.index') }}" class="btn btn-secondary">← Назад к списку</a>
-
-            @if($upd->status == 'pending')
-                <form action="{{ route('admin.upds.accept', $upd) }}" method="POST" class="d-inline">
-                    @csrf
-                    <button type="submit" class="btn btn-success">Принять</button>
-                </form>
-                <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectModal">Отклонить</button>
-            @endif
-
-            @if($upd->file_path)
-                <a href="{{ Storage::url($upd->file_path) }}" class="btn btn-info" target="_blank">Скачать файл</a>
-            @endif
-
-            <!-- Новая кнопка для генерации УПД из шаблона -->
-            @if($updTemplate && !$isIncomingUpd)
-                <a href="{{ route('admin.upds.generate-from-template', $upd) }}" class="btn btn-primary">
-                    <i class="bi bi-file-earmark-spreadsheet"></i> Сгенерировать УПД
+            <div class="col-md-6 text-right">
+                <a href="{{ route('admin.upds.index') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Назад к списку
                 </a>
-            @endif
-        </div>
+
+                @if($upd->status == 'pending')
+                    <form action="{{ route('admin.upds.accept', $upd) }}" method="POST" class="d-inline">
+                        @csrf
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check"></i> Принять
+                        </button>
+                    </form>
+                    <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectModal">
+                        <i class="fas fa-times"></i> Отклонить
+                    </button>
+                @endif
+
+                <!-- Упрощенные кнопки скачивания -->
+                <div class="btn-group" role="group">
+                    <!-- Для загруженных файлов (входящие УПД) -->
+                    @if($upd->file_path && !$canGenerateUpd)
+                        <a href="{{ route('admin.upds.download', $upd) }}" class="btn btn-info">
+                            <i class="fas fa-download"></i> Скачать УПД
+                        </a>
+                    @endif
+
+                    <!-- Для генерации исходящих УПД -->
+                    @if($canGenerateUpd)
+                        <a href="{{ route('admin.upds.download-generated', $upd) }}" class="btn btn-primary">
+                            <i class="fas fa-file-download"></i> Скачать УПД
+                        </a>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Добавить скрипт для логирования кликов -->
+            @section('scripts')
+            <script>
+            function logDownloadAttempt(updId, type) {
+                console.log('Попытка скачивания УПД:', {
+                    upd_id: updId,
+                    type: type,
+                    timestamp: new Date().toISOString()
+                });
+
+                // Можно отправить AJAX запрос для логирования на сервер
+                fetch('/admin/log-download-attempt', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        upd_id: updId,
+                        type: type,
+                        user_agent: navigator.userAgent
+                    })
+                }).catch(error => {
+                    console.error('Ошибка логирования:', error);
+                });
+            }
+            </script>
+            @endsection
     </div>
 
     <div class="row">

@@ -15,13 +15,14 @@ use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Admin\AdminNewsController;
 use App\Http\Controllers\Admin\UpdController;
 use App\Http\Controllers\Admin\MarkupController;
-use App\Http\Controllers\Admin\AdminOrderController; // ДОБАВИТЬ ЭТУ СТРОЧКУ
+use App\Http\Controllers\Admin\AdminOrderController;
+use App\Http\Controllers\Admin\InvoiceController; // ДОБАВЛЕН импорт InvoiceController
 use Illuminate\Support\Facades\Route;
 
 // Админ кабинет
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 
-// РАЗДЕЛ УПРАВЛЕНИЯ ЗАКАЗАМИ - ИСПРАВЛЕНО: добавлен префикс admin
+// РАЗДЕЛ УПРАВЛЕНИЯ ЗАКАЗАМИ
 Route::prefix('orders')->name('admin.orders.')->group(function () {
     Route::get('/', [AdminOrderController::class, 'index'])->name('index');
     Route::get('/{order}', [AdminOrderController::class, 'show'])->name('show');
@@ -82,16 +83,32 @@ Route::prefix('upds')->name('admin.upds.')->group(function () {
     Route::post('/{upd}/accept', [UpdController::class, 'accept'])->name('accept');
     Route::post('/{upd}/reject', [UpdController::class, 'reject'])->name('reject');
     Route::delete('/{upd}', [UpdController::class, 'destroy'])->name('destroy');
-    Route::get('/{upd}/generate-from-template', [UpdController::class, 'generateFromTemplate'])->name('generate-from-template');
+
+    // Скачивание
+    Route::get('/{upd}/download', [UpdController::class, 'download'])->name('download'); // Загруженные файлы
+    Route::get('/{upd}/download-generated', [UpdController::class, 'downloadGenerated'])->name('download-generated'); // Генерация на лету
 });
 
-// Документы
+// Управление счетами
+Route::prefix('invoices')->name('admin.invoices.')->group(function () {
+    Route::get('/', [InvoiceController::class, 'index'])->name('index');
+    Route::get('/{invoice}', [InvoiceController::class, 'show'])->name('show');
+    Route::get('/{invoice}/download', [InvoiceController::class, 'download'])->name('download');
+    Route::post('/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('cancel');
+    Route::delete('/{invoice}', [InvoiceController::class, 'destroy'])->name('destroy');
+
+    // Создание счетов из заказов и УПД
+    Route::post('/orders/{order}/create', [InvoiceController::class, 'createForOrder'])->name('create-for-order');
+    Route::post('/upds/{upd}/create', [InvoiceController::class, 'createForUpd'])->name('create-for-upd');
+});
+
+// Документы (общий раздел)
 Route::prefix('documents')->name('admin.documents.')->group(function () {
     Route::get('/', [DocumentController::class, 'index'])->name('index');
     Route::get('/{type}/{id}', [DocumentController::class, 'show'])->name('show');
 });
 
-// Маршруты для управления наценками
+// Управление наценками
 Route::prefix('markups')->name('markups.')->middleware(['auth', 'can:manage-markups'])->group(function () {
     Route::get('/', [MarkupController::class, 'index'])->name('index');
     Route::get('/create', [MarkupController::class, 'create'])->name('create');
@@ -100,17 +117,18 @@ Route::prefix('markups')->name('markups.')->middleware(['auth', 'can:manage-mark
     Route::put('/{markup}', [MarkupController::class, 'update'])->name('update');
     Route::delete('/{markup}', [MarkupController::class, 'destroy'])->name('destroy');
 
-    // ДОБАВЛЯЕМ rate limiting для тестового расчета
+    // Rate limiting для тестового расчета
     Route::post('/test-calculation', [MarkupController::class, 'testCalculation'])
         ->name('test-calculation')
-        ->middleware('throttle:10,1'); // 10 запросов в минуту
+        ->middleware('throttle:10,1');
 });
 
-// Новый раздел: Настройки
+// Настройки
 Route::prefix('settings')->name('admin.settings.')->group(function () {
+    // Шаблоны документов
     Route::resource('document-templates', DocumentTemplateController::class)
         ->names([
-            'index' => 'document-templates.index', // Изменено
+            'index' => 'document-templates.index',
             'create' => 'document-templates.create',
             'store' => 'document-templates.store',
             'show' => 'document-templates.show',
@@ -119,19 +137,20 @@ Route::prefix('settings')->name('admin.settings.')->group(function () {
             'destroy' => 'document-templates.destroy',
         ]);
 
-    // Дополнительные маршруты - исправляем имена
+    // Дополнительные маршруты для шаблонов документов
     Route::get('document-templates/{documentTemplate}/download', [DocumentTemplateController::class, 'download'])
-        ->name('document-templates.download'); // Изменено
+        ->name('document-templates.download');
 
     Route::get('document-templates/{documentTemplate}/preview', [DocumentTemplateController::class, 'preview'])
-        ->name('document-templates.preview'); // Изменено
+        ->name('document-templates.preview');
 
     Route::get('/{documentTemplate}/generate', [DocumentTemplateController::class, 'generateForm'])
-        ->name('generate-form'); // Изменено
+        ->name('generate-form');
 
     Route::post('/{documentTemplate}/generate', [DocumentTemplateController::class, 'generate'])
-        ->name('generate'); // Изменено
+        ->name('generate');
 
+    // Наценки
     Route::get('/markups', [MarkupController::class, 'index'])->name('markups.index');
 });
 
@@ -173,7 +192,7 @@ Route::prefix('reports')->name('admin.reports.')->group(function () {
     Route::get('/export', [ReportsController::class, 'export'])->name('export');
 });
 
-// Управление договорами (НОВЫЕ МАРШРУТЫ)
+// Управление договорами
 Route::resource('contracts', ContractController::class)
     ->names([
         'index' => 'admin.contracts.index',
@@ -187,3 +206,5 @@ Route::resource('contracts', ContractController::class)
 
 Route::get('contracts/{contract}/download', [ContractController::class, 'download'])
     ->name('admin.contracts.download');
+
+

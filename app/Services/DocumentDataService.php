@@ -37,6 +37,31 @@ class DocumentDataService
         $platformCompany = Company::where('is_platform', true)->first();
         $lesseeCompany = $upd->lesseeCompany;
 
+        // ПРОВЕРЯЕМ - генерируем только ИСХОДЯЩИЕ УПД (Платформа → Арендатор)
+        $isOutgoingUpd = $upd->lessor_company_id === $platformCompany->id;
+
+        if (!$isOutgoingUpd) {
+            throw new \Exception('Генерация УПД возможна только для исходящих документов (Платформа → Арендатор). Входящие УПД должны загружаться готовыми файлами.');
+        }
+
+        // Проверяем наличие обязательных компаний
+        if (!$platformCompany) {
+            throw new \Exception('Компания платформы не найдена в системе');
+        }
+
+        if (!$lesseeCompany) {
+            throw new \Exception('Компания арендатора не найдена');
+        }
+
+        // Проверяем банковские реквизиты
+        if (empty($platformCompany->bank_name) || empty($platformCompany->bik) || empty($platformCompany->bank_account)) {
+            throw new \Exception('Не заполнены банковские реквизиты платформы');
+        }
+
+        if (empty($lesseeCompany->bank_name) || empty($lesseeCompany->bik) || empty($lesseeCompany->bank_account)) {
+            throw new \Exception('Не заполнены банковские реквизиты арендатора');
+        }
+
         // Формируем строку периода
         $periodString = '';
         if ($upd->service_period_start && $upd->service_period_end) {
@@ -44,6 +69,7 @@ class DocumentDataService
         }
 
         return [
+            // Основные данные УПД
             'upd' => [
                 'number' => $upd->number,
                 'date' => $upd->issue_date ? $upd->issue_date->format('d.m.Y') : '',
@@ -55,6 +81,35 @@ class DocumentDataService
                 'total_with_vat' => $upd->total_amount,
                 'period' => $periodString,
             ],
+
+            // ДЛЯ ШАБЛОНА - продавец и покупатель
+            'seller' => [
+                'name' => $platformCompany->legal_name,
+                'legal_name' => $platformCompany->legal_name,
+                'address' => $platformCompany->legal_address,
+                'inn' => $platformCompany->inn,
+                'kpp' => $platformCompany->kpp,
+                'inn_kpp' => $platformCompany->inn . ' / ' . $platformCompany->kpp,
+                'bank_name' => $platformCompany->bank_name,
+                'bik' => $platformCompany->bik,
+                'account_number' => $platformCompany->bank_account,
+                'correspondent_account' => $platformCompany->correspondent_account,
+            ],
+
+            'buyer' => [
+                'name' => $lesseeCompany->legal_name,
+                'legal_name' => $lesseeCompany->legal_name,
+                'address' => $lesseeCompany->legal_address,
+                'inn' => $lesseeCompany->inn,
+                'kpp' => $lesseeCompany->kpp,
+                'inn_kpp' => $lesseeCompany->inn . ' / ' . $lesseeCompany->kpp,
+                'bank_name' => $lesseeCompany->bank_name,
+                'bik' => $lesseeCompany->bik,
+                'account_number' => $lesseeCompany->bank_account,
+                'correspondent_account' => $lesseeCompany->correspondent_account,
+            ],
+
+            // Оригинальные данные (для обратной совместимости)
             'platform' => [
                 'name' => $platformCompany->legal_name,
                 'legal_name' => $platformCompany->legal_name,
@@ -67,6 +122,7 @@ class DocumentDataService
                 'account_number' => $platformCompany->bank_account,
                 'correspondent_account' => $platformCompany->correspondent_account,
             ],
+
             'lessee' => [
                 'name' => $lesseeCompany->legal_name,
                 'legal_name' => $lesseeCompany->legal_name,
@@ -79,6 +135,8 @@ class DocumentDataService
                 'account_number' => $lesseeCompany->bank_account,
                 'correspondent_account' => $lesseeCompany->correspondent_account,
             ],
+
+            // Прямые поля для плейсхолдеров
             'upd_number' => $upd->number,
             'upd_date' => $upd->issue_date ? $upd->issue_date->format('d.m.Y') : '',
             'contract_number' => $upd->contract_number,
@@ -99,10 +157,25 @@ class DocumentDataService
             'lessee_inn_kpp' => $lesseeCompany->inn . ' / ' . $lesseeCompany->kpp,
             'lessee_address' => $lesseeCompany->legal_address,
             'period' => $periodString,
-            'items' => $upd->items->map(function($item) {
+
+            // Табличная часть с обработкой названий
+            'items' => $upd->items->map(function ($item, $index) use ($periodString) {
+                // Обрабатываем название - заменяем плейсхолдеры
+                $itemName = $item->name;
+
+                // Заменяем плейсхолдеры периода в названии
+                if (strpos($itemName, '{{period}}') !== false) {
+                    $itemName = str_replace('{{period}}', $periodString, $itemName);
+                }
+
+                // Заменяем плейсхолдеры имени
+                if (strpos($itemName, '{{items.#.name}}') !== false) {
+                    $itemName = str_replace('{{items.#.name}}', 'Аренда оборудования', $itemName);
+                }
+
                 return [
-                    'code' => $item->code,
-                    'name' => $item->name,
+                    'code' => $item->code ?? ($index + 1),
+                    'name' => $itemName,
                     'unit' => $item->unit,
                     'quantity' => $item->quantity,
                     'price' => $item->price,
@@ -110,6 +183,11 @@ class DocumentDataService
                     'vat_rate' => $item->vat_rate,
                     'vat_amount' => $item->vat_amount,
                     'total_with_vat' => $item->amount + $item->vat_amount,
+                    // Дополнительные поля для совместимости
+                    'total_without_vat' => $item->amount,
+                    'total' => $item->amount + $item->vat_amount,
+                    'period' => $periodString,
+                    'index' => $index + 1,
                 ];
             })->toArray()
         ];

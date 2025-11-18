@@ -8,6 +8,20 @@
         </div>
         <div class="col-md-6 text-right">
             <a href="{{ route('admin.documents.index', ['type' => 'invoices']) }}" class="btn btn-secondary">← Назад к списку</a>
+
+            <!-- Скачивание через новый маршрут -->
+            @if($document->file_path)
+                <a href="{{ route('admin.invoices.download', $document) }}" class="btn btn-primary">
+                    <i class="fas fa-download"></i> Скачать счет
+                </a>
+            @endif
+
+            <!-- Отмена счета -->
+            @if($document->status !== 'paid' && $document->status !== 'canceled')
+                <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#cancelModal">
+                    <i class="fas fa-ban"></i> Отменить счет
+                </button>
+            @endif
         </div>
     </div>
 
@@ -94,6 +108,7 @@
         </div>
     </div>
 
+    <!-- Остальная часть шаблона без изменений -->
     <div class="row mt-4">
         <div class="col-md-6">
             <div class="card">
@@ -161,13 +176,40 @@
         <div class="col-md-12">
             <div class="card">
                 <div class="card-body text-center">
-                    <a href="{{ Storage::url($document->file_path) }}" class="btn btn-primary" target="_blank">
-                        📄 Скачать счет (PDF)
+                    <a href="{{ route('admin.invoices.download', $document) }}" class="btn btn-primary">
+                        <i class="fas fa-download"></i> Скачать счет (PDF)
                     </a>
                 </div>
             </div>
         </div>
     </div>
     @endif
+</div>
+
+<!-- Модальное окно отмены -->
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ route('admin.invoices.cancel', $document) }}" method="POST">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title">Отмена счета #{{ $document->number }}</h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Причина отмены</label>
+                        <textarea class="form-control" name="reason" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-danger">Подтвердить отмену</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 @endsection

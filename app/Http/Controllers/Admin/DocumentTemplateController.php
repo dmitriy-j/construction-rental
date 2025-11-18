@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DocumentTemplate;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class DocumentTemplateController extends Controller
 {
@@ -50,10 +51,22 @@ class DocumentTemplateController extends Controller
             'name' => 'required|string|max:255',
             'type' => 'required|string|in:' . implode(',', array_keys($this->templateTypes)),
             'description' => 'nullable|string',
-            'template_file' => 'nullable|file|mimes:xlsx,xls,csv|max:10240',
+            'template_file' => 'required|file|mimes:xlsx,xls,csv|max:10240', // Сделать обязательным
         ]);
 
-        // Здесь будет логика сохранения
+        // Обработка загрузки файла
+        if ($request->hasFile('template_file')) {
+            $file = $request->file('template_file');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $filePath = $file->storeAs('document_templates', $fileName, 'public');
+            $validated['file_path'] = $filePath;
+        }
+
+        // Добавляем mapping по умолчанию, если не используется второй контроллер
+        if (!isset($validated['mapping'])) {
+            $validated['mapping'] = [];
+        }
+
         $template = DocumentTemplate::create($validated);
 
         return redirect()->route('admin.settings.document-templates.index')
@@ -90,7 +103,19 @@ class DocumentTemplateController extends Controller
             'template_file' => 'nullable|file|mimes:xlsx,xls,csv|max:10240',
         ]);
 
-        // Здесь будет логика обновления
+        // Обработка загрузки нового файла
+        if ($request->hasFile('template_file')) {
+            // Удаляем старый файл
+            if ($documentTemplate->file_path) {
+                Storage::disk('public')->delete($documentTemplate->file_path);
+            }
+
+            $file = $request->file('template_file');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $filePath = $file->storeAs('document_templates', $fileName, 'public');
+            $validated['file_path'] = $filePath;
+        }
+
         $documentTemplate->update($validated);
 
         return redirect()->route('admin.settings.document-templates.index')
@@ -102,6 +127,11 @@ class DocumentTemplateController extends Controller
      */
     public function destroy(DocumentTemplate $documentTemplate)
     {
+        // Удаляем файл
+        if ($documentTemplate->file_path) {
+            Storage::disk('public')->delete($documentTemplate->file_path);
+        }
+
         $documentTemplate->delete();
 
         return redirect()->route('admin.settings.document-templates.index')

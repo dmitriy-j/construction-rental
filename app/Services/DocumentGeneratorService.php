@@ -82,6 +82,85 @@ class DocumentGeneratorService
     }
 
     /**
+     * Генерация документа с автоматическим определением ячеек для табличной части
+     */
+    public function generateDocumentWithAutoMapping(DocumentTemplate $template, array $data)
+    {
+        try {
+            Log::info('Генерация документа с автоматическим маппингом', [
+                'template_id' => $template->id,
+                'data_keys' => array_keys($data)
+            ]);
+
+            $filePath = $template->file_path;
+            $fullPath = Storage::disk('public')->path($filePath);
+
+            if (!file_exists($fullPath)) {
+                throw new \Exception("Файл шаблона не найден: {$fullPath}");
+            }
+
+            // Загружаем Excel файл
+            $spreadsheet = IOFactory::load($fullPath);
+
+            // Обрабатываем все листы
+            foreach ($spreadsheet->getAllSheets() as $sheet) {
+                $this->processSheetWithAutoMapping($sheet, $data);
+            }
+
+            // Сохраняем временный файл
+            $tempFileName = 'temp/document_' . time() . '.xlsx';
+            $tempPath = Storage::disk('private')->path($tempFileName);
+
+            $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
+            $writer->save($tempPath);
+
+            Log::info('Документ сгенерирован с автоматическим маппингом', [
+                'temp_path' => $tempFileName
+            ]);
+
+            return $tempPath;
+
+        } catch (\Exception $e) {
+            Log::error('Ошибка генерации документа с автоматическим маппингом', [
+                'template_id' => $template->id,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+
+    /**
+     * Обработка листа с автоматическим поиском и заменой плейсхолдеров
+     */
+    protected function processSheetWithAutoMapping($sheet, array $data)
+    {
+        $highestRow = $sheet->getHighestRow();
+        $highestColumn = $sheet->getHighestColumn();
+
+        Log::debug('Обработка листа с автоматическим маппингом', [
+            'rows' => $highestRow,
+            'columns' => $highestColumn
+        ]);
+
+        // Сканируем все ячейки на листе
+        for ($row = 1; $row <= $highestRow; $row++) {
+            for ($col = 'A'; $col <= $highestColumn; $col++) {
+                $cell = $sheet->getCell($col . $row);
+                $value = $cell->getValue();
+
+                if (is_string($value)) {
+                    $newValue = $this->replacePlaceholders($value, $data, $sheet, $col, $row);
+                    if ($newValue !== $value) {
+                        $cell->setValue($newValue);
+                    }
+                }
+            }
+        }
+    }
+
+
+    /**
      * Обрабатывает коллекции данных (например, позиции в табличной части УПД)
      */
     protected function processCollection($worksheet, $field, $cell, $data)
@@ -123,86 +202,176 @@ class DocumentGeneratorService
     /**
      * Ищет и заменяет плейсхолдеры вида {{field.path}} во всех ячейках листа
      */
-    protected function replacePlaceholders($worksheet, $data)
+    protected function replacePlaceholders(string $value, array $data, $sheet, string $col, int $row): string
     {
-        Log::info('Начало замены плейсхолдеров в ячейках');
-
-        // Получаем максимальные строку и колонку
-        $highestRow = $worksheet->getHighestRow();
-        $highestColumn = $worksheet->getHighestColumn();
-        $highestColumnIndex = Coordinate::columnIndexFromString($highestColumn);
-
-        // Проходим по всем ячейкам
-        for ($row = 1; $row <= $highestRow; $row++) {
-            for ($col = 1; $col <= $highestColumnIndex; $col++) {
-                $cellCoordinate = Coordinate::stringFromColumnIndex($col).$row;
-                $cell = $worksheet->getCell($cellCoordinate);
-                $cellValue = $cell->getValue();
-
-                // Если в ячейке есть плейсхолдеры {{ }}
-                if (is_string($cellValue) && preg_match_all('/\{\{\s*([\w\.]+)\s*\}\}/', $cellValue, $matches)) {
-                    $newValue = $cellValue;
-
-                    // Заменяем каждый найденный плейсхолдер
-                    foreach ($matches[1] as $placeholder) {
-                        $fieldPath = trim($placeholder);
-                        $value = $this->getValueFromData($fieldPath, $data);
-
-                        // Форматируем специальные типы данных
-                        $value = $this->formatValue($value, $fieldPath);
-
-                        // Заменяем плейсхолдер на значение
-                        $newValue = str_replace("{{{$placeholder}}}", $value, $newValue);
-                    }
-
-                    // Устанавливаем новое значение ячейки
-                    if ($newValue !== $cellValue) {
-                        $worksheet->setCellValue($cellCoordinate, $newValue);
-                        Log::debug('Замена плейсхолдера в ячейке', [
-                            'cell' => $cellCoordinate,
-                            'old_value' => $cellValue,
-                            'new_value' => $newValue,
-                        ]);
-                    }
-                }
+        // Ищем плейсхолдеры вида {{field.path}}
+        if (preg_match_all('/\{\{([^}]+)\}\}/', $value, $matches)) {
+            foreach ($matches[1] as $placeholder) {
+                $replacement = $this->getValueFromData($placeholder, $data, $sheet, $col, $row);
+                $value = str_replace("{{{$placeholder}}}", $replacement, $value);
             }
+        }
+
+        return $value;
+    }
+
+    protected function getValueFromData(string $path, array $data, $sheet, string $col, int $row)
+    {
+        // Обработка динамических плейсхолдеров для табличной части
+        if (preg_match('/^items\.#\.(.+)$/', $path, $matches)) {
+            $fieldName = $matches[1];
+            return $this->processDynamicItems($sheet, $col, $row, $fieldName, $data);
+        }
+
+        // Обработка статических плейсхолдеров (items.0.name, items.1.quantity и т.д.)
+        if (preg_match('/^items\.(\d+)\.(.+)$/', $path, $matches)) {
+            $itemIndex = $matches[1];
+            $fieldName = $matches[2];
+
+            if (isset($data['items'][$itemIndex][$fieldName])) {
+                return $data['items'][$itemIndex][$fieldName];
+            }
+            return '';
+        }
+
+        // Обработка обычных полей
+        $pathParts = explode('.', $path);
+        $current = $data;
+
+        foreach ($pathParts as $part) {
+            if (is_array($current) && array_key_exists($part, $current)) {
+                $current = $current[$part];
+            } else {
+                return '';
+            }
+        }
+
+        return is_array($current) ? '' : $current;
+    }
+
+    /**
+     * Обработка динамических плейсхолдеров items.#.field
+     */
+    protected function processDynamicItems($sheet, string $col, int $row, string $fieldName, array $data)
+    {
+        // Находим все строки с таким же плейсхолдером в этом столбце
+        $itemsData = $data['items'] ?? [];
+        $currentRow = $row;
+
+        foreach ($itemsData as $index => $item) {
+            if (isset($item[$fieldName])) {
+                $cell = $sheet->getCell($col . $currentRow);
+                $cell->setValue($item[$fieldName]);
+                $currentRow++;
+            }
+        }
+
+        // Возвращаем пустое значение для исходной ячейки, так как мы уже заполнили таблицу
+        return '';
+    }
+
+    /**
+     * Генерация и сохранение документа в указанное место
+     */
+    public function generateAndSaveDocument(DocumentTemplate $template, array $data, string $savePath)
+    {
+        try {
+            Log::info('Генерация и сохранение документа', [
+                'template_id' => $template->id,
+                'save_path' => $savePath
+            ]);
+
+            $templatePath = $template->file_path;
+            $fullTemplatePath = Storage::disk('public')->path($templatePath);
+
+            if (!file_exists($fullTemplatePath)) {
+                throw new \Exception("Файл шаблона не найден: {$fullTemplatePath}");
+            }
+
+            // Загружаем Excel файл
+            $spreadsheet = IOFactory::load($fullTemplatePath);
+
+            // Обрабатываем все листы
+            foreach ($spreadsheet->getAllSheets() as $sheet) {
+                $this->processSheetWithAutoMapping($sheet, $data);
+            }
+
+            // Сохраняем напрямую в конечное место
+            $fullSavePath = Storage::disk('private')->path($savePath);
+
+            // Создаем директорию если не существует
+            $directory = dirname($fullSavePath);
+            if (!file_exists($directory)) {
+                mkdir($directory, 0755, true);
+            }
+
+            $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
+            $writer->save($fullSavePath);
+
+            Log::info('Документ успешно сохранен', [
+                'save_path' => $savePath,
+                'full_save_path' => $fullSavePath,
+                'file_exists' => file_exists($fullSavePath)
+            ]);
+
+            return $fullSavePath;
+
+        } catch (\Exception $e) {
+            Log::error('Ошибка генерации и сохранения документа', [
+                'template_id' => $template->id,
+                'save_path' => $savePath,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
         }
     }
 
-    protected function getValueFromData(string $field, array $data)
+    /**
+     * Генерация документа в память (без сохранения на диск)
+     */
+    public function generateDocumentInMemory(DocumentTemplate $template, array $data)
     {
         try {
-            Log::debug('Извлечение значения из данных', ['field' => $field]);
-
-            // Прямой доступ к полю (например, 'upd_number')
-            if (isset($data[$field])) {
-                return $data[$field];
-            }
-
-            // Доступ через точную нотацию (например, 'upd.number')
-            $keys = explode('.', $field);
-            $value = $data;
-
-            foreach ($keys as $key) {
-                if (! isset($value[$key])) {
-                    Log::warning('Ключ не найден в данных', ['key' => $key, 'available_keys' => array_keys($value)]);
-
-                    return '';
-                }
-                $value = $value[$key];
-            }
-
-            Log::debug('Значение успешно извлечено', ['field' => $field, 'value' => $value]);
-
-            return $value;
-
-        } catch (\Exception $e) {
-            Log::error('Ошибка извлечения значения', [
-                'field' => $field,
-                'error_message' => $e->getMessage(),
+            Log::info('Генерация документа в память', [
+                'template_id' => $template->id,
+                'data_keys' => array_keys($data)
             ]);
 
-            return '';
+            $templatePath = $template->file_path;
+            $fullTemplatePath = Storage::disk('public')->path($templatePath);
+
+            if (!file_exists($fullTemplatePath)) {
+                throw new \Exception("Файл шаблона не найден: {$fullTemplatePath}");
+            }
+
+            // Загружаем Excel файл
+            $spreadsheet = IOFactory::load($fullTemplatePath);
+
+            // Обрабатываем все листы
+            foreach ($spreadsheet->getAllSheets() as $sheet) {
+                $this->processSheetWithAutoMapping($sheet, $data);
+            }
+
+            // Сохраняем в память
+            $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
+
+            ob_start();
+            $writer->save('php://output');
+            $fileContent = ob_get_clean();
+
+            Log::info('Документ сгенерирован в память', [
+                'template_id' => $template->id,
+                'content_size' => strlen($fileContent)
+            ]);
+
+            return $fileContent;
+
+        } catch (\Exception $e) {
+            Log::error('Ошибка генерации документа в память', [
+                'template_id' => $template->id,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
         }
     }
 

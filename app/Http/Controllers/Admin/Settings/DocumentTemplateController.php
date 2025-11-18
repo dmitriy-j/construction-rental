@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\DocumentTemplate;
 use App\Services\DocumentGeneratorService;
+use App\Services\InvoiceGeneratorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -20,45 +21,37 @@ class DocumentTemplateController extends Controller
 
     public function create()
     {
-        $templateTypes = [
-            'путевой_лист' => 'Путевой лист',
-            'акт' => 'Акт приема-передачи',
-            'счет_на_оплату' => 'Счет на оплату',
-            'договор' => 'Договор аренды',
-            'упд' => 'УПД (Универсальный передаточный документ)',
-            'акт_сверки' => 'Акт сверки',
-            'транспортная_накладная' => 'Транспортная накладная',
-            'акт_выполненных_работ' => 'Акт выполненных работ',
-            'эсм_7' => 'ЭСМ-7 (Акт о сдаче-приемке выполненных работ)',
-            'счет_фактура' => 'Счет-фактура'
-        ];
+        $templateTypes = DocumentTemplate::getTypes();
+        $scenarios = DocumentTemplate::getScenarios();
 
-        return view('admin.settings.document-templates.create', compact('templateTypes'));
+        return view('admin.settings.document-templates.create', compact('templateTypes', 'scenarios'));
     }
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|string|max:255',
+            'type' => 'required|string|in:' . implode(',', array_keys(DocumentTemplate::getTypes())),
+            'scenario' => 'required|string|in:' . implode(',', array_keys(DocumentTemplate::getScenarios())),
             'description' => 'nullable|string',
-            'template_file' => 'required|file|mimes:xlsx,xls',
+            'template_file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
             'mapping' => 'required|json',
         ]);
 
         try {
-            // Сохраняем файл шаблона
-            $filePath = $request->file('template_file')->store('document-templates', 'public');
+            // Обработка файла шаблона
+            if ($request->hasFile('template_file')) {
+                $file = $request->file('template_file');
+                $fileName = $validated['type'] . '_' . $validated['scenario'] . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $filePath = $file->storeAs('document_templates', $fileName, 'public');
+                $validated['file_path'] = $filePath;
+            }
 
-            // Создаем запись в базе данных
-            DocumentTemplate::create([
-                'name' => $request->name,
-                'type' => $request->type,
-                'description' => $request->description,
-                'file_path' => $filePath,
-                'mapping' => json_decode($request->mapping, true),
-                'is_active' => $request->has('is_active'),
-            ]);
+            // Добавляем mapping и is_active
+            $validated['mapping'] = json_decode($request->mapping, true);
+            $validated['is_active'] = $request->has('is_active');
+
+            $template = DocumentTemplate::create($validated);
 
             return redirect()->route('admin.settings.document-templates.index')
                 ->with('success', 'Шаблон документа успешно создан');
@@ -70,33 +63,29 @@ class DocumentTemplateController extends Controller
 
     public function edit(DocumentTemplate $documentTemplate)
     {
-        $templateTypes = [
-            'путевой_лист' => 'Путевой лист',
-            'акт' => 'Акт приема-передачи',
-            'счет_на_оплату' => 'Счет на оплату',
-            'договор' => 'Договор аренды',
-            'упд' => 'УПД (Универсальный передаточный документ)',
-            'акт_сверки' => 'Акт сверки',
-        ];
+        $templateTypes = DocumentTemplate::getTypes();
+        $scenarios = DocumentTemplate::getScenarios();
 
-        return view('admin.settings.document-templates.edit', compact('documentTemplate', 'templateTypes'));
+        return view('admin.settings.document-templates.edit', compact('documentTemplate', 'templateTypes', 'scenarios'));
     }
 
     public function update(Request $request, DocumentTemplate $documentTemplate)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|string|max:255',
+            'type' => 'required|string|in:' . implode(',', array_keys(DocumentTemplate::getTypes())),
+            'scenario' => 'required|string|in:' . implode(',', array_keys(DocumentTemplate::getScenarios())),
             'description' => 'nullable|string',
-            'template_file' => 'nullable|file|mimes:xlsx,xls',
+            'template_file' => 'nullable|file|mimes:xlsx,xls,csv|max:10240',
             'mapping' => 'required|json',
         ]);
 
         try {
             $data = [
-                'name' => $request->name,
-                'type' => $request->type,
-                'description' => $request->description,
+                'name' => $validated['name'],
+                'type' => $validated['type'],
+                'scenario' => $validated['scenario'],
+                'description' => $validated['description'],
                 'mapping' => json_decode($request->mapping, true),
                 'is_active' => $request->has('is_active'),
             ];
@@ -106,8 +95,10 @@ class DocumentTemplateController extends Controller
                 // Удаляем старый файл
                 Storage::disk('public')->delete($documentTemplate->file_path);
 
-                // Сохраняем новый файл
-                $data['file_path'] = $request->file('template_file')->store('document-templates', 'public');
+                $file = $request->file('template_file');
+                $fileName = $validated['type'] . '_' . $validated['scenario'] . '_' . time() . '.' . $file->getClientOriginalExtension();
+                $filePath = $file->storeAs('document_templates', $fileName, 'public');
+                $data['file_path'] = $filePath;
             }
 
             $documentTemplate->update($data);
@@ -171,7 +162,7 @@ class DocumentTemplateController extends Controller
     public function generateForm(DocumentTemplate $documentTemplate)
     {
         // Получаем список сущностей, для которых можно генерировать документы
-        $entities = $this->getAvailableEntities($documentTemplate->type);
+        $entities = $this->getAvailableEntities($documentTemplate->type, $documentTemplate->scenario);
 
         return view('admin.settings.document-templates.generate', compact('documentTemplate', 'entities'));
     }
@@ -185,7 +176,7 @@ class DocumentTemplateController extends Controller
 
         try {
             // Получаем данные сущности
-            $entityData = $this->getEntityData($request->entity_type, $request->entity_id);
+            $entityData = $this->getEntityData($request->entity_type, $request->entity_id, $documentTemplate->scenario);
 
             // Генерируем документ
             $filePath = $generatorService->generateDocument($documentTemplate, $entityData);
@@ -200,48 +191,177 @@ class DocumentTemplateController extends Controller
         }
     }
 
-    protected function getAvailableEntities($templateType)
+    public function generateInvoiceForm()
     {
-        // Возвращаем список сущностей в зависимости от типа шаблона
+        $invoiceTemplates = DocumentTemplate::active()
+            ->byType(DocumentTemplate::TYPE_INVOICE)
+            ->get();
+
+        $orders = \App\Models\Order::whereIn('status', ['active', 'completed'])->get();
+        $upds = \App\Models\Upd::where('status', 'accepted')->get();
+
+        return view('admin.settings.document-templates.generate-invoice', compact('invoiceTemplates', 'orders', 'upds'));
+    }
+
+    public function generateInvoice(Request $request, InvoiceGeneratorService $invoiceService)
+    {
+        $request->validate([
+            'template_id' => 'required|exists:document_templates,id',
+            'order_id' => 'required_without:upd_id|exists:orders,id',
+            'upd_id' => 'nullable|exists:upds,id',
+            'scenario' => 'required|string|in:' . implode(',', array_keys(DocumentTemplate::getInvoiceScenarios())),
+        ]);
+
+        try {
+            $order = \App\Models\Order::findOrFail($request->order_id);
+            $upd = $request->upd_id ? \App\Models\Upd::findOrFail($request->upd_id) : null;
+            $template = DocumentTemplate::findOrFail($request->template_id);
+
+            // Генерируем счет
+            $filePath = $invoiceService->generateInvoice($order, $request->scenario, $upd);
+
+            return response()->download($filePath, "invoice_{$order->order_number}.xlsx")
+                ->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Ошибка генерации счета: '.$e->getMessage());
+        }
+    }
+
+    protected function getAvailableEntities($templateType, $scenario)
+    {
+        // Возвращаем список сущностей в зависимости от типа шаблона и сценария
         switch ($templateType) {
-            case 'путевой_лист':
+            case DocumentTemplate::TYPE_WAYBILL:
                 return \App\Models\Order::where('status', 'active')->get();
-            case 'акт':
+            case DocumentTemplate::TYPE_ACT:
                 return \App\Models\CompletionAct::all();
-            case 'счет_на_оплату':
-                return \App\Models\Invoice::where('status', 'pending')->get();
+            case DocumentTemplate::TYPE_INVOICE:
+                return $this->getInvoiceEntities($scenario);
+            case DocumentTemplate::TYPE_UPD:
+                return \App\Models\Order::where('status', 'completed')->get();
             default:
                 return [];
         }
     }
 
-    protected function getEntityData($entityType, $entityId)
+    protected function getInvoiceEntities($scenario)
     {
-        // Получаем данные сущности в зависимости от типа
+        switch ($scenario) {
+            case DocumentTemplate::SCENARIO_INVOICE_ORDER:
+                return \App\Models\Order::whereIn('status', ['active', 'pending'])->get();
+            case DocumentTemplate::SCENARIO_INVOICE_UPD:
+                return \App\Models\Upd::where('status', 'accepted')->get();
+            case DocumentTemplate::SCENARIO_INVOICE_ADVANCE:
+                return \App\Models\Order::where('status', 'pending')->get();
+            default:
+                return [];
+        }
+    }
+
+    protected function getEntityData($entityType, $entityId, $scenario)
+    {
+        // Получаем данные сущности в зависимости от типа и сценария
         switch ($entityType) {
             case 'order':
-                $order = \App\Models\Order::with(['customer', 'equipment'])->findOrFail($entityId);
+                $order = \App\Models\Order::with(['customer', 'equipment', 'lessorCompany', 'lesseeCompany'])->findOrFail($entityId);
+                return $this->prepareOrderData($order, $scenario);
 
-                return [
-                    'order' => [
-                        'id' => $order->id,
-                        'number' => $order->order_number,
-                        'date' => $order->created_at->format('d.m.Y'),
-                        'total' => $order->total_amount,
-                    ],
-                    'customer' => [
-                        'name' => $order->customer->name,
-                        'phone' => $order->customer->phone,
-                        'email' => $order->customer->email,
-                    ],
-                    'equipment' => [
-                        'name' => $order->equipment->name,
-                        'model' => $order->equipment->model,
-                    ],
-                ];
-                // Добавьте другие case для разных типов сущностей
+            case 'upd':
+                $upd = \App\Models\Upd::with(['order', 'lessorCompany', 'lesseeCompany'])->findOrFail($entityId);
+                return $this->prepareUpdData($upd, $scenario);
+
+            case 'completion_act':
+                $act = \App\Models\CompletionAct::with(['order', 'waybill'])->findOrFail($entityId);
+                return $this->prepareActData($act, $scenario);
+
             default:
                 throw new \Exception('Неизвестный тип сущности');
         }
+    }
+
+    protected function prepareOrderData($order, $scenario)
+    {
+        $data = [
+            'order' => [
+                'id' => $order->id,
+                'number' => $order->order_number,
+                'date' => $order->created_at->format('d.m.Y'),
+                'start_date' => $order->start_date?->format('d.m.Y'),
+                'end_date' => $order->end_date?->format('d.m.Y'),
+                'total_amount' => $order->total_amount,
+                'advance_amount' => $order->advance_amount ?? 0,
+                'remaining_amount' => $order->total_amount - ($order->advance_amount ?? 0),
+            ],
+            'customer' => [
+                'name' => $order->customer->name,
+                'phone' => $order->customer->phone,
+                'email' => $order->customer->email,
+            ],
+            'lessor_company' => [
+                'name' => $order->lessorCompany->name,
+                'legal_name' => $order->lessorCompany->legal_name,
+                'inn' => $order->lessorCompany->inn,
+                'kpp' => $order->lessorCompany->kpp,
+                'address' => $order->lessorCompany->address,
+            ],
+            'lessee_company' => [
+                'name' => $order->lesseeCompany->name,
+                'legal_name' => $order->lesseeCompany->legal_name,
+                'inn' => $order->lesseeCompany->inn,
+                'kpp' => $order->lesseeCompany->kpp,
+                'address' => $order->lesseeCompany->address,
+            ],
+            'scenario' => $scenario,
+        ];
+
+        // Добавляем данные по оборудованию
+        if ($order->relationLoaded('equipment')) {
+            $data['equipment'] = $order->equipment->map(function ($item) {
+                return [
+                    'name' => $item->name,
+                    'model' => $item->model,
+                    'serial_number' => $item->serial_number,
+                    'rental_price' => $item->pivot->rental_price ?? $item->price,
+                    'quantity' => $item->pivot->quantity ?? 1,
+                    'total' => ($item->pivot->rental_price ?? $item->price) * ($item->pivot->quantity ?? 1),
+                ];
+            })->toArray();
+        }
+
+        return $data;
+    }
+
+    protected function prepareUpdData($upd, $scenario)
+    {
+        return [
+            'upd' => [
+                'id' => $upd->id,
+                'number' => $upd->number,
+                'issue_date' => $upd->issue_date->format('d.m.Y'),
+                'total_amount' => $upd->total_amount,
+                'amount_without_vat' => $upd->amount,
+                'vat_amount' => $upd->tax_amount,
+            ],
+            'order' => [
+                'id' => $upd->order->id,
+                'number' => $upd->order->order_number,
+                'total_amount' => $upd->order->total_amount,
+            ],
+            'lessor_company' => [
+                'name' => $upd->lessorCompany->name,
+                'legal_name' => $upd->lessorCompany->legal_name,
+                'inn' => $upd->lessorCompany->inn,
+                'kpp' => $upd->lessorCompany->kpp,
+            ],
+            'lessee_company' => [
+                'name' => $upd->lesseeCompany->name,
+                'legal_name' => $upd->lesseeCompany->legal_name,
+                'inn' => $upd->lesseeCompany->inn,
+                'kpp' => $upd->lesseeCompany->kpp,
+            ],
+            'scenario' => $scenario,
+        ];
     }
 }

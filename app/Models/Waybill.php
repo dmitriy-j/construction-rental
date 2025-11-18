@@ -80,12 +80,25 @@ class Waybill extends Model
     protected static function booted()
     {
         static::creating(function ($model) {
-            // Генерация номера в зависимости от перспективы
-            if ($model->perspective === 'lessor') {
-                $model->number = 'ЭСМ-2-'.date('Ymd').'-'.str_pad(static::where('perspective', 'lessor')->count() + 1, 5, '0', STR_PAD_LEFT);
-            } else {
-                $model->number = 'ПЛ-АР-'.date('Ymd').'-'.str_pad(static::where('perspective', 'lessee')->count() + 1, 5, '0', STR_PAD_LEFT);
-            }
+            // Генерация УНИКАЛЬНОГО номера с проверкой существования
+            $baseNumber = '';
+            $counter = 1;
+
+            do {
+                if ($model->perspective === 'lessor') {
+                    $baseNumber = 'ЭСМ-2-'.date('Ymd').'-'.str_pad($counter, 5, '0', STR_PAD_LEFT);
+                } else {
+                    $baseNumber = 'ПЛ-АР-'.date('Ymd').'-'.str_pad($counter, 5, '0', STR_PAD_LEFT);
+                }
+                $counter++;
+
+                // Защита от бесконечного цикла
+                if ($counter > 99999) {
+                    throw new \Exception('Cannot generate unique waybill number');
+                }
+            } while (static::where('number', $baseNumber)->exists());
+
+            $model->number = $baseNumber;
 
             // 2. Проверка соответствия оператора
             if ($model->operator && $model->operator->shift_type !== $model->shift_type) {

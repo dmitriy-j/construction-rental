@@ -59,6 +59,12 @@
 
                         <div class="mb-4">
                             <label class="form-label">Настройка полей</label>
+                            <div class="alert alert-info mb-3">
+                                <strong>Для табличной части (позиции УПД, товары в счетах):</strong><br>
+                                Укажите начальные ячейки для каждого столбца, например:<br>
+                                <code>items.#.name → B15</code>, <code>items.#.quantity → C15</code>, <code>items.#.price → D15</code><br>
+                                Система автоматически заполнит таблицу, начиная с указанных ячеек.
+                            </div>
                             <div id="field-mapping-container">
                                 <div class="field-mapping-item mb-2">
                                     <div class="input-group">
@@ -68,7 +74,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <button type="button" id="add-field" class="btn btn-sm btn-primary mt-2">
+                             <button type="button" id="add-field" class="btn btn-sm btn-primary mt-2">
                                 <i class="bi bi-plus"></i> Добавить поле
                             </button>
                             <input type="hidden" name="mapping" id="mapping-data">
@@ -98,14 +104,20 @@
                                 <div class="accordion-body">
                                     <p>Система поддерживает два способа подстановки данных в шаблоны:</p>
                                     <ol>
-                                        <li><strong>Прямая подстановка</strong> - указание точной ячейки для каждого поля</li>
+                                        <li><strong>Прямая подстановка (маппинг)</strong> - указание точной ячейки для каждого поля через "Настройку полей"</li>
                                         <li><strong>Плейсхолдеры</strong> - использование меток вида <code>@{{field.path}}</code> в ячейках Excel</li>
                                     </ol>
+
                                     <p class="mb-1"><strong>Рекомендуется:</strong></p>
                                     <ul>
-                                        <li>Для табличных данных (позиции УПД) использовать прямую подстановку</li>
-                                        <li>Для одиночных значений использовать плейсхолдеры</li>
+                                        <li><strong>Для табличных данных</strong> (позиции УПД, товары в счетах) использовать <strong>прямую подстановку</strong> через настройку полей</li>
+                                        <li><strong>Для одиночных значений</strong> (номера, даты, реквизиты) использовать <strong>плейсхолдеры</strong></li>
                                     </ul>
+
+                                    <div class="alert alert-warning mt-3">
+                                        <strong>Важно для табличных данных:</strong> Для позиций УПД, товаров в счетах и других табличных данных
+                                        <strong>обязательно используйте настройку полей</strong> с указанием начальной ячейки, например <code>items.#.name → B15</code>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -134,28 +146,56 @@
                                         <li><code>period</code> - период оказания услуг</li>
                                     </ul>
 
-                                    <h6>Данные платформы (продавца):</h6>
+                                    <h6>Данные продавца (Платформа):</h6>
+                                    <ul>
+                                        <li><code>seller.name</code> - название</li>
+                                        <li><code>seller.legal_name</code> - юридическое название</li>
+                                        <li><code>seller.address</code> - адрес</li>
+                                        <li><code>seller.inn</code> - ИНН</li>
+                                        <li><code>seller.kpp</code> - КПП</li>
+                                        <li><code>seller.inn_kpp</code> - ИНН/КПП (формат "1234567890/123456789")</li>
+                                        <li><code>seller.bank_name</code> - банк</li>
+                                        <li><code>seller.bik</code> - БИК</li>
+                                        <li><code>seller.account_number</code> - расчетный счет</li>
+                                        <li><code>seller.correspondent_account</code> - корр. счет</li>
+                                    </ul>
+
+                                    <h6>Данные покупателя (Арендатор):</h6>
+                                    <ul>
+                                        <li><code>buyer.name</code> - название</li>
+                                        <li><code>buyer.legal_name</code> - юридическое название</li>
+                                        <li><code>buyer.address</code> - адрес</li>
+                                        <li><code>buyer.inn</code> - ИНН</li>
+                                        <li><code>buyer.kpp</code> - КПП</li>
+                                        <li><code>buyer.inn_kpp</code> - ИНН/КПП (формат "1234567890/123456789")</li>
+                                        <li><code>buyer.bank_name</code> - банк</li>
+                                        <li><code>buyer.bik</code> - БИК</li>
+                                        <li><code>buyer.account_number</code> - расчетный счет</li>
+                                        <li><code>buyer.correspondent_account</code> - корр. счет</li>
+                                    </ul>
+
+                                    <h6>Данные платформы (для обратной совместимости):</h6>
                                     <ul>
                                         <li><code>platform.name</code> - название</li>
                                         <li><code>platform.legal_name</code> - юридическое название</li>
                                         <li><code>platform.address</code> - адрес</li>
                                         <li><code>platform.inn</code> - ИНН</li>
                                         <li><code>platform.kpp</code> - КПП</li>
-                                        <li><code>platform.inn_kpp</code> - ИНН/КПП (формат "1234567890/123456789")</li>
+                                        <li><code>platform.inn_kpp</code> - ИНН/КПП</li>
                                         <li><code>platform.bank_name</code> - банк</li>
                                         <li><code>platform.bik</code> - БИК</li>
                                         <li><code>platform.account_number</code> - расчетный счет</li>
                                         <li><code>platform.correspondent_account</code> - корр. счет</li>
                                     </ul>
 
-                                    <h6>Данные арендатора (покупателя):</h6>
+                                    <h6>Данные арендатора (для обратной совместимости):</h6>
                                     <ul>
                                         <li><code>lessee.name</code> - название</li>
                                         <li><code>lessee.legal_name</code> - юридическое название</li>
                                         <li><code>lessee.address</code> - адрес</li>
                                         <li><code>lessee.inn</code> - ИНН</li>
                                         <li><code>lessee.kpp</code> - КПП</li>
-                                        <li><code>lessee.inn_kpp</code> - ИНН/КПП (формат "1234567890/123456789")</li>
+                                        <li><code>lessee.inn_kpp</code> - ИНН/КПП</li>
                                         <li><code>lessee.bank_name</code> - банк</li>
                                         <li><code>lessee.bik</code> - БИК</li>
                                         <li><code>lessee.account_number</code> - расчетный счет</li>
@@ -173,7 +213,17 @@
                                         <li><code>items.#.vat_rate</code> - ставка НДС</li>
                                         <li><code>items.#.vat_amount</code> - сумма НДС</li>
                                         <li><code>items.#.total_with_vat</code> - сумма с НДС</li>
+                                        <li><code>items.#.total_without_vat</code> - сумма без НДС (дублирует amount)</li>
+                                        <li><code>items.#.total</code> - общая сумма с НДС (дублирует total_with_vat)</li>
+                                        <li><code>items.#.period</code> - период оказания услуг</li>
+                                        <li><code>items.#.index</code> - порядковый номер позиции</li>
                                     </ul>
+
+                                    <div class="alert alert-info mt-3">
+                                        <strong>Важно:</strong> Для исходящих УПД (Платформа → Арендатор) используйте поля <code>seller</code> и <code>buyer</code>.
+                                        Поля <code>platform</code> и <code>lessee</code> оставлены для обратной совместимости.
+                                    </div>
+
                                     <p>Для табличной части используйте маппинг с указанием начальной ячейки, например <code>items.#.name → B15</code></p>
                                 </div>
                             </div>
@@ -426,30 +476,50 @@
                             </h2>
                             <div id="usageExamples" class="accordion-collapse collapse" data-bs-parent="#templateInstructions">
                                 <div class="accordion-body">
-                                    <h6>Прямая подстановка (маппинг):</h6>
-                                    <p>Укажите поле и ячейку, куда должно быть подставлено значение:</p>
+                                    <h6>Настройка табличной части (обязательно через "Настройку полей"):</h6>
+                                    <p>Для позиций УПД укажите начальные ячейки для каждого столбца:</p>
+                                    <div class="code-example mb-3">
+                                        items.#.code → B15<br>
+                                        items.#.name → C15<br>
+                                        items.#.unit → D15<br>
+                                        items.#.quantity → E15<br>
+                                        items.#.price → F15<br>
+                                        items.#.amount → G15<br>
+                                        items.#.vat_rate → H15<br>
+                                        items.#.vat_amount → I15<br>
+                                        items.#.total_with_vat → J15
+                                    </div>
+                                    <p>Система автоматически заполнит таблицу, начиная с указанных ячеек.</p>
+
+                                    <h6>Прямая подстановка для одиночных значений:</h6>
+                                    <p>Укажите поле и ячейку для подстановки:</p>
                                     <ul>
                                         <li><code>upd.number → P1</code> - номер УПД в ячейку P1</li>
-                                        <li><code>platform.name → B5</code> - название платформы в ячейку B5</li>
-                                        <li><code>items.#.name → I15</code> - наименования позиций начиная с ячейки I15</li>
+                                        <li><code>seller.name → B5</code> - название продавца в ячейку B5</li>
+                                        <li><code>buyer.inn_kpp → C5</code> - ИНН/КПП покупателя в ячейку C5</li>
                                     </ul>
 
                                     <h6>Использование плейсхолдеров:</h6>
                                     <p>В любой ячейке Excel можно использовать конструкции:</p>
                                     <ul>
-                                        <li><code>УПД №@{/{upd.number}} от @{/{upd.date}}</code></li>
-                                        <li><code>Период: @{/{period}}</code></li>
-                                        <li><code>Аренда @{/{items.#.name}} за период @{/{period}}</code></li>
+                                        <li><code>УПД №@{{upd.number}} от @{{upd.date}}</code></li>
+                                        <li><code>Продавец: @{{seller.name}}, ИНН/КПП: @{{seller.inn_kpp}}</code></li>
+                                        <li><code>Покупатель: @{{buyer.name}}, ИНН/КПП: @{{buyer.inn_kpp}}</code></li>
+                                        <li><code>Период: @{{period}}</code></li>
                                     </ul>
-                                    <p>При генерации документа плейсхолдеры будут автоматически заменены на значения.</p>
 
-                                    <h6>Важные примечания:</h6>
+                                    <h6>Особенности для табличной части:</h6>
                                     <ul>
-                                        <li>Для табличной части обязательно используйте маппинг, а не плейсхолдеры</li>
-                                        <li>Поля ИНН/КПП доступны как отдельно, так и в объединенном виде</li>
-                                        <li>Все денежные значения автоматически форматируются</li>
-                                        <li>Даты форматируются в формате ДД.ММ.ГГГГ</li>
+                                        <li>Указывайте <strong>начальную ячейку</strong> для каждого столбца таблицы</li>
+                                        <li>Система автоматически заполнит строки ниже начальной ячейки</li>
+                                        <li>Для табличной части <strong>не используйте плейсхолдеры</strong> - только настройку полей</li>
+                                        <li>Плейсхолдеры в названиях позиций (<code>@{{period}}</code>) автоматически заменяются</li>
                                     </ul>
+
+                                    <div class="alert alert-info mt-3">
+                                        <strong>Совет:</strong> Создайте в Excel таблицу с заголовками, затем в "Настройке полей" укажите
+                                        начальные ячейки для каждого столбца данных. Система заполнит таблицу автоматически.
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -96,6 +96,22 @@ class UpdProcessingService
         }
     }
 
+    /**
+     * Генерация упрощенного русского номера УПД
+     */
+    public function generateSimpleUpdNumber(): string
+    {
+        $currentYear = date('Y');
+        $lastUpd = Upd::whereYear('created_at', $currentYear)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+        $sequenceNumber = $lastUpd ? (intval(substr($lastUpd->number, -4)) + 1) : 1;
+
+        // Упрощенный формат: ГОД/ПОСЛЕДОВАТЕЛЬНЫЙ_НОМЕР (2024/0001)
+        return $currentYear . '/' . str_pad($sequenceNumber, 4, '0', STR_PAD_LEFT);
+    }
+
     protected function validateAgainstCompletionAct(array $parsedData, Order $order, $completionAct, ExcelMapping $mapping): void
     {
         $header = $parsedData['header'];
@@ -226,7 +242,7 @@ class UpdProcessingService
             $items = $parsedData['items'] ?? [];
 
             // Базовые проверки
-            if (! isset($additionalData['waybill_id'])) {
+            if (!isset($additionalData['waybill_id'])) {
                 throw new \Exception('Не передан waybill_id для создания УПД.');
             }
 
@@ -234,7 +250,7 @@ class UpdProcessingService
 
             // Проверяем, что путевой лист существует
             $waybill = Waybill::find($waybillId);
-            if (! $waybill) {
+            if (!$waybill) {
                 throw new \Exception("Путевой лист #{$waybillId} не найден.");
             }
 
@@ -253,7 +269,7 @@ class UpdProcessingService
                 ->where('perspective', 'lessor')
                 ->first();
 
-            if (! $completionAct) {
+            if (!$completionAct) {
                 throw new \Exception("Акт выполненных работ для путевого листа #{$waybillId} не найден.");
             }
 
@@ -268,7 +284,7 @@ class UpdProcessingService
                 ->where('is_active', true)
                 ->first();
 
-            if (! $mapping) {
+            if (!$mapping) {
                 throw new \Exception('Активный шаблон УПД не найден для компании арендодателя.');
             }
 
@@ -276,14 +292,17 @@ class UpdProcessingService
             $issueDate = $this->parseRussianDate($header['issue_date']);
             $filePath = $file->store('upds', 'private');
 
+            // ИСПРАВЛЕНИЕ: Используем упрощенную нумерацию если номер не указан в файле
+            $updNumber = $header['number'] ?? $this->generateSimpleUpdNumber();
+
             // Проверяем уникальность номера УПД
-            $existingUpd = Upd::where('number', $header['number'])
+            $existingUpd = Upd::where('number', $updNumber) // Изменено на $updNumber
                 ->where('issue_date', $issueDate->format('Y-m-d'))
                 ->where('lessor_company_id', $order->lessor_company_id)
                 ->first();
 
             if ($existingUpd) {
-                throw new \Exception("УПД с номером {$header['number']} и датой {$issueDate->format('d.m.Y')} уже существует.");
+                throw new \Exception("УПД с номером {$updNumber} и датой {$issueDate->format('d.m.Y')} уже существует.");
             }
 
             $updData = [
@@ -291,7 +310,7 @@ class UpdProcessingService
                 'lessor_company_id' => $order->lessor_company_id,
                 'lessee_company_id' => $order->lessee_company_id,
                 'waybill_id' => $waybillId,
-                'number' => $header['number'],
+                'number' => $updNumber, // Используем сгенерированный номер
                 'issue_date' => $issueDate->format('Y-m-d'),
                 'service_period_start' => $completionAct->service_start_date ?? $order->start_date,
                 'service_period_end' => $completionAct->service_end_date ?? $order->end_date,
@@ -304,7 +323,7 @@ class UpdProcessingService
                 'file_path' => $filePath,
                 'status' => Upd::STATUS_PENDING,
                 'type' => $type,
-                'idempotency_key' => 'upd_'.Str::uuid(),
+                'idempotency_key' => 'upd_' . Str::uuid(),
                 'parsed_data' => $parsedData,
             ];
 

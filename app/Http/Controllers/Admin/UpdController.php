@@ -11,6 +11,8 @@ use App\Services\UpdProcessingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use App\Services\DocumentDataService;
 
 class UpdController extends Controller
 {
@@ -53,6 +55,139 @@ class UpdController extends Controller
         $type = 'upds';
 
         return view('admin.documents.index', compact('documents', 'upds', 'statuses', 'stats', 'type'));
+    }
+
+    /**
+     * Скачать файл УПД
+     */
+    public function download(Upd $upd)
+    {
+        try {
+            Log::info('Попытка скачивания существующего файла УПД', [
+                'upd_id' => $upd->id,
+                'upd_number' => $upd->number,
+                'file_path' => $upd->file_path
+            ]);
+
+            if (!$upd->file_path) {
+                return redirect()->back()->with('error', 'Файл УПД не прикреплен');
+            }
+
+            // Для загруженных файлов (входящие УПД)
+            if (Storage::disk('private')->exists($upd->file_path)) {
+                $filename = "УПД_{$upd->number}.xlsx";
+                return Storage::disk('private')->download($upd->file_path, $filename);
+            }
+
+            return redirect()->back()->with('error', 'Файл УПД не найден');
+
+        } catch (\Exception $e) {
+            Log::error('Ошибка скачивания существующего файла УПД', [
+                'upd_id' => $upd->id,
+                'error_message' => $e->getMessage()
+            ]);
+
+            return redirect()->back()->with('error', 'Ошибка при скачивании файла: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Диагностика файловой системы для УПД  удалить!!!
+     */
+    public function diagnoseStorage(Upd $upd)
+    {
+        try {
+            $diagnostics = [
+                'upd_info' => [
+                    'id' => $upd->id,
+                    'number' => $upd->number,
+                    'file_path' => $upd->file_path,
+                    'file_path_type' => gettype($upd->file_path),
+                ],
+                'storage_check' => [
+                    'private_exists' => $upd->file_path ? Storage::disk('private')->exists($upd->file_path) : false,
+                    'public_exists' => $upd->file_path ? Storage::disk('public')->exists($upd->file_path) : false,
+                    'local_exists' => $upd->file_path ? Storage::exists($upd->file_path) : false,
+                ],
+                'file_system' => [
+                    'private_upds' => Storage::disk('private')->exists('upds') ? Storage::disk('private')->allFiles('upds') : 'Directory not exists',
+                    'private_temp' => Storage::disk('private')->exists('temp') ? Storage::disk('private')->allFiles('temp') : 'Directory not exists',
+                    'public_upds' => Storage::disk('public')->exists('upds') ? Storage::disk('public')->allFiles('upds') : 'Directory not exists',
+                ],
+                'absolute_paths' => [
+                    'storage_app' => $upd->file_path ? storage_path('app/' . $upd->file_path) : 'No path',
+                    'storage_app_private' => $upd->file_path ? storage_path('app/private/' . $upd->file_path) : 'No path',
+                    'storage_app_public' => $upd->file_path ? storage_path('app/public/' . $upd->file_path) : 'No path',
+                ],
+                'file_exists_check' => [
+                    'storage_app' => $upd->file_path ? file_exists(storage_path('app/' . $upd->file_path)) : false,
+                    'storage_app_private' => $upd->file_path ? file_exists(storage_path('app/private/' . $upd->file_path)) : false,
+                    'storage_app_public' => $upd->file_path ? file_exists(storage_path('app/public/' . $upd->file_path)) : false,
+                    'direct' => $upd->file_path ? file_exists($upd->file_path) : false,
+                ]
+            ];
+
+            return response()->json($diagnostics);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
+        }
+    }
+
+
+    /**
+     * Скачать сгенерированный УПД из шаблона
+     */
+    public function downloadGenerated(Upd $upd, DocumentGeneratorService $documentGenerator, DocumentDataService $documentDataService)
+    {
+        try {
+            Log::info('Генерация УПД для скачивания', ['upd_id' => $upd->id]);
+
+            // Получаем активный шаблон УПД
+            $template = $this->findUpdTemplate();
+
+            if (!$template) {
+                Log::error('Шаблон УПД не найден в системе', ['upd_id' => $upd->id]);
+                return redirect()->back()
+                    ->with('error', 'Шаблон УПД не найден в системе. Пожалуйста, создайте шаблон типа "УПД" в админке.');
+            }
+
+            // Используем DocumentDataService для подготовки данных
+            $data = $documentDataService->prepareDocumentData($upd, 'упд');
+
+            Log::debug('Данные для УПД подготовлены', [
+                'upd_id' => $upd->id,
+                'items_count' => count($data['items'] ?? [])
+            ]);
+
+            // Генерируем документ в память (без сохранения на диск)
+            Log::info('Генерация УПД в память', ['upd_id' => $upd->id]);
+            $fileContent = $documentGenerator->generateDocumentInMemory($template, $data);
+
+            Log::info('УПД сгенерирован в память', ['upd_id' => $upd->id]);
+
+            // Возвращаем файл для скачивания
+            $filename = "УПД_{$upd->number}.xlsx";
+
+            return response()->streamDownload(function () use ($fileContent) {
+                echo $fileContent;
+            }, $filename, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Ошибка генерации УПД для скачивания', [
+                'upd_id' => $upd->id,
+                'error_message' => $e->getMessage(),
+                'error_trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Ошибка генерации УПД: ' . $e->getMessage());
+        }
     }
 
     public function show(Upd $upd)
@@ -197,144 +332,111 @@ class UpdController extends Controller
         }
     }
 
-    public function generateFromTemplate(Upd $upd, DocumentGeneratorService $documentGenerator)
+    public function generateFromTemplate(Upd $upd, DocumentGeneratorService $documentGenerator, DocumentDataService $documentDataService)
     {
         try {
             Log::info('Начало генерации УПД из шаблона', ['upd_id' => $upd->id]);
 
             // Получаем активный шаблон УПД
-            $template = DocumentTemplate::where('type', 'упд')
-                ->where('is_active', true)
-                ->firstOrFail();
+            $template = $this->findUpdTemplate();
 
-            Log::info('Шаблон УПД найден', ['template_id' => $template->id, 'template_name' => $template->name]);
+            if (!$template) {
+                Log::error('Шаблон УПД не найден в системе', ['upd_id' => $upd->id]);
+                return redirect()->back()
+                    ->with('error', 'Шаблон УПД не найден в системе. Пожалуйста, создайте шаблон типа "УПД" в админке.');
+            }
 
-            // Подготавливаем данные для УПД
-            $data = $this->prepareUpdData($upd);
-            Log::debug('Данные для УПД подготовлены', ['data_keys' => array_keys($data)]);
-
-            // Генерируем документ
-            Log::info('Начало генерации документа');
-            $filePath = $documentGenerator->generateDocument($template, $data);
-            Log::info('Документ сгенерирован', ['file_path' => $filePath]);
-
-            // Обновляем путь к файлу в УПД
-            $relativePath = str_replace(storage_path('app/'), '', $filePath);
-            $upd->update([
-                'file_path' => $relativePath,
+            Log::info('Шаблон УПД найден', [
+                'template_id' => $template->id,
+                'template_name' => $template->name,
+                'upd_id' => $upd->id
             ]);
 
-            Log::info('Путь к файлу обновлен в УПД', ['new_file_path' => $relativePath]);
+            // Используем DocumentDataService для подготовки данных
+            $data = $documentDataService->prepareDocumentData($upd, 'упд');
 
-            return response()->download($filePath, "УПД_{$upd->number}.xlsx")
-                ->deleteFileAfterSend(true);
+            Log::debug('Данные для УПД подготовлены', [
+                'upd_id' => $upd->id,
+                'items_count' => count($data['items'] ?? [])
+            ]);
+
+            // Генерируем документ
+            Log::info('Начало генерации документа УПД', ['upd_id' => $upd->id]);
+
+            // Создаем уникальное имя файла
+            $fileName = 'УПД_' . $upd->number . '_' . time() . '.xlsx';
+            $filePath = 'upds/' . $fileName;
+
+            // Генерируем и сразу сохраняем в постоянное место
+            $fullPath = $documentGenerator->generateAndSaveDocument($template, $data, $filePath);
+
+            Log::info('Документ УПД сгенерирован и сохранен', [
+                'upd_id' => $upd->id,
+                'file_path' => $filePath,
+                'full_path' => $fullPath
+            ]);
+
+            // Обновляем путь к файлу в УПД
+            $upd->update([
+                'file_path' => $filePath,
+            ]);
+
+            Log::info('Путь к файлу обновлен в УПД', [
+                'upd_id' => $upd->id,
+                'file_path' => $filePath
+            ]);
+
+            // Скачиваем файл
+            return Storage::disk('private')->download($filePath, "УПД_{$upd->number}.xlsx");
 
         } catch (\Exception $e) {
-            Log::error('Ошибка генерации УПД', [
+            Log::error('Ошибка генерации УПД из шаблона', [
                 'upd_id' => $upd->id,
                 'error_message' => $e->getMessage(),
                 'error_trace' => $e->getTraceAsString(),
             ]);
 
             return redirect()->back()
-                ->with('error', 'Ошибка генерации УПД: '.$e->getMessage());
+                ->with('error', 'Ошибка генерации УПД: ' . $e->getMessage());
         }
     }
 
-    protected function prepareUpdData(Upd $upd)
+    /**
+     * Поиск шаблона УПД с различными вариантами написания
+     */
+    protected function findUpdTemplate()
     {
-        $platformCompany = Company::where('is_platform', true)->first();
-        $lesseeCompany = $upd->lesseeCompany;
+        // Пробуем разные варианты написания типа УПД
+        $possibleTypes = ['упд', 'УПД', 'upd', 'UPD', 'Универсальный передаточный документ'];
 
-        // Проверяем наличие банковских реквизитов
-        if (empty($platformCompany->bank_name) || empty($platformCompany->bik) || empty($platformCompany->bank_account)) {
-            throw new \Exception('Не заполнены банковские реквизиты платформы');
+        foreach ($possibleTypes as $type) {
+            $template = DocumentTemplate::where('type', $type)
+                ->where('is_active', true)
+                ->first();
+
+            if ($template) {
+                Log::info('Найден шаблон УПД по типу', [
+                    'type' => $type,
+                    'template_id' => $template->id,
+                    'template_name' => $template->name
+                ]);
+                return $template;
+            }
         }
 
-        if (empty($lesseeCompany->bank_name) || empty($lesseeCompany->bik) || empty($lesseeCompany->bank_account)) {
-            throw new \Exception('Не заполнены банковские реквизиты арендатора');
+        // Если не нашли по типу, пробуем найти любой активный шаблон
+        $template = DocumentTemplate::where('is_active', true)->first();
+        if ($template) {
+            Log::warning('Используем первый активный шаблон (не УПД)', [
+                'template_id' => $template->id,
+                'template_type' => $template->type,
+                'template_name' => $template->name
+            ]);
+            return $template;
         }
 
-        // Формируем строку периода
-        $periodString = '';
-        if ($upd->service_period_start && $upd->service_period_end) {
-            $periodString = $upd->service_period_start->format('d.m.Y').' - '.$upd->service_period_end->format('d.m.Y');
-        }
-
-        return [
-            // Данные УПД (для плейсхолдеров вида {{upd.number}})
-            'upd' => [
-                'number' => $upd->number,
-                'date' => $upd->issue_date ? $upd->issue_date->format('d.m.Y') : '',
-                'contract_number' => $upd->contract_number,
-                'contract_date' => $upd->contract_date ? $upd->contract_date->format('d.m.Y') : '',
-                'shipment_date' => $upd->service_period_start ? $upd->service_period_start->format('d.m.Y') : '',
-                'total_without_vat' => $upd->amount,
-                'total_vat' => $upd->tax_amount,
-                'total_with_vat' => $upd->total_amount,
-                'period' => $periodString,
-            ],
-            // Данные платформы (продавца)
-            'platform' => [
-                'name' => $platformCompany->legal_name,
-                'legal_name' => $platformCompany->legal_name,
-                'address' => $platformCompany->legal_address,
-                'inn' => $platformCompany->inn,
-                'kpp' => $platformCompany->kpp,
-                'inn_kpp' => $platformCompany->inn.' / '.$platformCompany->kpp,
-                'bank_name' => $platformCompany->bank_name,
-                'bik' => $platformCompany->bik,
-                'account_number' => $platformCompany->bank_account,
-                'correspondent_account' => $platformCompany->correspondent_account,
-            ],
-            // Данные арендатора (покупателя)
-            'lessee' => [
-                'name' => $lesseeCompany->legal_name,
-                'legal_name' => $lesseeCompany->legal_name,
-                'address' => $lesseeCompany->legal_address,
-                'inn' => $lesseeCompany->inn,
-                'kpp' => $lesseeCompany->kpp,
-                'inn_kpp' => $lesseeCompany->inn.' / '.$lesseeCompany->kpp,
-                'bank_name' => $lesseeCompany->bank_name,
-                'bik' => $lesseeCompany->bik,
-                'account_number' => $lesseeCompany->bank_account,
-                'correspondent_account' => $lesseeCompany->correspondent_account,
-            ],
-            // Прямые поля для плейсхолдеров без префикса
-            'upd_number' => $upd->number,
-            'upd_date' => $upd->issue_date ? $upd->issue_date->format('d.m.Y') : '',
-            'contract_number' => $upd->contract_number,
-            'contract_date' => $upd->contract_date ? $upd->contract_date->format('d.m.Y') : '',
-            'shipment_date' => $upd->service_period_start ? $upd->service_period_start->format('d.m.Y') : '',
-            'total_without_vat' => $upd->amount,
-            'total_vat' => $upd->tax_amount,
-            'total_with_vat' => $upd->total_amount,
-            'platform_name' => $platformCompany->legal_name,
-            'platform_inn' => $platformCompany->inn,
-            'platform_kpp' => $platformCompany->kpp,
-            'platform_inn_kpp' => $platformCompany->inn.' / '.$platformCompany->kpp,
-            'platform_address' => $platformCompany->legal_address,
-            'lessee_name' => $lesseeCompany->legal_name,
-            'lessee_legal_name' => $lesseeCompany->legal_name,
-            'lessee_inn' => $lesseeCompany->inn,
-            'lessee_kpp' => $lesseeCompany->kpp,
-            'lessee_inn_kpp' => $lesseeCompany->inn.' / '.$lesseeCompany->kpp,
-            'lessee_address' => $lesseeCompany->legal_address,
-            'period' => $periodString,
-            // Табличная часть
-            'items' => $upd->items->map(function ($item) {
-                return [
-                    'code' => $item->code,
-                    'name' => $item->name,
-                    'unit' => $item->unit,
-                    'quantity' => $item->quantity,
-                    'price' => $item->price,
-                    'amount' => $item->amount,
-                    'vat_rate' => $item->vat_rate,
-                    'vat_amount' => $item->vat_amount,
-                    'total_with_vat' => $item->amount + $item->vat_amount,
-                ];
-            })->toArray(),
-        ];
+        return null;
     }
+
+
 }

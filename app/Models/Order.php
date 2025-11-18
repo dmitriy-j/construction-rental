@@ -158,6 +158,16 @@ class Order extends Model
         return $this->belongsTo(Contract::class);
     }
 
+    public function getBillingPeriodDaysAttribute(): int
+    {
+        // Приоритет: documentation_deadline из договора → запасное значение 15 дней
+        if ($this->contract && $this->contract->documentation_deadline) {
+            return max(1, $this->contract->documentation_deadline); // Минимум 1 день
+        }
+
+        return 15; // Значение по умолчанию
+    }
+
     public function canGenerateCompletionAct(): bool
     {
         return in_array($this->status, ['active', 'completed'])
