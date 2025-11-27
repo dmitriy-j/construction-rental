@@ -176,6 +176,16 @@ class Order extends Model
             && ! $this->completionAct;
     }
 
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function upds()
+    {
+        return $this->hasMany(Upd::class);
+    }
+
     public function deliveryNote(): HasOneThrough // Изменен тип возвращаемого значения
     {
         return $this->hasOneThrough(

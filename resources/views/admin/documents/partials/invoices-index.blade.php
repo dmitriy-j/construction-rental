@@ -34,7 +34,7 @@
                             };
                         @endphp
                         <span class="badge badge-{{ $statusClass }}">
-                            {{ $invoice->status }}
+                            {{ $invoice->getStatusText() }}
                         </span>
                     </td>
                     <td>

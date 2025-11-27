@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Log;
 
 class Invoice extends Model
 {
@@ -23,7 +24,7 @@ class Invoice extends Model
         'amount_paid',
         'platform_fee',
         'status',
-        'file_path',
+        //'file_path',
         'idempotency_key',
         'paid_at',
         'cancellation_reason', // Добавляем поле для причины отмены
@@ -49,7 +50,7 @@ class Invoice extends Model
     /**
      * Заказ, для которого выписан счет
      */
-    public function order(): BelongsTo
+    public function order()
     {
         return $this->belongsTo(Order::class);
     }
@@ -86,7 +87,7 @@ class Invoice extends Model
     /**
      * Компания-плательщик
      */
-    public function company(): BelongsTo
+    public function company()
     {
         return $this->belongsTo(Company::class);
     }
@@ -94,17 +95,123 @@ class Invoice extends Model
     /**
      * Связь с УПД (если счет связан с УПД)
      */
-    public function upd(): BelongsTo
+    public function upd()
     {
         return $this->belongsTo(Upd::class);
     }
 
     /**
+     * Генерация файла счета на лету
+     */
+    public function generateFile(): string
+    {
+        try {
+            $templateService = app(\App\Services\DocumentGeneratorService::class);
+            $dataService = app(\App\Services\InvoiceGeneratorService::class);
+
+            // Получаем данные для счета
+            $invoiceData = $dataService->prepareInvoiceDataForDownload($this);
+
+            // Находим шаблон по сценарию
+            $scenario = $this->upd_id ?
+                \App\Models\DocumentTemplate::INVOICE_SCENARIO_POSTPAYMENT_UPD :
+                \App\Models\DocumentTemplate::INVOICE_SCENARIO_ADVANCE_ORDER;
+
+            Log::debug('Поиск шаблона счета', [
+                'invoice_id' => $this->id,
+                'upd_id' => $this->upd_id,
+                'scenario' => $scenario,
+                'scenario_constants' => [
+                    'postpayment_upd' => \App\Models\DocumentTemplate::INVOICE_SCENARIO_POSTPAYMENT_UPD,
+                    'advance_order' => \App\Models\DocumentTemplate::INVOICE_SCENARIO_ADVANCE_ORDER,
+                ]
+            ]);
+
+            $template = \App\Models\DocumentTemplate::active()
+                ->byType(\App\Models\DocumentTemplate::TYPE_INVOICE)
+                ->byScenario($scenario)
+                ->first();
+
+            if (!$template) {
+                // Логируем доступные шаблоны для отладки
+                $availableTemplates = \App\Models\DocumentTemplate::active()
+                    ->byType(\App\Models\DocumentTemplate::TYPE_INVOICE)
+                    ->get();
+
+                Log::warning('Шаблон не найден по сценарию, проверяем доступные шаблоны', [
+                    'scenario' => $scenario,
+                    'available_templates' => $availableTemplates->pluck('id', 'scenario'),
+                    'template_count' => $availableTemplates->count()
+                ]);
+
+                // Если не нашли по сценарию, ищем любой активный шаблон счета
+                $template = \App\Models\DocumentTemplate::active()
+                    ->byType(\App\Models\DocumentTemplate::TYPE_INVOICE)
+                    ->first();
+
+                if (!$template) {
+                    throw new \Exception("Активный шаблон счета не найден в системе");
+                }
+            }
+
+            Log::info('Найден шаблон для генерации счета', [
+                'invoice_id' => $this->id,
+                'template_id' => $template->id,
+                'template_name' => $template->name,
+                'scenario' => $scenario
+            ]);
+
+            // Генерируем файл в памяти
+            return $templateService->generateDocumentInMemory($template, $invoiceData);
+
+        } catch (\Exception $e) {
+            Log::error('Ошибка генерации файла счета', [
+                'invoice_id' => $this->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * Позиции счета
      */
-    public function items(): HasMany
+    public function items()
     {
         return $this->hasMany(InvoiceItem::class);
+    }
+
+    /**
+     * Получить статус на русском языке
+     */
+    public function getStatusText(): string
+    {
+        return match($this->status) {
+            self::STATUS_DRAFT => 'Черновик',
+            self::STATUS_SENT => 'Отправлен',
+            self::STATUS_VIEWED => 'Просмотрен',
+            self::STATUS_PAID => 'Оплачен',
+            self::STATUS_OVERDUE => 'Просрочен',
+            self::STATUS_CANCELED => 'Отменен',
+            default => $this->status,
+        };
+    }
+
+    /**
+     * Получить цвет статуса для отображения
+     */
+    public function getStatusColor(): string
+    {
+        return match($this->status) {
+            self::STATUS_DRAFT => 'secondary',
+            self::STATUS_SENT => 'info',
+            self::STATUS_VIEWED => 'primary',
+            self::STATUS_PAID => 'success',
+            self::STATUS_OVERDUE => 'danger',
+            self::STATUS_CANCELED => 'dark',
+            default => 'light',
+        };
     }
 
     /**

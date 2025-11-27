@@ -44,37 +44,30 @@ class DocumentDataService
             throw new \Exception('Генерация УПД возможна только для исходящих документов (Платформа → Арендатор). Входящие УПД должны загружаться готовыми файлами.');
         }
 
-        // Проверяем наличие обязательных компаний
-        if (!$platformCompany) {
-            throw new \Exception('Компания платформы не найдена в системе');
-        }
-
-        if (!$lesseeCompany) {
-            throw new \Exception('Компания арендатора не найдена');
-        }
-
-        // Проверяем банковские реквизиты
-        if (empty($platformCompany->bank_name) || empty($platformCompany->bik) || empty($platformCompany->bank_account)) {
-            throw new \Exception('Не заполнены банковские реквизиты платформы');
-        }
-
-        if (empty($lesseeCompany->bank_name) || empty($lesseeCompany->bik) || empty($lesseeCompany->bank_account)) {
-            throw new \Exception('Не заполнены банковские реквизиты арендатора');
-        }
+        // Получаем связанные данные для формирования полных названий
+        $waybill = $upd->waybill;
+        $order = $upd->order;
+        $completionAct = $upd->completionAct;
 
         // Формируем строку периода
         $periodString = '';
         if ($upd->service_period_start && $upd->service_period_end) {
-            $periodString = $upd->service_period_start->format('d.m.Y') . ' - ' . $upd->service_period_end->format('d.m.Y');
+            $periodString = $upd->service_period_start->format('d.m.Y') . ' по ' . $upd->service_period_end->format('d.m.Y');
         }
+
+        // Получаем данные об оборудовании и технике
+        $equipmentData = $this->getEquipmentDataForUpd($upd, $waybill, $order);
+
+        // Получаем данные договора - ОБНОВЛЕНИЕ
+        $contractData = $this->getContractData($upd);
 
         return [
             // Основные данные УПД
             'upd' => [
                 'number' => $upd->number,
                 'date' => $upd->issue_date ? $upd->issue_date->format('d.m.Y') : '',
-                'contract_number' => $upd->contract_number,
-                'contract_date' => $upd->contract_date ? $upd->contract_date->format('d.m.Y') : '',
+                'contract_number' => $contractData['contract_number'], // ИСПОЛЬЗУЕМ ДАННЫЕ ИЗ ДОГОВОРА
+                'contract_date' => $contractData['contract_date'],     // ИСПОЛЬЗУЕМ ДАННЫЕ ИЗ ДОГОВОРА
                 'shipment_date' => $upd->service_period_start ? $upd->service_period_start->format('d.m.Y') : '',
                 'total_without_vat' => $upd->amount,
                 'total_vat' => $upd->tax_amount,
@@ -109,73 +102,16 @@ class DocumentDataService
                 'correspondent_account' => $lesseeCompany->correspondent_account,
             ],
 
-            // Оригинальные данные (для обратной совместимости)
-            'platform' => [
-                'name' => $platformCompany->legal_name,
-                'legal_name' => $platformCompany->legal_name,
-                'address' => $platformCompany->legal_address,
-                'inn' => $platformCompany->inn,
-                'kpp' => $platformCompany->kpp,
-                'inn_kpp' => $platformCompany->inn . ' / ' . $platformCompany->kpp,
-                'bank_name' => $platformCompany->bank_name,
-                'bik' => $platformCompany->bik,
-                'account_number' => $platformCompany->bank_account,
-                'correspondent_account' => $platformCompany->correspondent_account,
-            ],
-
-            'lessee' => [
-                'name' => $lesseeCompany->legal_name,
-                'legal_name' => $lesseeCompany->legal_name,
-                'address' => $lesseeCompany->legal_address,
-                'inn' => $lesseeCompany->inn,
-                'kpp' => $lesseeCompany->kpp,
-                'inn_kpp' => $lesseeCompany->inn . ' / ' . $lesseeCompany->kpp,
-                'bank_name' => $lesseeCompany->bank_name,
-                'bik' => $lesseeCompany->bik,
-                'account_number' => $lesseeCompany->bank_account,
-                'correspondent_account' => $lesseeCompany->correspondent_account,
-            ],
-
-            // Прямые поля для плейсхолдеров
-            'upd_number' => $upd->number,
-            'upd_date' => $upd->issue_date ? $upd->issue_date->format('d.m.Y') : '',
-            'contract_number' => $upd->contract_number,
-            'contract_date' => $upd->contract_date ? $upd->contract_date->format('d.m.Y') : '',
-            'shipment_date' => $upd->service_period_start ? $upd->service_period_start->format('d.m.Y') : '',
-            'total_without_vat' => $upd->amount,
-            'total_vat' => $upd->tax_amount,
-            'total_with_vat' => $upd->total_amount,
-            'platform_name' => $platformCompany->legal_name,
-            'platform_inn' => $platformCompany->inn,
-            'platform_kpp' => $platformCompany->kpp,
-            'platform_inn_kpp' => $platformCompany->inn . ' / ' . $platformCompany->kpp,
-            'platform_address' => $platformCompany->legal_address,
-            'lessee_name' => $lesseeCompany->legal_name,
-            'lessee_legal_name' => $lesseeCompany->legal_name,
-            'lessee_inn' => $lesseeCompany->inn,
-            'lessee_kpp' => $lesseeCompany->kpp,
-            'lessee_inn_kpp' => $lesseeCompany->inn . ' / ' . $lesseeCompany->kpp,
-            'lessee_address' => $lesseeCompany->legal_address,
-            'period' => $periodString,
-
-            // Табличная часть с обработкой названий
-            'items' => $upd->items->map(function ($item, $index) use ($periodString) {
-                // Обрабатываем название - заменяем плейсхолдеры
-                $itemName = $item->name;
-
-                // Заменяем плейсхолдеры периода в названии
-                if (strpos($itemName, '{{period}}') !== false) {
-                    $itemName = str_replace('{{period}}', $periodString, $itemName);
-                }
-
-                // Заменяем плейсхолдеры имени
-                if (strpos($itemName, '{{items.#.name}}') !== false) {
-                    $itemName = str_replace('{{items.#.name}}', 'Аренда оборудования', $itemName);
-                }
+            'equipment' => $equipmentData,
+            'period_full' => $periodString,
+            'items' => $upd->items->map(function ($item, $index) use ($periodString, $equipmentData, $upd) {
+                // ФОРМИРУЕМ ПОЛНОЕ НАЗВАНИЕ БЕЗ ДУБЛИРОВАНИЯ ПЕРИОДА
+                $fullItemName = $this->generateFullItemName($item, $periodString, $equipmentData, $upd, $index);
 
                 return [
                     'code' => $item->code ?? ($index + 1),
-                    'name' => $itemName,
+                    'name' => $fullItemName,
+                    'name_short' => $item->name,
                     'unit' => $item->unit,
                     'quantity' => $item->quantity,
                     'price' => $item->price,
@@ -183,16 +119,248 @@ class DocumentDataService
                     'vat_rate' => $item->vat_rate,
                     'vat_amount' => $item->vat_amount,
                     'total_with_vat' => $item->amount + $item->vat_amount,
-                    // Дополнительные поля для совместимости
                     'total_without_vat' => $item->amount,
                     'total' => $item->amount + $item->vat_amount,
                     'period' => $periodString,
                     'index' => $index + 1,
+                    'equipment_name' => $equipmentData['name'] ?? '',
+                    'equipment_model' => $equipmentData['model'] ?? '',
+                    'vehicle_number' => $equipmentData['vehicle_number'] ?? '', // ГОС. НОМЕР
+                    'period_text' => $periodString,
                 ];
             })->toArray()
         ];
     }
 
+    /**
+     * Получает данные об оборудовании для УПД
+     */
+    protected function getEquipmentDataForUpd(Upd $upd, $waybill, $order): array
+    {
+        $equipmentData = [
+            'name' => '',
+            'model' => '',
+            'vehicle_number' => '',
+            'full_description' => ''
+        ];
+
+        try {
+            Log::debug('=== НАЧАЛО ПОИСКА ДАННЫХ ОБОРУДОВАНИЯ ===', [
+                'upd_id' => $upd->id,
+                'waybill_id' => $waybill->id ?? 'NOT_FOUND',
+                'order_id' => $order->id ?? 'NOT_FOUND'
+            ]);
+
+            // ПЕРВЫЙ ПРИОРИТЕТ: оборудование из путевого листа
+            if ($waybill) {
+                Log::debug('Путевой лист найден', [
+                    'waybill_id' => $waybill->id,
+                    'license_plate' => $waybill->license_plate ?? 'NULL',
+                    'vehicle_model' => $waybill->vehicle_model ?? 'NULL',
+                    'has_equipment_relation' => $waybill->relationLoaded('equipment'),
+                    'equipment_id' => $waybill->equipment_id ?? 'NULL'
+                ]);
+
+                // Если есть связанное оборудование в путевом листе
+                if ($waybill->equipment) {
+                    $equipment = $waybill->equipment;
+                    Log::debug('Оборудование из путевого листа', [
+                        'equipment_id' => $equipment->id,
+                        'title' => $equipment->title ?? 'NULL',
+                        'model' => $equipment->model ?? 'NULL',
+                        'license_plate' => $equipment->license_plate ?? 'NULL'
+                    ]);
+
+                    if (!empty($equipment->license_plate)) {
+                        $equipmentData['vehicle_number'] = $equipment->license_plate;
+                        Log::debug('Гос. номер найден в оборудовании путевого листа', [
+                            'license_plate' => $equipment->license_plate
+                        ]);
+                    }
+
+                    if (!empty($equipment->title)) {
+                        $equipmentData['name'] = $equipment->title;
+                    }
+
+                    if (!empty($equipment->model)) {
+                        $equipmentData['model'] = $equipment->model;
+                    }
+                } else {
+                    Log::debug('В путевом листе нет связанного оборудования');
+                }
+
+                // ВТОРОЙ ПРИОРИТЕТ: гос. номер из самого путевого листа
+                if (empty($equipmentData['vehicle_number']) && !empty($waybill->license_plate)) {
+                    $equipmentData['vehicle_number'] = $waybill->license_plate;
+                    Log::debug('Гос. номер найден в путевом листе', [
+                        'license_plate' => $waybill->license_plate
+                    ]);
+                }
+            } else {
+                Log::warning('Путевой лист не найден для УПД', ['upd_id' => $upd->id]);
+            }
+
+            // ТРЕТИЙ ПРИОРИТЕТ: оборудование из заказа
+            if (empty($equipmentData['vehicle_number']) && $order && $order->relationLoaded('equipment') && $order->equipment->isNotEmpty()) {
+                $equipment = $order->equipment->first();
+                Log::debug('Оборудование из заказа', [
+                    'equipment_id' => $equipment->id,
+                    'title' => $equipment->title ?? 'NULL',
+                    'model' => $equipment->model ?? 'NULL',
+                    'license_plate' => $equipment->license_plate ?? 'NULL'
+                ]);
+
+                if (!empty($equipment->license_plate)) {
+                    $equipmentData['vehicle_number'] = $equipment->license_plate;
+                    Log::debug('Гос. номер найден в оборудовании заказа', [
+                        'license_plate' => $equipment->license_plate
+                    ]);
+                }
+
+                if (empty($equipmentData['name']) && !empty($equipment->title)) {
+                    $equipmentData['name'] = $equipment->title;
+                }
+
+                if (empty($equipmentData['model']) && !empty($equipment->model)) {
+                    $equipmentData['model'] = $equipment->model;
+                }
+            }
+
+            // Формируем полное описание
+            $parts = [];
+            if (!empty($equipmentData['name'])) {
+                $parts[] = $equipmentData['name'];
+            }
+            if (!empty($equipmentData['model'])) {
+                $parts[] = $equipmentData['model'];
+            }
+            if (!empty($equipmentData['vehicle_number'])) {
+                $parts[] = 'г.р.з. ' . $equipmentData['vehicle_number'];
+            }
+
+            $equipmentData['full_description'] = implode(' ', $parts);
+
+            Log::debug('=== ИТОГОВЫЕ ДАННЫЕ ОБОРУДОВАНИЯ ===', $equipmentData);
+
+        } catch (\Exception $e) {
+            Log::error('Ошибка получения данных об оборудовании для УПД', [
+                'upd_id' => $upd->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+
+        return $equipmentData;
+    }
+
+    protected function getContractData(Upd $upd)
+    {
+        try {
+            // Ищем активный договор между компаниями
+            $contract = \App\Models\Contract::where('company_id', $upd->lessor_company_id)
+                ->where('counterparty_company_id', $upd->lessee_company_id)
+                ->where('is_active', true)
+                ->where(function($query) use ($upd) {
+                    $query->whereNull('order_id')
+                        ->orWhere('order_id', $upd->order_id);
+                })
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            Log::debug('Найденный договор для УПД', [
+                'upd_id' => $upd->id,
+                'contract_id' => $contract->id ?? 'NOT_FOUND',
+                'contract_number' => $contract->number ?? 'NOT_FOUND',
+                'contract_start_date' => $contract->start_date ?? 'NOT_FOUND',
+                'contract_created_at' => $contract->created_at ?? 'NOT_FOUND'
+            ]);
+
+            if ($contract) {
+                return [
+                    'contract_number' => $contract->number,
+                    'contract_date' => $contract->start_date ? $contract->start_date->format('d.m.Y') : ($contract->created_at ? $contract->created_at->format('d.m.Y') : ''),
+                ];
+            }
+
+            // Если договор не найден, используем данные из УПД или заказа
+            if (!empty($upd->contract_number)) {
+                return [
+                    'contract_number' => $upd->contract_number,
+                    'contract_date' => $upd->contract_date ? $upd->contract_date->format('d.m.Y') : '',
+                ];
+            }
+
+            // Пробуем получить из заказа
+            $order = $upd->order;
+            if ($order && !empty($order->contract_number)) {
+                return [
+                    'contract_number' => $order->contract_number,
+                    'contract_date' => $order->contract_date ? $order->contract_date->format('d.m.Y') : '',
+                ];
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Ошибка получения данных договора для УПД', [
+                'upd_id' => $upd->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        return [
+            'contract_number' => 'Не указан',
+            'contract_date' => 'Не указана',
+        ];
+    }
+
+    /**
+     * Генерирует полное название позиции с периодом и деталями оборудования
+     */
+    protected function generateFullItemName($item, string $periodString, array $equipmentData, Upd $upd, int $index): string
+    {
+        $baseName = $item->name;
+
+        // Если в названии уже есть плейсхолдеры, заменяем их
+        if (strpos($baseName, '{{period}}') !== false) {
+            $baseName = str_replace('{{period}}', $periodString, $baseName);
+        }
+
+        if (strpos($baseName, '{{equipment}}') !== false) {
+            $baseName = str_replace('{{equipment}}', $equipmentData['full_description'] ?? '', $baseName);
+        }
+
+        // ЗАМЕНИТЬ ПУСТОЙ ГОС. НОМЕР НА РЕАЛЬНЫЙ
+        if (strpos($baseName, '(гос. номер: )') !== false && !empty($equipmentData['vehicle_number'])) {
+            $baseName = str_replace('(гос. номер: )', '(гос. номер: ' . $equipmentData['vehicle_number'] . ')', $baseName);
+            Log::debug('Гос. номер добавлен в название', [
+                'vehicle_number' => $equipmentData['vehicle_number'],
+                'new_name' => $baseName
+            ]);
+        }
+
+        // Если название короткое (просто "Аренда" или "Услуги"), формируем полное описание
+        if (in_array(mb_strtolower(trim($baseName)), ['аренда', 'услуги', 'аренда оборудования', 'оказание услуг'])) {
+            $parts = [];
+
+            // Добавляем тип услуги
+            $parts[] = 'Аренда';
+
+            // Добавляем описание оборудования если есть
+            if (!empty($equipmentData['full_description'])) {
+                $parts[] = $equipmentData['full_description'];
+            } else {
+                $parts[] = 'оборудования';
+            }
+
+            // Добавляем период ТОЛЬКО ОДИН РАЗ
+            if (!empty($periodString)) {
+                $parts[] = 'за период с ' . $periodString;
+            }
+
+            return implode(' ', $parts);
+        }
+
+        return $baseName;
+    }
     protected function prepareTransportInvoiceData(TransportInvoice $transportInvoice)
     {
         $platformCompany = Company::where('is_platform', true)->first();

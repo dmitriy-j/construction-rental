@@ -51,11 +51,13 @@ class InvoiceController extends Controller
     /**
      * Просмотр счета
      */
-    public function show(Invoice $invoice)
+   public function show(Invoice $invoice)
     {
         $invoice->load(['order', 'company', 'upd', 'items']);
 
-        return view('admin.invoices.show', compact('invoice'));
+        return view('admin.documents.invoices.show', [
+            'document' => $invoice // для совместимости с существующим шаблоном
+        ]);
     }
 
     /**
@@ -106,85 +108,53 @@ class InvoiceController extends Controller
     public function download(Invoice $invoice)
     {
         try {
-            Log::info('Попытка скачивания счета', [
+            Log::info('Генерация и скачивание счета на лету', [
                 'invoice_id' => $invoice->id,
                 'invoice_number' => $invoice->number,
-                'file_path' => $invoice->file_path,
                 'user_id' => auth()->id(),
-                'user_email' => auth()->user()->email
             ]);
 
-            if (!$invoice->file_path) {
-                Log::warning('Файл счета не сгенерирован', ['invoice_id' => $invoice->id]);
-                return redirect()->back()->with('error', 'Файл счета не сгенерирован');
-            }
+            // Генерируем файл в памяти
+            $fileContent = $invoice->generateFile();
 
-            // Проверяем различные варианты хранения файла
-            $fileFound = false;
-            $storageDisk = null;
+            // Создаем безопасное имя файла (заменяем недопустимые символы)
+            $filename = $this->generateSafeFilename($invoice->number);
 
-            // Проверяем приватное хранилище
-            if (Storage::disk('private')->exists($invoice->file_path)) {
-                $fileFound = true;
-                $storageDisk = 'private';
-            }
-            // Проверяем публичное хранилище
-            elseif (Storage::disk('public')->exists($invoice->file_path)) {
-                $fileFound = true;
-                $storageDisk = 'public';
-            }
-            // Проверяем стандартное хранилище
-            elseif (Storage::exists($invoice->file_path)) {
-                $fileFound = true;
-                $storageDisk = 'local';
-            }
-            // Проверяем полный путь
-            elseif (file_exists(storage_path('app/' . $invoice->file_path))) {
-                $fileFound = true;
-                $storageDisk = 'absolute';
-            }
-
-            if ($fileFound) {
-                Log::info('Файл счета найден', [
-                    'invoice_id' => $invoice->id,
-                    'file_path' => $invoice->file_path,
-                    'storage_disk' => $storageDisk
-                ]);
-
-                $filename = "Счет_{$invoice->number}.pdf";
-
-                switch ($storageDisk) {
-                    case 'private':
-                        return Storage::disk('private')->download($invoice->file_path, $filename);
-                    case 'public':
-                        return Storage::disk('public')->download($invoice->file_path, $filename);
-                    case 'absolute':
-                        return response()->download(storage_path('app/' . $invoice->file_path), $filename);
-                    default:
-                        return Storage::download($invoice->file_path, $filename);
-                }
-            }
-
-            Log::error('Файл счета не найден ни в одном хранилище', [
+            Log::info('Счет успешно сгенерирован для скачивания', [
                 'invoice_id' => $invoice->id,
-                'file_path' => $invoice->file_path,
-                'private_exists' => Storage::disk('private')->exists($invoice->file_path),
-                'public_exists' => Storage::disk('public')->exists($invoice->file_path),
-                'local_exists' => Storage::exists($invoice->file_path),
-                'absolute_exists' => file_exists(storage_path('app/' . $invoice->file_path))
+                'file_size' => strlen($fileContent),
+                'filename' => $filename
             ]);
 
-            return redirect()->back()->with('error', 'Файл счета не найден');
+            // Возвращаем файл для скачивания прямо из памяти
+            return response()->streamDownload(function () use ($fileContent) {
+                echo $fileContent;
+            }, $filename, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"'
+            ]);
 
         } catch (\Exception $e) {
-            Log::error('Ошибка скачивания счета', [
+            Log::error('Ошибка генерации счета для скачивания', [
                 'invoice_id' => $invoice->id,
                 'error_message' => $e->getMessage(),
                 'error_trace' => $e->getTraceAsString()
             ]);
 
-            return redirect()->back()->with('error', 'Ошибка при скачивании счета: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Ошибка при генерации счета: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Генерация безопасного имени файла
+     */
+    protected function generateSafeFilename(string $invoiceNumber): string
+    {
+        // Заменяем недопустимые символы
+        $safeName = str_replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], '_', $invoiceNumber);
+
+        // Добавляем префикс и расширение
+        return 'Счет_' . $safeName . '.xlsx';
     }
 
     /**

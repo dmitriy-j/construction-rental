@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\CompletionAct;
 use App\Models\Upd;
 use App\Models\UpdItem;
+use App\Services\UpdProcessingService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -65,7 +66,6 @@ class CompletionActController extends Controller
 
                     if (! $completionAct) {
                         DB::rollBack();
-
                         continue;
                     }
 
@@ -231,9 +231,10 @@ class CompletionActController extends Controller
 
             \Log::debug("Рассчитаны финансовые показатели: цена={$priceWithoutVat}, сумма={$amountWithoutVat}, НДС={$vatAmount}, итого={$totalAmount}");
 
-            // Генерация номера УПД
-            $number = 'УПД-'.now()->format('Ymd').'-'.Str::upper(Str::random(6));
-            \Log::debug("Сгенерирован номер УПД: {$number}");
+            // Генерация номера УПД через сервис - ИСПРАВЛЕННАЯ ЧАСТЬ
+            $updProcessingService = app(UpdProcessingService::class);
+            $number = $updProcessingService->generateUpdNumber();
+            \Log::debug("Сгенерирован номер УПД в новом формате: {$number}");
 
             // Создаем УПД (ПЛАТФОРМА → АРЕНДАТОР)
             $upd = Upd::create([
@@ -242,7 +243,7 @@ class CompletionActController extends Controller
                 'lessor_company_id' => $platformCompany->id,
                 'lessee_company_id' => $lesseeCompany->id,
                 'waybill_id' => $waybill->id,
-                'number' => $number,
+                'number' => $number, // Используем новый формат номера
                 'issue_date' => now(),
                 'service_period_start' => $completionAct->service_start_date,
                 'service_period_end' => $completionAct->service_end_date,
@@ -287,7 +288,7 @@ class CompletionActController extends Controller
             DB::commit();
 
             \Log::debug("Акт #{$completionAct->id} и путевой лист #{$waybill->id} связаны с УПД #{$upd->id}");
-            \Log::info("Успешно завершена генерация УПД #{$upd->id} для акта #{$completionAct->id}");
+            \Log::info("Успешно завершена генерации УПД #{$upd->id} для акта #{$completionAct->id}");
 
             return $upd;
 

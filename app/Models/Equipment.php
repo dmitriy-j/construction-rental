@@ -18,7 +18,7 @@ class Equipment extends Model
     protected $fillable = [
         'title', 'slug', 'description', 'company_id', 'category_id',
         'location_id', 'brand', 'model', 'year', 'hours_worked',
-        'rating', 'is_featured', 'is_approved', 'views', 'equipment_import_id'
+        'rating', 'is_featured', 'is_approved', 'views', 'equipment_import_id', 'license_plate',
     ];
 
     protected $casts = [

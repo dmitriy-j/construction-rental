@@ -7,80 +7,52 @@ $updTemplate = DocumentTemplate::where('type', 'упд')->where('is_active', tru
 
 // Определяем тип УПД на основе сравнения компаний
 $isIncomingUpd = $upd->lessor_company_id !== $platformCompany->id;
+
+// Получаем счета связанные с этим УПД
+$updInvoices = $upd->invoices ?? collect();
 @endphp
 @extends('layouts.app')
 
 @section('content')
-
-
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-md-6">
             <h1>УПД №{{ $upd->number }}</h1>
         </div>
-            <div class="col-md-6 text-right">
-                <a href="{{ route('admin.upds.index') }}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Назад к списку
-                </a>
+        <div class="col-md-6 text-right">
+            <a href="{{ route('admin.upds.index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Назад к списку
+            </a>
 
-                @if($upd->status == 'pending')
-                    <form action="{{ route('admin.upds.accept', $upd) }}" method="POST" class="d-inline">
-                        @csrf
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-check"></i> Принять
-                        </button>
-                    </form>
-                    <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectModal">
-                        <i class="fas fa-times"></i> Отклонить
+            @if($upd->status == 'pending')
+                <form action="{{ route('admin.upds.accept', $upd) }}" method="POST" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check"></i> Принять
                     </button>
+                </form>
+                <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectModal">
+                    <i class="fas fa-times"></i> Отклонить
+                </button>
+            @endif
+
+            <!-- Упрощенные кнопки скачивания -->
+            <div class="btn-group" role="group">
+                <!-- Для загруженных файлов (входящие УПД) -->
+                @if($upd->file_path && $isIncomingUpd)
+                    <a href="{{ route('admin.upds.download', $upd) }}" class="btn btn-info">
+                        <i class="fas fa-download"></i> Скачать загруженный УПД
+                    </a>
                 @endif
 
-                <!-- Упрощенные кнопки скачивания -->
-                <div class="btn-group" role="group">
-                    <!-- Для загруженных файлов (входящие УПД) -->
-                    @if($upd->file_path && !$canGenerateUpd)
-                        <a href="{{ route('admin.upds.download', $upd) }}" class="btn btn-info">
-                            <i class="fas fa-download"></i> Скачать УПД
-                        </a>
-                    @endif
-
-                    <!-- Для генерации исходящих УПД -->
-                    @if($canGenerateUpd)
-                        <a href="{{ route('admin.upds.download-generated', $upd) }}" class="btn btn-primary">
-                            <i class="fas fa-file-download"></i> Скачать УПД
-                        </a>
-                    @endif
-                </div>
+                <!-- Для генерации исходящих УПД -->
+                @if(!$isIncomingUpd || !$upd->file_path)
+                    <a href="{{ route('admin.upds.download-generated', $upd) }}" class="btn btn-primary">
+                        <i class="fas fa-file-download"></i> Сгенерировать и скачать УПД
+                    </a>
+                @endif
             </div>
-
-            <!-- Добавить скрипт для логирования кликов -->
-            @section('scripts')
-            <script>
-            function logDownloadAttempt(updId, type) {
-                console.log('Попытка скачивания УПД:', {
-                    upd_id: updId,
-                    type: type,
-                    timestamp: new Date().toISOString()
-                });
-
-                // Можно отправить AJAX запрос для логирования на сервер
-                fetch('/admin/log-download-attempt', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({
-                        upd_id: updId,
-                        type: type,
-                        user_agent: navigator.userAgent
-                    })
-                }).catch(error => {
-                    console.error('Ошибка логирования:', error);
-                });
-            }
-            </script>
-            @endsection
+        </div>
     </div>
 
     <div class="row">
@@ -154,6 +126,135 @@ $isIncomingUpd = $upd->lessor_company_id !== $platformCompany->id;
                             <td>{{ $upd->tax_system }}</td>
                         </tr>
                     </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Секция счетов -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Счета к УПД</h5>
+                </div>
+                <div class="card-body">
+                    @php
+                        $updInvoices = $upd->invoices ?? collect();
+                        $invoiceTemplate = \App\Models\DocumentTemplate::where('type', 'invoice')
+                            ->where('is_active', true)
+                            ->whereIn('scenario', [
+                                \App\Models\DocumentTemplate::INVOICE_SCENARIO_POSTPAYMENT_UPD,
+                                \App\Models\DocumentTemplate::SCENARIO_INVOICE_UPD,
+                                'postpayment_upd',
+                                'invoice_upd'
+                            ])
+                            ->first();
+
+                        // Если все еще не нашли, берем любой активный шаблон счета
+                        if (!$invoiceTemplate) {
+                            $invoiceTemplate = \App\Models\DocumentTemplate::where('type', 'invoice')
+                                ->where('is_active', true)
+                                ->first();
+                        }
+
+                        $canCreateInvoice = $upd->canCreateInvoice() && $upd->isOutgoing() && $invoiceTemplate;
+                        @endphp
+
+                    @if($updInvoices->count() > 0)
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Номер счета</th>
+                                        <th>Тип</th>
+                                        <th>Дата</th>
+                                        <th>Сумма</th>
+                                        <th>Статус</th>
+                                        <th>Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($updInvoices as $invoice)
+                                    <tr>
+                                        <td>{{ $invoice->number }}</td>
+                                        <td>
+                                            <span class="badge badge-info">Постоплата к УПД</span>
+                                        </td>
+                                        <td>{{ $invoice->issue_date->format('d.m.Y') }}</td>
+                                        <td>{{ number_format($invoice->amount, 2) }} ₽</td>
+                                        <td>
+                                            <span class="badge badge-{{ $invoice->getStatusColor() }}">
+                                                {{ $invoice->getStatusText() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{{ route('admin.invoices.show', $invoice) }}"
+                                            class="btn btn-sm btn-info" title="Просмотр">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            @if($invoice->file_path)
+                                            <a href="{{ route('admin.invoices.download', $invoice) }}"
+                                            class="btn btn-sm btn-success" title="Скачать">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> К этому УПД еще не созданы счета
+                        </div>
+                    @endif
+
+                    <!-- Кнопки создания счетов -->
+                    @if($canCreateInvoice && $invoiceTemplate)
+                    <div class="mt-3">
+                        <form action="{{ route('admin.invoices.create-for-upd', $upd) }}" method="POST" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-success"
+                                    onclick="return confirm('Вы уверены, что хотите создать постоплатный счет для этого УПД?')">
+                                <i class="fas fa-file-invoice-dollar"></i> Выставить постоплатный счет
+                            </button>
+                        </form>
+
+                        @if($upd->order && in_array($upd->order->status, ['pending', 'active']))
+                        <form action="{{ route('admin.invoices.create-for-order', $upd->order) }}" method="POST" class="d-inline ml-2">
+                            @csrf
+                            <button type="submit" class="btn btn-warning"
+                                    onclick="return confirm('Вы уверены, что хотите создать предоплатный счет для заказа?')">
+                                <i class="fas fa-file-invoice"></i> Выставить предоплатный счет
+                            </button>
+                        </form>
+                        @endif
+                    </div>
+                    @else
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        @if(!$canCreateInvoice)
+                            @if(!$upd->isOutgoing())
+                                Счета можно создавать только для исходящих УПД (Платформа → Арендатор)
+                            @else
+                                Счет можно создать для УПД в статусах: ожидание, отправлен, принят, проведен
+                            @endif
+                        @elseif(!$invoiceTemplate)
+                            Не найден активный шаблон счета для УПД
+                        @endif
+                    </div>
+                    @endif
+
+                    <!-- Отладочная информация -->
+                    <div class="mt-3 p-2 bg-light rounded small">
+                        <strong>Отладка:</strong><br>
+                        Статус УПД: {{ $upd->status }} ({{ $upd->status_text }})<br>
+                        Тип УПД: {{ $upd->isOutgoing() ? 'Исходящий (Платформа → Арендатор)' : 'Входящий (Арендодатель → Платформа)' }}<br>
+                        Может создавать счет: {{ $canCreateInvoice ? 'ДА' : 'НЕТ' }}<br>
+                        Шаблон найден: {{ $invoiceTemplate ? 'ДА (' . $invoiceTemplate->name . ')' : 'НЕТ' }}
+                    </div>
                 </div>
             </div>
         </div>
@@ -257,7 +358,6 @@ $isIncomingUpd = $upd->lessor_company_id !== $platformCompany->id;
         </div>
     </div>
 
-    <!-- Остальная часть шаблона без изменений -->
     <!-- Табличная часть УПД -->
     @if($upd->items && count($upd->items) > 0)
     <div class="row mt-4">

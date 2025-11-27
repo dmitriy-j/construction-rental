@@ -22,7 +22,7 @@ class DocumentTemplateController extends Controller
     public function create()
     {
         $templateTypes = DocumentTemplate::getTypes();
-        $scenarios = DocumentTemplate::getScenarios();
+        $scenarios = DocumentTemplate::getScenarios(); // Убедитесь, что эта строка есть
 
         return view('admin.settings.document-templates.create', compact('templateTypes', 'scenarios'));
     }
@@ -64,7 +64,7 @@ class DocumentTemplateController extends Controller
     public function edit(DocumentTemplate $documentTemplate)
     {
         $templateTypes = DocumentTemplate::getTypes();
-        $scenarios = DocumentTemplate::getScenarios();
+        $scenarios = DocumentTemplate::getScenarios(); // И здесь
 
         return view('admin.settings.document-templates.edit', compact('documentTemplate', 'templateTypes', 'scenarios'));
     }

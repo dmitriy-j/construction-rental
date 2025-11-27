@@ -136,6 +136,130 @@
         </div>
     </div>
 
+    <!-- Секция счетов -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Счета по заказу</h5>
+                    @if(in_array($order->status, ['pending', 'active']))
+                    <form action="{{ route('admin.invoices.create-for-order', $order) }}" method="POST" class="d-inline">
+                        @csrf
+                        <button type="submit" class="btn btn-warning btn-sm"
+                                onclick="return confirm('Вы уверены, что хотите создать предоплатный счет для этого заказа?')">
+                            <i class="fas fa-file-invoice"></i> Выставить предоплатный счет
+                        </button>
+                    </form>
+                    @endif
+                </div>
+                <div class="card-body">
+                    @php
+                        $orderInvoices = $order->invoices ?? collect();
+                    @endphp
+
+                    @if($orderInvoices->count() > 0)
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Номер счета</th>
+                                        <th>Тип</th>
+                                        <th>Дата</th>
+                                        <th>Срок оплаты</th>
+                                        <th>Сумма</th>
+                                        <th>Статус</th>
+                                        <th>Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($orderInvoices as $invoice)
+                                    <tr>
+                                        <td>{{ $invoice->number }}</td>
+                                        <td>
+                                            @if($invoice->upd_id)
+                                                <span class="badge bg-info">Постоплата к УПД</span>
+                                            @else
+                                                <span class="badge bg-warning">Предоплата к заказу</span>
+                                            @endif
+                                        </td>
+                                        <td>{{ $invoice->issue_date->format('d.m.Y') }}</td>
+                                        <td>{{ $invoice->due_date->format('d.m.Y') }}</td>
+                                        <td>{{ number_format($invoice->amount, 2) }} ₽</td>
+                                        <td>
+                                            <span class="badge bg-{{ $invoice->getStatusColor() }}">
+                                                {{ $invoice->getStatusText() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{{ route('admin.invoices.show', $invoice) }}" class="btn btn-sm btn-info">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{{ route('admin.invoices.download', $invoice) }}" class="btn btn-sm btn-success">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                            @if(!in_array($invoice->status, ['paid', 'canceled']))
+                                            <button type="button" class="btn btn-sm btn-danger"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#cancelInvoiceModal{{ $invoice->id }}">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                            @endif
+                                        </td>
+                                    </tr>
+
+                                    <!-- Modal for cancel invoice -->
+                                    <div class="modal fade" id="cancelInvoiceModal{{ $invoice->id }}" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <form action="{{ route('admin.invoices.cancel', $invoice) }}" method="POST">
+                                                    @csrf
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Отмена счета {{ $invoice->number }}</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <div class="mb-3">
+                                                            <label for="reason" class="form-label">Причина отмены</label>
+                                                            <textarea class="form-control" id="reason" name="reason" rows="3" required
+                                                                    placeholder="Укажите причину отмены счета"></textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                                        <button type="submit" class="btn btn-danger">Отменить счет</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            По этому заказу еще не созданы счета
+                        </div>
+                    @endif
+
+                    <!-- Информация о доступных сценариях -->
+                    @if(in_array($order->status, ['pending', 'active']))
+                    <div class="mt-3 p-3 bg-light rounded">
+                        <h6>Доступные типы счетов:</h6>
+                        <ul class="mb-0">
+                            <li><strong>Предоплатный счет</strong> - создается к заказу для авансовой оплаты</li>
+                            @if($order->upds->where('status', 'accepted')->count() > 0)
+                            <li><strong>Постоплатный счет</strong> - создается к принятому УПД для окончательного расчета (доступен в карточке УПД)</li>
+                            @endif
+                        </ul>
+                    </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Оборудование -->
     <div class="row mt-4">
         <div class="col-md-12">

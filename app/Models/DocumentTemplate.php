@@ -92,17 +92,16 @@ class DocumentTemplate extends Model
         ];
     }
 
-    /**
+   /**
      * Получить сценарии для счетов
      */
     public static function getInvoiceScenarios(): array
     {
         return [
             self::INVOICE_SCENARIO_ADVANCE_ORDER => 'Предоплатный счет к заказу',
-            self::INVOICE_SCENARIO_ADVANCE_UPD => 'Предоплатный счет к УПД',
             self::INVOICE_SCENARIO_POSTPAYMENT_UPD => 'Постоплатный счет к УПД',
-            self::INVOICE_SCENARIO_CORRECTION => 'Корректировочный счет',
             self::INVOICE_SCENARIO_PARTIAL_PAYMENT => 'Счет на частичную оплату',
+            self::INVOICE_SCENARIO_CORRECTION => 'Корректировочный счет',
         ];
     }
 

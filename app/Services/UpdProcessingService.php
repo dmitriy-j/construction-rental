@@ -23,7 +23,7 @@ class UpdProcessingService
 
     protected $updParserService;
 
-    public function __construct(BalanceService $balanceService, UpdParserService $updParserService)
+     public function __construct(BalanceService $balanceService, UpdParserService $updParserService)
     {
         $this->balanceService = $balanceService;
         $this->updParserService = $updParserService;
@@ -96,20 +96,68 @@ class UpdProcessingService
         }
     }
 
-    /**
-     * Генерация упрощенного русского номера УПД
+     /**
+     * Генерация номера УПД в формате: ГОД-ПОРЯДКОВЫЙ_НОМЕР (2025-1, 2025-2, ...)
+     * Гарантирует уникальность в пределах года
      */
-    public function generateSimpleUpdNumber(): string
+    public function generateUpdNumber(): string
     {
         $currentYear = date('Y');
-        $lastUpd = Upd::whereYear('created_at', $currentYear)
-                    ->orderBy('id', 'desc')
-                    ->first();
+        $attempts = 0;
+        $maxAttempts = 10;
 
-        $sequenceNumber = $lastUpd ? (intval(substr($lastUpd->number, -4)) + 1) : 1;
+        do {
+            $attempts++;
 
-        // Упрощенный формат: ГОД/ПОСЛЕДОВАТЕЛЬНЫЙ_НОМЕР (2024/0001)
-        return $currentYear . '/' . str_pad($sequenceNumber, 4, '0', STR_PAD_LEFT);
+            // Находим максимальный порядковый номер для текущего года
+            $lastSequence = Upd::where('number', 'like', $currentYear . '-%')
+                              ->selectRaw('MAX(CAST(SUBSTRING_INDEX(number, "-", -1) AS UNSIGNED)) as max_sequence')
+                              ->value('max_sequence') ?? 0;
+
+            $sequenceNumber = $lastSequence + 1;
+            $newNumber = $currentYear . '-' . $sequenceNumber;
+
+            // Проверяем уникальность
+            $exists = Upd::where('number', $newNumber)->exists();
+
+            if (!$exists) {
+                Log::info('Сгенерирован новый номер УПД', [
+                    'year' => $currentYear,
+                    'sequence' => $sequenceNumber,
+                    'full_number' => $newNumber
+                ]);
+                return $newNumber;
+            }
+
+            // Если номер существует, повторяем попытку
+            usleep(100000); // Задержка 100ms
+
+        } while ($attempts < $maxAttempts);
+
+        throw new \Exception('Не удалось сгенерировать уникальный номер УПД после ' . $maxAttempts . ' попыток');
+    }
+
+    /**
+     * Извлекает порядковый номер из существующего номера УПД
+     */
+    protected function extractSequenceNumber(string $updNumber): int
+    {
+        // Обрабатываем разные форматы номеров
+        if (preg_match('/\/(\d+)$/', $updNumber, $matches)) {
+            return (int)$matches[1];
+        }
+
+        if (preg_match('/\d+\/(\d+)/', $updNumber, $matches)) {
+            return (int)$matches[1];
+        }
+
+        // Обрабатываем новый формат ГОД-НОМЕР
+        if (preg_match('/^(\d+)-(\d+)$/', $updNumber, $matches)) {
+            return (int)$matches[2];
+        }
+
+        // Если не удалось распарсить, возвращаем 0
+        return 0;
     }
 
     protected function validateAgainstCompletionAct(array $parsedData, Order $order, $completionAct, ExcelMapping $mapping): void
@@ -292,11 +340,11 @@ class UpdProcessingService
             $issueDate = $this->parseRussianDate($header['issue_date']);
             $filePath = $file->store('upds', 'private');
 
-            // ИСПРАВЛЕНИЕ: Используем упрощенную нумерацию если номер не указан в файле
-            $updNumber = $header['number'] ?? $this->generateSimpleUpdNumber();
+            // ИСПРАВЛЕНИЕ: Используем новый формат генерации номера
+            $updNumber = $header['number'] ?? $this->generateUpdNumber();
 
             // Проверяем уникальность номера УПД
-            $existingUpd = Upd::where('number', $updNumber) // Изменено на $updNumber
+            $existingUpd = Upd::where('number', $updNumber)
                 ->where('issue_date', $issueDate->format('Y-m-d'))
                 ->where('lessor_company_id', $order->lessor_company_id)
                 ->first();
@@ -310,7 +358,7 @@ class UpdProcessingService
                 'lessor_company_id' => $order->lessor_company_id,
                 'lessee_company_id' => $order->lessee_company_id,
                 'waybill_id' => $waybillId,
-                'number' => $updNumber, // Используем сгенерированный номер
+                'number' => $updNumber, // Используем сгенерированный номер в новом формате
                 'issue_date' => $issueDate->format('Y-m-d'),
                 'service_period_start' => $completionAct->service_start_date ?? $order->start_date,
                 'service_period_end' => $completionAct->service_end_date ?? $order->end_date,
@@ -340,8 +388,9 @@ class UpdProcessingService
 
             DB::commit();
 
-            Log::info('УПД успешно создан', [
+            Log::info('УПД успешно создан с новым форматом номера', [
                 'upd_id' => $upd->id,
+                'upd_number' => $upd->number,
                 'waybill_id' => $waybillId,
                 'completion_act_id' => $completionAct->id,
                 'order_id' => $order->id,
@@ -359,6 +408,14 @@ class UpdProcessingService
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * Генерация упрощенного номера УПД (альтернативный метод для обратной совместимости)
+     */
+    public function generateSimpleUpdNumber(): string
+    {
+        return $this->generateUpdNumber();
     }
 
     protected function validateUpdForProcessing(Upd $upd): void

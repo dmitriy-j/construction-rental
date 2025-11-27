@@ -137,56 +137,76 @@ class UpdController extends Controller
         }
     }
 
+/**
+ * Диагностика плейсхолдеров в шаблоне удалить!!!
+ */
+public function debugPlaceholders(Upd $upd, DocumentGeneratorService $documentGenerator)
+{
+    try {
+        $template = $this->findUpdTemplate();
 
+        if (!$template) {
+            return response()->json(['error' => 'Template not found']);
+        }
+
+        $debugInfo = $documentGenerator->debugAllPlaceholders($template);
+        return response()->json($debugInfo);
+
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()]);
+    }
+}
     /**
      * Скачать сгенерированный УПД из шаблона
      */
     public function downloadGenerated(Upd $upd, DocumentGeneratorService $documentGenerator, DocumentDataService $documentDataService)
     {
         try {
-            Log::info('Генерация УПД для скачивания', ['upd_id' => $upd->id]);
-
-            // Получаем активный шаблон УПД
-            $template = $this->findUpdTemplate();
-
-            if (!$template) {
-                Log::error('Шаблон УПД не найден в системе', ['upd_id' => $upd->id]);
-                return redirect()->back()
-                    ->with('error', 'Шаблон УПД не найден в системе. Пожалуйста, создайте шаблон типа "УПД" в админке.');
-            }
-
-            // Используем DocumentDataService для подготовки данных
+            // Получаем данные с УЛУЧШЕННЫМИ комбинированными полями
             $data = $documentDataService->prepareDocumentData($upd, 'упд');
 
-            Log::debug('Данные для УПД подготовлены', [
-                'upd_id' => $upd->id,
-                'items_count' => count($data['items'] ?? [])
-            ]);
+            // Логируем сформированные названия для отладки
+            if (isset($data['items']) && !empty($data['items'])) {
+                Log::info('Сформированные названия позиций УПД', [
+                    'upd_id' => $upd->id,
+                    'items' => array_column($data['items'], 'name')
+                ]);
+            }
 
-            // Генерируем документ в память (без сохранения на диск)
-            Log::info('Генерация УПД в память', ['upd_id' => $upd->id]);
+            // Дальше обычная генерация...
+            $template = $this->findUpdTemplate();
             $fileContent = $documentGenerator->generateDocumentInMemory($template, $data);
-
-            Log::info('УПД сгенерирован в память', ['upd_id' => $upd->id]);
-
-            // Возвращаем файл для скачивания
-            $filename = "УПД_{$upd->number}.xlsx";
 
             return response()->streamDownload(function () use ($fileContent) {
                 echo $fileContent;
-            }, $filename, [
-                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            ]);
+            }, "УПД_{$upd->number}.xlsx");
 
         } catch (\Exception $e) {
-            Log::error('Ошибка генерации УПД для скачивания', [
+            Log::error('Ошибка генерации УПД с комбинированными полями', [
                 'upd_id' => $upd->id,
-                'error_message' => $e->getMessage(),
-                'error_trace' => $e->getTraceAsString(),
+                'error' => $e->getMessage()
+            ]);
+            return redirect()->back()->with('error', 'Ошибка генерации УПД: ' . $e->getMessage());
+        }
+    }
+
+    public function regenerateNumber(Upd $upd, UpdProcessingService $updProcessingService)
+    {
+        try {
+            $oldNumber = $upd->number;
+            $newNumber = $updProcessingService->generateUpdNumber();
+
+            $upd->update(['number' => $newNumber]);
+
+            Log::info('Номер УПД перегенерирован', [
+                'upd_id' => $upd->id,
+                'old_number' => $oldNumber,
+                'new_number' => $newNumber
             ]);
 
-            return redirect()->back()
-                ->with('error', 'Ошибка генерации УПД: ' . $e->getMessage());
+            return redirect()->back()->with('success', "Номер УПД изменен: {$oldNumber} → {$newNumber}");
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Ошибка перегенерации номера: ' . $e->getMessage());
         }
     }
 
@@ -203,6 +223,26 @@ class UpdController extends Controller
 
         return view('admin.documents.upds.show', compact('upd'));
     }
+
+    //УДАЛИТЬ!"
+    public function debugTemplate(Upd $upd, DocumentGeneratorService $documentGenerator, DocumentDataService $documentDataService)
+{
+    try {
+        $template = $this->findUpdTemplate();
+
+        if (!$template) {
+            return response()->json(['error' => 'Шаблон не найден']);
+        }
+
+        $data = $documentDataService->prepareDocumentData($upd, 'упд');
+        $debugInfo = $documentGenerator->debugTemplateAndData($template, $data);
+
+        return response()->json($debugInfo);
+
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()]);
+    }
+}
 
     public function verifyPaper(Request $request, Upd $upd)
     {

@@ -37,9 +37,10 @@ class DocumentTemplateController extends Controller
      */
     public function create()
     {
-        $templateTypes = $this->templateTypes;
+        $templateTypes = DocumentTemplate::getTypes();
+        $scenarios = DocumentTemplate::getScenarios(); // ДОБАВИТЬ ЭТУ СТРОКУ
 
-        return view('admin.settings.document-templates.create', compact('templateTypes'));
+        return view('admin.settings.document-templates.create', compact('templateTypes', 'scenarios'));
     }
 
     /**
@@ -49,28 +50,42 @@ class DocumentTemplateController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|string|in:' . implode(',', array_keys($this->templateTypes)),
+            'type' => 'required|string|in:' . implode(',', array_keys(DocumentTemplate::getTypes())),
+            'scenario' => 'required|string|in:' . implode(',', array_keys(DocumentTemplate::getScenarios())),
             'description' => 'nullable|string',
-            'template_file' => 'required|file|mimes:xlsx,xls,csv|max:10240', // Сделать обязательным
+            'template_file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+            'mapping' => 'required|json', // ДОБАВИТЬ ВАЛИДАЦИЮ ДЛЯ MAPPING
         ]);
 
-        // Обработка загрузки файла
-        if ($request->hasFile('template_file')) {
-            $file = $request->file('template_file');
-            $fileName = time() . '_' . $file->getClientOriginalName();
-            $filePath = $file->storeAs('document_templates', $fileName, 'public');
-            $validated['file_path'] = $filePath;
+        // ДОБАВЬТЕ ЛОГИРОВАНИЕ ДЛЯ ОТЛАДКИ
+        \Log::info('Store document template mapping data', [
+            'mapping' => $request->mapping,
+            'mapping_decoded' => json_decode($request->mapping, true)
+        ]);
+
+        try {
+            // Обработка загрузки файла
+            if ($request->hasFile('template_file')) {
+                $file = $request->file('template_file');
+                $fileName = time() . '_' . $file->getClientOriginalName();
+                $filePath = $file->storeAs('document_templates', $fileName, 'public');
+                $validated['file_path'] = $filePath;
+            }
+
+            // ДОБАВЛЯЕМ MAPPING И ДРУГИЕ ПОЛЯ
+            $validated['mapping'] = json_decode($request->mapping, true);
+            $validated['is_active'] = $request->has('is_active');
+
+            $template = DocumentTemplate::create($validated);
+
+            return redirect()->route('admin.settings.document-templates.index')
+                ->with('success', 'Шаблон успешно создан');
+
+        } catch (\Exception $e) {
+            \Log::error('Error creating document template', ['error' => $e->getMessage()]);
+            return redirect()->back()
+                ->with('error', 'Ошибка при создании шаблона: '.$e->getMessage());
         }
-
-        // Добавляем mapping по умолчанию, если не используется второй контроллер
-        if (!isset($validated['mapping'])) {
-            $validated['mapping'] = [];
-        }
-
-        $template = DocumentTemplate::create($validated);
-
-        return redirect()->route('admin.settings.document-templates.index')
-            ->with('success', 'Шаблон успешно создан');
     }
 
     /**
@@ -86,9 +101,10 @@ class DocumentTemplateController extends Controller
      */
     public function edit(DocumentTemplate $documentTemplate)
     {
-        $templateTypes = $this->templateTypes;
+        $templateTypes = DocumentTemplate::getTypes();
+        $scenarios = DocumentTemplate::getScenarios(); // ДОБАВИТЬ ЭТУ СТРОКУ
 
-        return view('admin.settings.document-templates.edit', compact('documentTemplate', 'templateTypes'));
+        return view('admin.settings.document-templates.edit', compact('documentTemplate', 'templateTypes', 'scenarios'));
     }
 
     /**
@@ -98,28 +114,56 @@ class DocumentTemplateController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|string|in:' . implode(',', array_keys($this->templateTypes)),
+            'type' => 'required|string|in:' . implode(',', array_keys(DocumentTemplate::getTypes())),
+            'scenario' => 'required|string|in:' . implode(',', array_keys(DocumentTemplate::getScenarios())),
             'description' => 'nullable|string',
             'template_file' => 'nullable|file|mimes:xlsx,xls,csv|max:10240',
+            'mapping' => 'required|json', // ДОБАВИТЬ ВАЛИДАЦИЮ ДЛЯ MAPPING
         ]);
 
-        // Обработка загрузки нового файла
-        if ($request->hasFile('template_file')) {
-            // Удаляем старый файл
-            if ($documentTemplate->file_path) {
-                Storage::disk('public')->delete($documentTemplate->file_path);
+        // ДОБАВЬТЕ ЛОГИРОВАНИЕ ДЛЯ ОТЛАДКИ
+        \Log::info('Update document template mapping data', [
+            'template_id' => $documentTemplate->id,
+            'mapping' => $request->mapping,
+            'mapping_decoded' => json_decode($request->mapping, true)
+        ]);
+
+        try {
+            $data = [
+                'name' => $validated['name'],
+                'type' => $validated['type'],
+                'scenario' => $validated['scenario'],
+                'description' => $validated['description'],
+                'mapping' => json_decode($request->mapping, true), // ДОБАВИТЬ MAPPING
+                'is_active' => $request->has('is_active'),
+            ];
+
+            // Обработка загрузки нового файла
+            if ($request->hasFile('template_file')) {
+                // Удаляем старый файл
+                if ($documentTemplate->file_path) {
+                    Storage::disk('public')->delete($documentTemplate->file_path);
+                }
+
+                $file = $request->file('template_file');
+                $fileName = time() . '_' . $file->getClientOriginalName();
+                $filePath = $file->storeAs('document_templates', $fileName, 'public');
+                $data['file_path'] = $filePath;
             }
 
-            $file = $request->file('template_file');
-            $fileName = time() . '_' . $file->getClientOriginalName();
-            $filePath = $file->storeAs('document_templates', $fileName, 'public');
-            $validated['file_path'] = $filePath;
+            $documentTemplate->update($data);
+
+            return redirect()->route('admin.settings.document-templates.index')
+                ->with('success', 'Шаблон успешно обновлен');
+
+        } catch (\Exception $e) {
+            \Log::error('Error updating document template', [
+                'template_id' => $documentTemplate->id,
+                'error' => $e->getMessage()
+            ]);
+            return redirect()->back()
+                ->with('error', 'Ошибка при обновлении шаблона: '.$e->getMessage());
         }
-
-        $documentTemplate->update($validated);
-
-        return redirect()->route('admin.settings.document-templates.index')
-            ->with('success', 'Шаблон успешно обновлен');
     }
 
     /**

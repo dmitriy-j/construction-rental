@@ -38,6 +38,16 @@
                                 </div>
 
                                 <div class="mb-3">
+                                    <label for="scenario" class="form-label">Сценарий *</label>
+                                    <select class="form-select" id="scenario" name="scenario" required>
+                                        <option value="">Выберите сценарий</option>
+                                        @foreach($scenarios as $key => $value)
+                                            <option value="{{ $key }}" {{ ($documentTemplate->scenario ?? '') == $key ? 'selected' : '' }}>{{ $value }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
                                     <label for="description" class="form-label">Описание</label>
                                     <textarea class="form-control" id="description" name="description" rows="3"></textarea>
                                 </div>
@@ -550,47 +560,90 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Добавление нового поля
-    document.getElementById('add-field').addEventListener('click', function() {
-        const container = document.getElementById('field-mapping-container');
+    const container = document.getElementById('field-mapping-container');
+    const mappingData = document.getElementById('mapping-data');
+    const form = document.getElementById('template-form');
+
+    // Функция для добавления нового поля
+    function addNewField(fieldName = '', cell = '') {
         const newField = document.createElement('div');
         newField.className = 'field-mapping-item mb-2';
         newField.innerHTML = `
             <div class="input-group">
-                <input type="text" class="form-control" placeholder="Поле данных (например: order.id)" name="field_names[]">
-                <input type="text" class="form-control" placeholder="Ячейка (например: A1)" name="field_cells[]">
+                <input type="text" class="form-control field-name" placeholder="Поле данных (например: items.#.name)" value="${fieldName}">
+                <input type="text" class="form-control field-cell" placeholder="Ячейка (например: B15)" value="${cell}">
                 <button type="button" class="btn btn-danger remove-field"><i class="bi bi-trash"></i></button>
             </div>
         `;
         container.appendChild(newField);
 
-        // Добавляем обработчик для кнопки удаления
+        // Обработчик удаления
         newField.querySelector('.remove-field').addEventListener('click', function() {
             newField.remove();
+            updateMappingData();
         });
-    });
 
-    // Обработчики для кнопки удаления существующих полей
-    document.querySelectorAll('.remove-field').forEach(button => {
-        button.addEventListener('click', function() {
-            this.closest('.field-mapping-item').remove();
+        // Обработчики изменения значений
+        const inputs = newField.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.addEventListener('input', updateMappingData);
         });
-    });
+    }
 
-    // Подготовка данных перед отправкой формы
-    document.getElementById('template-form').addEventListener('submit', function(e) {
+    // Функция обновления скрытого поля с маппингом
+    function updateMappingData() {
         const mapping = {};
-        const fieldNames = document.getElementsByName('field_names[]');
-        const fieldCells = document.getElementsByName('field_cells[]');
+        const fieldNames = container.querySelectorAll('.field-name');
+        const fieldCells = container.querySelectorAll('.field-cell');
 
         for (let i = 0; i < fieldNames.length; i++) {
-            if (fieldNames[i].value && fieldCells[i].value) {
-                mapping[fieldNames[i].value] = fieldCells[i].value;
+            const name = fieldNames[i].value.trim();
+            const cell = fieldCells[i].value.trim();
+
+            if (name && cell) {
+                mapping[name] = cell;
             }
         }
 
-        document.getElementById('mapping-data').value = JSON.stringify(mapping);
+        mappingData.value = JSON.stringify(mapping);
+        console.log('Mapping updated:', mapping); // Для отладки
+    }
+
+    // Обработчик добавления поля
+    document.getElementById('add-field').addEventListener('click', function() {
+        addNewField();
     });
+
+    // Обработчик отправки формы
+    form.addEventListener('submit', function(e) {
+        // Обновляем маппинг перед отправкой
+        updateMappingData();
+
+        // Проверяем, что маппинг не пустой
+        if (mappingData.value === '{}') {
+            e.preventDefault();
+            alert('Добавьте хотя бы одно поле в настройку маппинга');
+            return;
+        }
+
+        console.log('Form submitted with mapping:', mappingData.value); // Для отладки
+    });
+
+    // Инициализация существующих данных маппинга
+    @if(isset($documentTemplate) && !empty($documentTemplate->mapping))
+        const existingMapping = @json($documentTemplate->mapping);
+        container.innerHTML = ''; // Очищаем контейнер
+
+        Object.entries(existingMapping).forEach(([field, cell]) => {
+            addNewField(field, cell);
+        });
+    @else
+        // Добавляем одно пустое поле по умолчанию
+        addNewField();
+    @endif
+
+    // Инициализация маппинга
+    updateMappingData();
 });
 </script>
 @endpush

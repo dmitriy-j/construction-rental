@@ -208,3 +208,5 @@ Route::get('contracts/{contract}/download', [ContractController::class, 'downloa
     ->name('admin.contracts.download');
 
 
+Route::get('/upds/{upd}/debug', [UpdController::class, 'debugTemplate'])->name('admin.upds.debug');
+Route::get('/upds/{upd}/debug-placeholders', [UpdController::class, 'debugPlaceholders'])->name('admin.upds.debug-placeholders');

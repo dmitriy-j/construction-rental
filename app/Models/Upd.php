@@ -243,6 +243,26 @@ class Upd extends Model
     }
 
     /**
+     * Проверяет, можно ли создавать счета для этого УПД
+     * Счет можно создавать для УПД в статусах: pending, sent, accepted, processed
+     */
+    public function canCreateInvoice(): bool
+    {
+        $allowedStatuses = ['pending', 'sent', 'accepted', 'processed', 'accepted_processed'];
+
+        return in_array($this->status, $allowedStatuses) && $this->order;
+    }
+
+    /**
+     * Проверяет, является ли УПД исходящим (Платформа → Арендатор)
+     */
+    public function isOutgoing(): bool
+    {
+        $platformCompany = Company::where('is_platform', true)->first();
+        return $this->lessor_company_id === $platformCompany->id;
+    }
+
+    /**
      * Генерация данных для экспорта в 1С
      */
     public function to1CFormat(): array
@@ -359,5 +379,10 @@ class Upd extends Model
     public function items()
     {
         return $this->hasMany(UpdItem::class);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
     }
 }

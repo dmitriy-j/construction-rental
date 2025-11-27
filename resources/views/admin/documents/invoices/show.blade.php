@@ -10,11 +10,9 @@
             <a href="{{ route('admin.documents.index', ['type' => 'invoices']) }}" class="btn btn-secondary">← Назад к списку</a>
 
             <!-- Скачивание через новый маршрут -->
-            @if($document->file_path)
-                <a href="{{ route('admin.invoices.download', $document) }}" class="btn btn-primary">
-                    <i class="fas fa-download"></i> Скачать счет
-                </a>
-            @endif
+            <a href="{{ route('admin.invoices.download', $document) }}" class="btn btn-primary">
+                <i class="fas fa-download"></i> Скачать счет
+            </a>
 
             <!-- Отмена счета -->
             @if($document->status !== 'paid' && $document->status !== 'canceled')
@@ -48,26 +46,29 @@
                         <tr>
                             <th>Статус:</th>
                             <td>
-                                @php
-                                    $statusClass = match($document->status) {
-                                        'draft' => 'secondary',
-                                        'sent' => 'info',
-                                        'viewed' => 'primary',
-                                        'paid' => 'success',
-                                        'overdue' => 'danger',
-                                        'canceled' => 'dark',
-                                        default => 'light'
-                                    };
-                                @endphp
-                                <span class="badge badge-{{ $statusClass }}">
-                                    {{ $document->status }}
+                                <span class="badge badge-{{ $document->getStatusColor() }}">
+                                    {{ $document->getStatusText() }}
                                 </span>
                             </td>
                         </tr>
                         <tr>
                             <th>Заказ:</th>
-                            <td>#{{ $document->order_id }}</td>
+                            <td>
+                                @if($document->order)
+                                    <a href="{{ route('admin.orders.show', $document->order) }}">#{{ $document->order_id }}</a>
+                                @else
+                                    #{{ $document->order_id }}
+                                @endif
+                            </td>
                         </tr>
+                        @if($document->upd)
+                        <tr>
+                            <th>Связанный УПД:</th>
+                            <td>
+                                <a href="{{ route('admin.upds.show', $document->upd) }}">№{{ $document->upd->number }}</a>
+                            </td>
+                        </tr>
+                        @endif
                     </table>
                 </div>
             </div>
@@ -108,7 +109,63 @@
         </div>
     </div>
 
-    <!-- Остальная часть шаблона без изменений -->
+    <!-- Позиции счета -->
+    @if($document->items && $document->items->count() > 0)
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Позиции счета</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Наименование</th>
+                                    <th>Описание</th>
+                                    <th>Количество</th>
+                                    <th>Ед. изм.</th>
+                                    <th>Цена</th>
+                                    <th>Сумма</th>
+                                    <th>Ставка НДС</th>
+                                    <th>Сумма НДС</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($document->items as $item)
+                                <tr>
+                                    <td>{{ $item->name }}</td>
+                                    <td>{{ $item->description }}</td>
+                                    <td>{{ number_format($item->quantity, 2) }}</td>
+                                    <td>{{ $item->unit }}</td>
+                                    <td>{{ number_format($item->price, 2) }} ₽</td>
+                                    <td>{{ number_format($item->amount, 2) }} ₽</td>
+                                    <td>{{ number_format($item->vat_rate, 0) }}%</td>
+                                    <td>{{ number_format($item->vat_amount, 2) }} ₽</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-primary">
+                                    <th colspan="5" class="text-end">Итого:</th>
+                                    <th>{{ number_format($document->items->sum('amount'), 2) }} ₽</th>
+                                    <th></th>
+                                    <th>{{ number_format($document->items->sum('vat_amount'), 2) }} ₽</th>
+                                </tr>
+                                <tr class="table-success">
+                                    <th colspan="5" class="text-end">Всего к оплате:</th>
+                                    <th colspan="3">{{ number_format($document->amount, 2) }} ₽</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <div class="row mt-4">
         <div class="col-md-6">
             <div class="card">
@@ -129,6 +186,10 @@
                             <tr>
                                 <th>КПП:</th>
                                 <td>{{ $document->company->kpp }}</td>
+                            </tr>
+                            <tr>
+                                <th>Адрес:</th>
+                                <td>{{ $document->company->legal_address }}</td>
                             </tr>
                         </table>
                     @else
@@ -171,19 +232,21 @@
         </div>
     </div>
 
-    @if($document->file_path)
+    <!-- Секция для скачивания счета -->
     <div class="row mt-4">
         <div class="col-md-12">
             <div class="card">
                 <div class="card-body text-center">
                     <a href="{{ route('admin.invoices.download', $document) }}" class="btn btn-primary">
-                        <i class="fas fa-download"></i> Скачать счет (PDF)
+                        <i class="fas fa-download"></i> Скачать счет (Excel)
                     </a>
+                    <small class="form-text text-muted">
+                        Файл генерируется автоматически при скачивании
+                    </small>
                 </div>
             </div>
         </div>
     </div>
-    @endif
 </div>
 
 <!-- Модальное окно отмены -->
