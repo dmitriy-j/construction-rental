@@ -18,7 +18,7 @@ class TaxHelper
             return 0.0;
         }
 
-        return $platform->tax_system === 'vat' ? 20.0 : 0.0;
+        return $platform->tax_system === 'vat' ? 22.0 : 0.0;
     }
 
     public static function calculateVatAmount(float $amount, float $vatRate): float

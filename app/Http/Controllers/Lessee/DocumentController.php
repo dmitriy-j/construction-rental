@@ -52,7 +52,6 @@ class DocumentController extends Controller
         return view('lessee.documents.index', compact('documents', 'type'));
     }
 
-    // ... остальные методы остаются без изменений
     public function waybills(Order $order)
     {
         // Проверка прав доступа
@@ -102,17 +101,25 @@ class DocumentController extends Controller
 
     public function downloadCompletionAct(CompletionAct $completionAct)
     {
-        if ($completionAct->order->lessee_company_id !== auth()->user()->company_id) {
+        if ($completionAct->perspective !== 'lessee' ||
+            $completionAct->parentOrder->lessee_company_id !== auth()->user()->company_id) {
             abort(403, 'Доступ запрещен');
         }
+
+        $completionAct->load([
+            'parentOrder.lesseeCompany',
+            'waybill.equipment',
+            'order.items'
+        ]);
 
         $actData = $completionAct->forLessee();
 
         $pdf = PDF::loadView('lessee.documents.completion_act_pdf', [
             'act' => $actData,
+            'completionAct' => $completionAct
         ]);
 
-        return $pdf->download("Акт-{$completionAct->id}-для-арендатора.pdf");
+        return $pdf->download("Акт-{$completionAct->number}-для-арендатора.pdf");
     }
 
     public function showWaybill(Waybill $waybill)
@@ -141,10 +148,15 @@ class DocumentController extends Controller
             abort(403, 'Доступ запрещен. Документ не принадлежит вашей компании.');
         }
 
-        $completionAct->load('waybill.shifts', 'order.lessorCompany');
-        $actData = $completionAct->forLessee();
+        $completionAct->load([
+            'waybill.shifts',
+            'waybill.equipment', // Для гос. номера
+            'waybill.operator',  // Для оператора (реального)
+            'parentOrder.lessorCompany',
+            'order.items'
+        ]);
 
-        return view('lessee.documents.completion_acts.show', compact('actData', 'completionAct'));
+        return view('lessee.documents.completion_acts.show', compact('completionAct'));
     }
 
     public function showDeliveryNote(DeliveryNote $deliveryNote)

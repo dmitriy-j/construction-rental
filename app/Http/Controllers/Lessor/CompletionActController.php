@@ -35,16 +35,17 @@ class CompletionActController extends Controller
         }
 
         $completionAct->load([
+            'order.lesseeCompany', // Хотя не показываем, но для логики может потребоваться
             'order.items.equipment',
             'waybill.shifts',
-            'waybill.equipment',
-            'waybill.operator',
+            'waybill.equipment', // Для гос. номера
+            'waybill.operator',  // Для оператора
         ]);
 
         return view('lessor.documents.completion_acts.show', compact('completionAct'));
     }
 
-    public function download(CompletionAct $completionAct)
+     public function download(CompletionAct $completionAct)
     {
         if ($completionAct->perspective !== 'lessor' ||
             $completionAct->order->lessor_company_id !== auth()->user()->company_id) {
@@ -56,6 +57,7 @@ class CompletionActController extends Controller
             'order.lessorCompany',
             'waybill.equipment',
             'waybill.operator',
+            'waybill.shifts',
         ]);
 
         $pdf = PDF::loadView('lessor.documents.completion_acts.pdf', compact('completionAct'))

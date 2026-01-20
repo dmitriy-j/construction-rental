@@ -8,6 +8,7 @@ use App\Http\Controllers\Lessor\OperatorController;
 use App\Http\Controllers\Lessor\ShiftController;
 use App\Http\Controllers\Lessor\UpdController;
 use App\Http\Controllers\Lessor\WaybillController;
+use App\Http\Controllers\Lessor\CompletionActController;
 use App\Http\Controllers\Lessor\EquipmentMassImportController;
 use App\Http\Controllers\Lessor\RentalRequestController;
 use App\Http\Controllers\Lessor\ContractController;
@@ -77,7 +78,11 @@ Route::prefix('documents')->name('documents.')->group(function () {
     Route::get('/', [\App\Http\Controllers\DocumentController::class, 'index'])->name('index');
     Route::get('download/{id}/{type}', [\App\Http\Controllers\DocumentController::class, 'download'])->name('download');
     Route::get('status-update', [\App\Http\Controllers\DocumentController::class, 'statusUpdate'])->name('status-update');
-    Route::get('completion_acts/{act}', [\App\Http\Controllers\DocumentController::class, 'showCompletionAct'])->name('completion_acts.show');
+
+    // Completion Acts - ДОБАВЛЕН МАРШРУТ ДЛЯ СПИСКА
+    Route::get('completion_acts', [CompletionActController::class, 'index'])->name('completion_acts.index');
+    Route::get('completion_acts/{completionAct}', [CompletionActController::class, 'show'])->name('completion_acts.show');
+    Route::get('completion_acts/{completionAct}/download', [CompletionActController::class, 'download'])->name('completion_acts.download');
 });
 
 // Накладные

@@ -8,13 +8,10 @@
         </div>
         <div class="col-md-6 text-right">
             <a href="{{ route('admin.documents.index', ['type' => 'invoices']) }}" class="btn btn-secondary">← Назад к списку</a>
-
-            <!-- Скачивание через новый маршрут -->
             <a href="{{ route('admin.invoices.download', $document) }}" class="btn btn-primary">
                 <i class="fas fa-download"></i> Скачать счет
             </a>
 
-            <!-- Отмена счета -->
             @if($document->status !== 'paid' && $document->status !== 'canceled')
                 <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#cancelModal">
                     <i class="fas fa-ban"></i> Отменить счет
@@ -22,6 +19,35 @@
             @endif
         </div>
     </div>
+
+    <!-- Секция с информацией об оборудовании -->
+    @if(isset($invoice_data['equipment_data']) && !empty($invoice_data['equipment_data']['vehicle_number']))
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Информация об оборудовании</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Техника:</th>
+                            <td>{{ $invoice_data['equipment_data']['name'] ?? '' }} {{ $invoice_data['equipment_data']['model'] ?? '' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Гос. номер:</th>
+                            <td><strong>{{ $invoice_data['equipment_data']['vehicle_number'] ?? 'Не указан' }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Полное описание:</th>
+                            <td>{{ $invoice_data['equipment_data']['full_description'] ?? '' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <div class="row">
         <div class="col-md-6">
@@ -110,7 +136,12 @@
     </div>
 
     <!-- Позиции счета -->
-    @if($document->items && $document->items->count() > 0)
+    @php
+        // Используем подготовленные данные, если они есть
+        $displayItems = $invoice_data['invoice_items'] ?? $document->items;
+    @endphp
+
+    @if($displayItems && count($displayItems) > 0)
     <div class="row mt-4">
         <div class="col-md-12">
             <div class="card">
@@ -133,25 +164,33 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($document->items as $item)
+                                @foreach($displayItems as $item)
                                 <tr>
-                                    <td>{{ $item->name }}</td>
-                                    <td>{{ $item->description }}</td>
-                                    <td>{{ number_format($item->quantity, 2) }}</td>
-                                    <td>{{ $item->unit }}</td>
-                                    <td>{{ number_format($item->price, 2) }} ₽</td>
-                                    <td>{{ number_format($item->amount, 2) }} ₽</td>
-                                    <td>{{ number_format($item->vat_rate, 0) }}%</td>
-                                    <td>{{ number_format($item->vat_amount, 2) }} ₽</td>
+                                    <td>{{ $item['name'] ?? $item->name }}</td>
+                                    <td>{{ $item['description'] ?? $item->description }}</td>
+                                    <td>{{ number_format($item['quantity'] ?? $item->quantity, 2) }}</td>
+                                    <td>{{ $item['unit'] ?? $item->unit }}</td>
+                                    <td>{{ number_format($item['price'] ?? $item->price, 2) }} ₽</td>
+                                    <td>{{ number_format($item['amount'] ?? $item->amount, 2) }} ₽</td>
+                                    <td>{{ number_format($item['vat_rate'] ?? $item->vat_rate, 0) }}%</td>
+                                    <td>{{ number_format($item['vat_amount'] ?? $item->vat_amount, 2) }} ₽</td>
                                 </tr>
                                 @endforeach
                             </tbody>
                             <tfoot>
+                                @php
+                                    $totalAmount = is_array($displayItems) ?
+                                        collect($displayItems)->sum('amount') :
+                                        $displayItems->sum('amount');
+                                    $totalVat = is_array($displayItems) ?
+                                        collect($displayItems)->sum('vat_amount') :
+                                        $displayItems->sum('vat_amount');
+                                @endphp
                                 <tr class="table-primary">
                                     <th colspan="5" class="text-end">Итого:</th>
-                                    <th>{{ number_format($document->items->sum('amount'), 2) }} ₽</th>
+                                    <th>{{ number_format($totalAmount, 2) }} ₽</th>
                                     <th></th>
-                                    <th>{{ number_format($document->items->sum('vat_amount'), 2) }} ₽</th>
+                                    <th>{{ number_format($totalVat, 2) }} ₽</th>
                                 </tr>
                                 <tr class="table-success">
                                     <th colspan="5" class="text-end">Всего к оплате:</th>
@@ -243,6 +282,16 @@
                     <small class="form-text text-muted">
                         Файл генерируется автоматически при скачивании
                     </small>
+
+                    <!-- Отладочная информация -->
+                    @if(isset($invoice_data['equipment_data']))
+                    <div class="mt-3">
+                        <small class="text-info">
+                            <strong>Отладка:</strong>
+                            Гос. номер для шаблона: <strong>{{ $invoice_data['equipment_data']['vehicle_number'] ?? 'НЕ НАЙДЕН' }}</strong>
+                        </small>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -275,4 +324,18 @@
         </div>
     </div>
 </div>
+
+<!-- JavaScript для отладки -->
+@section('scripts')
+<script>
+    console.log('Данные оборудования для отладки:', @json($invoice_data['equipment_data'] ?? null));
+
+    // Проверка наличия гос. номера
+    @if(isset($invoice_data['equipment_data']) && !empty($invoice_data['equipment_data']['vehicle_number']))
+        console.log('✅ Гос. номер найден:', '{{ $invoice_data['equipment_data']['vehicle_number'] }}');
+    @else
+        console.warn('❌ Гос. номер НЕ найден в данных оборудования');
+    @endif
+</script>
+@endsection
 @endsection

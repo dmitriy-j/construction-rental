@@ -10,6 +10,42 @@ $isIncomingUpd = $upd->lessor_company_id !== $platformCompany->id;
 
 // Получаем счета связанные с этим УПД
 $updInvoices = $upd->invoices ?? collect();
+
+// ПОЛУЧАЕМ ГОС. НОМЕР ТЕХНИКИ
+$licensePlate = null;
+if ($upd->order) {
+    // Пробуем получить гос. номер из путевых листов
+    $waybill = $upd->order->waybills()->first();
+    if ($waybill && $waybill->license_plate) {
+        $licensePlate = $waybill->license_plate;
+    }
+
+    // Если в путевых листах нет, пробуем получить из оборудования
+    if (!$licensePlate && $upd->order->items()->exists()) {
+        $orderItem = $upd->order->items()->first();
+        if ($orderItem && $orderItem->equipment) {
+            $licensePlate = $orderItem->equipment->license_plate;
+        }
+    }
+
+    // Если все еще нет, пробуем получить из самого заказа
+    if (!$licensePlate && $upd->order->equipment) {
+        $licensePlate = $upd->order->equipment->license_plate;
+    }
+}
+
+// Формируем описание услуги с гос. номером
+$serviceDescription = "Аренда ";
+if ($upd->order && $upd->order->equipment) {
+    $serviceDescription .= $upd->order->equipment->title . " " . ($upd->order->equipment->model ?? '');
+    if ($licensePlate) {
+        $serviceDescription .= " (гос. номер: {$licensePlate})";
+    }
+} else {
+    $serviceDescription .= "техники";
+}
+$serviceDescription .= " за период " . $upd->service_period_start->format('d.m.Y') . " - " . $upd->service_period_end->format('d.m.Y');
+
 @endphp
 @extends('layouts.app')
 
@@ -18,6 +54,7 @@ $updInvoices = $upd->invoices ?? collect();
     <div class="row mb-4">
         <div class="col-md-6">
             <h1>УПД №{{ $upd->number }}</h1>
+            <p class="text-muted">{{ $serviceDescription }}</p>
         </div>
         <div class="col-md-6 text-right">
             <a href="{{ route('admin.upds.index') }}" class="btn btn-secondary">
@@ -55,6 +92,25 @@ $updInvoices = $upd->invoices ?? collect();
         </div>
     </div>
 
+    <!-- Блок с гос. номером -->
+    @if($licensePlate)
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="alert alert-info">
+                <i class="fas fa-car"></i>
+                <strong>Техника:</strong>
+                @if($upd->order && $upd->order->equipment)
+                    {{ $upd->order->equipment->title }}
+                    ({{ $upd->order->equipment->model ?? 'без модели' }})
+                @else
+                    Техника
+                @endif
+                | <strong>Гос. номер:</strong> {{ $licensePlate }}
+            </div>
+        </div>
+    </div>
+    @endif
+
     <div class="row">
         <div class="col-md-6">
             <div class="card">
@@ -91,6 +147,12 @@ $updInvoices = $upd->invoices ?? collect();
                                 </span>
                             </td>
                         </tr>
+                        @if($licensePlate)
+                        <tr>
+                            <th>Гос. номер техники:</th>
+                            <td>{{ $licensePlate }}</td>
+                        </tr>
+                        @endif
                         @if($upd->rejection_reason)
                         <tr>
                             <th>Причина отклонения:</th>
@@ -246,15 +308,6 @@ $updInvoices = $upd->invoices ?? collect();
                         @endif
                     </div>
                     @endif
-
-                    <!-- Отладочная информация -->
-                    <div class="mt-3 p-2 bg-light rounded small">
-                        <strong>Отладка:</strong><br>
-                        Статус УПД: {{ $upd->status }} ({{ $upd->status_text }})<br>
-                        Тип УПД: {{ $upd->isOutgoing() ? 'Исходящий (Платформа → Арендатор)' : 'Входящий (Арендодатель → Платформа)' }}<br>
-                        Может создавать счет: {{ $canCreateInvoice ? 'ДА' : 'НЕТ' }}<br>
-                        Шаблон найден: {{ $invoiceTemplate ? 'ДА (' . $invoiceTemplate->name . ')' : 'НЕТ' }}
-                    </div>
                 </div>
             </div>
         </div>
@@ -358,60 +411,65 @@ $updInvoices = $upd->invoices ?? collect();
         </div>
     </div>
 
-    <!-- Табличная часть УПД -->
-    @if($upd->items && count($upd->items) > 0)
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5>Табличная часть УПД</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Наименование</th>
-                                    <th>Количество</th>
-                                    <th>Единица измерения</th>
-                                    <th>Цена</th>
-                                    <th>Сумма</th>
-                                    <th>Ставка НДС</th>
-                                    <th>Сумма НДС</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($upd->items as $item)
+        <!-- Табличная часть УПД -->
+        @if($preparedItems && count($preparedItems) > 0)
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Табличная часть УПД</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped">
+                                <thead>
                                     <tr>
-                                        <td>{{ $item->name }}</td>
-                                        <td>{{ number_format($item->quantity, 2) }}</td>
-                                        <td>{{ $item->unit }}</td>
-                                        <td>{{ number_format($item->price, 2) }} ₽</td>
-                                        <td>{{ number_format($item->amount, 2) }} ₽</td>
-                                        <td>{{ number_format($item->vat_rate, 0) }}%</td>
-                                        <td>{{ number_format($item->vat_amount, 2) }} ₽</td>
+                                        <th>Наименование</th>
+                                        <th>Количество</th>
+                                        <th>Единица измерения</th>
+                                        <th>Цена</th>
+                                        <th>Сумма</th>
+                                        <th>Ставка НДС</th>
+                                        <th>Сумма НДС</th>
                                     </tr>
-                                @endforeach
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <th colspan="4" class="text-right">Итого:</th>
-                                    <th>{{ number_format($upd->amount, 2) }} ₽</th>
-                                    <th></th>
-                                    <th>{{ number_format($upd->tax_amount, 2) }} ₽</th>
-                                </tr>
-                                <tr>
-                                    <th colspan="4" class="text-right">Всего с НДС:</th>
-                                    <th colspan="3">{{ number_format($upd->total_amount, 2) }} ₽</th>
-                                </tr>
-                            </tfoot>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    @foreach($preparedItems as $item)
+                                        <tr>
+                                            <td>
+                                                {{ $item->full_name }}
+                                                @if(empty($equipmentData['vehicle_number']))
+                                                    <br><small class="text-warning">Гос. номер не указан</small>
+                                                @endif
+                                            </td>
+                                            <td>{{ number_format($item->quantity, 2) }}</td>
+                                            <td>{{ $item->unit }}</td>
+                                            <td>{{ number_format($item->price, 2) }} ₽</td>
+                                            <td>{{ number_format($item->amount, 2) }} ₽</td>
+                                            <td>{{ number_format($item->vat_rate, 0) }}%</td>
+                                            <td>{{ number_format($item->vat_amount, 2) }} ₽</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th colspan="4" class="text-right">Итого:</th>
+                                        <th>{{ number_format($upd->amount, 2) }} ₽</th>
+                                        <th></th>
+                                        <th>{{ number_format($upd->tax_amount, 2) }} ₽</th>
+                                    </tr>
+                                    <tr>
+                                        <th colspan="4" class="text-right">Всего с НДС:</th>
+                                        <th colspan="3">{{ number_format($upd->total_amount, 2) }} ₽</th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    @endif
+        @endif
 </div>
 
 <!-- Reject Modal -->

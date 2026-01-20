@@ -159,7 +159,10 @@ class FinanceController extends Controller
 
     public function showInvoice(Invoice $invoice)
     {
-        $invoice->load(['company', 'order', 'order.items.equipment']);
+        $invoice->load([
+            'company',
+            'order.items.equipment', // Загружаем позиции заказа с оборудованием
+        ]);
 
         return view('admin.finance.invoice-show', compact('invoice'));
     }

@@ -358,12 +358,12 @@ class Upd extends Model
 
     protected function getVatRate(): string
     {
-        return $this->tax_system === 'osn' ? '20%' : 'Без НДС';
+        return $this->tax_system === 'osn' ? '22%' : 'Без НДС';
     }
 
     protected function calculateVatAmount(float $amount): float
     {
-        return $this->tax_system === 'osn' ? $amount * 0.2 : 0;
+        return $this->tax_system === 'osn' ? $amount * 0.22 : 0;
     }
 
     protected function getAccountingInfo(): array

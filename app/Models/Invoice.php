@@ -117,14 +117,10 @@ class Invoice extends Model
                 \App\Models\DocumentTemplate::INVOICE_SCENARIO_POSTPAYMENT_UPD :
                 \App\Models\DocumentTemplate::INVOICE_SCENARIO_ADVANCE_ORDER;
 
-            Log::debug('Поиск шаблона счета', [
+            Log::info('Поиск шаблона для генерации счета', [
                 'invoice_id' => $this->id,
-                'upd_id' => $this->upd_id,
                 'scenario' => $scenario,
-                'scenario_constants' => [
-                    'postpayment_upd' => \App\Models\DocumentTemplate::INVOICE_SCENARIO_POSTPAYMENT_UPD,
-                    'advance_order' => \App\Models\DocumentTemplate::INVOICE_SCENARIO_ADVANCE_ORDER,
-                ]
+                'data_keys' => array_keys($invoiceData)
             ]);
 
             $template = \App\Models\DocumentTemplate::active()
@@ -133,17 +129,6 @@ class Invoice extends Model
                 ->first();
 
             if (!$template) {
-                // Логируем доступные шаблоны для отладки
-                $availableTemplates = \App\Models\DocumentTemplate::active()
-                    ->byType(\App\Models\DocumentTemplate::TYPE_INVOICE)
-                    ->get();
-
-                Log::warning('Шаблон не найден по сценарию, проверяем доступные шаблоны', [
-                    'scenario' => $scenario,
-                    'available_templates' => $availableTemplates->pluck('id', 'scenario'),
-                    'template_count' => $availableTemplates->count()
-                ]);
-
                 // Если не нашли по сценарию, ищем любой активный шаблон счета
                 $template = \App\Models\DocumentTemplate::active()
                     ->byType(\App\Models\DocumentTemplate::TYPE_INVOICE)
@@ -158,11 +143,11 @@ class Invoice extends Model
                 'invoice_id' => $this->id,
                 'template_id' => $template->id,
                 'template_name' => $template->name,
-                'scenario' => $scenario
+                'has_mapping' => !empty($template->mapping)
             ]);
 
-            // Генерируем файл в памяти
-            return $templateService->generateDocumentInMemory($template, $invoiceData);
+            // ИСПОЛЬЗУЕМ AUTOMAPPING ДЛЯ ПОДСТАНОВКИ ВСЕХ ДАННЫХ
+            return $templateService->generateDocumentWithAutoMapping($template, $invoiceData);
 
         } catch (\Exception $e) {
             Log::error('Ошибка генерации файла счета', [

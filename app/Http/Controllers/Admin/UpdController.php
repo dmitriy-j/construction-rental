@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Services\DocumentDataService;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class UpdController extends Controller
 {
@@ -212,37 +213,129 @@ public function debugPlaceholders(Upd $upd, DocumentGeneratorService $documentGe
 
     public function show(Upd $upd)
     {
+        // Загрузка связей
         $upd->load([
-            'order' => function ($query) {
-                $query->select('id', 'company_order_number', 'lessor_company_id', 'lessee_company_id');
-            },
+            'order.items.equipment',
+            'waybill.equipment',
             'lessorCompany',
             'lesseeCompany',
             'items',
+            'completionAct'
         ]);
 
-        return view('admin.documents.upds.show', compact('upd'));
+        $documentDataService = app(\App\Services\DocumentDataService::class);
+
+        $equipmentData = $documentDataService->getEquipmentDataForDisplay($upd);
+
+        $preparedItems = $upd->items->map(function ($item, $index) use ($documentDataService, $equipmentData, $upd) {
+            $item->full_name = $documentDataService->generateItemNameForDisplay($item, $upd, $equipmentData, $index);
+            return $item;
+        });
+
+        return view('admin.documents.upds.show', compact('upd', 'preparedItems', 'equipmentData'));
     }
 
-    //УДАЛИТЬ!"
-    public function debugTemplate(Upd $upd, DocumentGeneratorService $documentGenerator, DocumentDataService $documentDataService)
-{
-    try {
-        $template = $this->findUpdTemplate();
+    /**
+     * Диагностика данных и шаблона для УПД
+     */
+    public function diagnoseTemplate(Upd $upd, DocumentGeneratorService $documentGenerator, DocumentDataService $documentDataService)
+    {
+        try {
+            $template = $this->findUpdTemplate();
 
-        if (!$template) {
-            return response()->json(['error' => 'Шаблон не найден']);
+            if (!$template) {
+                return response()->json(['error' => 'Template not found']);
+            }
+
+            $data = $documentDataService->prepareDocumentData($upd, 'упд');
+
+            $diagnostics = $documentGenerator->debugTemplateAndData($template, $data);
+
+            return response()->json($diagnostics);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Проверка маппинга шаблона
+     */
+    public function checkMapping(Upd $upd, DocumentDataService $documentDataService)
+    {
+        try {
+            $template = $this->findUpdTemplate();
+
+            if (!$template) {
+                return response()->json(['error' => 'Template not found']);
+            }
+
+            $data = $documentDataService->prepareDocumentData($upd, 'упд');
+
+            $mapping = $template->mapping ?? [];
+
+            $mappingCheck = [];
+            foreach ($mapping as $field => $cell) {
+                $value = $this->getValueFromDataForCheck($field, $data);
+                $mappingCheck[] = [
+                    'field' => $field,
+                    'cell' => $cell,
+                    'value' => $value,
+                    'has_value' => !empty($value)
+                ];
+            }
+
+            return response()->json([
+                'template_id' => $template->id,
+                'template_name' => $template->name,
+                'mapping_count' => count($mapping),
+                'mapping_check' => $mappingCheck,
+                'data_structure' => array_keys($data)
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Проверка плейсхолдеров в шаблоне
+     */
+    public function checkTemplatePlaceholders(Upd $upd, DocumentGeneratorService $documentGenerator, DocumentDataService $documentDataService)
+    {
+        try {
+            $template = $this->findUpdTemplate();
+
+            if (!$template) {
+                return response()->json(['error' => 'Template not found']);
+            }
+
+            $data = $documentDataService->prepareDocumentData($upd, 'упд');
+
+            $diagnostics = $documentGenerator->debugTemplateAndData($template, $data);
+
+            return response()->json($diagnostics);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()]);
+        }
+    }
+
+    protected function getValueFromDataForCheck(string $path, array $data)
+    {
+        $pathParts = explode('.', $path);
+        $current = $data;
+
+        foreach ($pathParts as $part) {
+            if (is_array($current) && array_key_exists($part, $current)) {
+                $current = $current[$part];
+            } else {
+                return null;
+            }
         }
 
-        $data = $documentDataService->prepareDocumentData($upd, 'упд');
-        $debugInfo = $documentGenerator->debugTemplateAndData($template, $data);
-
-        return response()->json($debugInfo);
-
-    } catch (\Exception $e) {
-        return response()->json(['error' => $e->getMessage()]);
+        return is_array($current) ? null : $current;
     }
-}
 
     public function verifyPaper(Request $request, Upd $upd)
     {
@@ -477,6 +570,360 @@ public function debugPlaceholders(Upd $upd, DocumentGeneratorService $documentGe
 
         return null;
     }
+
+    /**
+     * Полная диагностика шаблона и данных
+     */
+    public function fullDiagnostics(Upd $upd, DocumentGeneratorService $documentGenerator, DocumentDataService $documentDataService)
+    {
+        try {
+            $template = $this->findUpdTemplate();
+
+            if (!$template) {
+                return response()->json(['error' => 'Template not found']);
+            }
+
+            $data = $documentDataService->prepareDocumentData($upd, 'упд');
+
+            // Диагностика шаблона
+            $templatePath = Storage::disk('public')->path($template->file_path);
+            $spreadsheet = IOFactory::load($templatePath);
+            $worksheet = $spreadsheet->getActiveSheet();
+
+            // Находим ВСЕ плейсхолдеры в шаблоне
+            $allPlaceholders = $this->findAllPlaceholdersInTemplate($worksheet);
+
+            // Проверяем соответствие данных
+            $flatData = $documentGenerator->flattenArray($data);
+
+            $diagnostics = [
+                'template_info' => [
+                    'path' => $templatePath,
+                    'exists' => file_exists($templatePath),
+                    'rows' => $worksheet->getHighestRow(),
+                    'columns' => $worksheet->getHighestColumn(),
+                ],
+                'placeholders_found' => $allPlaceholders,
+                'data_available' => [
+                    'total_keys' => count($flatData),
+                    'sample_keys' => array_slice(array_keys($flatData), 0, 30),
+                ],
+                'mapping_info' => [
+                    'has_mapping' => !empty($template->mapping),
+                    'mapping_fields' => array_keys($template->mapping ?? [])
+                ]
+            ];
+
+            return response()->json($diagnostics);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Полная диагностика шаблона УПД
+     */
+    public function templateDiagnostics(Upd $upd, DocumentDataService $documentDataService)
+    {
+        try {
+            $template = $this->findUpdTemplate();
+
+            if (!$template) {
+                return response()->json(['error' => 'Template not found']);
+            }
+
+            $data = $documentDataService->prepareDocumentData($upd, 'упд');
+
+            // Проверяем существование файла шаблона
+            $templatePath = Storage::disk('public')->path($template->file_path);
+
+            if (!file_exists($templatePath)) {
+                return response()->json(['error' => 'Template file not found: ' . $templatePath]);
+            }
+
+            // Создаем плоский массив данных для проверки
+            $flatData = $this->flattenDataForDiagnostics($data);
+
+            return response()->json([
+                'template_info' => [
+                    'id' => $template->id,
+                    'name' => $template->name,
+                    'file_path' => $template->file_path,
+                    'file_exists' => file_exists($templatePath),
+                    'mapping_fields' => array_keys($template->mapping ?? [])
+                ],
+                'data_info' => [
+                    'total_keys' => count($flatData),
+                    'available_keys' => array_keys($flatData),
+                    'sample_data' => array_slice($flatData, 0, 20) // первые 20 элементов
+                ],
+                'suggested_placeholders' => [
+                    'Основные данные УПД' => [
+                        '{{upd.number}}',
+                        '{{upd.date}}',
+                        '{{upd.contract_number}}',
+                        '{{upd.contract_date}}',
+                        '{{upd.total_without_vat}}',
+                        '{{upd.total_vat}}',
+                        '{{upd.total_with_vat}}',
+                        '{{upd.period}}',
+                        '{{upd.service_description}}'
+                    ],
+                    'Продавец' => [
+                        '{{seller.name}}',
+                        '{{seller.legal_name}}',
+                        '{{seller.address}}',
+                        '{{seller.inn}}',
+                        '{{seller.kpp}}',
+                        '{{seller.inn_kpp}}',
+                        '{{seller.bank_name}}',
+                        '{{seller.bik}}',
+                        '{{seller.account_number}}'
+                    ],
+                    'Покупатель' => [
+                        '{{buyer.name}}',
+                        '{{buyer.legal_name}}',
+                        '{{buyer.address}}',
+                        '{{buyer.inn}}',
+                        '{{buyer.kpp}}',
+                        '{{buyer.inn_kpp}}',
+                        '{{buyer.bank_name}}',
+                        '{{buyer.bik}}',
+                        '{{buyer.account_number}}'
+                    ],
+                    'Табличная часть' => [
+                        '{{items.#.code}}',
+                        '{{items.#.name}}',
+                        '{{items.#.unit}}',
+                        '{{items.#.quantity}}',
+                        '{{items.#.price}}',
+                        '{{items.#.amount}}',
+                        '{{items.#.vat_rate}}',
+                        '{{items.#.vat_amount}}',
+                        '{{items.#.total_with_vat}}'
+                    ]
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Вспомогательный метод для преобразования данных в плоскую структуру
+     */
+    protected function flattenDataForDiagnostics(array $array, string $prefix = ''): array
+    {
+        $result = [];
+
+        foreach ($array as $key => $value) {
+            $newKey = $prefix ? $prefix . '.' . $key : $key;
+
+            if (is_array($value)) {
+                $result = array_merge($result, $this->flattenDataForDiagnostics($value, $newKey));
+            } else {
+                $result[$newKey] = $value;
+            }
+        }
+
+        return $result;
+    }
+
+
+    /**
+     * Находит все плейсхолдеры в шаблоне
+     */
+    protected function findAllPlaceholdersInTemplate($worksheet): array
+    {
+        $placeholders = [];
+        $highestRow = $worksheet->getHighestRow();
+        $highestColumn = $worksheet->getHighestColumn();
+
+        for ($row = 1; $row <= $highestRow; $row++) {
+            for ($col = 'A'; $col <= $highestColumn; $col++) {
+                try {
+                    $cellCoordinate = $col . $row;
+                    $cell = $worksheet->getCell($cellCoordinate);
+                    $value = $cell->getValue();
+
+                    if (is_string($value)) {
+                        // Ищем плейсхолдеры в разных форматах
+                        if (preg_match_all('/\{\{([^}]+)\}\}/', $value, $matches)) {
+                            foreach ($matches[1] as $placeholder) {
+                                $placeholder = trim($placeholder);
+                                $placeholders[] = [
+                                    'cell' => $cellCoordinate,
+                                    'placeholder' => $placeholder,
+                                    'value' => $value
+                                ];
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    continue;
+                }
+            }
+        }
+
+        return $placeholders;
+    }
+
+    /**
+ * Точная диагностика плейсхолдеров в шаблоне Excel
+ */
+public function exactPlaceholderDiagnostics(Upd $upd)
+{
+    try {
+        $template = $this->findUpdTemplate();
+
+        if (!$template) {
+            return response()->json(['error' => 'Template not found']);
+        }
+
+        // Проверяем существование файла шаблона
+        $templatePath = Storage::disk('public')->path($template->file_path);
+
+        if (!file_exists($templatePath)) {
+            return response()->json(['error' => 'Template file not found: ' . $templatePath]);
+        }
+
+        // Загружаем Excel файл
+        $spreadsheet = IOFactory::load($templatePath);
+        $worksheet = $spreadsheet->getActiveSheet();
+
+        // Находим ВСЕ текстовые значения в документе
+        $allTextValues = [];
+        $highestRow = $worksheet->getHighestRow();
+        $highestColumn = $worksheet->getHighestColumn();
+
+        Log::info('Scanning template for placeholders', [
+            'rows' => $highestRow,
+            'columns' => $highestColumn
+        ]);
+
+        // Сканируем все ячейки
+        for ($row = 1; $row <= $highestRow; $row++) {
+            for ($col = 'A'; $col <= $highestColumn; $col++) {
+                try {
+                    $cellCoordinate = $col . $row;
+                    $cell = $worksheet->getCell($cellCoordinate);
+                    $value = $cell->getValue();
+
+                    if (is_string($value) && !empty(trim($value))) {
+                        $allTextValues[] = [
+                            'cell' => $cellCoordinate,
+                            'value' => $value,
+                            'row' => $row,
+                            'col' => $col
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    continue;
+                }
+            }
+        }
+
+        // Анализируем текстовые значения на наличие плейсхолдеров
+        $foundPlaceholders = [];
+        $suspectedPlaceholders = [];
+
+        foreach ($allTextValues as $textValue) {
+            $cellValue = $textValue['value'];
+
+            // Ищем плейсхолдеры в формате {{...}}
+            if (preg_match_all('/\{\{([^}]+)\}\}/', $cellValue, $matches)) {
+                foreach ($matches[1] as $placeholder) {
+                    $placeholder = trim($placeholder);
+                    $foundPlaceholders[] = [
+                        'cell' => $textValue['cell'],
+                        'placeholder' => $placeholder,
+                        'full_value' => $cellValue,
+                        'type' => 'standard'
+                    ];
+                }
+            }
+
+            // Ищем возможные плейсхолдеры в других форматах
+            if (preg_match('/[A-Za-z]+\.[A-Za-z_]+/', $cellValue)) {
+                // Если в тексте есть точки (как в upd.number) но без фигурных скобок
+                $suspectedPlaceholders[] = [
+                    'cell' => $textValue['cell'],
+                    'value' => $cellValue,
+                    'type' => 'suspected'
+                ];
+            }
+
+            // Ищем тексты, которые могут быть плейсхолдерами без скобок
+            $commonPlaceholderPatterns = [
+                'upd', 'seller', 'buyer', 'items', 'number', 'date', 'contract',
+                'amount', 'price', 'quantity', 'vat', 'total', 'name', 'address',
+                'inn', 'kpp', 'bank', 'bik', 'account'
+            ];
+
+            foreach ($commonPlaceholderPatterns as $pattern) {
+                if (stripos($cellValue, $pattern) !== false && strlen($cellValue) < 100) {
+                    $suspectedPlaceholders[] = [
+                        'cell' => $textValue['cell'],
+                        'value' => $cellValue,
+                        'pattern' => $pattern,
+                        'type' => 'keyword_match'
+                    ];
+                    break;
+                }
+            }
+        }
+
+        return response()->json([
+            'template_info' => [
+                'id' => $template->id,
+                'name' => $template->name,
+                'file_path' => $template->file_path,
+                'file_exists' => true,
+                'dimensions' => "{$highestRow} rows, {$highestColumn} columns"
+            ],
+            'scan_results' => [
+                'cells_scanned' => count($allTextValues),
+                'standard_placeholders_found' => count($foundPlaceholders),
+                'suspected_placeholders_found' => count($suspectedPlaceholders)
+            ],
+            'standard_placeholders' => $foundPlaceholders,
+            'suspected_placeholders' => array_slice($suspectedPlaceholders, 0, 50), // первые 50
+            'expected_placeholders' => [
+                'Основные данные УПД' => [
+                    '{{upd.number}}',
+                    '{{upd.date}}',
+                    '{{upd.contract_number}}',
+                    '{{upd.contract_date}}',
+                    '{{upd.total_without_vat}}',
+                    '{{upd.total_vat}}',
+                    '{{upd.total_with_vat}}'
+                ],
+                'Продавец' => [
+                    '{{seller.name}}',
+                    '{{seller.address}}',
+                    '{{seller.inn_kpp}}'
+                ],
+                'Покупатель' => [
+                    '{{buyer.legal_name}}',
+                    '{{buyer.address}}',
+                    '{{buyer.inn_kpp}}'
+                ]
+            ],
+            'analysis' => [
+                'has_standard_placeholders' => !empty($foundPlaceholders),
+                'standard_placeholder_count' => count($foundPlaceholders),
+                'recommendation' => empty($foundPlaceholders) ?
+                    'В шаблоне не найдены плейсхолдеры в формате {{key.path}}. Необходимо добавить плейсхолдеры в указанном формате.' :
+                    'Найдены плейсхолдеры. Проверьте соответствие с expected_placeholders.'
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()]);
+    }
+}
 
 
 }

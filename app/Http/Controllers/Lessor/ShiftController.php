@@ -46,7 +46,7 @@ class ShiftController extends Controller
                 'work_start_time' => 'required|regex:/^\d{2}:\d{2}$/',
                 'work_end_time' => 'required|regex:/^\d{2}:\d{2}$/',
                 'odometer_start' => 'required|integer|min:0',
-                'odometer_end' => 'required|integer|min:0',
+                'odometer_end' => 'required|integer|min:0|gte:odometer_start',
                 'fuel_start' => 'required|numeric|min:0',
                 'fuel_end' => 'required|numeric|min:0',
                 'fuel_refilled_liters' => 'nullable|numeric|min:0',
@@ -55,6 +55,8 @@ class ShiftController extends Controller
                 'fuel_refilled_type' => 'nullable|string|max:50',
                 'work_description' => 'nullable|string',
                 'notes' => 'nullable|string|max:1000',
+            ], [
+                'odometer_end.gte' => 'Конечный пробег не может быть меньше начального',
             ]);
 
             Log::debug('Shift data validated', $validated);
@@ -96,7 +98,7 @@ class ShiftController extends Controller
                 'data' => $validated,
             ]);
 
-            DB::transaction(function () use ($shift, $validated, $hoursWorked) {
+            DB::transaction(function () use ($shift, $validated, $hoursWorked, $request) {
                 // Временное отключение observer
                 $shift->withoutEvents(function () use ($shift, $validated) {
                     $shift->update($validated);
@@ -117,6 +119,33 @@ class ShiftController extends Controller
                         'shift_id' => $shift->id,
                         'hours_worked' => $hoursWorked,
                     ]);
+                }
+
+                // АВТОМАТИЧЕСКОЕ ОБНОВЛЕНИЕ СЛЕДУЮЩЕЙ СМЕНЫ ПРИ СОХРАНЕНИИ
+                if ($request->has('save_and_next')) {
+                    $nextShift = WaybillShift::where('waybill_id', $shift->waybill_id)
+                        ->where('shift_date', '>', $shift->shift_date)
+                        ->orderBy('shift_date', 'asc')
+                        ->first();
+
+                    if ($nextShift && (empty($nextShift->odometer_start) || empty($nextShift->fuel_start))) {
+                        // РАСЧЕТ ТОПЛИВА С УЧЕТОМ ЗАПРАВКИ ДЛЯ СЛЕДУЮЩЕЙ СМЕНЫ
+                        $calculatedFuelStart = $shift->fuel_end + ($shift->fuel_refilled_liters ?? 0);
+
+                        Log::info('Автообновление следующей смены с учетом заправки', [
+                            'current_shift_id' => $shift->id,
+                            'next_shift_id' => $nextShift->id,
+                            'odometer_end' => $shift->odometer_end,
+                            'fuel_end' => $shift->fuel_end,
+                            'fuel_refilled_liters' => $shift->fuel_refilled_liters ?? 0,
+                            'calculated_fuel_start' => $calculatedFuelStart,
+                        ]);
+
+                        $nextShift->update([
+                            'odometer_start' => $shift->odometer_end,
+                            'fuel_start' => $calculatedFuelStart,
+                        ]);
+                    }
                 }
 
                 // Пересчитываем общие показатели путевого листа

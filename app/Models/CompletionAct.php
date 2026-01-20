@@ -181,12 +181,14 @@ class CompletionAct extends Model
 
     public function forLessee()
     {
-        $order = $this->order;
-        $customerHourlyRate = $order->items->first()->price_per_unit;
+        // Получаем правильную ставку из позиции заказа
+        $orderItem = $this->order->items()->first();
+        $customerHourlyRate = $orderItem ? $orderItem->price_per_unit : 0;
         $totalAmount = $this->total_hours * $customerHourlyRate;
 
         return [
             'id' => $this->id,
+            'number' => $this->number,
             'act_date' => $this->act_date->format('d.m.Y'),
             'service_period' => $this->service_start_date->format('d.m.Y').' - '.$this->service_end_date->format('d.m.Y'),
             'total_hours' => $this->total_hours,
@@ -194,15 +196,122 @@ class CompletionAct extends Model
             'total_amount' => $totalAmount,
             'status' => $this->status,
             'perspective' => 'lessee',
-            'lessor_name' => 'Платформа', // Заменяем на нейтральное название
+            'lessor_name' => 'Платформа',
             'order_id' => $this->order_id,
             'parent_order_id' => $this->parent_order_id,
             'created_at' => $this->created_at,
+            'equipment' => $this->waybill->equipment->title ?? 'Не указано',
         ];
     }
 
     public function waybillWithLock()
     {
         return $this->belongsTo(Waybill::class)->lockForUpdate();
+    }
+
+    public function getDetailedInfoAttribute()
+    {
+        $baseData = [
+            'id' => $this->id,
+            'number' => $this->number,
+            'act_date' => $this->act_date->format('d.m.Y'),
+            'service_start_date' => $this->service_start_date->format('d.m.Y'),
+            'service_end_date' => $this->service_end_date->format('d.m.Y'),
+            'total_hours' => $this->total_hours,
+            'total_downtime' => $this->total_downtime,
+            'hourly_rate' => $this->hourly_rate,
+            'total_amount' => $this->total_amount,
+            'status' => $this->status,
+            'perspective' => $this->perspective,
+        ];
+
+        // Получаем оборудование с гос. номером
+        $equipment = $this->waybill->equipment ?? null;
+        $equipmentTitle = $equipment->title ?? 'Не указано';
+        $licensePlate = $equipment->license_plate ?? null;
+
+        // Формируем полное название оборудования
+        $equipmentFullName = $licensePlate
+            ? "{$equipmentTitle} ({$licensePlate})"
+            : $equipmentTitle;
+
+        if ($this->perspective === 'lessee') {
+            $orderItem = $this->order->items()->first();
+            $customerHourlyRate = $orderItem ? $orderItem->price_per_unit : 0;
+
+            return array_merge($baseData, [
+                'hourly_rate' => $customerHourlyRate,
+                'total_amount' => $this->total_hours * $customerHourlyRate,
+                'lessor_name' => 'Платформа',
+                'equipment' => $equipmentFullName,
+                'operator_name' => $this->waybill->operator->full_name ?? 'Оператор платформы',
+                'waybill_number' => $this->waybill->number ?? 'Не указан',
+            ]);
+        }
+
+        // Для арендодателя
+        return array_merge($baseData, [
+            'lessor_name' => $this->order->lessorCompany->legal_name ?? 'Не указано',
+            'lessee_name' => 'Платформа', // Скрываем реального арендатора
+            'equipment' => $equipmentFullName,
+            'operator_name' => $this->waybill->operator->full_name ?? 'Не назначен',
+            'waybill_number' => $this->waybill->number ?? 'Не указан',
+        ]);
+    }
+
+    public function getShiftsDataAttribute()
+    {
+        if (!$this->waybill) {
+            return collect();
+        }
+
+        $hourlyRate = $this->perspective === 'lessee'
+            ? ($this->order->items()->first()->price_per_unit ?? 0)
+            : $this->hourly_rate;
+
+        return $this->waybill->shifts->map(function ($shift) use ($hourlyRate) {
+            return [
+                'date' => $shift->shift_date->format('d.m.Y'),
+                'object_name' => $shift->object_name ?? 'Не указан',
+                'object_address' => $shift->object_address ?? 'Не указан',
+                'hours_worked' => $shift->hours_worked,
+                'downtime_hours' => $shift->downtime_hours,
+                'downtime_cause' => $shift->downtime_cause,
+                'work_description' => $shift->work_description,
+                'amount' => $shift->hours_worked * $hourlyRate,
+            ];
+        });
+    }
+
+    // Добавьте этот метод в модель CompletionAct
+    public function getStatusTextAttribute(): string
+    {
+        return match($this->status) {
+            'draft' => 'Черновик',
+            'generated' => 'Сформирован',
+            'signed' => 'Подписан',
+            'completed' => 'Завершен',
+            'cancelled' => 'Отменен',
+            'pending' => 'Ожидает',
+            'approved' => 'Утвержден',
+            'rejected' => 'Отклонен',
+            default => $this->status,
+        };
+    }
+
+    // Также добавим метод для получения цвета статуса
+    public function getStatusColorAttribute(): string
+    {
+        return match($this->status) {
+            'draft' => 'secondary',
+            'generated' => 'info',
+            'signed' => 'success',
+            'completed' => 'success',
+            'cancelled' => 'danger',
+            'pending' => 'warning',
+            'approved' => 'success',
+            'rejected' => 'danger',
+            default => 'light',
+        };
     }
 }

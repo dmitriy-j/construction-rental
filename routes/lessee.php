@@ -26,22 +26,30 @@ Route::prefix('orders')->group(function () {
     Route::post('/{order}/request-extension', [OrderController::class, 'requestExtension'])->name('lessee.orders.requestExtension');
 });
 
-// Документы
+// Документы - ИСПРАВЛЕНО В СООТВЕТСТВИИ С SIDEBAR
 Route::get('documents', [DocumentController::class, 'index'])
-    ->name('documents.index');
+    ->name('documents.index'); // Изменено на documents.index
 
-Route::prefix('documents')->name('documents.')->group(function () {
+Route::prefix('documents')->name('documents.')->group(function () { // Убрал lessee. префикс
+    // Waybills
     Route::get('orders/{order}/waybills', [DocumentController::class, 'waybills'])
         ->name('waybills.index');
+    Route::get('waybills/{waybill}', [DocumentController::class, 'showWaybill'])
+        ->name('waybills.show');
+    Route::get('waybills/{waybill}/download', [DocumentController::class, 'downloadWaybill'])
+        ->name('waybills.download');
+
+    // Completion Acts
     Route::get('orders/{order}/completion-acts', [DocumentController::class, 'completionActs'])
         ->name('completion-acts.index');
-    Route::get('waybills/{waybill}/download', [DocumentController::class, 'downloadWaybill'])
-        ->name('waybill.download');
+    Route::get('completion-acts/{completionAct}', [DocumentController::class, 'showCompletionAct'])
+        ->name('completion-acts.show');
     Route::get('completion-acts/{completionAct}/download', [DocumentController::class, 'downloadCompletionAct'])
-        ->name('completion-act.download');
-    Route::get('waybills/{waybill}', [DocumentController::class, 'showWaybill'])->name('waybills.show');
-    Route::get('completion-acts/{completionAct}', [DocumentController::class, 'showCompletionAct'])->name('completion-acts.show');
-    Route::get('delivery-notes/{deliveryNote}', [DocumentController::class, 'showDeliveryNote'])->name('delivery-notes.show');
+        ->name('completion-acts.download');
+
+    // Delivery Notes
+    Route::get('delivery-notes/{deliveryNote}', [DocumentController::class, 'showDeliveryNote'])
+        ->name('delivery-notes.show');
 });
 
 // Управление условиями аренды

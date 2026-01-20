@@ -52,7 +52,15 @@ class BankStatementController extends Controller
             DB::beginTransaction();
 
             $file = $request->file('statement');
+
+            // Читаем файл как бинарные данные
             $content = file_get_contents($file->getRealPath());
+
+            \Log::debug('File uploaded', [
+                'filename' => $file->getClientOriginalName(),
+                'size' => $file->getSize(),
+                'mime_type' => $file->getMimeType(),
+            ]);
 
             $parser = new BankStatementParser;
             $transactions = $parser->parse($content);
@@ -61,6 +69,11 @@ class BankStatementController extends Controller
                 'count' => count($transactions),
                 'first_few' => array_slice($transactions, 0, 3),
             ]);
+
+            // Если транзакций нет, прерываем выполнение с ошибкой
+            if (count($transactions) === 0) {
+                throw new \Exception('Не удалось распознать транзакции в файле выписки. Проверьте кодировку и формат файла.');
+            }
 
             $statement = BankStatement::create([
                 'filename' => $file->getClientOriginalName(),
@@ -72,10 +85,22 @@ class BankStatementController extends Controller
 
             $processingService = new BankStatementProcessingService(app(BalanceService::class));
 
+            $processedCount = 0;
+            $errorCount = 0;
+
             // Обрабатываем каждую транзакцию
             foreach ($transactions as $index => $transactionData) {
                 try {
-                    \Log::debug("Processing transaction {$index}", ['data' => $transactionData]);
+                    \Log::debug("Processing transaction {$index}", [
+                        'data' => [
+                            'Номер' => $transactionData['Номер'] ?? '',
+                            'Дата' => $transactionData['Дата'] ?? '',
+                            'Сумма' => $transactionData['Сумма'] ?? '',
+                            'ПлательщикИНН' => $transactionData['ПлательщикИНН'] ?? '',
+                            'ПолучательИНН' => $transactionData['ПолучательИНН'] ?? '',
+                            'ТипДокумента' => $transactionData['ТипДокумента'] ?? '',
+                        ]
+                    ]);
 
                     // Валидация обязательных полей
                     if (empty($transactionData['Дата']) || empty($transactionData['Сумма'])) {
@@ -83,10 +108,19 @@ class BankStatementController extends Controller
                     }
 
                     $processingService->processTransaction($transactionData, $statement->id);
+                    $processedCount++;
+
                 } catch (\Exception $e) {
+                    $errorCount++;
                     \Log::error('Ошибка обработки транзакции', [
                         'transaction_index' => $index,
-                        'transaction' => $transactionData,
+                        'transaction' => [
+                            'Номер' => $transactionData['Номер'] ?? '',
+                            'Дата' => $transactionData['Дата'] ?? '',
+                            'Сумма' => $transactionData['Сумма'] ?? '',
+                            'ПлательщикИНН' => $transactionData['ПлательщикИНН'] ?? '',
+                            'ПолучательИНН' => $transactionData['ПолучательИНН'] ?? '',
+                        ],
                         'error' => $e->getMessage(),
                         'trace' => $e->getTraceAsString(),
                     ]);
@@ -95,10 +129,10 @@ class BankStatementController extends Controller
                     try {
                         BankStatementTransaction::create([
                             'bank_statement_id' => $statement->id,
-                            'date' => ! empty($transactionData['Дата']) ?
+                            'date' => !empty($transactionData['Дата']) ?
                                 \Carbon\Carbon::createFromFormat('d.m.Y', $transactionData['Дата'])->format('Y-m-d') :
                                 now()->format('Y-m-d'),
-                            'amount' => 0,
+                            'amount' => $this->validateAndParseAmount($transactionData['Сумма'] ?? 0),
                             'type' => 'unknown',
                             'payer_name' => $transactionData['Плательщик1'] ?? 'Не указан',
                             'payer_inn' => $this->cleanInn($transactionData['ПлательщикИНН'] ?? ''),
@@ -146,8 +180,22 @@ class BankStatementController extends Controller
             // Обновляем статус выписки
             $this->updateStatementStatus($statement);
 
+            \Log::info('Bank statement processing completed', [
+                'statement_id' => $statement->id,
+                'processed' => $processedCount,
+                'errors' => $errorCount,
+                'total_transactions' => count($transactions),
+            ]);
+
+            $message = "Выписка обработана. Обработано: {$processedCount}, Ошибок: {$errorCount}";
+
+            if ($errorCount > 0) {
+                return redirect()->route('admin.bank-statements.index')
+                    ->with('warning', $message);
+            }
+
             return redirect()->route('admin.bank-statements.index')
-                ->with('success', "Выписка обработана. Статус: {$statement->status}");
+                ->with('success', $message);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -155,6 +203,10 @@ class BankStatementController extends Controller
             \Log::error('Критическая ошибка обработки выписки', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
+                'file_info' => [
+                    'name' => $file->getClientOriginalName() ?? 'unknown',
+                    'size' => $file->getSize() ?? 0,
+                ]
             ]);
 
             // Если выписка была создана, но произошла ошибка - обновляем статус
@@ -168,13 +220,33 @@ class BankStatementController extends Controller
     }
 
     /**
+     * Вспомогательный метод для обработки суммы
+     */
+    private function validateAndParseAmount($amount): float
+    {
+        if (is_string($amount)) {
+            $amount = str_replace([' ', ','], ['', '.'], trim($amount));
+        }
+
+        if (!is_numeric($amount)) {
+            return 0.0;
+        }
+
+        $parsedAmount = (float) $amount;
+        return $parsedAmount >= 0 ? $parsedAmount : 0.0;
+    }
+
+    /**
      * Очистка ИНН от нечисловых символов
      */
-    private function cleanInn(string $inn): string
+    private function cleanInn(?string $inn): string
     {
-        $cleaned = preg_replace('/[^0-9]/', '', $inn);
+        if (empty($inn)) {
+            return '0000000000';
+        }
 
-        return ! empty($cleaned) ? $cleaned : '0000000000';
+        $cleaned = preg_replace('/[^0-9]/', '', $inn);
+        return !empty($cleaned) ? $cleaned : '0000000000';
     }
 
     protected function updateStatementStatus(BankStatement $statement): void

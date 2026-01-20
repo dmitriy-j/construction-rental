@@ -275,18 +275,33 @@ class InvoiceGeneratorService
                 }
             }
 
-            // ВТОРОЙ ПРИОРИТЕТ: оборудование из заказа
-            if (empty($equipmentData['vehicle_number']) && $order->relationLoaded('equipment') && $order->equipment->isNotEmpty()) {
-                $equipment = $order->equipment->first();
-                if (!empty($equipment->license_plate)) {
-                    $equipmentData['vehicle_number'] = $equipment->license_plate;
+            // ВТОРОЙ ПРИОРИТЕТ: оборудование из позиций заказа - ИСПРАВЛЕНО
+            if ((empty($equipmentData['vehicle_number']) || empty($equipmentData['name'])) && $order->relationLoaded('items')) {
+                foreach ($order->items as $item) {
+                    // Проверяем, есть ли отношение equipment у позиции заказа
+                    if ($item->relationLoaded('equipment') && $item->equipment) {
+                        $equipment = $item->equipment;
+                        if (empty($equipmentData['vehicle_number']) && !empty($equipment->license_plate)) {
+                            $equipmentData['vehicle_number'] = $equipment->license_plate;
+                        }
+                        if (empty($equipmentData['name']) && !empty($equipment->name)) {
+                            $equipmentData['name'] = $equipment->name;
+                        }
+                        if (empty($equipmentData['model']) && !empty($equipment->model)) {
+                            $equipmentData['model'] = $equipment->model;
+                        }
+
+                        // Если нашли все данные, выходим из цикла
+                        if (!empty($equipmentData['vehicle_number']) && !empty($equipmentData['name'])) {
+                            break;
+                        }
+                    }
                 }
-                if (empty($equipmentData['name']) && !empty($equipment->name)) {
-                    $equipmentData['name'] = $equipment->name;
-                }
-                if (empty($equipmentData['model']) && !empty($equipment->model)) {
-                    $equipmentData['model'] = $equipment->model;
-                }
+            }
+
+            // ТРЕТИЙ ПРИОРИТЕТ: данные из самого заказа
+            if (empty($equipmentData['vehicle_number']) && !empty($order->vehicle_number)) {
+                $equipmentData['vehicle_number'] = $order->vehicle_number;
             }
 
             // Формируем полное описание
@@ -297,7 +312,10 @@ class InvoiceGeneratorService
             $equipmentData['full_description'] = implode(' ', $parts);
 
         } catch (\Exception $e) {
-            Log::error('Ошибка получения данных об оборудовании', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+            Log::error('Ошибка получения данных об оборудовании для счета', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage()
+            ]);
         }
 
         return $equipmentData;
@@ -311,13 +329,13 @@ class InvoiceGeneratorService
         return DB::transaction(function () use ($order, $scenario, $invoiceData, $upd) {
             $dueDate = $this->parseDueDate($invoiceData['invoice']['due_date']);
 
-            // Загружаем необходимые отношения
-            if (!$order->relationLoaded('equipment')) {
-                $order->load('equipment');
+            // Загружаем необходимые отношения - ИСПРАВЛЕНО
+            if (!$order->relationLoaded('items')) {
+                $order->load(['items.equipment']); // Загружаем позиции с оборудованием
             }
 
             if ($upd && !$upd->relationLoaded('waybill')) {
-                $upd->load('waybill.equipment');
+                $upd->load(['waybill.equipment']);
             }
 
             $invoice = Invoice::create([
@@ -418,7 +436,7 @@ class InvoiceGeneratorService
     /**
      * Подготовка данных счета для скачивания - С QR-КОДОМ И РЕКВИЗИТАМИ
      */
-   public function prepareInvoiceDataForDownload(Invoice $invoice): array
+    public function prepareInvoiceDataForDownload(Invoice $invoice): array
     {
         $order = $invoice->order;
         $upd = $invoice->upd;
@@ -438,15 +456,29 @@ class InvoiceGeneratorService
         $paymentQrCode = $this->generatePaymentQrCode($invoice);
         $bankDetails = $this->prepareBankDetails($invoice);
 
-        // ОБНОВЛЕНО: Получаем полные данные об оборудовании
+        // Получаем полные данные об оборудовании
         $equipmentData = $this->getFullEquipmentData($order, $upd);
 
+        // Подготавливаем позиции счета
+        $invoiceItems = $this->prepareInvoiceItemsWithVat($invoice, [
+            'equipment' => $equipmentData,
+            'upd' => $upd ? [
+                'number' => $upd->number,
+                'date' => $upd->issue_date->format('d.m.Y'),
+                'service_period_start' => $upd->service_period_start?->format('d.m.Y'),
+                'service_period_end' => $upd->service_period_end?->format('d.m.Y'),
+            ] : null
+        ]);
+
+        // СОЗДАЕМ ДАННЫЕ В ПРАВИЛЬНОМ ФОРМАТЕ ДЛЯ AUTOMAPPING
         $templateData = [
             'invoice_number' => $invoice->number,
             'invoice_date' => $invoice->issue_date->format('d.m.Y'),
             'invoice_total_amount' => $invoice->amount,
             'invoice_due_date' => $invoice->due_date->format('d.m.Y'),
+            'amount_in_words' => $this->amountToWords($invoice->amount),
 
+            // Основные данные счета
             'invoice' => [
                 'number' => $invoice->number,
                 'date' => $invoice->issue_date->format('d.m.Y'),
@@ -468,8 +500,6 @@ class InvoiceGeneratorService
                 'bik' => $platformCompany->bik,
                 'account_number' => $platformCompany->bank_account,
                 'correspondent_account' => $platformCompany->correspondent_account,
-                'phone' => $platformCompany->phone,
-                'email' => $platformCompany->email,
             ],
 
             // Плательщик (арендатор)
@@ -480,12 +510,6 @@ class InvoiceGeneratorService
                 'inn' => $lesseeCompany->inn,
                 'kpp' => $lesseeCompany->kpp,
                 'inn_kpp' => $lesseeCompany->inn . ' / ' . $lesseeCompany->kpp,
-                'bank_name' => $lesseeCompany->bank_name,
-                'bik' => $lesseeCompany->bik,
-                'account_number' => $lesseeCompany->bank_account,
-                'correspondent_account' => $lesseeCompany->correspondent_account,
-                'phone' => $lesseeCompany->phone,
-                'email' => $lesseeCompany->email,
             ],
 
             // Для обратной совместимости
@@ -518,12 +542,12 @@ class InvoiceGeneratorService
                 'service_period_end' => $upd->service_period_end?->format('d.m.Y'),
             ] : null,
 
-            // ОБНОВЛЕНО: Полные данные об оборудовании
+            // Данные об оборудовании
             'equipment' => $equipmentData,
-            'equipment_general' => $equipmentData, // для совместимости
+            'equipment_general' => $equipmentData,
 
-            // Сумма прописью
-            'amount_in_words' => $this->amountToWords($invoice->amount),
+            // Позиции счета в ПРАВИЛЬНОМ ФОРМАТЕ
+            'items' => $invoiceItems,
 
             // QR-код и реквизиты
             'payment_qr_code' => $paymentQrCode,
@@ -531,24 +555,76 @@ class InvoiceGeneratorService
             'has_qr_code' => !empty($paymentQrCode),
         ];
 
-        // Добавляем позиции счета
-        $templateData['invoice_items'] = $this->prepareInvoiceItemsWithVat($invoice, $templateData);
+        // ДОБАВЛЯЕМ ДАННЫЕ ДЛЯ AUTOMAPPING В ПЛОСКОМ ФОРМАТЕ
+        $this->addAutomappingData($templateData, $invoiceItems);
 
         $result = array_merge($invoiceData, $templateData);
 
-        Log::debug('Данные счета подготовлены с оборудованием', [
+        Log::info('Данные для скачивания счета подготовлены', [
             'invoice_id' => $invoice->id,
-            'equipment_data' => $equipmentData,
-            'has_vehicle_number' => !empty($equipmentData['vehicle_number']),
+            'items_count' => count($invoiceItems),
+            'has_automapping_data' => isset($result['invoice_items']),
+            'vehicle_number' => $equipmentData['vehicle_number'] ?? 'NOT_FOUND'
         ]);
 
         return $result;
     }
 
     /**
+     * Добавляет данные для automapping в плоском формате
+     */
+   protected function addAutomappingData(array &$templateData, array $invoiceItems): void
+    {
+        // Добавляем данные для автоматической подстановки в ДВУХ ФОРМАТАХ
+        foreach ($invoiceItems as $index => $item) {
+            // ФОРМАТ 1: invoice_items.0.field (для нового automapping)
+            $templateData["invoice_items.{$index}.name"] = $item['name'];
+            $templateData["invoice_items.{$index}.quantity"] = $item['quantity'];
+            $templateData["invoice_items.{$index}.unit"] = $item['unit'];
+            $templateData["invoice_items.{$index}.price"] = $item['price'];
+            $templateData["invoice_items.{$index}.amount"] = $item['amount'];
+            $templateData["invoice_items.{$index}.vat_rate"] = $item['vat_rate'];
+            $templateData["invoice_items.{$index}.vat_amount"] = $item['vat_amount'];
+            $templateData["invoice_items.{$index}.total_with_vat"] = $item['total_with_vat'];
+            $templateData["invoice_items.{$index}.total_without_vat"] = $item['total_without_vat'];
+
+            // ФОРМАТ 2: invoice_items[0].field (для обратной совместимости) - ДОБАВЬТЕ ЭТО!
+            $templateData["invoice_items[{$index}].name"] = $item['name'];
+            $templateData["invoice_items[{$index}].quantity"] = $item['quantity'];
+            $templateData["invoice_items[{$index}].unit"] = $item['unit'];
+            $templateData["invoice_items[{$index}].price"] = $item['price'];
+            $templateData["invoice_items[{$index}].amount"] = $item['amount'];
+            $templateData["invoice_items[{$index}].vat_rate"] = $item['vat_rate'];
+            $templateData["invoice_items[{$index}].vat_amount"] = $item['vat_amount'];
+            $templateData["invoice_items[{$index}].total_with_vat"] = $item['total_with_vat'];
+            $templateData["invoice_items[{$index}].total_without_vat"] = $item['total_without_vat'];
+        }
+
+        // Также добавляем общие данные
+        $templateData['invoice_total_amount'] = $templateData['invoice']['total_amount'];
+        $templateData['invoice_number'] = $templateData['invoice']['number'];
+        $templateData['invoice_date'] = $templateData['invoice']['date'];
+        $templateData['invoice_due_date'] = $templateData['invoice']['due_date'];
+
+        // Данные поставщика
+        $templateData['supplier_name'] = $templateData['supplier']['name'];
+        $templateData['supplier_inn'] = $templateData['supplier']['inn'];
+        $templateData['supplier_kpp'] = $templateData['supplier']['kpp'];
+        $templateData['supplier_address'] = $templateData['supplier']['address'];
+        $templateData['supplier_bank_name'] = $templateData['supplier']['bank_name'];
+        $templateData['supplier_bik'] = $templateData['supplier']['bik'];
+        $templateData['supplier_account_number'] = $templateData['supplier']['account_number'];
+
+        // Данные плательщика
+        $templateData['payer_name'] = $templateData['payer']['name'];
+        $templateData['payer_inn'] = $templateData['payer']['inn'];
+        $templateData['payer_kpp'] = $templateData['payer']['kpp'];
+        $templateData['payer_address'] = $templateData['payer']['address'];
+    }
+    /**
      * Получает полные данные об оборудовании для счета
      */
-    protected function getFullEquipmentData(Order $order, ?Upd $upd = null): array
+    public function getFullEquipmentData(Order $order, ?Upd $upd = null): array
     {
         $equipmentData = [
             'name' => '',
@@ -558,82 +634,82 @@ class InvoiceGeneratorService
         ];
 
         try {
-            Log::debug('=== ПОИСК ДАННЫХ ОБОРУДОВАНИЯ ДЛЯ СЧЕТА ===', [
+            Log::debug('=== АГРЕССИВНЫЙ ПОИСК ДАННЫХ ОБОРУДОВАНИЯ ===', [
                 'order_id' => $order->id,
                 'upd_id' => $upd?->id,
                 'has_upd' => !is_null($upd)
             ]);
 
-            // ПЕРВЫЙ ПРИОРИТЕТ: данные из УПД и путевого листа
-            if ($upd && $upd->relationLoaded('waybill') && $upd->waybill) {
-                $waybill = $upd->waybill;
-                Log::debug('Путевой лист найден в УПД', [
-                    'waybill_id' => $waybill->id,
-                    'license_plate' => $waybill->license_plate,
-                    'has_equipment' => $waybill->relationLoaded('equipment')
-                ]);
+            // ПРИОРИТЕТ 1: Данные из УПД и путевого листа
+            if ($upd) {
+                Log::debug('Поиск в УПД', ['upd_id' => $upd->id]);
 
-                if (!empty($waybill->license_plate)) {
-                    $equipmentData['vehicle_number'] = $waybill->license_plate;
-                    Log::debug('Гос. номер из путевого листа', [
-                        'vehicle_number' => $waybill->license_plate
-                    ]);
-                }
-
-                // Если в путевом листе есть связанное оборудование
-                if ($waybill->relationLoaded('equipment') && $waybill->equipment) {
-                    $equipment = $waybill->equipment;
-                    Log::debug('Оборудование из путевого листа', [
-                        'equipment_id' => $equipment->id,
-                        'title' => $equipment->title,
-                        'model' => $equipment->model,
-                        'license_plate' => $equipment->license_plate
+                if ($upd->relationLoaded('waybill') && $upd->waybill) {
+                    $waybill = $upd->waybill;
+                    Log::debug('Путевой лист найден', [
+                        'waybill_id' => $waybill->id,
+                        'license_plate' => $waybill->license_plate
                     ]);
 
-                    if (empty($equipmentData['vehicle_number']) && !empty($equipment->license_plate)) {
-                        $equipmentData['vehicle_number'] = $equipment->license_plate;
-                        Log::debug('Гос. номер из оборудования путевого листа', [
-                            'vehicle_number' => $equipment->license_plate
+                    if (!empty($waybill->license_plate)) {
+                        $equipmentData['vehicle_number'] = $waybill->license_plate;
+                        Log::debug('Гос. номер из путевого листа', [
+                            'vehicle_number' => $waybill->license_plate
                         ]);
                     }
 
-                    if (!empty($equipment->title)) {
-                        $equipmentData['name'] = $equipment->title;
-                    }
-
-                    if (!empty($equipment->model)) {
-                        $equipmentData['model'] = $equipment->model;
+                    if ($waybill->relationLoaded('equipment') && $waybill->equipment) {
+                        $equipment = $waybill->equipment;
+                        if (empty($equipmentData['vehicle_number']) && !empty($equipment->license_plate)) {
+                            $equipmentData['vehicle_number'] = $equipment->license_plate;
+                            Log::debug('Гос. номер из оборудования путевого листа', [
+                                'vehicle_number' => $equipment->license_plate
+                            ]);
+                        }
+                        if (!empty($equipment->title)) $equipmentData['name'] = $equipment->title;
+                        if (!empty($equipment->model)) $equipmentData['model'] = $equipment->model;
                     }
                 }
-            }
 
-            // ВТОРОЙ ПРИОРИТЕТ: оборудование из заказа
-            if (empty($equipmentData['vehicle_number']) && $order->relationLoaded('equipment') && $order->equipment->isNotEmpty()) {
-                $equipment = $order->equipment->first();
-                Log::debug('Оборудование из заказа', [
-                    'equipment_id' => $equipment->id,
-                    'name' => $equipment->name,
-                    'model' => $equipment->model,
-                    'license_plate' => $equipment->license_plate
-                ]);
-
-                if (!empty($equipment->license_plate)) {
-                    $equipmentData['vehicle_number'] = $equipment->license_plate;
-                    Log::debug('Гос. номер из оборудования заказа', [
-                        'vehicle_number' => $equipment->license_plate
+                if (empty($equipmentData['vehicle_number']) && !empty($upd->vehicle_number)) {
+                    $equipmentData['vehicle_number'] = $upd->vehicle_number;
+                    Log::debug('Гос. номер из самого УПД', [
+                        'vehicle_number' => $upd->vehicle_number
                     ]);
                 }
+            }
 
-                if (empty($equipmentData['name']) && !empty($equipment->name)) {
-                    $equipmentData['name'] = $equipment->name;
-                }
+            // ПРИОРИТЕТ 2: Оборудование из позиций заказа
+            if ((empty($equipmentData['vehicle_number']) || empty($equipmentData['name'])) && $order->relationLoaded('items')) {
+                Log::debug('Поиск в позициях заказа', [
+                    'items_count' => $order->items->count()
+                ]);
 
-                if (empty($equipmentData['model']) && !empty($equipment->model)) {
-                    $equipmentData['model'] = $equipment->model;
+                foreach ($order->items as $item) {
+                    if ($item->relationLoaded('equipment') && $item->equipment) {
+                        $equipment = $item->equipment;
+                        if (empty($equipmentData['vehicle_number']) && !empty($equipment->license_plate)) {
+                            $equipmentData['vehicle_number'] = $equipment->license_plate;
+                            Log::debug('Гос. номер из оборудования позиции заказа', [
+                                'item_id' => $item->id,
+                                'vehicle_number' => $equipment->license_plate
+                            ]);
+                        }
+                        if (empty($equipmentData['name']) && !empty($equipment->name)) {
+                            $equipmentData['name'] = $equipment->name;
+                        }
+                        if (empty($equipmentData['model']) && !empty($equipment->model)) {
+                            $equipmentData['model'] = $equipment->model;
+                        }
+
+                        if (!empty($equipmentData['vehicle_number']) && !empty($equipmentData['name'])) {
+                            break;
+                        }
+                    }
                 }
             }
 
-            // ТРЕТИЙ ПРИОРИТЕТ: данные из самого заказа
+            // ПРИОРИТЕТ 3: Данные из самого заказа
             if (empty($equipmentData['vehicle_number']) && !empty($order->vehicle_number)) {
                 $equipmentData['vehicle_number'] = $order->vehicle_number;
                 Log::debug('Гос. номер из заказа', [
@@ -643,25 +719,17 @@ class InvoiceGeneratorService
 
             // Формируем полное описание
             $parts = [];
-            if (!empty($equipmentData['name'])) {
-                $parts[] = $equipmentData['name'];
-            }
-            if (!empty($equipmentData['model'])) {
-                $parts[] = $equipmentData['model'];
-            }
-            if (!empty($equipmentData['vehicle_number'])) {
-                $parts[] = 'г.р.з. ' . $equipmentData['vehicle_number'];
-            }
-
+            if (!empty($equipmentData['name'])) $parts[] = $equipmentData['name'];
+            if (!empty($equipmentData['model'])) $parts[] = $equipmentData['model'];
+            if (!empty($equipmentData['vehicle_number'])) $parts[] = 'г.р.з. ' . $equipmentData['vehicle_number'];
             $equipmentData['full_description'] = implode(' ', $parts);
 
-            Log::debug('=== ИТОГОВЫЕ ДАННЫЕ ОБОРУДОВАНИЯ ДЛЯ СЧЕТА ===', $equipmentData);
+            Log::debug('=== ИТОГОВЫЕ ДАННЫЕ ОБОРУДОВАНИЯ ===', $equipmentData);
 
         } catch (\Exception $e) {
-            Log::error('Ошибка получения данных об оборудовании для счета', [
+            Log::error('Ошибка получения данных об оборудовании', [
                 'order_id' => $order->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'error' => $e->getMessage()
             ]);
         }
 
@@ -681,8 +749,6 @@ class InvoiceGeneratorService
             // Если счет привязан к УПД, используем точные суммы из УПД
             if ($invoice->upd && $invoice->upd->items->count() > 0) {
                 $updItem = $invoice->upd->items[$index] ?? $invoice->upd->items->first();
-
-                // Берем суммы прямо из УПД для точности
                 $amountWithoutVat = $updItem->amount ?? ($quantity * $priceWithoutVat);
                 $vatAmount = $updItem->vat_amount ?? ($amountWithoutVat * ($item->vat_rate / 100));
                 $amountWithVat = $updItem->amount + $updItem->vat_amount ?? ($amountWithoutVat + $vatAmount);
@@ -701,40 +767,32 @@ class InvoiceGeneratorService
             $vatAmount = round($vatAmount, 2);
             $amountWithoutVat = round($amountWithoutVat, 2);
 
-            // ВАЖНОЕ ИСПРАВЛЕНИЕ: Формируем полное название с гос. номером
+            // ГАРАНТИРОВАННАЯ ПОДСТАНОВКА ГОС. НОМЕРА
             $vehicleNumber = $templateData['equipment']['vehicle_number'] ?? '';
             $baseName = $item->name;
 
-            // Если в названии есть пустой гос. номер, заполняем его
-            if (!empty($vehicleNumber) && strpos($baseName, '(гос. номер: )') !== false) {
-                $fullItemName = str_replace('(гос. номер: )', '(гос. номер: ' . $vehicleNumber . ')', $baseName);
-                Log::debug('Добавлен гос. номер в название', [
-                    'base_name' => $baseName,
-                    'full_name' => $fullItemName,
-                    'vehicle_number' => $vehicleNumber
-                ]);
-            } else {
-                $fullItemName = $baseName;
-            }
+            $fullItemName = $this->ensureVehicleNumberInName($baseName, $vehicleNumber);
 
-            Log::debug('Подготовка позиции счета', [
+            Log::debug('Подготовка позиции для Excel', [
                 'item_id' => $item->id,
-                'base_name' => $baseName,
-                'full_name' => $fullItemName,
+                'original_name' => $baseName,
+                'final_name' => $fullItemName,
                 'vehicle_number' => $vehicleNumber,
-                'has_upd' => !is_null($invoice->upd)
+                'quantity' => $quantity,
+                'price' => $priceWithVat,
+                'amount' => $amountWithVat
             ]);
 
             return [
-                'name' => $fullItemName, // Теперь здесь будет название с гос. номером
+                'name' => $fullItemName,
                 'name_short' => $item->name,
                 'description' => $item->description,
                 'quantity' => $quantity,
                 'unit' => $item->unit,
-                'price' => $priceWithVat, // Цена С НДС
-                'amount' => $amountWithVat, // Сумма С НДС
+                'price' => $priceWithVat,
+                'amount' => $amountWithVat,
                 'vat_rate' => $item->vat_rate,
-                'vat_amount' => $vatAmount, // НДС
+                'vat_amount' => $vatAmount,
                 'total_with_vat' => $amountWithVat,
                 'total_without_vat' => $amountWithoutVat,
                 'total' => $amountWithVat,
@@ -744,6 +802,39 @@ class InvoiceGeneratorService
                 'vehicle_number' => $vehicleNumber,
             ];
         })->toArray();
+    }
+
+    protected function ensureVehicleNumberInName(string $itemName, string $vehicleNumber): string
+    {
+        if (empty($vehicleNumber)) {
+            return $itemName;
+        }
+
+        // Если гос. номер уже есть в правильном формате, возвращаем как есть
+        if (strpos($itemName, "(гос. номер: {$vehicleNumber})") !== false) {
+            return $itemName;
+        }
+
+        // Заменяем пустой плейсхолдер
+        if (strpos($itemName, '(гос. номер: )') !== false) {
+            return str_replace('(гос. номер: )', "(гос. номер: {$vehicleNumber})", $itemName);
+        }
+
+        // Добавляем гос. номер если его нет
+        if (strpos($itemName, 'гос. номер') === false) {
+            if (strpos($itemName, 'за период') !== false) {
+                return str_replace('за период', "(гос. номер: {$vehicleNumber}) за период", $itemName);
+            } else {
+                return $itemName . " (гос. номер: {$vehicleNumber})";
+            }
+        }
+
+        // Заменяем любой существующий гос. номер
+        if (preg_match('/\(гос\. номер:\s*[^)]*\)/', $itemName)) {
+            return preg_replace('/\(гос\. номер:\s*[^)]*\)/', "(гос. номер: {$vehicleNumber})", $itemName);
+        }
+
+        return $itemName;
     }
 
     /**
@@ -1107,7 +1198,7 @@ class InvoiceGeneratorService
     {
         return match($company->tax_system ?? 'osn') {
             'usn', 'usn_income', 'patent', 'envd' => 0.0,
-            default => 20.0,
+            default => 22.0,
         };
     }
 

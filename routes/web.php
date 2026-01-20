@@ -14,6 +14,7 @@ use App\Http\Controllers\RentalRequestController;
 use App\Http\Controllers\NewsController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Admin\UpdController;
 
 // Главная страница
 Route::get('/', function () {
@@ -130,5 +131,13 @@ Route::get('/debug/companies', function() {
         })
     ];
 });
+Route::get('/admin/upds/{upd}/template-diagnostics', [UpdController::class, 'templateDiagnostics'])
+    ->name('admin.upds.template-diagnostics');
+
+    Route::get('/admin/upds/{upd}/template-diagnostics', [UpdController::class, 'templateDiagnostics'])
+    ->name('admin.upds.template-diagnostics');
+
+    Route::get('/admin/upds/{upd}/exact-placeholders', [UpdController::class, 'exactPlaceholderDiagnostics'])
+    ->name('admin.upds.exact-placeholders');
 
 require __DIR__.'/auth.php';

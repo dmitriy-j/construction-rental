@@ -87,7 +87,7 @@ class DocumentGeneratorService
     public function generateDocumentWithAutoMapping(DocumentTemplate $template, array $data)
     {
         try {
-            Log::info('Генерация документа с автоматическим маппингом', [
+            Log::info('Генерация документа с автоматическим маппингом В ПАМЯТИ', [
                 'template_id' => $template->id,
                 'data_keys' => array_keys($data)
             ]);
@@ -107,18 +107,17 @@ class DocumentGeneratorService
                 $this->processSheetWithAutoMapping($sheet, $data);
             }
 
-            // Сохраняем временный файл
-            $tempFileName = 'temp/document_' . time() . '.xlsx';
-            $tempPath = Storage::disk('private')->path($tempFileName);
-
+            // Сохраняем В ПАМЯТЬ
             $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
-            $writer->save($tempPath);
+            ob_start();
+            $writer->save('php://output');
+            $content = ob_get_clean();
 
-            Log::info('Документ сгенерирован с автоматическим маппингом', [
-                'temp_path' => $tempFileName
+            Log::info('Документ сгенерирован с автоматическим маппингом В ПАМЯТИ', [
+                'content_size' => strlen($content)
             ]);
 
-            return $tempPath;
+            return $content;
 
         } catch (\Exception $e) {
             Log::error('Ошибка генерации документа с автоматическим маппингом', [
@@ -195,15 +194,15 @@ class DocumentGeneratorService
             $newKey = $prefix ? $prefix . '.' . $key : $key;
 
             if (is_array($value)) {
-                // Особый случай: items - создаем плейсхолдеры items.#.field
+                // Особый случай: items - создаем плейсхолдеры для каждого поля
                 if ($key === 'items' && !empty($value) && isset($value[0]) && is_array($value[0])) {
-                    // Создаем плейсхолдеры для табличной части
+                    // Для табличной части создаем плейсхолдеры items.#.field
                     foreach ($value[0] as $field => $fieldValue) {
                         $tablePlaceholder = $newKey . '.#.' . $field;
                         $result[$tablePlaceholder] = ''; // Значение будет заполнено в табличной части
                     }
 
-                    // Также добавляем обычные поля для обратной совместимости
+                    // Также добавляем обычные поля items для обратной совместимости
                     $result = array_merge($result, $this->flattenArray($value, $newKey));
                 } else {
                     // Рекурсивно обрабатываем вложенные массивы
@@ -619,51 +618,131 @@ class DocumentGeneratorService
     /**
      * Автоматическая замена всех плейсхолдеров в документе
      */
-    protected function replaceAllPlaceholders($worksheet, array $data): void
+    protected function replaceAllPlaceholders($worksheet, array $data)
     {
         $replacedCount = 0;
+        $processedCells = 0;
 
         try {
-            Log::info('Starting automatic placeholder replacement', [
-                'data_keys' => array_keys($data)
+            Log::info('=== ULTRA RELIABLE PLACEHOLDER REPLACEMENT START ===');
+
+            // Создаем плоский массив данных БЕЗ табличных плейсхолдеров
+            $flatData = $this->flattenArrayForPlaceholders($data);
+
+            Log::info('Flat data for placeholders', [
+                'total_keys' => count($flatData),
+                'keys_sample' => array_slice(array_keys($flatData), 0, 20)
             ]);
 
-            // Проходим по всем ячейкам в документе
-            foreach ($worksheet->getRowIterator() as $row) {
+            // Используем итератор для ВСЕХ ячеек (включая пустые)
+            $iterator = $worksheet->getRowIterator();
+
+            foreach ($iterator as $row) {
                 $cellIterator = $row->getCellIterator();
-                $cellIterator->setIterateOnlyExistingCells(false);
+                $cellIterator->setIterateOnlyExistingCells(false); // ВАЖНО: включаем пустые ячейки
 
                 foreach ($cellIterator as $cell) {
-                    $cellValue = $cell->getValue();
+                    $processedCells++;
+                    $cellCoordinate = $cell->getCoordinate();
 
-                    // Если в ячейке есть плейсхолдеры
-                    if (is_string($cellValue) && strpos($cellValue, '{{') !== false) {
-                        $newValue = $this->replacePlaceholdersInCell($cellValue, $data);
+                    try {
+                        $originalValue = $cell->getValue();
 
-                        if ($newValue !== $cellValue) {
-                            $cell->setValue($newValue);
-                            $replacedCount++;
-
-                            Log::debug('Placeholder replaced in cell', [
-                                'cell' => $cell->getCoordinate(),
-                                'original' => $cellValue,
-                                'new' => $newValue
-                            ]);
+                        // Обрабатываем только строковые значения
+                        if (!is_string($originalValue) || empty(trim($originalValue))) {
+                            continue;
                         }
+
+                        $newValue = $originalValue;
+                        $hasChanges = false;
+
+                        // Ищем плейсхолдеры в формате {{field.path}}
+                        if (preg_match_all('/\{\{\s*([^}]+?)\s*\}\}/', $originalValue, $matches)) {
+                            foreach ($matches[1] as $index => $placeholder) {
+                                $placeholder = trim($placeholder);
+                                $fullMatch = $matches[0][$index];
+
+                                // НЕ пропускаем табличные плейсхолдеры - заменяем ВСЕ
+                                // Ищем значение в данных
+                                $value = $flatData[$placeholder] ?? null;
+
+                                if ($value !== null && $value !== '') {
+                                    $formattedValue = $this->formatValue($value, $placeholder);
+                                    $newValue = str_replace($fullMatch, $formattedValue, $newValue);
+                                    $replacedCount++;
+                                    $hasChanges = true;
+
+                                    Log::debug('SUCCESS: Placeholder replaced', [
+                                        'cell' => $cellCoordinate,
+                                        'placeholder' => $placeholder,
+                                        'value' => $formattedValue,
+                                        'original' => $originalValue,
+                                        'new' => $newValue
+                                    ]);
+                                } else {
+                                    Log::debug('MISSING: Placeholder not found in data', [
+                                        'cell' => $cellCoordinate,
+                                        'placeholder' => $placeholder,
+                                        'full_match' => $fullMatch,
+                                        'in_flat_data' => array_key_exists($placeholder, $flatData)
+                                    ]);
+                                }
+                            }
+                        }
+
+                        // Если были изменения - обновляем ячейку
+                        if ($hasChanges) {
+                            $cell->setValue($newValue);
+                        }
+
+                    } catch (\Exception $e) {
+                        Log::warning('Error processing cell', [
+                            'cell' => $cellCoordinate,
+                            'error' => $e->getMessage()
+                        ]);
+                        continue;
                     }
                 }
             }
 
-            Log::info('Automatic placeholder replacement completed', [
-                'replaced_count' => $replacedCount
+            Log::info('=== ULTRA RELIABLE PLACEHOLDER REPLACEMENT COMPLETE ===', [
+                'processed_cells' => $processedCells,
+                'replacements_made' => $replacedCount
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Error in automatic placeholder replacement', [
-                'error' => $e->getMessage()
+            Log::error('Error in ultra reliable placeholder replacement', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
+            throw $e;
         }
     }
+
+    /**
+     * Упрощенный flattenArray только для плейсхолдеров (без табличной части)
+     */
+    protected function flattenArrayForPlaceholders(array $array, string $prefix = ''): array
+    {
+        $result = [];
+
+        foreach ($array as $key => $value) {
+            $newKey = $prefix ? $prefix . '.' . $key : $key;
+
+            if (is_array($value)) {
+                // Рекурсивно обрабатываем вложенные массивы, но пропускаем items
+                if ($key !== 'items') {
+                    $result = array_merge($result, $this->flattenArrayForPlaceholders($value, $newKey));
+                }
+            } else {
+                // Просто добавляем значение
+                $result[$newKey] = $value;
+            }
+        }
+
+        return $result;
+    }
+
 
     /**
      * Замена плейсхолдеров в значении ячейки
@@ -702,38 +781,102 @@ class DocumentGeneratorService
     {
         try {
             Log::info('Processing table section with mapping', [
-                'mapping_keys' => array_keys($mapping)
+                'mapping_keys_count' => count($mapping),
+                'has_items' => isset($data['items']),
+                'items_count' => isset($data['items']) ? count($data['items']) : 0
             ]);
 
-            // Находим шаблон строки для табличной части ИЗ МАППИНГА
-            $templateRow = $this->findTemplateRowFromMapping($mapping);
+            // Получаем данные для табличной части
+            $items = $data['items'] ?? [];
 
-            if (!$templateRow) {
-                Log::warning('No template row found in mapping');
+            if (empty($items)) {
+                Log::warning('No items found for table processing');
                 return;
             }
 
-            // Получаем данные для табличной части
-            $items = $data['invoice_items'] ?? [];
+            // Извлекаем табличный маппинг
+            $tableMapping = $this->extractTableMapping($mapping, $items);
 
-            Log::debug('Table items found', [
-                'items_count' => count($items),
-                'template_row' => $templateRow
+            if (empty($tableMapping['columns']) || $tableMapping['start_row'] === null) {
+                Log::warning('No table mapping found, trying automatic table processing');
+                $this->processTableItems($worksheet, $data);
+                return;
+            }
+
+            Log::info('Table mapping found', [
+                'start_row' => $tableMapping['start_row'],
+                'columns_count' => count($tableMapping['columns']),
+                'items_count' => count($items)
             ]);
 
-            // Обрабатываем каждую позицию
-            foreach ($items as $index => $item) {
-                $this->fillTableRow($worksheet, $mapping, $item, $templateRow, $index);
+            // Вставляем дополнительные строки если нужно
+            if (count($items) > 1) {
+                $worksheet->insertNewRowBefore($tableMapping['start_row'] + 1, count($items) - 1);
+                Log::info('Inserted additional rows for table', ['count' => count($items) - 1]);
             }
+
+            // Заполняем таблицу данными
+            $this->fillTableWithMapping($worksheet, $tableMapping, $items);
 
             Log::info('Table section processing completed', [
                 'items_processed' => count($items)
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Error processing table section', [
-                'error' => $e->getMessage()
+            Log::error('Error processing table section with mapping', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
+            // Пробуем автоматический метод как запасной вариант
+            try {
+                $this->processTableItems($worksheet, $data);
+            } catch (\Exception $e2) {
+                Log::error('Automatic table processing also failed', [
+                    'error' => $e2->getMessage()
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Заполнение таблицы через маппинг
+     */
+    protected function fillTableWithMapping($worksheet, array $tableMapping, array $items): void
+    {
+        $startRow = $tableMapping['start_row'];
+        $columns = $tableMapping['columns'];
+
+        Log::info('Filling table with mapping', [
+            'start_row' => $startRow,
+            'columns' => $columns,
+            'items_count' => count($items)
+        ]);
+
+        foreach ($items as $index => $item) {
+            $currentRow = $startRow + $index;
+
+            Log::debug('Filling table row', [
+                'row' => $currentRow,
+                'item_index' => $index,
+                'item_fields' => array_keys($item)
+            ]);
+
+            foreach ($columns as $column => $fieldName) {
+                $value = $item[$fieldName] ?? '';
+
+                if ($value !== '') {
+                    $formattedValue = $this->formatTableValue($value, $fieldName);
+                    $cellCoordinate = $column . $currentRow;
+
+                    $worksheet->setCellValue($cellCoordinate, $formattedValue);
+
+                    Log::debug('Table cell filled with mapping', [
+                        'cell' => $cellCoordinate,
+                        'field' => $fieldName,
+                        'value' => $formattedValue
+                    ]);
+                }
+            }
         }
     }
 
@@ -907,21 +1050,25 @@ class DocumentGeneratorService
         $current = $data;
 
         foreach ($keys as $key) {
-            // Обработка массивов с индексами: invoice_items[0].name
-            if (preg_match('/(.*)\[(\d+)\]/', $key, $matches)) {
-                $arrayKey = $matches[1];
-                $index = $matches[2];
-
-                if (!isset($current[$arrayKey][$index])) {
-                    return null;
-                }
-                $current = $current[$arrayKey][$index];
-            } else {
-                if (!isset($current[$key])) {
-                    return null;
-                }
-                $current = $current[$key];
+            // Проверяем, существует ли ключ в текущем уровне
+            if (!is_array($current) || !array_key_exists($key, $current)) {
+                Log::debug('Key not found in data path', [
+                    'path' => $path,
+                    'current_key' => $key,
+                    'available_keys' => is_array($current) ? array_keys($current) : 'NOT_ARRAY'
+                ]);
+                return null;
             }
+            $current = $current[$key];
+        }
+
+        // Преобразуем массивы в строку
+        if (is_array($current)) {
+            Log::debug('Value is array, converting to string', [
+                'path' => $path,
+                'array' => $current
+            ]);
+            return json_encode($current, JSON_UNESCAPED_UNICODE);
         }
 
         return $current;
@@ -1196,24 +1343,9 @@ class DocumentGeneratorService
 
     protected function getValueFromData(string $path, array $data)
     {
-        // Обработка динамических плейсхолдеров для табличной части
-        if (preg_match('/^items\.#\.(.+)$/', $path, $matches)) {
-            $fieldName = $matches[1];
-            return $this->processDynamicItems($sheet, $col, $row, $fieldName, $data);
-        }
+        Log::debug('Getting value from data', ['path' => $path]);
 
-        // Обработка статических плейсхолдеров (items.0.name, items.1.quantity и т.д.)
-        if (preg_match('/^items\.(\d+)\.(.+)$/', $path, $matches)) {
-            $itemIndex = $matches[1];
-            $fieldName = $matches[2];
-
-            if (isset($data['items'][$itemIndex][$fieldName])) {
-                return $data['items'][$itemIndex][$fieldName];
-            }
-            return '';
-        }
-
-        // Обработка обычных полей
+        // Обработка статических плейсхолдеров (upd.number, seller.name и т.д.)
         $pathParts = explode('.', $path);
         $current = $data;
 
@@ -1221,11 +1353,23 @@ class DocumentGeneratorService
             if (is_array($current) && array_key_exists($part, $current)) {
                 $current = $current[$part];
             } else {
+                Log::debug('Path part not found in data', [
+                    'path' => $path,
+                    'current_part' => $part,
+                    'available_keys' => is_array($current) ? array_keys($current) : 'NOT_ARRAY'
+                ]);
                 return '';
             }
         }
 
-        return is_array($current) ? '' : $current;
+        $result = is_array($current) ? '' : $current;
+
+        Log::debug('Value retrieved from data', [
+            'path' => $path,
+            'result' => $result
+        ]);
+
+        return $result;
     }
 
     /**
@@ -1313,10 +1457,10 @@ class DocumentGeneratorService
         $tempFiles = [];
 
         try {
-            Log::info('=== GENERATE DOCUMENT WITH QR CODE ===', [
+            Log::info('=== GENERATE DOCUMENT WITH HYBRID APPROACH ===', [
                 'template_id' => $template->id,
-                'has_qr_code' => !empty($data['payment_qr_code']),
-                'has_bank_details' => !empty($data['bank_details']),
+                'has_mapping' => !empty($template->mapping),
+                'data_structure' => array_keys($data)
             ]);
 
             // Загружаем шаблон
@@ -1324,25 +1468,29 @@ class DocumentGeneratorService
             $spreadsheet = IOFactory::load($templatePath);
             $worksheet = $spreadsheet->getActiveSheet();
 
-            // ШАГ 1: Автоматически заменяем все плейсхолдеры во всем документе
+            // ШАГ 1: Всегда выполняем автоматическую замену плейсхолдеров для всех полей
+            Log::info('Starting automatic placeholder replacement for all fields');
             $this->replaceAllPlaceholders($worksheet, $data);
 
-            // ШАГ 2: Добавляем QR-код если есть
+            // ШАГ 2: Если есть маппинг для табличной части - обрабатываем его
+            $mapping = $template->mapping ?? [];
+            if (!empty($mapping)) {
+                Log::info('Processing table section with mapping', [
+                    'mapping_fields_count' => count($mapping)
+                ]);
+                $this->processTableSection($worksheet, $mapping, $data);
+            } else {
+                Log::info('Processing table items automatically');
+                $this->processTableItems($worksheet, $data);
+            }
+
+            // ШАГ 3: Добавляем QR-код если есть
             if (!empty($data['payment_qr_code'])) {
-                // Ищем ячейку с плейсхолдером для QR-кода
                 $qrCell = $this->findQrCodeCell($worksheet);
                 if ($qrCell) {
                     $this->addQrCodeToWorksheet($worksheet, $data['payment_qr_code'], $qrCell);
                     Log::info('QR-код добавлен в документ', ['cell' => $qrCell]);
-                } else {
-                    Log::warning('Не найдена ячейка для QR-кода в шаблоне');
                 }
-            }
-
-            // ШАГ 3: Обрабатываем табличную часть через маппинг (если есть)
-            $mapping = $template->mapping_settings ?? [];
-            if (!empty($mapping)) {
-                $this->processTableSection($worksheet, $mapping, $data);
             }
 
             // Сохраняем в память
@@ -1351,24 +1499,22 @@ class DocumentGeneratorService
             $writer->save('php://output');
             $content = ob_get_clean();
 
-            Log::info('=== DOCUMENT GENERATION WITH QR CODE SUCCESS ===', [
+            Log::info('=== DOCUMENT GENERATION WITH HYBRID APPROACH SUCCESS ===', [
                 'template_id' => $template->id,
-                'content_size' => strlen($content),
-                'qr_code_added' => !empty($data['payment_qr_code']) && !empty($qrCell),
+                'content_size' => strlen($content)
             ]);
 
             return $content;
 
         } catch (\Exception $e) {
-            Log::error('Error generating document with QR code', [
+            Log::error('Error generating document with hybrid approach', [
                 'template_id' => $template->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
             throw $e;
-
         } finally {
-            // Очищаем временные файлы в любом случае
+            // Очищаем временные файлы
             if (isset($worksheet)) {
                 $this->cleanupTempFiles($worksheet);
             }
@@ -1421,35 +1567,59 @@ class DocumentGeneratorService
         $mapping = $template->mapping ?? [];
 
         if (empty($mapping)) {
+            Log::warning('Template mapping is empty');
             return;
         }
 
+        Log::info('Processing template mapping', [
+            'mapping_fields_count' => count($mapping),
+            'mapping_fields' => array_keys($mapping)
+        ]);
+
+        $replacedCount = 0;
+
         foreach ($mapping as $field => $cell) {
-            // Пропускаем табличные маппинги (они обрабатываются отдельно)
-            if (strpos($field, 'items.#.') !== false) {
-                continue;
-            }
-
-            $value = $this->getValueFromData($field, $data);
-
-            if ($value !== '') {
-                // Если значение содержит плейсхолдеры, обрабатываем их рекурсивно
-                if (is_string($value) && preg_match_all('/\{\{([^}]+)\}\}/', $value, $matches)) {
-                    $processedValue = $value;
-                    foreach ($matches[1] as $nestedPlaceholder) {
-                        $nestedValue = $this->getValueFromData($nestedPlaceholder, $data);
-                        if ($nestedValue !== '') {
-                            $formattedNestedValue = $this->formatValue($nestedValue, $nestedPlaceholder);
-                            $processedValue = str_replace("{{{$nestedPlaceholder}}}", $formattedNestedValue, $processedValue);
-                        }
-                    }
-                    $worksheet->setCellValue($cell, $processedValue);
-                } else {
-                    // Простая подстановка
-                    $worksheet->setCellValue($cell, $value);
+            try {
+                // Пропускаем табличные маппинги (они обрабатываются отдельно)
+                if (strpos($field, 'items.#.') !== false) {
+                    continue;
                 }
+
+                // Получаем значение из данных
+                $value = $this->getValueFromData($field, $data);
+
+                if ($value !== '' && $value !== null) {
+                    // Форматируем значение
+                    $formattedValue = $this->formatValue($value, $field);
+
+                    // Устанавливаем значение в ячейку
+                    $worksheet->setCellValue($cell, $formattedValue);
+                    $replacedCount++;
+
+                    Log::debug('Mapping placeholder replaced', [
+                        'field' => $field,
+                        'cell' => $cell,
+                        'value' => $formattedValue
+                    ]);
+                } else {
+                    Log::debug('No value found for mapping field', [
+                        'field' => $field,
+                        'cell' => $cell
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('Error processing mapping field', [
+                    'field' => $field,
+                    'cell' => $cell,
+                    'error' => $e->getMessage()
+                ]);
             }
         }
+
+        Log::info('Template mapping processing completed', [
+            'replaced_count' => $replacedCount,
+            'total_fields' => count($mapping)
+        ]);
     }
 
     /**
@@ -1769,10 +1939,8 @@ class DocumentGeneratorService
     /**
      * Добавление QR-кода в Excel документ
      */
-   protected function addQrCodeToWorksheet($worksheet, $qrCodeData, $cellCoordinate): void
+    protected function addQrCodeToWorksheet($worksheet, $qrCodeData, $cellCoordinate): void
     {
-        $tempQrPath = null;
-
         try {
             if (empty($qrCodeData)) {
                 Log::warning('QR-код пустой, пропускаем вставку');
@@ -1787,33 +1955,20 @@ class DocumentGeneratorService
             // ВАЖНО: Принудительно очищаем ячейку от любых данных
             $worksheet->setCellValue($cellCoordinate, '');
 
-            // Создаем временный файл с QR-кодом
+            // СОЗДАЕМ ВРЕМЕННЫЙ ФАЙЛ ТОЛЬКО ДЛЯ QR-КОДА
             $tempDir = storage_path('app/temp/');
             if (!file_exists($tempDir)) {
                 mkdir($tempDir, 0755, true);
             }
 
             $tempQrPath = $tempDir . 'qr_' . uniqid() . '.png';
-
-            // Сохраняем QR-код как PNG файл
             file_put_contents($tempQrPath, $qrCodeData);
 
-            // Проверяем, что файл создан и валиден
-            if (!file_exists($tempQrPath)) {
+            // Проверяем, что файл создан
+            if (!file_exists($tempQrPath) || filesize($tempQrPath) < 100) {
                 Log::error('Не удалось создать временный файл QR-кода');
                 return;
             }
-
-            $fileSize = filesize($tempQrPath);
-            if ($fileSize < 100) {
-                Log::error('QR-код файл слишком маленький', ['file_size' => $fileSize]);
-                return;
-            }
-
-            Log::debug('Временный файл QR-кода создан', [
-                'path' => $tempQrPath,
-                'file_size' => $fileSize
-            ]);
 
             // Создаем объект рисунка для Excel
             $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
@@ -1841,17 +1996,15 @@ class DocumentGeneratorService
                 'temp_file' => $tempQrPath
             ]);
 
+            // НЕ УДАЛЯЕМ ФАЙЛ СРАЗУ - он будет удален после завершения запроса
+            // или можно добавить его в список для очистки
+
         } catch (\Exception $e) {
             Log::error('Ошибка добавления QR-кода как изображения', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'cell' => $cellCoordinate
             ]);
-
-            // Удаляем файл только в случае ошибки
-            if ($tempQrPath && file_exists($tempQrPath)) {
-                unlink($tempQrPath);
-            }
         }
     }
 

@@ -7,6 +7,7 @@ use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Upd;
 use App\Services\InvoiceGeneratorService;
+use App\Services\DocumentDataService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -51,12 +52,23 @@ class InvoiceController extends Controller
     /**
      * Просмотр счета
      */
-   public function show(Invoice $invoice)
+    public function show(Invoice $invoice)
     {
-        $invoice->load(['order', 'company', 'upd', 'items']);
+        // ГАРАНТИРОВАННАЯ ЗАГРУЗКА ВСЕХ НЕОБХОДИМЫХ ОТНОШЕНИЙ
+        $invoice->load([
+            'order.items.equipment',
+            'company', // Загружаем компанию-плательщика
+            'upd.waybill.equipment',
+            'items'
+        ]);
+
+        // Используем DocumentDataService для подготовки данных для отображения
+        $documentDataService = app(DocumentDataService::class);
+        $invoiceData = $documentDataService->prepareInvoiceDataForDisplay($invoice);
 
         return view('admin.documents.invoices.show', [
-            'document' => $invoice // для совместимости с существующим шаблоном
+            'document' => $invoice,
+            'invoice_data' => $invoiceData // Передаем подготовленные данные
         ]);
     }
 
@@ -114,13 +126,43 @@ class InvoiceController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
-            // Генерируем файл в памяти
-            $fileContent = $invoice->generateFile();
+            // ГАРАНТИРОВАННАЯ ЗАГРУЗКА ВСЕХ НЕОБХОДИМЫХ ОТНОШЕНИЙ
+            $invoice->load([
+                'order.items.equipment',
+                'company',
+                'upd.waybill.equipment',
+                'items'
+            ]);
 
-            // Создаем безопасное имя файла (заменяем недопустимые символы)
+            // Получаем шаблон
+            $scenario = $invoice->upd_id
+                ? \App\Models\DocumentTemplate::INVOICE_SCENARIO_POSTPAYMENT_UPD
+                : \App\Models\DocumentTemplate::INVOICE_SCENARIO_ADVANCE_ORDER;
+
+            $template = \App\Models\DocumentTemplate::active()
+                ->byType(\App\Models\DocumentTemplate::TYPE_INVOICE)
+                ->byScenario($scenario)
+                ->first();
+
+            if (!$template) {
+                throw new \Exception("Шаблон для сценария {$scenario} не найден");
+            }
+
+            // Подготавливаем данные
+            $invoiceData = $this->invoiceGeneratorService->prepareInvoiceDataForDownload($invoice);
+
+            // Генерируем файл В ПАМЯТИ
+            $documentGeneratorService = app(\App\Services\DocumentGeneratorService::class);
+            $fileContent = $documentGeneratorService->generateDocumentInMemory($template, $invoiceData);
+
+            if (empty($fileContent)) {
+                throw new \Exception('Не удалось сгенерировать содержимое файла');
+            }
+
+            // Создаем безопасное имя файла
             $filename = $this->generateSafeFilename($invoice->number);
 
-            Log::info('Счет успешно сгенерирован для скачивания', [
+            Log::info('Счет успешно сгенерирован в памяти для скачивания', [
                 'invoice_id' => $invoice->id,
                 'file_size' => strlen($fileContent),
                 'filename' => $filename

@@ -20,7 +20,11 @@ class BankStatementProcessingService
     public function __construct(BalanceService $balanceService)
     {
         $this->balanceService = $balanceService;
-        $this->platformInn = config('platform.inn', '9723125209');
+        $this->platformInn = config('platform.inn');
+
+        if (empty($this->platformInn)) {
+            throw new \Exception('ИНН платформы не настроен в config/platform.php');
+        }
     }
 
     public function processTransaction(array $transactionData, int $bankStatementId): void
@@ -227,15 +231,14 @@ class BankStatementProcessingService
         $isReturn = preg_match('/возврат|переплата|излишне|вернуть|возмещение/', $purpose);
 
         if ($isReturn) {
-            // Если это возврат, то определяем направление относительно платформы
             if ($payerInn === $this->platformInn) {
-                return 'refund_outgoing'; // Платформа возвращает деньги
+                return 'refund_outgoing';
             } elseif ($payeeInn === $this->platformInn) {
-                return 'refund_incoming'; // Платформе возвращают деньги
+                return 'refund_incoming';
             }
         }
 
-        // Стандартная логика
+        // ОСНОВНАЯ ЛОГИКА: сравниваем с ИНН платформы
         if ($payerInn === $this->platformInn) {
             return 'outgoing';
         }
@@ -243,6 +246,29 @@ class BankStatementProcessingService
         if ($payeeInn === $this->platformInn) {
             return 'incoming';
         }
+
+        // ДОПОЛНИТЕЛЬНАЯ ЛОГИКА: если не нашли по ИНН, ищем по номеру счета
+        $payerAccount = $transactionData['ПлательщикСчет'] ?? '';
+        $payeeAccount = $transactionData['ПолучательСчет'] ?? '';
+
+        $platformAccount = config('platform.bank_account'); // 40702810820000253434
+
+        if ($payerAccount === $platformAccount) {
+            return 'outgoing';
+        }
+
+        if ($payeeAccount === $platformAccount) {
+            return 'incoming';
+        }
+
+        Log::warning('Не удалось определить тип транзакции', [
+            'payer_inn' => $payerInn,
+            'payee_inn' => $payeeInn,
+            'platform_inn' => $this->platformInn,
+            'payer_account' => $payerAccount,
+            'payee_account' => $payeeAccount,
+            'platform_account' => $platformAccount
+        ]);
 
         return 'unknown';
     }
