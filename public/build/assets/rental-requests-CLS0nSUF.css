@@ -1,0 +1,23 @@
+
+.rental-request-card[data-v-c33d2922] {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-left: 4px solid #0d6efd;
+}
+.rental-request-card[data-v-c33d2922]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+.request-meta[data-v-c33d2922] {
+    border-top: 1px solid #eee;
+    padding-top: 10px;
+}
+.page-item.active .page-link[data-v-c33d2922] {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+.page-link[data-v-c33d2922] {
+    color: #0d6efd;
+}
+.page-link[data-v-c33d2922]:hover {
+    color: #0a58ca;
+}

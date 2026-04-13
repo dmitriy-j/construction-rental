@@ -3,7 +3,7 @@
 /vendor/
 
 # Build directories
-/public/build/           # ← ВАЖНО! Собранные Vite ассеты
+        # ← ВАЖНО! Собранные Vite ассеты
 /public/hot
 
 # Environment files
