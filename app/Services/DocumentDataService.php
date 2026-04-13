@@ -32,13 +32,11 @@ class DocumentDataService
         };
     }
 
-    protected function prepareUpdData(Upd $upd)
+  protected function prepareUpdData(Upd $upd)
     {
-        // Убедимся, что отношения загружены (УБИРАЕМ order.equipment)
+        // Убедимся, что отношения загружены
         if (!$upd->relationLoaded('order')) {
-            $upd->load([
-                'order.items.equipment', // ТОЛЬКО через позиции заказа
-            ]);
+            $upd->load(['order.items.equipment']);
         }
         if (!$upd->relationLoaded('waybill')) {
             $upd->load('waybill.equipment');
@@ -53,31 +51,28 @@ class DocumentDataService
         $platformCompany = Company::where('is_platform', true)->first();
         $lesseeCompany = $upd->lesseeCompany;
 
-        // ПРОВЕРЯЕМ - генерируем только ИСХОДЯЩИЕ УПД (Платформа → Арендатор)
         $isOutgoingUpd = $upd->lessor_company_id === $platformCompany->id;
-
         if (!$isOutgoingUpd) {
-            throw new \Exception('Генерация УПД возможна только для исходящих документов (Платформа → Арендатор). Входящие УПД должны загружаться готовыми файлами.');
+            throw new \Exception('Генерация УПД возможна только для исходящих документов (Платформа → Арендатор).');
         }
 
-        // Получаем связанные данные для формирования полных названий
         $waybill = $upd->waybill;
         $order = $upd->order;
         $completionAct = $upd->completionAct;
 
-        // Формируем строку периода
         $periodString = '';
         if ($upd->service_period_start && $upd->service_period_end) {
             $periodString = $upd->service_period_start->format('d.m.Y') . ' по ' . $upd->service_period_end->format('d.m.Y');
         }
 
-        // Получаем данные об оборудовании и технике
         $equipmentData = $this->getEquipmentDataForUpd($upd, $waybill, $order);
+        // Добавим ID оборудования в $equipmentData, если его там ещё нет
+        if (!isset($equipmentData['id']) && $waybill && $waybill->equipment) {
+            $equipmentData['id'] = $waybill->equipment->id;
+        }
 
-        // Получаем данные договора
         $contractData = $this->getContractData($upd);
 
-        // Формируем полное описание услуги для использования в шаблоне
         $serviceDescription = "Аренда ";
         if (!empty($equipmentData['name'])) {
             $serviceDescription .= $equipmentData['name'];
@@ -87,11 +82,9 @@ class DocumentDataService
         } else {
             $serviceDescription .= "техники";
         }
-
         if (!empty($equipmentData['vehicle_number'])) {
             $serviceDescription .= " (гос. номер: " . $equipmentData['vehicle_number'] . ")";
         }
-
         $serviceDescription .= " за период " . $upd->service_period_start->format('d.m.Y') . " - " . $upd->service_period_end->format('d.m.Y');
 
         Log::info('Подготовка данных УПД', [
@@ -102,7 +95,6 @@ class DocumentDataService
         ]);
 
         return [
-            // Основные данные УПД
             'upd' => [
                 'number' => $upd->number,
                 'date' => $upd->issue_date ? $upd->issue_date->format('d.m.Y') : '',
@@ -115,8 +107,6 @@ class DocumentDataService
                 'period' => $periodString,
                 'service_description' => $serviceDescription,
             ],
-
-            // ДЛЯ ШАБЛОНА - продавец и покупатель
             'seller' => [
                 'name' => $platformCompany->legal_name,
                 'legal_name' => $platformCompany->legal_name,
@@ -129,7 +119,6 @@ class DocumentDataService
                 'account_number' => $platformCompany->bank_account,
                 'correspondent_account' => $platformCompany->correspondent_account,
             ],
-
             'buyer' => [
                 'name' => $lesseeCompany->legal_name,
                 'legal_name' => $lesseeCompany->legal_name,
@@ -142,24 +131,32 @@ class DocumentDataService
                 'account_number' => $lesseeCompany->bank_account,
                 'correspondent_account' => $lesseeCompany->correspondent_account,
             ],
-
             'equipment' => $equipmentData,
             'period_full' => $periodString,
             'service_description_full' => $serviceDescription,
 
             'items' => $upd->items->map(function ($item, $index) use ($periodString, $equipmentData, $upd, $serviceDescription) {
-                // ФОРМИРУЕМ ПОЛНОЕ НАЗВАНИЕ БЕЗ ДУБЛИРОВАНИЯ ПЕРИОДА
                 $fullItemName = $this->generateFullItemName($item, $periodString, $equipmentData, $upd, $index);
 
-                Log::debug('Формирование позиции УПД', [
+                // === ИСПРАВЛЕНИЕ: берём ID из equipmentData, если нет в самом UpdItem ===
+                $codeValue = $item->equipment_id
+                    ?? $item->orderItem?->equipment_id
+                    ?? $equipmentData['id']
+                    ?? ($index + 1);
+
+                Log::debug('Формирование позиции УПД [ДЕТАЛЬНО]', [
                     'item_id' => $item->id,
-                    'original_name' => $item->name,
+                    'item_equipment_id' => $item->equipment_id,
+                    'order_item_equipment_id' => $item->orderItem?->equipment_id,
+                    'equipment_data_id' => $equipmentData['id'] ?? null,
+                    'computed_code' => $codeValue,
+                    'original_item_code' => $item->code,
+                    'vehicle_number' => $equipmentData['vehicle_number'] ?? 'не найден',
                     'full_name' => $fullItemName,
-                    'vehicle_number' => $equipmentData['vehicle_number'] ?? 'не найден'
                 ]);
 
                 return [
-                    'code' => $item->code ?? ($index + 1),
+                    'code' => $codeValue,
                     'name' => $fullItemName,
                     'name_short' => $item->name,
                     'unit' => $item->unit,

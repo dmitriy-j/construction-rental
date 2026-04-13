@@ -17,6 +17,7 @@ class EventServiceProvider extends ServiceProvider
     protected $listen = [
         Registered::class => [
             SendEmailVerificationNotification::class,
+            \App\Listeners\SendNewUserNotificationToAdmin::class, // ← добавляем эту строку
         ],
         DeliveryNoteSigned::class => [
             UpdateEquipmentLocation::class,
@@ -27,12 +28,10 @@ class EventServiceProvider extends ServiceProvider
         OperatorMissing::class => [
             HandleOperatorMissing::class,
         ],
-
         OrderConfirmed::class => [
             CreateInvoiceOnOrderConfirmation::class,
         ],
-
-         NewProposalReceived::class => [
+        NewProposalReceived::class => [
             SendProposalNotification::class,
         ],
     ];

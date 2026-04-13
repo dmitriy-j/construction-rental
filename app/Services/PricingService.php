@@ -182,9 +182,11 @@ class PricingService
      */
     private function calculateLessorMargin(float $baseCost, EquipmentRentalTerm $term): array
     {
-        // Примерная себестоимость (можно добавить поле в модель Equipment)
-        $costPrice = $baseCost * 0.6; // Предполагаем 40% маржу
+        // Конфигурируемые значения
+        $costMultiplier = config('pricing.cost_multiplier', 0.6);
+        $minProfitMargin = config('pricing.min_profit_margin', 20.0);
 
+        $costPrice = $baseCost * $costMultiplier; // Предполагаем 40% маржу
         $margin = $baseCost - $costPrice;
         $marginPercentage = ($margin / $baseCost) * 100;
 
@@ -192,7 +194,7 @@ class PricingService
             'margin_amount' => $margin,
             'margin_percentage' => $marginPercentage,
             'cost_price' => $costPrice,
-            'is_profitable' => $marginPercentage > 20, // Минимальная рентабельность 20%
+            'is_profitable' => $marginPercentage > $minProfitMargin,
         ];
     }
 

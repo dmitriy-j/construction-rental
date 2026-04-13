@@ -124,6 +124,7 @@ class InvoiceController extends Controller
                 'invoice_id' => $invoice->id,
                 'invoice_number' => $invoice->number,
                 'user_id' => auth()->id(),
+                'has_upd' => !empty($invoice->upd_id)
             ]);
 
             // ГАРАНТИРОВАННАЯ ЗАГРУЗКА ВСЕХ НЕОБХОДИМЫХ ОТНОШЕНИЙ
@@ -134,19 +135,44 @@ class InvoiceController extends Controller
                 'items'
             ]);
 
-            // Получаем шаблон
+            // Получаем шаблон - ИСПРАВЛЕНО: используем правильные сценарии
             $scenario = $invoice->upd_id
-                ? \App\Models\DocumentTemplate::INVOICE_SCENARIO_POSTPAYMENT_UPD
-                : \App\Models\DocumentTemplate::INVOICE_SCENARIO_ADVANCE_ORDER;
+                ? 'invoice_upd'  // Используем значение из базы данных
+                : 'invoice_advance';  // Для счетов без УПД
+
+            Log::info('Поиск шаблона счета', [
+                'invoice_id' => $invoice->id,
+                'scenario' => $scenario,
+                'type' => \App\Models\DocumentTemplate::TYPE_INVOICE
+            ]);
 
             $template = \App\Models\DocumentTemplate::active()
                 ->byType(\App\Models\DocumentTemplate::TYPE_INVOICE)
                 ->byScenario($scenario)
                 ->first();
 
+            // Если не нашли по сценарию, пробуем найти любой активный шаблон счета
             if (!$template) {
-                throw new \Exception("Шаблон для сценария {$scenario} не найден");
+                Log::warning('Шаблон по сценарию не найден, ищем любой активный шаблон счета', [
+                    'scenario' => $scenario
+                ]);
+
+                $template = \App\Models\DocumentTemplate::active()
+                    ->byType(\App\Models\DocumentTemplate::TYPE_INVOICE)
+                    ->first();
             }
+
+            if (!$template) {
+                throw new \Exception("Активный шаблон счета не найден в системе");
+            }
+
+            Log::info('Найден шаблон для генерации счета', [
+                'invoice_id' => $invoice->id,
+                'template_id' => $template->id,
+                'template_name' => $template->name,
+                'template_scenario' => $template->scenario,
+                'has_mapping' => !empty($template->mapping)
+            ]);
 
             // Подготавливаем данные
             $invoiceData = $this->invoiceGeneratorService->prepareInvoiceDataForDownload($invoice);

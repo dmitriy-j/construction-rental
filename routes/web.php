@@ -140,4 +140,7 @@ Route::get('/admin/upds/{upd}/template-diagnostics', [UpdController::class, 'tem
     Route::get('/admin/upds/{upd}/exact-placeholders', [UpdController::class, 'exactPlaceholderDiagnostics'])
     ->name('admin.upds.exact-placeholders');
 
+    Route::get('/cooperation', [PageController::class, 'cooperation'])->name('cooperation.form');
+    Route::post('/cooperation', [PageController::class, 'submitCooperation'])->name('cooperation.submit');
+
 require __DIR__.'/auth.php';

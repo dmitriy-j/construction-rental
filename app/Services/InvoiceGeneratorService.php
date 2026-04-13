@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\Upd;
 use App\Models\Company;
 use App\Models\Contract;
+use App\Helpers\TaxHelper;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -152,6 +153,9 @@ class InvoiceGeneratorService
                 'is_advance' => $scenario === DocumentTemplate::INVOICE_SCENARIO_ADVANCE_ORDER,
                 'is_postpayment' => $scenario === DocumentTemplate::INVOICE_SCENARIO_POSTPAYMENT_UPD,
                 'is_partial' => $scenario === DocumentTemplate::INVOICE_SCENARIO_PARTIAL_PAYMENT,
+                // Добавляем поле для общей суммы с НДС
+                'total_amount' => $upd ? ($upd->amount + $upd->tax_amount) : $order->total_amount,
+                'total_amount_in_words' => '', // Будет заполнено ниже
             ],
             'order' => [
                 'id' => $order->id,
@@ -196,9 +200,19 @@ class InvoiceGeneratorService
             ];
         }
 
+        // ВАЖНО: Исправляем расчет общей суммы
+        // Если есть УПД: общая сумма = amount (без НДС) + tax_amount (НДС)
+        // Если нет УПД: берем total_amount из заказа
+        $totalAmountWithVat = $upd
+            ? ($upd->amount + $upd->tax_amount)  // Сумма без НДС + НДС
+            : $order->total_amount;              // Уже должна быть с НДС
+
         // Добавляем текстовое представление суммы
-        $totalAmount = $upd ? $upd->total_amount : $order->total_amount;
-        $baseData['amount_in_words'] = $this->amountToWords($totalAmount);
+        $baseData['amount_in_words'] = $this->amountToWords($totalAmountWithVat);
+        $baseData['invoice']['total_amount_in_words'] = $this->amountToWords($totalAmountWithVat);
+
+        // Также добавляем другие варианты для обратной совместимости
+        $baseData['total_amount_in_words'] = $this->amountToWords($totalAmountWithVat);
 
         return array_merge_recursive($baseData, $templateData);
     }
@@ -416,7 +430,8 @@ class InvoiceGeneratorService
     protected function createGeneralInvoiceItem(Invoice $invoice, array $invoiceData): void
     {
         $vatRate = $this->getVatRate($invoice->company);
-        $vatAmount = $invoice->amount * ($vatRate / 100);
+        $amountWithoutVat = TaxHelper::calculateAmountWithoutVat($invoice->amount, $vatRate);
+        $vatAmount = TaxHelper::calculateVatAmount($invoice->amount, $vatRate);
 
         $description = $this->generateGeneralDescription($invoiceData);
 
@@ -426,8 +441,8 @@ class InvoiceGeneratorService
             'description' => $description,
             'quantity' => 1,
             'unit' => 'усл.',
-            'price' => $invoice->amount,
-            'amount' => $invoice->amount,
+            'price' => $amountWithoutVat, // Цена без НДС
+            'amount' => $amountWithoutVat, // Сумма без НДС
             'vat_rate' => $vatRate,
             'vat_amount' => $vatAmount,
         ]);
@@ -573,7 +588,10 @@ class InvoiceGeneratorService
     /**
      * Добавляет данные для automapping в плоском формате
      */
-   protected function addAutomappingData(array &$templateData, array $invoiceItems): void
+       /**
+     * Добавляет данные для automapping в плоском формате
+     */
+    protected function addAutomappingData(array &$templateData, array $invoiceItems): void
     {
         // Добавляем данные для автоматической подстановки в ДВУХ ФОРМАТАХ
         foreach ($invoiceItems as $index => $item) {
@@ -581,31 +599,28 @@ class InvoiceGeneratorService
             $templateData["invoice_items.{$index}.name"] = $item['name'];
             $templateData["invoice_items.{$index}.quantity"] = $item['quantity'];
             $templateData["invoice_items.{$index}.unit"] = $item['unit'];
-            $templateData["invoice_items.{$index}.price"] = $item['price'];
-            $templateData["invoice_items.{$index}.amount"] = $item['amount'];
+            $templateData["invoice_items.{$index}.price"] = $item['price_with_vat'] ?? $item['price'] ?? 0;
+            $templateData["invoice_items.{$index}.amount"] = $item['amount_with_vat'] ?? $item['amount'] ?? 0;
             $templateData["invoice_items.{$index}.vat_rate"] = $item['vat_rate'];
             $templateData["invoice_items.{$index}.vat_amount"] = $item['vat_amount'];
             $templateData["invoice_items.{$index}.total_with_vat"] = $item['total_with_vat'];
             $templateData["invoice_items.{$index}.total_without_vat"] = $item['total_without_vat'];
-
-            // ФОРМАТ 2: invoice_items[0].field (для обратной совместимости) - ДОБАВЬТЕ ЭТО!
+            // ФОРМАТ 2: invoice_items[0].field (для обратной совместимости)
             $templateData["invoice_items[{$index}].name"] = $item['name'];
             $templateData["invoice_items[{$index}].quantity"] = $item['quantity'];
             $templateData["invoice_items[{$index}].unit"] = $item['unit'];
-            $templateData["invoice_items[{$index}].price"] = $item['price'];
-            $templateData["invoice_items[{$index}].amount"] = $item['amount'];
+            $templateData["invoice_items[{$index}].price"] = $item['price_with_vat'] ?? $item['price'] ?? 0;
+            $templateData["invoice_items[{$index}].amount"] = $item['amount_with_vat'] ?? $item['amount'] ?? 0;
             $templateData["invoice_items[{$index}].vat_rate"] = $item['vat_rate'];
             $templateData["invoice_items[{$index}].vat_amount"] = $item['vat_amount'];
             $templateData["invoice_items[{$index}].total_with_vat"] = $item['total_with_vat'];
             $templateData["invoice_items[{$index}].total_without_vat"] = $item['total_without_vat'];
         }
-
         // Также добавляем общие данные
         $templateData['invoice_total_amount'] = $templateData['invoice']['total_amount'];
         $templateData['invoice_number'] = $templateData['invoice']['number'];
         $templateData['invoice_date'] = $templateData['invoice']['date'];
         $templateData['invoice_due_date'] = $templateData['invoice']['due_date'];
-
         // Данные поставщика
         $templateData['supplier_name'] = $templateData['supplier']['name'];
         $templateData['supplier_inn'] = $templateData['supplier']['inn'];
@@ -614,7 +629,6 @@ class InvoiceGeneratorService
         $templateData['supplier_bank_name'] = $templateData['supplier']['bank_name'];
         $templateData['supplier_bik'] = $templateData['supplier']['bik'];
         $templateData['supplier_account_number'] = $templateData['supplier']['account_number'];
-
         // Данные плательщика
         $templateData['payer_name'] = $templateData['payer']['name'];
         $templateData['payer_inn'] = $templateData['payer']['inn'];
@@ -739,58 +753,57 @@ class InvoiceGeneratorService
     /**
      * Подготовка позиций счета с ценами С НДС - ПРОСТОЙ И ТОЧНЫЙ ВАРИАНТ
      */
+        /**
+     * Подготовка позиций счета с ценами С НДС - ПРОСТОЙ И ТОЧНЫЙ ВАРИАНТ
+     */
     protected function prepareInvoiceItemsWithVat(Invoice $invoice, array $templateData): array
     {
         return $invoice->items->map(function ($item, $index) use ($invoice, $templateData) {
             // Расчет сумм
             $quantity = $item->quantity;
+            // Теперь $item->price и $item->amount уже содержат суммы без НДС
             $priceWithoutVat = $item->price;
-
-            // Если счет привязан к УПД, используем точные суммы из УПД
-            if ($invoice->upd && $invoice->upd->items->count() > 0) {
-                $updItem = $invoice->upd->items[$index] ?? $invoice->upd->items->first();
-                $amountWithoutVat = $updItem->amount ?? ($quantity * $priceWithoutVat);
-                $vatAmount = $updItem->vat_amount ?? ($amountWithoutVat * ($item->vat_rate / 100));
-                $amountWithVat = $updItem->amount + $updItem->vat_amount ?? ($amountWithoutVat + $vatAmount);
-                $priceWithVat = $amountWithVat / $quantity;
-            } else {
-                // Расчет для счетов без УПД
-                $amountWithoutVat = $quantity * $priceWithoutVat;
-                $vatAmount = $amountWithoutVat * ($item->vat_rate / 100);
-                $amountWithVat = $amountWithoutVat + $vatAmount;
-                $priceWithVat = $amountWithVat / $quantity;
-            }
-
+            $amountWithoutVat = $item->amount;
+            // Расчет НДС
+            $vatAmount = $item->vat_amount ?? TaxHelper::calculateVatAmount(
+                $amountWithoutVat * (1 + $item->vat_rate / 100),
+                $item->vat_rate
+            );
+            $amountWithVat = $amountWithoutVat + $vatAmount;
+            $priceWithVat = $amountWithVat / max(1, $quantity);
             // Округление до 2 знаков
             $priceWithVat = round($priceWithVat, 2);
             $amountWithVat = round($amountWithVat, 2);
             $vatAmount = round($vatAmount, 2);
             $amountWithoutVat = round($amountWithoutVat, 2);
-
             // ГАРАНТИРОВАННАЯ ПОДСТАНОВКА ГОС. НОМЕРА
             $vehicleNumber = $templateData['equipment']['vehicle_number'] ?? '';
             $baseName = $item->name;
-
             $fullItemName = $this->ensureVehicleNumberInName($baseName, $vehicleNumber);
-
             Log::debug('Подготовка позиции для Excel', [
                 'item_id' => $item->id,
                 'original_name' => $baseName,
                 'final_name' => $fullItemName,
                 'vehicle_number' => $vehicleNumber,
                 'quantity' => $quantity,
-                'price' => $priceWithVat,
-                'amount' => $amountWithVat
+                'price_without_vat' => $priceWithoutVat,
+                'price_with_vat' => $priceWithVat,
+                'amount_without_vat' => $amountWithoutVat,
+                'amount_with_vat' => $amountWithVat,
+                'vat_amount' => $vatAmount
             ]);
-
             return [
                 'name' => $fullItemName,
                 'name_short' => $item->name,
                 'description' => $item->description,
                 'quantity' => $quantity,
                 'unit' => $item->unit,
-                'price' => $priceWithVat,
-                'amount' => $amountWithVat,
+                'price' => $priceWithVat, // Для обратной совместимости
+                'price_without_vat' => $priceWithoutVat,
+                'price_with_vat' => $priceWithVat,
+                'amount' => $amountWithVat, // Для обратной совместимости
+                'amount_without_vat' => $amountWithoutVat,
+                'amount_with_vat' => $amountWithVat,
                 'vat_rate' => $item->vat_rate,
                 'vat_amount' => $vatAmount,
                 'total_with_vat' => $amountWithVat,
@@ -1196,10 +1209,7 @@ class InvoiceGeneratorService
      */
     protected function getVatRate(Company $company): float
     {
-        return match($company->tax_system ?? 'osn') {
-            'usn', 'usn_income', 'patent', 'envd' => 0.0,
-            default => 22.0,
-        };
+        return TaxHelper::getCompanyVatRate($company);
     }
 
     /**
@@ -1435,8 +1445,11 @@ class InvoiceGeneratorService
             $amount = 0.0;
         }
 
-        $amount = round($amount, 2);
-        $num = number_format($amount, 2, '.', '');
+        // Используем переданную сумму напрямую (она уже должна быть с НДС)
+        $amountForWords = $amount;
+
+        $amountForWords = round($amountForWords, 2);
+        $num = number_format($amountForWords, 2, '.', '');
         $parts = explode('.', $num);
         $rub = $parts[0] ?? '0';
         $kop = $parts[1] ?? '00';

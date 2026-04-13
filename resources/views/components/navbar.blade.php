@@ -1,18 +1,12 @@
 {{-- resources/views/components/navbar.blade.php --}}
 <nav class="navbar navbar-expand-lg navbar-dark fixed-top main-navbar">
     <div class="container-fluid">
-        <!-- Логотип -->
-       <a class="navbar-brand" href="{{ url('/') }}">
-            <div class="d-flex align-items-center">
-                <div class="navbar-logo-icon me-2">
-                    <i class="bi bi-building-fill"></i>
-                </div>
-                <div class="navbar-logo-text">
-                    <div class="logo-main d-flex align-items-center">
-                        <span class="logo-acronym">ФАП</span>
-                    </div>
-                    <div class="logo-subtitle">Федеральная Арендная Платформа</div>
-                </div>
+       <!-- Логотип -->
+        <a class="navbar-brand" href="{{ url('/') }}">
+            <div class="navbar-logo-container">
+                <img src="{{ asset('images/logo/fap2.svg') }}"
+                    alt="ФАП - Федеральная Арендная Платформа"
+                    class="navbar-logo-img">
             </div>
         </a>
 
@@ -292,6 +286,7 @@
 </nav>
 
 <style>
+
 /* ТОЛЬКО КРИТИЧЕСКИЕ СТИЛИ ДЛЯ НАВБАРА */
 .main-navbar {
     background: linear-gradient(135deg, #0b5ed7, #0d6efd) !important;
@@ -331,52 +326,43 @@
     margin-top: 0.5rem !important;
 }
 
-/* УЛУЧШЕННЫЙ ЛОГОТИП С ПИРАМИДОЙ */
-.navbar-logo-icon {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 10px;
-    padding: 0.6rem;
+/* НОВЫЙ УВЕЛИЧЕННЫЙ ЛОГОТИП SVG */
+.navbar-logo-container {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s ease;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.navbar-logo-icon i {
-    font-size: 1.4rem;
-    color: white;
-    transform: rotate(0deg);
+    height: 60px; /* Увеличенная высота */
+    padding: 0;
     transition: all 0.3s ease;
 }
 
-.navbar-brand:hover .navbar-logo-icon {
-    background: rgba(255, 255, 255, 0.25);
-    transform: translateY(-2px) rotate(-5deg);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+.navbar-logo-img {
+    height: 100%;
+    width: auto;
+    min-width: 180px; /* Минимальная ширина */
+    transition: all 0.3s ease;
+    object-fit: contain;
+    /* Добавляем тень для лучшей видимости */
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
-.navbar-brand:hover .navbar-logo-icon i {
-    transform: rotate(10deg);
+.navbar-brand:hover .navbar-logo-container {
+    transform: translateY(-2px);
 }
 
-.logo-main .logo-acronym {
-    font-size: 1.6rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #ffffff 0%, #e3f2fd 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    letter-spacing: 0.5px;
+.navbar-brand:hover .navbar-logo-img {
+    transform: scale(1.03);
 }
 
-.logo-subtitle {
-    font-size: 0.7rem;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.9);
-    letter-spacing: 0.2px;
-    line-height: 1.2;
+/* Десктопные устройства (большие экраны) */
+@media (min-width: 1200px) {
+    .navbar-logo-container {
+        height: 65px; /* Еще больше на больших экранах */
+    }
+
+    .navbar-logo-img {
+        min-width: 200px;
+    }
 }
 
 /* УЛУЧШЕННЫЕ РАЗДЕЛЫ МЕНЮ - КОМПАКТНЫЕ */
@@ -525,6 +511,16 @@
 }
 
 /* МОБИЛЬНЫЕ УСТРОЙСТВА */
+@media (max-width: 1199.98px) and (min-width: 992px) {
+    .navbar-logo-container {
+        height: 55px;
+    }
+
+    .navbar-logo-img {
+        min-width: 160px;
+    }
+}
+
 @media (max-width: 991.98px) {
     .main-navbar {
         padding: 0.5rem;
@@ -533,6 +529,15 @@
 
     .nav-controls-desktop {
         display: none !important;
+    }
+
+    .navbar-logo-container {
+        height: 50px; /* Сохраняем хороший размер на мобильных */
+    }
+
+    .navbar-logo-img {
+        min-width: 140px;
+        max-width: 180px; /* Ограничиваем ширину на мобильных */
     }
 
     /* Скрываем десктопные элементы на мобильных */
@@ -675,29 +680,21 @@
             }
         }
     }
-
-    /* Адаптация логотипа для мобильных */
-    .navbar-logo-icon {
-        padding: 0.4rem;
-    }
-
-    .navbar-logo-icon i {
-        font-size: 1.2rem;
-    }
-
-    .logo-main .logo-acronym {
-        font-size: 1.3rem;
-    }
-
-    .logo-subtitle {
-        font-size: 0.6rem;
-    }
 }
 
 /* Маленькие мобильные */
 @media (max-width: 576px) {
     .main-navbar {
         min-height: 60px;
+    }
+
+    .navbar-logo-container {
+        height: 45px; /* Чуть меньше на очень маленьких экранах */
+    }
+
+    .navbar-logo-img {
+        min-width: 120px;
+        max-width: 160px;
     }
 
     .mobile-auth-controls,

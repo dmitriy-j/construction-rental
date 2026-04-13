@@ -714,3 +714,109 @@ body {
         }
     }
 }
+// =====================
+// НОВЫЕ СТИЛИ ДЛЯ SVG-ЛОГОТИПА - БОЛЬШОЙ РАЗМЕР
+// =====================
+
+.navbar-brand {
+    .navbar-logo-container {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 65px !important; // БОЛЬШАЯ высота
+        padding: 0 !important;
+        transition: all 0.3s ease !important;
+    }
+
+    .navbar-logo-img {
+        height: 100% !important;
+        width: auto !important;
+        min-width: 220px !important; // БОЛЬШАЯ минимальная ширина
+        transition: all 0.3s ease !important;
+        object-fit: contain !important;
+        // Эффекты для лучшей видимости
+        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3))
+                brightness(1.1) !important;
+    }
+
+    &:hover {
+        .navbar-logo-container {
+            transform: translateY(-2px) !important;
+        }
+
+        .navbar-logo-img {
+            transform: scale(1.03) !important;
+            filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4))
+                    brightness(1.2) !important;
+        }
+    }
+}
+
+// Десктопные устройства (большие экраны)
+@media (min-width: 1400px) {
+    .navbar-brand {
+        .navbar-logo-container {
+            height: 70px !important;
+        }
+
+        .navbar-logo-img {
+            min-width: 250px !important;
+        }
+    }
+}
+
+// Стандартные десктопы
+@media (min-width: 1200px) and (max-width: 1399.98px) {
+    .navbar-brand {
+        .navbar-logo-container {
+            height: 65px !important;
+        }
+
+        .navbar-logo-img {
+            min-width: 220px !important;
+        }
+    }
+}
+
+// Планшеты и маленькие десктопы
+@media (min-width: 992px) and (max-width: 1199.98px) {
+    .navbar-brand {
+        .navbar-logo-container {
+            height: 60px !important;
+        }
+
+        .navbar-logo-img {
+            min-width: 190px !important;
+        }
+    }
+}
+
+// Мобильные устройства
+@media (max-width: 991.98px) {
+    .navbar-brand {
+        .navbar-logo-container {
+            height: 55px !important;
+        }
+
+        .navbar-logo-img {
+            min-width: 160px !important;
+            max-width: 200px !important;
+        }
+    }
+}
+
+// Маленькие мобильные
+@media (max-width: 576px) {
+    .navbar-brand {
+        .navbar-logo-container {
+            height: 50px !important;
+        }
+
+        .navbar-logo-img {
+            min-width: 140px !important;
+            max-width: 180px !important;
+        }
+    }
+}
+
+

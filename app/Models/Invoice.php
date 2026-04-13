@@ -112,14 +112,13 @@ class Invoice extends Model
             // Получаем данные для счета
             $invoiceData = $dataService->prepareInvoiceDataForDownload($this);
 
-            // Находим шаблон по сценарию
-            $scenario = $this->upd_id ?
-                \App\Models\DocumentTemplate::INVOICE_SCENARIO_POSTPAYMENT_UPD :
-                \App\Models\DocumentTemplate::INVOICE_SCENARIO_ADVANCE_ORDER;
+            // ИСПРАВЛЕНИЕ: Используем существующий в БД сценарий
+            $scenario = \App\Models\DocumentTemplate::SCENARIO_INVOICE_UPD; // 'invoice_upd' - ЕСТЬ в БД
 
             Log::info('Поиск шаблона для генерации счета', [
                 'invoice_id' => $this->id,
                 'scenario' => $scenario,
+                'has_upd' => !is_null($this->upd_id),
                 'data_keys' => array_keys($invoiceData)
             ]);
 
@@ -129,6 +128,11 @@ class Invoice extends Model
                 ->first();
 
             if (!$template) {
+                Log::warning('Шаблон по сценарию не найден, ищем любой активный шаблон счета', [
+                    'invoice_id' => $this->id,
+                    'scenario' => $scenario
+                ]);
+
                 // Если не нашли по сценарию, ищем любой активный шаблон счета
                 $template = \App\Models\DocumentTemplate::active()
                     ->byType(\App\Models\DocumentTemplate::TYPE_INVOICE)
@@ -143,6 +147,7 @@ class Invoice extends Model
                 'invoice_id' => $this->id,
                 'template_id' => $template->id,
                 'template_name' => $template->name,
+                'template_scenario' => $template->scenario,
                 'has_mapping' => !empty($template->mapping)
             ]);
 
@@ -157,6 +162,28 @@ class Invoice extends Model
             ]);
             throw $e;
         }
+    }
+
+    // Добавьте в класс
+    public function getVatRateAttribute(): float
+    {
+        return \App\Helpers\TaxHelper::getCompanyVatRate($this->company);
+    }
+
+    public function getAmountWithoutVatAttribute(): float
+    {
+        return \App\Helpers\TaxHelper::calculateAmountWithoutVat(
+            $this->amount,
+            $this->vat_rate
+        );
+    }
+
+    public function getVatAmountAttribute(): float
+    {
+        return \App\Helpers\TaxHelper::calculateVatAmount(
+            $this->amount,
+            $this->vat_rate
+        );
     }
 
     /**

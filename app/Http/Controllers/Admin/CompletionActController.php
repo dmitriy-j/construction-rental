@@ -8,6 +8,7 @@ use App\Models\CompletionAct;
 use App\Models\Upd;
 use App\Models\UpdItem;
 use App\Services\UpdProcessingService;
+use App\Helpers\TaxHelper; // Добавляем импорт TaxHelper
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -213,15 +214,24 @@ class CompletionActController extends Controller
 
             \Log::debug("Сформировано наименование услуги: {$serviceName}");
 
-            // Определяем ставку НДС платформы
-            $vatRate = ($platformCompany->tax_system === 'vat') ? 20.0 : 0.0;
+            // Определяем ставку НДС платформы через TaxHelper
+            $vatRate = ($platformCompany->tax_system === 'vat')
+                ? TaxHelper::getPlatformVatRate()
+                : 0.0;
 
-            // ПРАВИЛЬНЫЙ РАСЧЕТ НДС
-            $priceWithVat = $orderItem->price_per_unit; // Цена с НДС (2310)
-            $priceWithoutVat = $priceWithVat / (1 + $vatRate / 100); // Цена без НДС (1925)
-            $amountWithoutVat = $priceWithoutVat * $completionAct->total_hours; // Сумма без НДС (57750)
-            $vatAmount = $amountWithoutVat * ($vatRate / 100); // Сумма НДС (11550)
-            $totalAmount = $amountWithoutVat + $vatAmount; // Итоговая сумма с НДС (69300)
+            // УПРОЩЕННЫЙ И ПРАВИЛЬНЫЙ РАСЧЕТ НДС через TaxHelper
+            // В системе суммы хранятся с НДС, поэтому используем логику выделения НДС из общей суммы
+            $priceWithVat = $orderItem->price_per_unit; // Цена за час с НДС
+            $totalAmount = $priceWithVat * $completionAct->total_hours; // Итоговая сумма с НДС
+
+            // Выделяем НДС из итоговой суммы через TaxHelper
+            $vatAmount = TaxHelper::calculateVatAmount($totalAmount, $vatRate);
+            $amountWithoutVat = $totalAmount - $vatAmount;
+
+            // Рассчитываем цену без НДС за час
+            $priceWithoutVat = $completionAct->total_hours > 0
+                ? $amountWithoutVat / $completionAct->total_hours
+                : 0;
 
             // Округляем все значения до 2 знаков
             $priceWithoutVat = round($priceWithoutVat, 2);
@@ -229,7 +239,7 @@ class CompletionActController extends Controller
             $vatAmount = round($vatAmount, 2);
             $totalAmount = round($totalAmount, 2);
 
-            \Log::debug("Рассчитаны финансовые показатели: цена={$priceWithoutVat}, сумма={$amountWithoutVat}, НДС={$vatAmount}, итого={$totalAmount}");
+            \Log::debug("Рассчитаны финансовые показатели: цена={$priceWithoutVat}, сумма={$amountWithoutVat}, НДС={$vatAmount}, итого={$totalAmount}, ставка НДС={$vatRate}%");
 
             // Генерация номера УПД через сервис - ИСПРАВЛЕННАЯ ЧАСТЬ
             $updProcessingService = app(UpdProcessingService::class);

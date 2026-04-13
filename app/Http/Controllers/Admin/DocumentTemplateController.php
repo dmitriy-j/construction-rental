@@ -191,7 +191,26 @@ class DocumentTemplateController extends Controller
             abort(404, 'Файл шаблона не найден');
         }
 
-        return response()->download(storage_path('app/public/' . $documentTemplate->file_path));
+        // Автоматически исправляем пути
+        $correctedPath = str_replace('templates/', 'document_templates/', $documentTemplate->file_path);
+
+        // Проверяем существование файла
+        if (!Storage::disk('public')->exists($correctedPath)) {
+            // Логируем для отладки
+            \Log::error('Файл шаблона не найден', [
+                'template_id' => $documentTemplate->id,
+                'db_path' => $documentTemplate->file_path,
+                'corrected_path' => $correctedPath,
+                'storage_files' => Storage::disk('public')->files('document_templates')
+            ]);
+
+            abort(404, "Файл шаблона не найден. Ожидался путь: {$correctedPath}");
+        }
+
+        $filePath = storage_path('app/public/' . $correctedPath);
+        $originalName = pathinfo($correctedPath, PATHINFO_BASENAME);
+
+        return response()->download($filePath, $originalName);
     }
 
     /**
@@ -199,7 +218,47 @@ class DocumentTemplateController extends Controller
      */
     public function preview(DocumentTemplate $documentTemplate)
     {
-        return view('admin.settings.document-templates.preview', compact('documentTemplate'));
+        $data = []; // Инициализируем переменную по умолчанию
+
+        // Проверяем, существует ли файл шаблона
+        if ($documentTemplate->file_path && Storage::disk('public')->exists($documentTemplate->file_path)) {
+            try {
+                // Полный путь к файлу
+                $filePath = storage_path('app/public/' . $documentTemplate->file_path);
+
+                // Определяем тип файла по расширению
+                $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+
+                // Загружаем файл с помощью PhpSpreadsheet
+                $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader(
+                    $extension === 'xlsx' ? 'Xlsx' :
+                    ($extension === 'xls' ? 'Xls' : 'Csv')
+                );
+
+                $reader->setReadDataOnly(true); // Читаем только данные, без форматирования
+                $spreadsheet = $reader->load($filePath);
+
+                // Получаем активный лист
+                $worksheet = $spreadsheet->getActiveSheet();
+
+                // Преобразуем данные листа в массив
+                $data = $worksheet->toArray();
+
+            } catch (\Exception $e) {
+                // Логируем ошибку, но не прерываем выполнение
+                \Log::error('Ошибка чтения Excel-файла при предпросмотре', [
+                    'template_id' => $documentTemplate->id,
+                    'file_path' => $documentTemplate->file_path,
+                    'error' => $e->getMessage()
+                ]);
+
+                // Можно добавить flash-сообщение об ошибке, если нужно
+                // session()->flash('error', 'Не удалось прочитать содержимое файла шаблона');
+            }
+        }
+
+        // Передаем обе переменные в представление
+        return view('admin.settings.document-templates.preview', compact('documentTemplate', 'data'));
     }
 
     /**

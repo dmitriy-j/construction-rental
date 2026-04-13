@@ -376,6 +376,28 @@ class Upd extends Model
         ];
     }
 
+    // Добавьте в класс
+    public function getVatRateAttribute(): float
+    {
+        return \App\Helpers\TaxHelper::getPlatformVatRate();
+    }
+
+    public function getAmountWithoutVatAttribute(): float
+    {
+        return \App\Helpers\TaxHelper::calculateAmountWithoutVat(
+            $this->total_amount,
+            $this->vat_rate
+        );
+    }
+
+    public function getVatAmountAttribute(): float
+    {
+        return \App\Helpers\TaxHelper::calculateVatAmount(
+            $this->total_amount,
+            $this->vat_rate
+        );
+    }
+
     public function items()
     {
         return $this->hasMany(UpdItem::class);
