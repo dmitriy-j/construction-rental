@@ -472,6 +472,16 @@
                         <span class="nav-text">Главная</span>
                     </a>
                 </li>
+                <!-- ДОБАВЛЕНО: Управление заказами -->
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->is('admin/orders*') ? 'active' : '' }}" href="{{ route('admin.orders.index') }}">
+                        <i class="nav-icon bi bi-receipt"></i>
+                        <span class="nav-text">Управление заказами</span>
+                        @if($pendingOrders ?? 0 > 0)
+                            <span class="badge bg-warning rounded-pill pulse">{{ $pendingOrders }}</span>
+                        @endif
+                    </a>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link {{ request()->is('admin/equipment*') ? 'active' : '' }}" href="{{ route('admin.equipment.index') }}">
                         <i class="nav-icon bi bi-tools"></i>
@@ -525,6 +535,12 @@
                     <a class="nav-link {{ request()->is('admin/settings/document-templates*') ? 'active' : '' }}" href="{{ route('admin.settings.document-templates.index') }}">
                         <i class="nav-icon bi bi-file-earmark-spreadsheet"></i>
                         <span class="nav-text">Шаблоны документов</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->is('admin/markups*') ? 'active' : '' }}" href="{{ route('markups.index') }}">
+                        <i class="nav-icon bi bi-percent"></i>
+                        <span class="nav-text">Наценки платформы</span>
                     </a>
                 </li>
             @endif

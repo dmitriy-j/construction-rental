@@ -7,6 +7,8 @@ use App\Models\Company;
 use App\Models\CompletionAct;
 use App\Models\Upd;
 use App\Models\UpdItem;
+use App\Services\UpdProcessingService;
+use App\Helpers\TaxHelper; // Добавляем импорт TaxHelper
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -65,7 +67,6 @@ class CompletionActController extends Controller
 
                     if (! $completionAct) {
                         DB::rollBack();
-
                         continue;
                     }
 
@@ -213,15 +214,24 @@ class CompletionActController extends Controller
 
             \Log::debug("Сформировано наименование услуги: {$serviceName}");
 
-            // Определяем ставку НДС платформы
-            $vatRate = ($platformCompany->tax_system === 'vat') ? 20.0 : 0.0;
+            // Определяем ставку НДС платформы через TaxHelper
+            $vatRate = ($platformCompany->tax_system === 'vat')
+                ? TaxHelper::getPlatformVatRate()
+                : 0.0;
 
-            // ПРАВИЛЬНЫЙ РАСЧЕТ НДС
-            $priceWithVat = $orderItem->price_per_unit; // Цена с НДС (2310)
-            $priceWithoutVat = $priceWithVat / (1 + $vatRate / 100); // Цена без НДС (1925)
-            $amountWithoutVat = $priceWithoutVat * $completionAct->total_hours; // Сумма без НДС (57750)
-            $vatAmount = $amountWithoutVat * ($vatRate / 100); // Сумма НДС (11550)
-            $totalAmount = $amountWithoutVat + $vatAmount; // Итоговая сумма с НДС (69300)
+            // УПРОЩЕННЫЙ И ПРАВИЛЬНЫЙ РАСЧЕТ НДС через TaxHelper
+            // В системе суммы хранятся с НДС, поэтому используем логику выделения НДС из общей суммы
+            $priceWithVat = $orderItem->price_per_unit; // Цена за час с НДС
+            $totalAmount = $priceWithVat * $completionAct->total_hours; // Итоговая сумма с НДС
+
+            // Выделяем НДС из итоговой суммы через TaxHelper
+            $vatAmount = TaxHelper::calculateVatAmount($totalAmount, $vatRate);
+            $amountWithoutVat = $totalAmount - $vatAmount;
+
+            // Рассчитываем цену без НДС за час
+            $priceWithoutVat = $completionAct->total_hours > 0
+                ? $amountWithoutVat / $completionAct->total_hours
+                : 0;
 
             // Округляем все значения до 2 знаков
             $priceWithoutVat = round($priceWithoutVat, 2);
@@ -229,11 +239,12 @@ class CompletionActController extends Controller
             $vatAmount = round($vatAmount, 2);
             $totalAmount = round($totalAmount, 2);
 
-            \Log::debug("Рассчитаны финансовые показатели: цена={$priceWithoutVat}, сумма={$amountWithoutVat}, НДС={$vatAmount}, итого={$totalAmount}");
+            \Log::debug("Рассчитаны финансовые показатели: цена={$priceWithoutVat}, сумма={$amountWithoutVat}, НДС={$vatAmount}, итого={$totalAmount}, ставка НДС={$vatRate}%");
 
-            // Генерация номера УПД
-            $number = 'УПД-'.now()->format('Ymd').'-'.Str::upper(Str::random(6));
-            \Log::debug("Сгенерирован номер УПД: {$number}");
+            // Генерация номера УПД через сервис - ИСПРАВЛЕННАЯ ЧАСТЬ
+            $updProcessingService = app(UpdProcessingService::class);
+            $number = $updProcessingService->generateUpdNumber();
+            \Log::debug("Сгенерирован номер УПД в новом формате: {$number}");
 
             // Создаем УПД (ПЛАТФОРМА → АРЕНДАТОР)
             $upd = Upd::create([
@@ -242,7 +253,7 @@ class CompletionActController extends Controller
                 'lessor_company_id' => $platformCompany->id,
                 'lessee_company_id' => $lesseeCompany->id,
                 'waybill_id' => $waybill->id,
-                'number' => $number,
+                'number' => $number, // Используем новый формат номера
                 'issue_date' => now(),
                 'service_period_start' => $completionAct->service_start_date,
                 'service_period_end' => $completionAct->service_end_date,
@@ -287,7 +298,7 @@ class CompletionActController extends Controller
             DB::commit();
 
             \Log::debug("Акт #{$completionAct->id} и путевой лист #{$waybill->id} связаны с УПД #{$upd->id}");
-            \Log::info("Успешно завершена генерация УПД #{$upd->id} для акта #{$completionAct->id}");
+            \Log::info("Успешно завершена генерации УПД #{$upd->id} для акта #{$completionAct->id}");
 
             return $upd;
 

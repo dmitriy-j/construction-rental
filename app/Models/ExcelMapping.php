@@ -53,7 +53,7 @@ class ExcelMapping extends Model
     {
         return $this->upd_specific_settings ?? [
             'vat_rates' => [
-                '20%' => 20,
+                '22%' => 22,
                 '10%' => 10,
                 '0%' => 0,
                 'без ндс' => 0,

@@ -114,4 +114,38 @@ class WaybillShift extends Model
 
         return ($end - $start) / 3600;
     }
+
+    public static function getLastShiftData($waybillId, $currentShiftDate)
+    {
+        return self::where('waybill_id', $waybillId)
+            ->where('shift_date', '<', $currentShiftDate)
+            ->whereNotNull('odometer_end')
+            ->whereNotNull('fuel_end')
+            ->orderBy('shift_date', 'desc')
+            ->first();
+    }
+
+    public function fillFromPreviousShift()
+    {
+        $previousShift = self::getLastShiftData($this->waybill_id, $this->shift_date);
+
+        if ($previousShift) {
+            $this->odometer_start = $previousShift->odometer_end;
+            $this->fuel_start = $previousShift->fuel_end;
+
+            // Также можно наследовать некоторые данные
+            if (empty($this->object_name)) {
+                $this->object_name = $previousShift->object_name;
+            }
+            if (empty($this->object_address)) {
+                $this->object_address = $previousShift->object_address;
+            }
+            if (empty($this->fuel_refilled_type)) {
+                $this->fuel_refilled_type = $previousShift->fuel_refilled_type;
+            }
+        }
+
+        return $this;
+    }
+
 }

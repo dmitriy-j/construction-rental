@@ -19,6 +19,15 @@ class WaybillCreationService
             $rentalCondition = $order->rentalCondition;
             $shiftsPerDay = $rentalCondition->shifts_per_day ?? 1;
 
+            // Логируем используемый период
+            Log::info('Creating waybills for order', [
+                'order_id' => $order->id,
+                'billing_period_days' => $order->billing_period_days,
+                'contract_id' => $order->contract_id,
+                'documentation_deadline' => $order->contract->documentation_deadline ?? 'not set',
+                'shifts_per_day' => $shiftsPerDay
+            ]);
+
             foreach ($order->items as $item) {
                 $this->createFirstWaybillForItem($item, $shiftsPerDay);
             }
@@ -31,11 +40,6 @@ class WaybillCreationService
                 'exception' => $e,
             ]);
             throw $e;
-        }
-        foreach ($order->waybills as $waybill) {
-            $order->lesseeCompany->notify(
-                new \App\Notifications\NewDocumentAvailable($waybill, 'путевой лист')
-            );
         }
     }
 
@@ -50,12 +54,12 @@ class WaybillCreationService
             $endDate = $this->ensureCarbon($item->end_date) ?? $this->ensureCarbon($item->order->end_date);
 
             // Если даты все равно отсутствуют, используем текущую дату как fallback
-            if (! $startDate) {
+            if (!$startDate) {
                 $startDate = now();
                 Log::warning("Использована текущая дата как start_date для item #{$item->id}");
             }
 
-            if (! $endDate) {
+            if (!$endDate) {
                 $endDate = $startDate->copy()->addDay();
                 Log::warning("Использована start_date + 1 день как end_date для item #{$item->id}");
             }
@@ -65,7 +69,7 @@ class WaybillCreationService
                 $this->createWaybill(
                     $item,
                     $startDate,
-                    $this->calculateEndDate($startDate, $endDate),
+                    $this->calculateEndDate($startDate, $endDate, $item->order), // ПЕРЕДАЕМ ORDER
                     $shiftType,
                     $operator
                 );
@@ -121,9 +125,10 @@ class WaybillCreationService
         return $operator;
     }
 
-    protected function calculateEndDate(Carbon $startDate, Carbon $endDate): Carbon
+    protected function calculateEndDate(Carbon $startDate, Carbon $endDate, Order $order): Carbon
     {
-        $firstPeriodEnd = $startDate->copy()->addDays(9);
+        $periodDays = $order->billing_period_days;
+        $firstPeriodEnd = $startDate->copy()->addDays($periodDays - 1); // -1 потому что включаем начальный день
 
         return $firstPeriodEnd->min($endDate);
     }
@@ -202,17 +207,18 @@ class WaybillCreationService
     {
         $nextStart = $currentWaybill->end_date->copy()->addDay();
 
-        // Используем связь через orderItem для получения конечной даты аренды
-        $orderItem = $currentWaybill->orderItem()->with('order')->first();
+        // Используем связь через orderItem для получения заказа
+        $orderItem = $currentWaybill->orderItem()->with('order.contract')->first();
 
-        if (! $orderItem || ! $orderItem->order) {
+        if (!$orderItem || !$orderItem->order) {
             Log::error('Order item or parent order missing', ['waybill_id' => $currentWaybill->id]);
-
             return null;
         }
 
+        $order = $orderItem->order;
+
         // Определяем реальную дату окончания аренды для этой позиции заказа
-        $rentalEndDate = $this->ensureCarbon($orderItem->end_date ?? $orderItem->order->end_date);
+        $rentalEndDate = $this->ensureCarbon($orderItem->end_date ?? $order->end_date);
 
         // Если следующая дата начала уже позже даты окончания аренды - новый путевой лист не нужен
         if ($nextStart >= $rentalEndDate) {
@@ -221,16 +227,18 @@ class WaybillCreationService
                 'next_start' => $nextStart,
                 'rental_end' => $rentalEndDate,
             ]);
-
             return null;
         }
 
-        // Рассчитываем дату окончания для нового путевого листа: минимум из (+10 дней) и (даты окончания аренды)
-        $proposedEndDate = $nextStart->copy()->addDays(9); // 10 дней включительно: 11.08 - 20.08 = 10 дней
+        // Рассчитываем дату окончания для нового путевого листа используя период из заказа
+        $periodDays = $order->billing_period_days;
+        $proposedEndDate = $nextStart->copy()->addDays($periodDays - 1); // -1 потому что включаем начальный день
         $nextEnd = $proposedEndDate->min($rentalEndDate);
 
-        Log::debug('Creating next waybill', [
+        Log::debug('Creating next waybill with dynamic period', [
             'current_waybill_id' => $currentWaybill->id,
+            'order_id' => $order->id,
+            'billing_period_days' => $periodDays,
             'next_start' => $nextStart,
             'proposed_end' => $proposedEndDate,
             'rental_end' => $rentalEndDate,

@@ -303,7 +303,17 @@
                                            value="{{ $selectedShift->fuel_refilled_liters }}">
                                 </div>
                             </div>
-
+                            <div class="row mt-2">
+                                <div class="col-12">
+                                    <div class="alert alert-info py-2">
+                                        <small>
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            <strong>Автозаполнение:</strong> При создании новой смены поля "Пробег начало" и "Топливо начало"
+                                            автоматически заполняются из предыдущей смены. Поле "Заправлено топлива" нужно заполнять вручную.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label class="form-label">Простой, часов</label>
@@ -724,6 +734,118 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+});
+
+// 9. Автоматическое переключение на следующую смену после сохранения
+function getNextShiftId(currentShiftId) {
+    const shiftOptions = Array.from(document.getElementById('shift-date-select').options);
+    const currentIndex = shiftOptions.findIndex(option => option.value == currentShiftId);
+
+    if (currentIndex !== -1 && currentIndex < shiftOptions.length - 1) {
+        return shiftOptions[currentIndex + 1].value;
+    }
+    return null;
+}
+
+// 10. Обработчик кнопки "Сохранить и следующая"
+const saveAndNextBtn = document.getElementById('save-and-next');
+if (saveAndNextBtn) {
+    saveAndNextBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+
+        const currentShiftId = {{ $selectedShift->id }};
+        const nextShiftId = getNextShiftId(currentShiftId);
+
+        // Сначала сохраняем текущую форму
+        const shiftForm = document.getElementById('shift-form');
+        const formData = new FormData(shiftForm);
+
+        // Добавляем флаг что это сохранение с переходом
+        formData.append('save_and_next', '1');
+
+        fetch(shiftForm.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showAlert('Данные сохранены', 'success');
+
+                // Переключаем на следующую смену если есть
+                if (nextShiftId) {
+                    setTimeout(() => {
+                        window.location.href = `{{ route('lessor.waybills.show', $waybill) }}?shift_id=${nextShiftId}`;
+                    }, 1000);
+                } else {
+                    showAlert('Это последняя смена', 'info');
+                }
+            } else {
+                showAlert('Ошибка сохранения: ' + (result.message || 'Неизвестная ошибка'));
+            }
+        })
+        .catch(error => {
+            showAlert('Ошибка сети: ' + error.message);
+        });
+    });
+}
+
+// 11. Автоматический расчет пробега и расхода топлива
+function calculateAutoFields() {
+    const odometerStart = document.querySelector('input[name="odometer_start"]');
+    const odometerEnd = document.querySelector('input[name="odometer_end"]');
+    const fuelStart = document.querySelector('input[name="fuel_start"]');
+    const fuelEnd = document.querySelector('input[name="fuel_end"]');
+    const fuelRefilled = document.querySelector('input[name="fuel_refilled_liters"]');
+
+    // Автоматический расчет пробега если заполнены оба поля
+    if (odometerStart && odometerEnd && odometerStart.value && odometerEnd.value) {
+        const start = parseInt(odometerStart.value);
+        const end = parseInt(odometerEnd.value);
+
+        if (end < start) {
+            showAlert('Конечный пробег не может быть меньше начального', 'error');
+            odometerEnd.value = '';
+        }
+    }
+
+    // Автоматический расчет расхода топлива
+    if (fuelStart && fuelEnd && fuelRefilled &&
+        fuelStart.value && fuelEnd.value && fuelRefilled.value) {
+        const startFuel = parseFloat(fuelStart.value);
+        const endFuel = parseFloat(fuelEnd.value);
+        const refilled = parseFloat(fuelRefilled.value);
+
+        const consumed = (startFuel + refilled) - endFuel;
+
+        // Можно показать расчет расхода в консоли или подсказке
+        if (consumed < 0) {
+            console.warn('Расчетный расход топлива отрицательный. Проверьте данные.');
+        }
+    }
+}
+
+// Навешиваем обработчики на поля
+document.addEventListener('DOMContentLoaded', function() {
+    const autoFields = [
+        'odometer_start', 'odometer_end',
+        'fuel_start', 'fuel_end', 'fuel_refilled_liters'
+    ];
+
+    autoFields.forEach(fieldName => {
+        const field = document.querySelector(`input[name="${fieldName}"]`);
+        if (field) {
+            field.addEventListener('change', calculateAutoFields);
+            field.addEventListener('blur', calculateAutoFields);
+        }
+    });
+
+    // Инициализируем расчет при загрузке
+    calculateAutoFields();
 });
 </script>
 @endpush

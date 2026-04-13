@@ -243,6 +243,26 @@ class Upd extends Model
     }
 
     /**
+     * Проверяет, можно ли создавать счета для этого УПД
+     * Счет можно создавать для УПД в статусах: pending, sent, accepted, processed
+     */
+    public function canCreateInvoice(): bool
+    {
+        $allowedStatuses = ['pending', 'sent', 'accepted', 'processed', 'accepted_processed'];
+
+        return in_array($this->status, $allowedStatuses) && $this->order;
+    }
+
+    /**
+     * Проверяет, является ли УПД исходящим (Платформа → Арендатор)
+     */
+    public function isOutgoing(): bool
+    {
+        $platformCompany = Company::where('is_platform', true)->first();
+        return $this->lessor_company_id === $platformCompany->id;
+    }
+
+    /**
      * Генерация данных для экспорта в 1С
      */
     public function to1CFormat(): array
@@ -338,12 +358,12 @@ class Upd extends Model
 
     protected function getVatRate(): string
     {
-        return $this->tax_system === 'osn' ? '20%' : 'Без НДС';
+        return $this->tax_system === 'osn' ? '22%' : 'Без НДС';
     }
 
     protected function calculateVatAmount(float $amount): float
     {
-        return $this->tax_system === 'osn' ? $amount * 0.2 : 0;
+        return $this->tax_system === 'osn' ? $amount * 0.22 : 0;
     }
 
     protected function getAccountingInfo(): array
@@ -356,8 +376,35 @@ class Upd extends Model
         ];
     }
 
+    // Добавьте в класс
+    public function getVatRateAttribute(): float
+    {
+        return \App\Helpers\TaxHelper::getPlatformVatRate();
+    }
+
+    public function getAmountWithoutVatAttribute(): float
+    {
+        return \App\Helpers\TaxHelper::calculateAmountWithoutVat(
+            $this->total_amount,
+            $this->vat_rate
+        );
+    }
+
+    public function getVatAmountAttribute(): float
+    {
+        return \App\Helpers\TaxHelper::calculateVatAmount(
+            $this->total_amount,
+            $this->vat_rate
+        );
+    }
+
     public function items()
     {
         return $this->hasMany(UpdItem::class);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
     }
 }

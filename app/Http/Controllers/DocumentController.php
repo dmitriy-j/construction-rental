@@ -3,10 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\CompletionAct;
-use App\Models\Contract; // Добавьте эту строку
-use App\Models\DeliveryNote; // Добавьте эту строку
-use App\Models\Waybill; // Добавьте эту строку
-use Illuminate\Http\Request; // Добавьте эту строку
+use App\Models\Contract;
+use App\Models\DeliveryNote;
+use App\Models\Waybill;
+use App\Models\Order;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use PDF;
 
 class DocumentController extends Controller
 {
@@ -111,20 +115,17 @@ class DocumentController extends Controller
                     'operator',
                     'equipment',
                 ])
-                    ->where('perspective', 'lessor') // ДОБАВЛЯЕМ ФИЛЬТРАЦИЮ
+                    ->where('perspective', 'lessor')
                     ->whereHas('order', function ($q) use ($user) {
                         $q->where('lessor_company_id', $user->company_id);
                     });
                 break;
 
             case 'contracts':
-                // Только для арендодателей!
-                if ($userType !== 'lessor') {
-                    abort(403, 'Доступ запрещен');
-                }
-
-                $query = Contract::with(['lesseeCompany', 'lessorCompany'])
-                    ->where('lessor_company_id', $user->company_id);
+                // Для арендодателей и арендаторов
+                $query = Contract::with(['platformCompany', 'counterpartyCompany'])
+                    ->where('counterparty_company_id', $user->company_id)
+                    ->where('counterparty_type', $userType);
                 break;
 
             case 'completion_acts':
@@ -134,7 +135,7 @@ class DocumentController extends Controller
                 }
 
                 $query = CompletionAct::with('order.lesseeCompany')
-                    ->where('perspective', 'lessor') // ДОБАВЛЯЕМ ФИЛЬТРАЦИЮ
+                    ->where('perspective', 'lessor')
                     ->whereHas('order', function ($q) use ($user) {
                         $q->where('lessor_company_id', $user->company_id);
                     });
@@ -145,7 +146,7 @@ class DocumentController extends Controller
         }
 
         // Пагинация
-        $documents = $query->paginate(10);
+        $documents = $query->orderBy('created_at', 'desc')->paginate(10);
 
         \Log::debug('Documents loaded', [
             'type' => $type,
@@ -184,7 +185,7 @@ class DocumentController extends Controller
     public function download($id, $type)
     {
         if ($type === 'delivery_notes') {
-            $note = DeliveryNote::with('orderItem')->findOrFail($id); // Жадная загрузка
+            $note = DeliveryNote::with('orderItem')->findOrFail($id);
 
             // Проверка прав
             if (auth()->user()->cannot('view', $note)) {
@@ -194,27 +195,43 @@ class DocumentController extends Controller
             return $this->downloadDeliveryNote($note);
         }
 
-        // ДОБАВЛЯЕМ ПРОВЕРКУ ПЕРСПЕКТИВЫ ДЛЯ WAYBILLS И COMPLETION_ACTS
-        if (in_array($type, ['waybills', 'completion_acts'])) {
-            if ($document->perspective !== 'lessor') {
-                abort(403, 'Доступ запрещен. Неверный тип документа.');
-            }
-        }
-
-        // Для остальных типов документов
+        // Получаем документ в зависимости от типа
         $document = match ($type) {
             'contracts' => Contract::findOrFail($id),
             'waybills' => Waybill::findOrFail($id),
             'completion_acts' => CompletionAct::findOrFail($id),
         };
 
-        // Проверка прав доступа
+        // Проверка прав доступа для договоров
+        if ($type === 'contracts') {
+            $user = auth()->user();
+            if ($document->counterparty_company_id !== $user->company_id ||
+                $document->counterparty_type !== ($user->company->is_lessor ? 'lessor' : 'lessee')) {
+                abort(403, 'Доступ запрещен');
+            }
+        }
+
+        // Проверка перспективы для waybills и completion_acts
+        if (in_array($type, ['waybills', 'completion_acts'])) {
+            if ($document->perspective !== 'lessor') {
+                abort(403, 'Доступ запрещен. Неверный тип документа.');
+            }
+        }
+
+        // Проверка прав доступа для остальных типов
         if (auth()->user()->cannot('view', $document)) {
             abort(403);
         }
 
+        // Генерация PDF для договоров
+        if ($type === 'contracts') {
+            if (!$document->file_path) {
+                abort(404, 'Файл договора не найден');
+            }
+            return response()->download(storage_path('app/public/' . $document->file_path));
+        }
+
         $generatorClass = match ($type) {
-            'contracts' => ContractPdfGenerator::class,
             'waybills' => WaybillPdfGenerator::class,
             'completion_acts' => CompletionActGenerator::class,
         };

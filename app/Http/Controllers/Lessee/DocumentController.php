@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Lessee;
 
 use App\Http\Controllers\Controller;
 use App\Models\CompletionAct;
+use App\Models\Contract;
 use App\Models\DeliveryNote;
 use App\Models\Order;
 use App\Models\Waybill;
@@ -19,14 +20,14 @@ class DocumentController extends Controller
 
         switch ($type) {
             case 'waybills':
-                $documents = Waybill::where('perspective', 'lessee') // Только документы для арендатора
+                $documents = Waybill::where('perspective', 'lessee')
                     ->whereHas('parentOrder', function ($query) use ($companyId) {
                         $query->where('lessee_company_id', $companyId);
                     })->with(['equipment', 'parentOrder.lessorCompany'])->paginate(10);
                 break;
 
             case 'completion_acts':
-                $documents = CompletionAct::where('perspective', 'lessee') // Только документы для арендатора
+                $documents = CompletionAct::where('perspective', 'lessee')
                     ->whereHas('parentOrder', function ($query) use ($companyId) {
                         $query->where('lessee_company_id', $companyId);
                     })->with(['waybill.equipment', 'parentOrder.lessorCompany'])->paginate(10);
@@ -40,7 +41,11 @@ class DocumentController extends Controller
 
             case 'contracts':
             default:
-                $documents = collect();
+                $documents = Contract::with(['platformCompany', 'counterpartyCompany'])
+                    ->where('counterparty_company_id', $companyId)
+                    ->where('counterparty_type', 'lessee')
+                    ->orderBy('created_at', 'desc')
+                    ->paginate(10);
                 break;
         }
 
@@ -96,17 +101,25 @@ class DocumentController extends Controller
 
     public function downloadCompletionAct(CompletionAct $completionAct)
     {
-        if ($completionAct->order->lessee_company_id !== auth()->user()->company_id) {
+        if ($completionAct->perspective !== 'lessee' ||
+            $completionAct->parentOrder->lessee_company_id !== auth()->user()->company_id) {
             abort(403, 'Доступ запрещен');
         }
+
+        $completionAct->load([
+            'parentOrder.lesseeCompany',
+            'waybill.equipment',
+            'order.items'
+        ]);
 
         $actData = $completionAct->forLessee();
 
         $pdf = PDF::loadView('lessee.documents.completion_act_pdf', [
             'act' => $actData,
+            'completionAct' => $completionAct
         ]);
 
-        return $pdf->download("Акт-{$completionAct->id}-для-арендатора.pdf");
+        return $pdf->download("Акт-{$completionAct->number}-для-арендатора.pdf");
     }
 
     public function showWaybill(Waybill $waybill)
@@ -135,10 +148,15 @@ class DocumentController extends Controller
             abort(403, 'Доступ запрещен. Документ не принадлежит вашей компании.');
         }
 
-        $completionAct->load('waybill.shifts', 'order.lessorCompany');
-        $actData = $completionAct->forLessee();
+        $completionAct->load([
+            'waybill.shifts',
+            'waybill.equipment', // Для гос. номера
+            'waybill.operator',  // Для оператора (реального)
+            'parentOrder.lessorCompany',
+            'order.items'
+        ]);
 
-        return view('lessee.documents.completion_acts.show', compact('actData', 'completionAct'));
+        return view('lessee.documents.completion_acts.show', compact('completionAct'));
     }
 
     public function showDeliveryNote(DeliveryNote $deliveryNote)

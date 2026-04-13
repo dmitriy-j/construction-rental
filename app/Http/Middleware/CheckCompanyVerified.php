@@ -13,6 +13,21 @@ class CheckCompanyVerified
     {
         $user = Auth::user();
 
+        // Пропускаем platform администраторов
+        if ($user && $user->isPlatformAdmin()) {
+            return $next($request);
+        }
+
+        // ✅ ВАЖНО: Пропускаем маршруты верификации email
+        if ($request->routeIs('verification.*') || $request->routeIs('verification.verify')) {
+            return $next($request);
+        }
+
+        // ✅ ВАЖНО: Пропускаем маршруты выхода из системы
+        if ($request->routeIs('logout')) {
+            return $next($request);
+        }
+
         if ($user && $user->company && $user->company->status !== 'verified') {
             Auth::logout();
 

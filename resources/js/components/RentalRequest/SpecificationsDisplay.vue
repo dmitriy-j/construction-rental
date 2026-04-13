@@ -37,6 +37,15 @@ export default {
                 value: this.specifications
             });
 
+            // 🔥 ДЕТАЛЬНАЯ ДИАГНОСТИКА КАСТОМНЫХ СПЕЦИФИКАЦИЙ
+            if (typeof this.specifications === 'object' && this.specifications.custom_specifications) {
+                console.log('🎯 ДЕТАЛИ кастомных спецификаций:', {
+                    количество: Object.keys(this.specifications.custom_specifications).length,
+                    ключи: Object.keys(this.specifications.custom_specifications),
+                    данные: this.specifications.custom_specifications
+                });
+            }
+
             // Если уже массив отформатированных спецификаций - возвращаем как есть
             if (Array.isArray(this.specifications)) {
                 const filtered = this.specifications.filter(spec =>

@@ -81,8 +81,8 @@ class WaybillController extends Controller
             'operator',
             'rentalCondition',
             'shifts.operator',
-            'completionAct', // Добавляем загрузку связанного акта
-            'completionActs', // Добавляем загрузку всех связанных актов
+            'completionAct',
+            'completionActs',
         ]);
 
         $operators = Operator::where('company_id', auth()->user()->company_id)->get();
@@ -96,6 +96,55 @@ class WaybillController extends Controller
         if (! $selectedShift) {
             // Находим первую незаполненную смену
             $selectedShift = $waybill->shifts->firstWhere('hours_worked', 0) ?? $waybill->shifts->first();
+        }
+
+        // АВТОМАТИЧЕСКОЕ ЗАПОЛНЕНИЕ ДАННЫХ ИЗ ПРЕДЫДУЩЕЙ СМЕНЫ
+        if ($selectedShift && (empty($selectedShift->odometer_start) || $selectedShift->odometer_start == 0 || empty($selectedShift->fuel_start) || $selectedShift->fuel_start == 0)) {
+
+            $previousShift = WaybillShift::where('waybill_id', $waybill->id)
+                ->where('shift_date', '<', $selectedShift->shift_date)
+                ->whereNotNull('odometer_end')
+                ->whereNotNull('fuel_end')
+                ->orderBy('shift_date', 'desc')
+                ->first();
+
+            if ($previousShift) {
+                // РАСЧЕТ ТОПЛИВА С УЧЕТОМ ЗАПРАВКИ
+                $calculatedFuelStart = $previousShift->fuel_end + ($previousShift->fuel_refilled_liters ?? 0);
+
+                Log::info('Автозаполнение данных смены из предыдущей', [
+                    'current_shift_id' => $selectedShift->id,
+                    'previous_shift_id' => $previousShift->id,
+                    'odometer_end' => $previousShift->odometer_end,
+                    'fuel_end' => $previousShift->fuel_end,
+                    'fuel_refilled_liters' => $previousShift->fuel_refilled_liters ?? 0,
+                    'calculated_fuel_start' => $calculatedFuelStart,
+                ]);
+
+                // Заполняем начальные значения только если они пустые или равны 0
+                if (empty($selectedShift->odometer_start) || $selectedShift->odometer_start == 0) {
+                    $selectedShift->odometer_start = $previousShift->odometer_end;
+                }
+                if (empty($selectedShift->fuel_start) || $selectedShift->fuel_start == 0) {
+                    $selectedShift->fuel_start = $calculatedFuelStart;
+                }
+
+                // Наследуем другие данные если они пустые
+                if (empty($selectedShift->object_name)) {
+                    $selectedShift->object_name = $previousShift->object_name;
+                }
+                if (empty($selectedShift->object_address)) {
+                    $selectedShift->object_address = $previousShift->object_address;
+                }
+                if (empty($selectedShift->fuel_refilled_type)) {
+                    $selectedShift->fuel_refilled_type = $previousShift->fuel_refilled_type;
+                }
+            } else {
+                Log::info('Предыдущая смена для автозаполнения не найдена', [
+                    'current_shift_id' => $selectedShift->id,
+                    'shift_date' => $selectedShift->shift_date,
+                ]);
+            }
         }
 
         // Гарантируем наличие orderItem или используем fallback
@@ -232,23 +281,45 @@ class WaybillController extends Controller
             return back()->withErrors('Можно закрыть только активные путевые листы');
         }
 
-        $unfilledShifts = $waybill->shifts()
-            ->where(function ($query) {
-                $query->whereNull('hours_worked')
-                    ->orWhere('hours_worked', '<=', 0);
-            })
-            ->count();
-
-        if ($unfilledShifts > 0) {
-            return back()->withErrors("Осталось $unfilledShifts незаполненных смен!");
-        }
-
         try {
             $lessorAct = null;
             $lesseeAct = null;
             $nextWaybill = null;
 
             DB::transaction(function () use ($waybill, &$lessorAct, &$lesseeAct, &$nextWaybill) {
+                // 🔥 Удаляем все незаполненные смены
+                $deletedShifts = $waybill->shifts()
+                    ->where(function ($query) {
+                        $query->whereNull('hours_worked')
+                            ->orWhere('hours_worked', '<=', 0);
+                    })
+                    ->delete();
+
+                Log::info('Автоматически удалены незаполненные смены', [
+                    'waybill_id' => $waybill->id,
+                    'deleted_shifts_count' => $deletedShifts
+                ]);
+
+                // Находим последнюю заполненную смену и обновляем end_date
+                $lastFilledShift = $waybill->shifts()
+                    ->where('hours_worked', '>', 0)
+                    ->orderBy('shift_date', 'desc')
+                    ->first();
+
+                if ($lastFilledShift) {
+                    $waybill->update(['end_date' => $lastFilledShift->shift_date]);
+                    Log::info('Обновлена дата окончания путевого листа', [
+                        'waybill_id' => $waybill->id,
+                        'new_end_date' => $lastFilledShift->shift_date
+                    ]);
+                } else {
+                    // Если нет заполненных смен - используем текущую дату
+                    $waybill->update(['end_date' => now()]);
+                    Log::warning('Нет заполненных смен, использована текущая дата', [
+                        'waybill_id' => $waybill->id
+                    ]);
+                }
+
                 // 1. Закрытие текущего путевого листа
                 $waybill->update(['status' => Waybill::STATUS_COMPLETED]);
 
@@ -288,49 +359,70 @@ class WaybillController extends Controller
                     'perspective' => 'lessee',
                 ]);
 
-                // 4. Копирование смен в зеркальный путевой лист
+                // 🔥 ИСПРАВЛЕНИЕ: Получаем правильную ставку арендатора из OrderItem
+                $orderItem = $waybill->orderItem;
+                if (!$orderItem) {
+                    Log::error('OrderItem not found for waybill', ['waybill_id' => $waybill->id]);
+                    throw new \Exception('Не найдена позиция заказа для путевого листа');
+                }
+
+                $customerHourlyRate = $orderItem->price_per_unit;
+                $totalHours = $waybill->shifts->sum('hours_worked');
+                $totalAmountForLessee = $totalHours * $customerHourlyRate;
+
+                // 4. Копирование ТОЛЬКО заполненных смен в зеркальный путевой лист
                 foreach ($waybill->shifts as $shift) {
-                    WaybillShift::create([
-                        'waybill_id' => $lesseeWaybill->id,
-                        'shift_date' => $shift->shift_date,
-                        'operator_id' => $shift->operator_id,
-                        'object_address' => $shift->object_address,
-                        'object_name' => $shift->object_name,
-                        'departure_time' => $shift->departure_time,
-                        'return_time' => $shift->return_time,
-                        'odometer_start' => $shift->odometer_start,
-                        'odometer_end' => $shift->odometer_end,
-                        'fuel_start' => $shift->fuel_start,
-                        'fuel_end' => $shift->fuel_end,
-                        'fuel_refilled_liters' => $shift->fuel_refilled_liters,
-                        'fuel_refilled_type' => $shift->fuel_refilled_type,
-                        'hours_worked' => $shift->hours_worked,
-                        'downtime_hours' => $shift->downtime_hours,
-                        'downtime_cause' => $shift->downtime_cause,
-                        'work_description' => $shift->work_description,
-                        'hourly_rate' => $shift->hourly_rate,
-                        'total_amount' => $shift->hours_worked * $waybill->hourly_rate, // Пересчет с наценкой
-                    ]);
+                    // Копируем только заполненные смены
+                    if ($shift->hours_worked > 0) {
+                        WaybillShift::create([
+                            'waybill_id' => $lesseeWaybill->id,
+                            'shift_date' => $shift->shift_date,
+                            'operator_id' => $shift->operator_id,
+                            'object_address' => $shift->object_address,
+                            'object_name' => $shift->object_name,
+                            'departure_time' => $shift->departure_time,
+                            'return_time' => $shift->return_time,
+                            'odometer_start' => $shift->odometer_start,
+                            'odometer_end' => $shift->odometer_end,
+                            'fuel_start' => $shift->fuel_start,
+                            'fuel_end' => $shift->fuel_end,
+                            'fuel_refilled_liters' => $shift->fuel_refilled_liters,
+                            'fuel_refilled_type' => $shift->fuel_refilled_type,
+                            'hours_worked' => $shift->hours_worked,
+                            'downtime_hours' => $shift->downtime_hours,
+                            'downtime_cause' => $shift->downtime_cause,
+                            'work_description' => $shift->work_description,
+                            'hourly_rate' => $customerHourlyRate, // 🔥 Исправлено: ставка арендатора
+                            'total_amount' => $shift->hours_worked * $customerHourlyRate, // 🔥 Исправлено: правильный расчет
+                        ]);
+                    }
                 }
 
                 // 5. Создание акта выполненных работ для арендатора
-                // Исправление: добавляем waybill_id для акта арендатора
                 $lesseeAct = CompletionAct::create([
                     'order_id' => $waybill->order_id,
                     'parent_order_id' => $waybill->parent_order_id,
-                    'waybill_id' => $lesseeWaybill->id, // Добавляем привязку к зеркальному путевому листу
+                    'waybill_id' => $lesseeWaybill->id,
                     'related_completion_act_id' => $lessorAct->id,
                     'act_date' => now(),
                     'service_start_date' => $waybill->start_date,
                     'service_end_date' => $waybill->end_date,
-                    'total_hours' => $waybill->shifts->sum('hours_worked'),
+                    'total_hours' => $totalHours,
                     'total_downtime' => $waybill->shifts->sum('downtime_hours'),
-                    'hourly_rate' => $waybill->hourly_rate, // Ставка с наценкой платформы
-                    'total_amount' => $waybill->shifts->sum(function ($shift) use ($waybill) {
-                        return $shift->hours_worked * $waybill->hourly_rate;
-                    }),
+                    'hourly_rate' => $customerHourlyRate, // 🔥 Исправлено: ставка арендатора
+                    'total_amount' => $totalAmountForLessee, // 🔥 Исправлено: правильная сумма
                     'status' => 'generated',
                     'perspective' => 'lessee',
+                ]);
+
+                // Логируем исправленные данные для отладки
+                Log::info('Создан акт для арендатора с правильными ставками', [
+                    'waybill_id' => $waybill->id,
+                    'lessee_act_id' => $lesseeAct->id,
+                    'customer_hourly_rate' => $customerHourlyRate,
+                    'total_hours' => $totalHours,
+                    'total_amount' => $totalAmountForLessee,
+                    'original_lessor_rate' => $waybill->lessor_hourly_rate,
                 ]);
 
                 // 6. Отправка уведомления арендатору
@@ -357,10 +449,9 @@ class WaybillController extends Controller
                 }
             });
 
-            // Формирование сообщения об успехе
             $message = 'Путевой лист закрыт. ';
-            if ($act) {
-                $message .= 'Акт №'.$act->id.' создан. ';
+            if ($lessorAct) {
+                $message .= 'Акт №'.$lessorAct->id.' создан. ';
             }
             if ($nextWaybill) {
                 $message .= 'Следующий путевой лист создан.';
@@ -370,7 +461,7 @@ class WaybillController extends Controller
 
             return back()->with('success', [
                 'message' => $message,
-                'act_id' => $act->id ?? null,
+                'act_id' => $lessorAct->id ?? null,
             ]);
 
         } catch (\Exception $e) {
@@ -379,7 +470,6 @@ class WaybillController extends Controller
             return back()->withErrors('Ошибка: '.$e->getMessage());
         }
     }
-
     private function createNextWaybill(Waybill $waybill): ?Waybill
     {
         $nextStart = $waybill->end_date->copy()->addDay();
@@ -498,19 +588,6 @@ class WaybillController extends Controller
             ], 400);
         }
 
-        // Проверка лимита смен
-        if ($waybill->shifts()->count() >= 10) {
-            Log::warning('Достигнут лимит смен в путевом листе', [
-                'waybill_id' => $waybill->id,
-                'current_shifts' => $waybill->shifts()->count(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Достигнут лимит в 10 смен для одного путевого листа',
-            ], 400);
-        }
-
         try {
             $shiftDate = Carbon::parse($request->shift_date);
         } catch (\Exception $e) {
@@ -545,7 +622,29 @@ class WaybillController extends Controller
         try {
             DB::beginTransaction();
 
-            // Создание смены
+            // Находим предыдущую смену по дате с заполненными показаниями
+            $previousShift = WaybillShift::where('waybill_id', $waybill->id)
+                ->where('shift_date', '<', $shiftDate)
+                ->whereNotNull('odometer_end')
+                ->whereNotNull('fuel_end')
+                ->orderBy('shift_date', 'desc')
+                ->first();
+
+            Log::info('Найдена предыдущая смена для автозаполнения', [
+                'previous_shift_id' => $previousShift->id ?? null,
+                'odometer_end' => $previousShift->odometer_end ?? null,
+                'fuel_end' => $previousShift->fuel_end ?? null,
+                'fuel_refilled_liters' => $previousShift->fuel_refilled_liters ?? null,
+            ]);
+
+            // РАСЧЕТ ТОПЛИВА С УЧЕТОМ ЗАПРАВКИ
+            $calculatedFuelStart = 0;
+            if ($previousShift) {
+                // Топливо на начало = топливо на конец предыдущей смены + заправленное топливо
+                $calculatedFuelStart = $previousShift->fuel_end + ($previousShift->fuel_refilled_liters ?? 0);
+            }
+
+            // Создание смены с автозаполнением данных из предыдущей смены
             $shift = WaybillShift::create([
                 'waybill_id' => $waybill->id,
                 'shift_date' => $shiftDate,
@@ -553,6 +652,12 @@ class WaybillController extends Controller
                 'hourly_rate' => $waybill->lessor_hourly_rate,
                 'work_start_time' => null,
                 'work_end_time' => null,
+                'odometer_start' => $previousShift->odometer_end ?? 0,
+                'fuel_start' => $calculatedFuelStart,
+                // Наследуем часто используемые данные
+                'object_name' => $previousShift->object_name ?? null,
+                'object_address' => $previousShift->object_address ?? null,
+                'fuel_refilled_type' => $previousShift->fuel_refilled_type ?? 'ДТ',
             ]);
 
             // Автоматическая активация FUTURE waybill
@@ -563,9 +668,13 @@ class WaybillController extends Controller
 
             DB::commit();
 
-            Log::info('Смена успешно добавлена', [
+            Log::info('Смена успешно добавлена с автозаполнением', [
                 'shift_id' => $shift->id,
                 'waybill_id' => $waybill->id,
+                'odometer_start' => $shift->odometer_start,
+                'fuel_start' => $shift->fuel_start,
+                'previous_shift_id' => $previousShift->id ?? null,
+                'calculated_fuel_start' => $calculatedFuelStart,
             ]);
 
             return response()->json([

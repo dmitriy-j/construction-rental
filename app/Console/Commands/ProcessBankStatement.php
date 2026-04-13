@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\BankStatement;
+use App\Services\BankStatementProcessingService;
 use App\Services\Parsers\BankStatementParser;
-use App\Services\PaymentProcessingService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -12,15 +12,14 @@ use Illuminate\Support\Facades\Storage;
 class ProcessBankStatement extends Command
 {
     protected $signature = 'bank-statement:process {id : ID банковской выписки}';
-
     protected $description = 'Process bank statement from database';
 
-    protected $paymentProcessingService;
+    protected $processingService;
 
-    public function __construct(PaymentProcessingService $paymentProcessingService)
+    public function __construct(BankStatementProcessingService $processingService)
     {
         parent::__construct();
-        $this->paymentProcessingService = $paymentProcessingService;
+        $this->processingService = $processingService;
     }
 
     public function handle(): void
@@ -29,16 +28,14 @@ class ProcessBankStatement extends Command
 
         if ($statement->status !== 'pending') {
             $this->error('Выписка уже была обработана или находится в обработке.');
-
             return;
         }
 
         $statement->markAsProcessing();
 
-        if (! Storage::exists($statement->filename)) {
+        if (!Storage::exists($statement->filename)) {
             $statement->markAsFailed("Файл не найден: {$statement->filename}");
             $this->error("File not found: {$statement->filename}");
-
             return;
         }
 
@@ -47,36 +44,23 @@ class ProcessBankStatement extends Command
             $parser = new BankStatementParser;
             $transactions = $parser->parse($content);
 
-            $processed = 0;
-            $errors = 0;
-            $errorLog = '';
-
             foreach ($transactions as $transaction) {
                 try {
-                    $this->paymentProcessingService->processPayment(
-                        $transaction['payer_inn'],
-                        $transaction['amount'],
-                        $transaction['date'],
-                        $transaction['purpose'],
-                        $transaction['idempotency_key']
-                    );
-
-                    $processed++;
-                    $this->info("Processed payment: {$transaction['amount']} from {$transaction['payer_inn']}");
+                    // ✅ ИСПОЛЬЗУЕМ ПРАВИЛЬНЫЙ СЕРВИС
+                    $this->processingService->processTransaction($transaction, $statement->id);
+                    $this->info("Processed transaction: {$transaction['Сумма']}");
                 } catch (\Exception $e) {
-                    $errors++;
-                    $errorMessage = "Error processing payment: {$e->getMessage()}";
-                    $errorLog .= $errorMessage."\n";
-                    $this->error($errorMessage);
-                    Log::error('Payment processing error', [
+                    $this->error("Error processing transaction: {$e->getMessage()}");
+                    Log::error('Transaction processing error', [
                         'transaction' => $transaction,
                         'error' => $e->getMessage(),
                     ]);
                 }
             }
 
-            $statement->markAsCompleted($processed, $errors, $errorLog);
-            $this->info("Bank statement processing completed. Processed: {$processed}, Errors: {$errors}");
+            // Обновляем статус выписки
+            $statement->refreshStatus();
+            $this->info("Bank statement processing completed. Status: {$statement->status}");
 
         } catch (\Exception $e) {
             $errorMessage = "Error processing bank statement: {$e->getMessage()}";

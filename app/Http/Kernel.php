@@ -42,6 +42,13 @@ class Kernel extends HttpKernel
             \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
+
+        // ДОБАВЛЯЕМ новую группу для platform администраторов
+        'platform_admin' => [
+            'web',
+            'auth',
+            'platform.admin', // Используем существующий PlatformAdmin middleware
+        ],
     ];
 
     protected $middlewareAliases = [

@@ -35,6 +35,7 @@ class Company extends Model
         'credit_limit',
         'current_debt',
         'verified_at',
+        'legal_type',
 
         // Новые поля для 1С
         '1c_guid',
@@ -52,6 +53,17 @@ class Company extends Model
     public function scopePlatform($query)
     {
         return $query->where('is_platform', true);
+    }
+
+    // Добавляем методы-хелперы для проверки типа организации
+    public function isIp(): bool
+    {
+        return $this->legal_type === 'ip';
+    }
+
+    public function isOoo(): bool
+    {
+        return $this->legal_type === 'ooo';
     }
 
     public function users()

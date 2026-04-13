@@ -141,4 +141,32 @@ class User extends Authenticatable
     {
         $this->notify(new \App\Notifications\VerifyEmailNotification());
     }
+
+    public function notificationSettings()
+    {
+        return $this->hasOne(UserNotificationSetting::class);
+    }
+
+    public function getNotificationSettingsAttribute()
+    {
+        return $this->notificationSettings ?? new UserNotificationSetting(
+            UserNotificationSetting::getDefaultSettings()
+        );
+    }
+
+    /**
+     * Get the templates created by the user.
+     */
+    public function markupTemplates(): HasMany
+    {
+        return $this->hasMany(MarkupTemplate::class, 'created_by');
+    }
+
+    /**
+     * Get the template usage history for the user.
+     */
+    public function markupTemplateUsage(): HasMany
+    {
+        return $this->hasMany(MarkupTemplateUsage::class, 'user_id');
+    }
 }

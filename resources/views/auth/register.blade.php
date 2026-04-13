@@ -20,7 +20,7 @@
     <!-- Простой прогресс-бар без текста -->
     <div class="mb-5">
         <div class="progress" style="height: 8px;">
-            <div id="progressBar" class="progress-bar bg-primary" style="width: 33%; transition: width 0.5s ease;"></div>
+            <div id="progressBar" class="progress-bar bg-primary" style="width: 25%; transition: width 0.5s ease;"></div>
         </div>
     </div>
 
@@ -31,9 +31,21 @@
             <p class="text-muted">Выберите как вы будете использовать платформу</p>
         </div>
 
+        <!-- Добавленное поле company_type в виде селекта -->
+        <div class="mb-4">
+            <x-input-label for="company_type" value="Тип аккаунта *" />
+            <select id="company_type" name="company_type" class="auth-input @error('company_type') is-invalid @enderror" required>
+                <option value="">Выберите тип аккаунта</option>
+                <option value="lessor" {{ old('company_type') == 'lessor' ? 'selected' : '' }}>Арендодатель</option>
+                <option value="lessee" {{ old('company_type') == 'lessee' ? 'selected' : '' }}>Арендатор</option>
+                <option value="carrier" {{ old('company_type') == 'carrier' ? 'selected' : '' }}>Перевозчик</option>
+            </select>
+            <x-input-error :messages="$errors->get('company_type')" />
+        </div>
+
         <div class="row g-4 mb-4">
             <!-- Арендатор -->
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="card h-100 option-card">
                     <div class="card-body text-center p-4">
                         <div class="mb-3">
@@ -46,7 +58,7 @@
                             Арендуете технику для строительных проектов
                         </p>
                         <div class="form-check d-flex justify-content-center">
-                            <input class="form-check-input" type="radio" name="company_type"
+                            <input class="form-check-input" type="radio" name="company_type_radio"
                                    id="type_lessee" value="lessee" {{ old('company_type', 'lessee') == 'lessee' ? 'checked' : '' }}>
                             <label class="form-check-label ms-2" for="type_lessee">
                                 Выбрать
@@ -57,7 +69,7 @@
             </div>
 
             <!-- Арендодатель -->
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="card h-100 option-card">
                     <div class="card-body text-center p-4">
                         <div class="mb-3">
@@ -70,9 +82,33 @@
                             Предоставляете технику в аренду
                         </p>
                         <div class="form-check d-flex justify-content-center">
-                            <input class="form-check-input" type="radio" name="company_type"
+                            <input class="form-check-input" type="radio" name="company_type_radio"
                                    id="type_lessor" value="lessor" {{ old('company_type') == 'lessor' ? 'checked' : '' }}>
                             <label class="form-check-label ms-2" for="type_lessor">
+                                Выбрать
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Перевозчик -->
+            <div class="col-md-4">
+                <div class="card h-100 option-card">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-3">
+                            <div class="option-icon bg-info bg-opacity-10 text-info rounded-circle mx-auto d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                                <i class="bi bi-truck-flatbed fs-2"></i>
+                            </div>
+                        </div>
+                        <h5 class="card-title mb-2">Перевозчик</h5>
+                        <p class="card-text text-muted small mb-3">
+                            Оказываете услуги перевозки
+                        </p>
+                        <div class="form-check d-flex justify-content-center">
+                            <input class="form-check-input" type="radio" name="company_type_radio"
+                                   id="type_carrier" value="carrier" {{ old('company_type') == 'carrier' ? 'checked' : '' }}>
+                            <label class="form-check-label ms-2" for="type_carrier">
                                 Выбрать
                             </label>
                         </div>
@@ -93,6 +129,7 @@
         </div>
     </div>
 
+    <!-- Остальные шаги остаются без изменений -->
     <!-- Шаг 2: Система налогообложения -->
     <div id="step2" class="step-content d-none">
         <div class="text-center mb-5">
@@ -166,8 +203,81 @@
         </div>
     </div>
 
-    <!-- Шаг 3: Реквизиты компании -->
+    <!-- Шаг 3: Тип организации -->
     <div id="step3" class="step-content d-none">
+        <div class="text-center mb-5">
+            <h2 class="h3 mb-3">Тип организации</h2>
+            <p class="text-muted">Выберите организационно-правовую форму</p>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <!-- ООО -->
+            <div class="col-md-6">
+                <div class="card h-100 option-card">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-3">
+                            <div class="option-icon bg-primary bg-opacity-10 text-primary rounded-circle mx-auto d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                                <i class="bi bi-building fs-2"></i>
+                            </div>
+                        </div>
+                        <h5 class="card-title mb-2">ООО</h5>
+                        <p class="card-text text-muted small mb-3">
+                            Общество с ограниченной ответственностью
+                        </p>
+                        <div class="form-check d-flex justify-content-center">
+                            <input class="form-check-input" type="radio" name="legal_type"
+                                   id="legal_type_ooo" value="ooo" {{ old('legal_type') == 'ooo' ? 'checked' : '' }}>
+                            <label class="form-check-label ms-2" for="legal_type_ooo">
+                                Выбрать
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ИП -->
+            <div class="col-md-6">
+                <div class="card h-100 option-card">
+                    <div class="card-body text-center p-4">
+                        <div class="mb-3">
+                            <div class="option-icon bg-success bg-opacity-10 text-success rounded-circle mx-auto d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                                <i class="bi bi-person fs-2"></i>
+                            </div>
+                        </div>
+                        <h5 class="card-title mb-2">ИП</h5>
+                        <p class="card-text text-muted small mb-3">
+                            Индивидуальный предприниматель
+                        </p>
+                        <div class="form-check d-flex justify-content-center">
+                            <input class="form-check-input" type="radio" name="legal_type"
+                                   id="legal_type_ip" value="ip" {{ old('legal_type') == 'ip' ? 'checked' : '' }}>
+                            <label class="form-check-label ms-2" for="legal_type_ip">
+                                Выбрать
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @error('legal_type')
+            <div class="text-danger small text-center mb-3">{{ $message }}</div>
+        @enderror
+
+        <div class="d-flex justify-content-between pt-4 border-top">
+            <button type="button" class="auth-btn bg-secondary step-prev" data-prev="2">
+                <i class="bi bi-arrow-left me-2"></i>
+                Назад
+            </button>
+            <button type="button" class="auth-btn step-next" data-next="4">
+                Далее
+                <i class="bi bi-arrow-right ms-2"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Шаг 4: Реквизиты компании -->
+    <div id="step4" class="step-content d-none">
         <div class="text-center mb-5">
             <h2 class="h3 mb-3">Реквизиты компании</h2>
             <p class="text-muted">Заполните информацию о вашей организации</p>
@@ -192,6 +302,20 @@
                         @enderror
                     </div>
 
+                    <!-- Тип организации -->
+                    <div class="mb-3">
+                        <label for="legal_type" class="form-label">Тип организации *</label>
+                        <select id="legal_type" name="legal_type" class="auth-input @error('legal_type') is-invalid @enderror" required
+                                onchange="toggleKppField()">
+                            <option value="">Выберите тип организации</option>
+                            <option value="ooo" {{ old('legal_type') == 'ooo' ? 'selected' : '' }}>ООО</option>
+                            <option value="ip" {{ old('legal_type') == 'ip' ? 'selected' : '' }}>ИП</option>
+                        </select>
+                        @error('legal_type')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label for="inn" class="form-label">ИНН *</label>
@@ -200,7 +324,7 @@
                                 <input id="inn" type="text"
                                     class="auth-input @error('inn') is-invalid @enderror"
                                     name="inn" value="{{ old('inn') }}"
-                                    required inputmode="numeric" pattern="\d{10}" maxlength="10"
+                                    required inputmode="numeric" pattern="\d{10,12}" maxlength="12"
                                     placeholder="1234567890">
                             </div>
                             @error('inn')
@@ -208,14 +332,15 @@
                             @enderror
                         </div>
 
-                        <div class="col-md-6">
+                        <!-- Поле KPP делаем условным -->
+                        <div class="col-md-6" id="kpp_field" style="{{ old('legal_type') == 'ip' ? 'display: none;' : '' }}">
                             <label for="kpp" class="form-label">КПП *</label>
                             <div class="auth-input-group">
                                 <i class="bi bi-123 auth-input-icon"></i>
                                 <input id="kpp" type="text"
                                     class="auth-input @error('kpp') is-invalid @enderror"
                                     name="kpp" value="{{ old('kpp') }}"
-                                    required inputmode="numeric" pattern="\d{9}" maxlength="9"
+                                    inputmode="numeric" pattern="\d{9}" maxlength="9"
                                     placeholder="123456789">
                             </div>
                             @error('kpp')
@@ -232,7 +357,7 @@
                                 <input id="ogrn" type="text"
                                     class="auth-input @error('ogrn') is-invalid @enderror"
                                     name="ogrn" value="{{ old('ogrn') }}"
-                                    required inputmode="numeric" pattern="\d{13}" maxlength="13"
+                                    required inputmode="numeric" pattern="\d{13,15}" maxlength="15"
                                     placeholder="1234567890123">
                             </div>
                             @error('ogrn')
@@ -480,7 +605,7 @@
             </a>
 
             <div class="d-flex gap-3">
-                <button type="button" class="auth-btn bg-secondary step-prev" data-prev="2">
+                <button type="button" class="auth-btn bg-secondary step-prev" data-prev="3">
                     <i class="bi bi-arrow-left me-2"></i>
                     Назад
                 </button>
@@ -556,18 +681,85 @@
 .d-flex.gap-3 > * {
     margin: 0 !important;
 }
+
+/* Стили для select */
+.auth-input[type="text"],
+.auth-input[type="email"],
+.auth-input[type="tel"],
+.auth-input[type="password"],
+select.auth-input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    transition: all 0.15s ease-in-out;
+}
+
+select.auth-input {
+    padding-left: 1rem;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+    appearance: none;
+}
 </style>
 
 <script>
+// JavaScript для переключения поля KPP
+function toggleKppField() {
+    const legalType = document.getElementById('legal_type').value;
+    const kppField = document.getElementById('kpp_field');
+    const kppInput = document.getElementById('kpp');
+
+    if (legalType === 'ip') {
+        kppField.style.display = 'none';
+        if (kppInput) {
+            kppInput.value = '';
+            kppInput.removeAttribute('required');
+        }
+    } else {
+        kppField.style.display = 'block';
+        if (kppInput) {
+            kppInput.setAttribute('required', 'required');
+        }
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('registrationForm');
     const steps = document.querySelectorAll('.step-content');
     const progressBar = document.getElementById('progressBar');
     let currentStep = 1;
 
+    // Инициализация поля KPP
+    toggleKppField();
+
+    // Синхронизация селекта и радиокнопок для типа компании
+    const companyTypeSelect = document.getElementById('company_type');
+    const companyTypeRadios = document.querySelectorAll('input[name="company_type_radio"]');
+
+    // Обновляем селект при выборе радиокнопки
+    companyTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.checked) {
+                companyTypeSelect.value = this.value;
+            }
+        });
+    });
+
+    // Обновляем радиокнопки при изменении селекта
+    companyTypeSelect.addEventListener('change', function() {
+        const value = this.value;
+        companyTypeRadios.forEach(radio => {
+            radio.checked = (radio.value === value);
+        });
+    });
+
     // Функция обновления прогресса
     function updateProgress() {
-        const progress = ((currentStep - 1) / 2) * 100;
+        const progress = ((currentStep - 1) / 3) * 100;
         progressBar.style.width = `${progress}%`;
     }
 
@@ -594,16 +786,25 @@ document.addEventListener('DOMContentLoaded', function() {
             let isValid = true;
 
             if (nextStep === 2) {
-                const companyTypeSelected = document.querySelector('input[name="company_type"]:checked');
+                const companyTypeSelected = document.querySelector('input[name="company_type_radio"]:checked');
                 if (!companyTypeSelected) {
                     isValid = false;
                     showNotification('Пожалуйста, выберите тип компании', 'error');
+                } else {
+                    // Синхронизируем значение с селектом
+                    companyTypeSelect.value = companyTypeSelected.value;
                 }
             } else if (nextStep === 3) {
                 const taxSystemSelected = document.querySelector('input[name="tax_system"]:checked');
                 if (!taxSystemSelected) {
                     isValid = false;
                     showNotification('Пожалуйста, выберите систему налогообложения', 'error');
+                }
+            } else if (nextStep === 4) {
+                const legalTypeSelected = document.querySelector('input[name="legal_type"]:checked');
+                if (!legalTypeSelected) {
+                    isValid = false;
+                    showNotification('Пожалуйста, выберите тип организации', 'error');
                 }
             }
 
@@ -648,9 +849,50 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 card.style.borderColor = '#0d6efd';
                 card.style.backgroundColor = 'rgba(13, 110, 253, 0.05)';
+
+                // Обновляем селект legal_type если это карточка типа организации
+                if (radioInput.name === 'legal_type') {
+                    const select = document.getElementById('legal_type');
+                    if (select) {
+                        select.value = radioInput.value;
+                        toggleKppField();
+                    }
+                }
+
+                // Обновляем селект company_type если это карточка типа компании
+                if (radioInput.name === 'company_type_radio') {
+                    companyTypeSelect.value = radioInput.value;
+                }
             }
         });
     });
+
+    // Обновляем радиокнопки при изменении селекта legal_type
+    const legalTypeSelect = document.getElementById('legal_type');
+    if (legalTypeSelect) {
+        legalTypeSelect.addEventListener('change', function() {
+            const value = this.value;
+            const radioInput = document.querySelector(`input[name="legal_type"][value="${value}"]`);
+            if (radioInput) {
+                radioInput.checked = true;
+
+                // Обновляем визуальное выделение карточек
+                document.querySelectorAll('.option-card').forEach(card => {
+                    const cardRadio = card.querySelector('input[name="legal_type"]');
+                    if (cardRadio) {
+                        if (cardRadio.value === value) {
+                            card.style.borderColor = '#0d6efd';
+                            card.style.backgroundColor = 'rgba(13, 110, 253, 0.05)';
+                        } else {
+                            card.style.borderColor = 'transparent';
+                            card.style.backgroundColor = '';
+                        }
+                    }
+                });
+            }
+            toggleKppField();
+        });
+    }
 
     // Автозаполнение адреса
     const sameAsLegalCheckbox = document.getElementById('same_as_legal');

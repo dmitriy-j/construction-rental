@@ -304,8 +304,12 @@ class EquipmentSpecificationService
         }
     }
 
-     public function formatSpecificationsWithCustom($specifications, $categoryName = ''): array
+    public function formatSpecificationsWithCustom($specifications, $categoryName = ''): array
     {
+
+        // 🔥 ДОБАВИТЬ ДЛЯ ОТЛАДКИ:
+        $this->debugSpecifications($specifications);
+
         if (empty($specifications)) {
             return [];
         }
@@ -343,17 +347,32 @@ class EquipmentSpecificationService
             }
             // Старый формат (без labels/values)
             else {
+                // 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Правильно обрабатываем кастомные спецификации
+                $standardSpecs = [];
+                $customSpecs = [];
+
                 foreach ($specsArray as $key => $value) {
                     if ($key !== 'labels' && $value !== null && $value !== '') {
                         if (strpos($key, 'custom_') === 0 || strpos($key, 'Custom') === 0) {
                             $label = $this->extractCustomParameterName($key);
-                            $formatted[] = "{$label}: {$value}";
+                            $customSpecs[] = "{$label}: {$value}";
                         } else {
-                            $formatted[] = $this->formatSpecification($key, $value, $categoryName);
+                            $standardSpecs[] = $this->formatSpecification($key, $value, $categoryName);
                         }
                     }
                 }
+
+                // 🔥 ПРАВИЛЬНЫЙ МЕРЖИНГ: объединяем стандартные и кастомные спецификации
+                $formatted = array_merge($standardSpecs, $customSpecs);
             }
+
+            // 🔥 ДОБАВЛЯЕМ ЛОГИРОВАНИЕ ДЛЯ ПОДТВЕРЖДЕНИЯ ИСПРАВЛЕНИЯ
+            \Log::info('🔧 EquipmentSpecificationService: форматирование спецификаций завершено', [
+                'total_specs' => count($formatted),
+                'standard_specs_count' => count($standardSpecs ?? []),
+                'custom_specs_count' => count($customSpecs ?? []),
+                'formatted_specs' => $formatted
+            ]);
 
             return $formatted;
 
@@ -361,6 +380,26 @@ class EquipmentSpecificationService
             \Log::error('Error formatting specifications with custom: ' . $e->getMessage());
             return [];
         }
+    }
+
+    /**
+     * Debug method to log specification structure
+     */
+    public function debugSpecifications($specifications): void
+    {
+        \Log::debug('🔧 DEBUG Specifications Structure', [
+            'input_type' => gettype($specifications),
+            'is_array' => is_array($specifications),
+            'has_standard' => isset($specifications['standard_specifications']),
+            'has_custom' => isset($specifications['custom_specifications']),
+            'standard_count' => isset($specifications['standard_specifications']) ?
+                            count($specifications['standard_specifications']) : 0,
+            'custom_count' => isset($specifications['custom_specifications']) ?
+                            count($specifications['custom_specifications']) : 0,
+            'custom_keys' => isset($specifications['custom_specifications']) ?
+                            array_keys($specifications['custom_specifications']) : [],
+            'full_structure' => $specifications
+        ]);
     }
 
     private function extractCustomParameterName($customKey): string

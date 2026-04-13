@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Models\User;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider; // Исправлено: добавлен правильный импорт
+use App\Models\Markup; // Импортируйте вашу модель
+use App\Policies\MarkupPolicy; // Импортируйте вашу политику
 use Illuminate\Support\Facades\Gate;
 
 class AuthServiceProvider extends ServiceProvider
@@ -19,6 +21,7 @@ class AuthServiceProvider extends ServiceProvider
         Operator::class => OperatorPolicy::class,
         Waybill::class => WaybillPolicy::class,
         EquipmentImport::class => EquipmentImportPolicy::class,
+        Markup::class => MarkupPolicy::class,
     ];
 
     /**
@@ -35,6 +38,10 @@ class AuthServiceProvider extends ServiceProvider
 
         Gate::define('view-full-request', function (User $user) {
             return $user->isLessor();
+        });
+
+        Gate::define('manage-markups', function ($user) {
+            return $user->isPlatformAdmin();
         });
     }
 }

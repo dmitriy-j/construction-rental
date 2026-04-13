@@ -49,6 +49,7 @@ class LessorOrderController extends Controller
         $order->load([
             'items.equipment',
             'items.rentalTerm',
+            'items.rentalCondition', // Убедимся что загружаем условия аренды
             'items.deliveryNote.deliveryTo',
             'items.equipment.activeOperator',
             'parentOrder',
@@ -65,22 +66,25 @@ class LessorOrderController extends Controller
 
         // ПРАВИЛЬНЫЙ расчет: используем фиксированную цену арендодателя из позиций
         $lessorBaseAmount = $order->items->sum(function ($item) {
-            // Важно: используем fixed_lessor_price из OrderItem!
             return $item->fixed_lessor_price * $item->period_count;
         });
 
+        // ИСПРАВЛЕНИЕ: Получаем условия аренды из ПЕРВОЙ позиции заказа
+        $firstItem = $order->items->first();
+        $rentalCondition = $firstItem ? $firstItem->rentalCondition : null;
+
+        // Если условий аренды нет в позиции, используем значения из заказа как запасной вариант
         $orderDetails = [
-            'shift_hours' => $order->shift_hours,
-            'shifts_per_day' => $order->shifts_per_day,
+            'shift_hours' => $rentalCondition->shift_hours ?? $order->shift_hours ?? 8,
+            'shifts_per_day' => $rentalCondition->shifts_per_day ?? $order->shifts_per_day ?? 1,
             'total_hours' => $order->items->sum('period_count'),
-            'payment_type' => $order->payment_type,
-            'transportation' => $order->transportation,
-            'fuel_responsibility' => $order->fuel_responsibility,
+            'payment_type' => $rentalCondition->payment_type ?? $order->payment_type ?? 'hourly',
+            'transportation' => $rentalCondition->transportation ?? $order->transportation ?? 'lessor',
+            'fuel_responsibility' => $rentalCondition->fuel_responsibility ?? $order->fuel_responsibility ?? 'lessor',
             'delivery_address' => $deliveryAddress,
             'lessor_base_amount' => $lessorBaseAmount,
             'delivery_cost' => $order->delivery_cost,
             'total_payout' => $lessorBaseAmount + $order->delivery_cost,
-
         ];
 
         return view('lessor.orders.show', compact('order', 'orderDetails'));
