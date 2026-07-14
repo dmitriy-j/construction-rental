@@ -296,153 +296,160 @@
 
     <!-- Навигация сайдбара -->
     <nav class="sidebar-navigation">
-        <div class="section-header">
-            <i class="bi bi-menu-button-wide sidebar-section-icon"></i>
-            <h4 class="sidebar-section-title">Основное меню</h4>
-        </div>
+        {{-- Заголовок «Основное меню» только для НЕ-администраторов --}}
+        @if(!auth()->user()->isPlatformAdmin())
+            <div class="section-header">
+                <i class="bi bi-menu-button-wide sidebar-section-icon"></i>
+                <h4 class="sidebar-section-title">Основное меню</h4>
+            </div>
+        @endif
+
         <ul class="nav-menu">
-            @if(auth()->check() && auth()->user()->company)
-                @if(auth()->user()->company->is_lessor)
-                    <!-- Меню для арендодателя -->
-                    <li class="nav-item">
-                        <a class="nav-link {{ Request::is('lessor/dashboard') ? 'active' : '' }}" href="{{ route('lessor.dashboard') }}">
-                            <i class="nav-icon bi bi-speedometer2"></i>
-                            <span class="nav-text">Главная</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ Request::is('lessor/balance*') ? 'active' : '' }}" href="{{ route('lessor.balance.index') }}">
-                            <i class="nav-icon bi bi-wallet2"></i>
-                            <span class="nav-text">Баланс</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ Request::is('lessor/equipment*') ? 'active' : '' }}" href="{{ route('lessor.equipment.index') }}">
-                            <i class="nav-icon bi bi-wrench-adjustable-circle"></i>
-                            <span class="nav-text">Моя техника</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ Request::is('lessor/operators*') ? 'active' : '' }}" href="{{ route('lessor.operators.index') }}">
-                            <i class="nav-icon bi bi-people"></i>
-                            <span class="nav-text">Операторы</span>
-                        </a>
-                    </li>
+            {{-- Пункты меню для арендодателя / арендатора только для НЕ-администраторов --}}
+            @if(!auth()->user()->isPlatformAdmin())
+                @if(auth()->check() && auth()->user()->company)
+                    @if(auth()->user()->company->is_lessor)
+                        <!-- Меню для арендодателя -->
+                        <li class="nav-item">
+                            <a class="nav-link {{ Request::is('lessor/dashboard') ? 'active' : '' }}" href="{{ route('lessor.dashboard') }}">
+                                <i class="nav-icon bi bi-speedometer2"></i>
+                                <span class="nav-text">Главная</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ Request::is('lessor/balance*') ? 'active' : '' }}" href="{{ route('lessor.balance.index') }}">
+                                <i class="nav-icon bi bi-wallet2"></i>
+                                <span class="nav-text">Баланс</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ Request::is('lessor/equipment*') ? 'active' : '' }}" href="{{ route('lessor.equipment.index') }}">
+                                <i class="nav-icon bi bi-wrench-adjustable-circle"></i>
+                                <span class="nav-text">Моя техника</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ Request::is('lessor/operators*') ? 'active' : '' }}" href="{{ route('lessor.operators.index') }}">
+                                <i class="nav-icon bi bi-people"></i>
+                                <span class="nav-text">Операторы</span>
+                            </a>
+                        </li>
 
-                    @php
-                        $newOrdersCount = $newOrdersCount ?? 0;
-                    @endphp
+                        @php
+                            $newOrdersCount = $newOrdersCount ?? 0;
+                        @endphp
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ Request::is('lessor/orders*') ? 'active' : '' }}" href="{{ route('lessor.orders.index') }}">
-                            <i class="nav-icon bi bi-list-task"></i>
-                            <span class="nav-text">Заказы</span>
-                            @if($newOrdersCount > 0)
-                                <span class="badge bg-primary rounded-pill pulse">{{ $newOrdersCount }}</span>
-                            @endif
-                        </a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ Request::is('lessor/orders*') ? 'active' : '' }}" href="{{ route('lessor.orders.index') }}">
+                                <i class="nav-icon bi bi-list-task"></i>
+                                <span class="nav-text">Заказы</span>
+                                @if($newOrdersCount > 0)
+                                    <span class="badge bg-primary rounded-pill pulse">{{ $newOrdersCount }}</span>
+                                @endif
+                            </a>
+                        </li>
 
-                    <!-- НОВЫЙ ПУНКТ: Заявки на аренду для арендодателя -->
-                    <li class="nav-item">
-                        <a class="nav-link {{ Request::is('lessor/rental-requests*') ? 'active' : '' }}" href="{{ route('lessor.rental-requests.index') }}">
-                            <i class="nav-icon bi bi-search-heart"></i>
-                            <span class="nav-text">Заявки на аренду</span>
-                            @if($newRentalRequestsCount > 0)
-                                <span class="badge bg-success rounded-pill pulse">{{ $newRentalRequestsCount }}</span>
-                            @endif
-                        </a>
-                    </li>
+                        <!-- Заявки на аренду для арендодателя -->
+                        <li class="nav-item">
+                            <a class="nav-link {{ Request::is('lessor/rental-requests*') ? 'active' : '' }}" href="{{ route('lessor.rental-requests.index') }}">
+                                <i class="nav-icon bi bi-search-heart"></i>
+                                <span class="nav-text">Заявки на аренду</span>
+                                @if($newRentalRequestsCount > 0)
+                                    <span class="badge bg-success rounded-pill pulse">{{ $newRentalRequestsCount }}</span>
+                                @endif
+                            </a>
+                        </li>
 
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" aria-expanded="false">
-                            <div class="nav-icon">
-                                <i class="bi bi-files"></i>
-                            </div>
-                            <span class="nav-text">Документы</span>
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="documentsDropdown">
-                            <li><a class="dropdown-item {{ Request::is('lessor/documents/contracts') ? 'active' : '' }}" href="{{ route('lessor.documents.index', ['type' => 'contracts']) }}">Договоры</a></li>
-                            <li><a class="dropdown-item {{ Request::is('lessor/documents/waybills') ? 'active' : '' }}" href="{{ route('lessor.documents.index', ['type' => 'waybills']) }}">Путевые листы</a></li>
-                            <li><a class="dropdown-item {{ Request::is('lessor/documents/delivery_notes') ? 'active' : '' }}" href="{{ route('lessor.documents.index', ['type' => 'delivery_notes']) }}">Накладные</a></li>
-                            <li><a class="dropdown-item {{ Request::is('lessor/documents/completion_acts') ? 'active' : '' }}" href="{{ route('lessor.documents.index', ['type' => 'completion_acts']) }}">Акты выполненных работ</a></li>
-                            <li>
-                                <a class="dropdown-item {{ Request::is('lessor/upds*') ? 'active' : '' }}" href="{{ route('lessor.upds.index') }}">
-                                    <i class="bi bi-receipt me-2"></i> УПД
-                                    @if(isset($pendingUpdsCount) && $pendingUpdsCount > 0)
-                                        <span class="badge bg-warning float-end">{{ $pendingUpdsCount }}</span>
-                                    @endif
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                @else
-                    <!-- Меню для арендатора -->
-                    <li class="nav-item">
-                        <a class="nav-link {{ Request::is('lessee/dashboard') ? 'active' : '' }}" href="{{ route('lessee.dashboard') }}">
-                            <i class="nav-icon bi bi-speedometer2"></i>
-                            <span class="nav-text">Главная</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ Request::is('lessee/balance*') ? 'active' : '' }}" href="{{ route('lessee.balance.index') }}">
-                            <i class="nav-icon bi bi-wallet2"></i>
-                            <span class="nav-text">Баланс</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ Request::is('catalog*') ? 'active' : '' }}" href="{{ route('catalog.index') }}">
-                            <i class="nav-icon bi bi-search"></i>
-                            <span class="nav-text">Каталог техники</span>
-                        </a>
-                    </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                                <div class="nav-icon">
+                                    <i class="bi bi-files"></i>
+                                </div>
+                                <span class="nav-text">Документы</span>
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="documentsDropdown">
+                                <li><a class="dropdown-item {{ Request::is('lessor/documents/contracts') ? 'active' : '' }}" href="{{ route('lessor.documents.index', ['type' => 'contracts']) }}">Договоры</a></li>
+                                <li><a class="dropdown-item {{ Request::is('lessor/documents/waybills') ? 'active' : '' }}" href="{{ route('lessor.documents.index', ['type' => 'waybills']) }}">Путевые листы</a></li>
+                                <li><a class="dropdown-item {{ Request::is('lessor/documents/delivery_notes') ? 'active' : '' }}" href="{{ route('lessor.documents.index', ['type' => 'delivery_notes']) }}">Накладные</a></li>
+                                <li><a class="dropdown-item {{ Request::is('lessor/documents/completion_acts') ? 'active' : '' }}" href="{{ route('lessor.documents.index', ['type' => 'completion_acts']) }}">Акты выполненных работ</a></li>
+                                <li>
+                                    <a class="dropdown-item {{ Request::is('lessor/upds*') ? 'active' : '' }}" href="{{ route('lessor.upds.index') }}">
+                                        <i class="bi bi-receipt me-2"></i> УПД
+                                        @if(isset($pendingUpdsCount) && $pendingUpdsCount > 0)
+                                            <span class="badge bg-warning float-end">{{ $pendingUpdsCount }}</span>
+                                        @endif
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    @else
+                        <!-- Меню для арендатора -->
+                        <li class="nav-item">
+                            <a class="nav-link {{ Request::is('lessee/dashboard') ? 'active' : '' }}" href="{{ route('lessee.dashboard') }}">
+                                <i class="nav-icon bi bi-speedometer2"></i>
+                                <span class="nav-text">Главная</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ Request::is('lessee/balance*') ? 'active' : '' }}" href="{{ route('lessee.balance.index') }}">
+                                <i class="nav-icon bi bi-wallet2"></i>
+                                <span class="nav-text">Баланс</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ Request::is('catalog*') ? 'active' : '' }}" href="{{ route('catalog.index') }}">
+                                <i class="nav-icon bi bi-search"></i>
+                                <span class="nav-text">Каталог техники</span>
+                            </a>
+                        </li>
 
-                    <!-- НОВЫЙ ПУНКТ: Заявки на аренду для арендатора -->
-                    <li class="nav-item">
-                        <a class="nav-link {{ Request::is('lessee/rental-requests*') ? 'active' : '' }}" href="{{ route('lessee.rental-requests.index') }}">
-                            <i class="nav-icon bi bi-clipboard-plus"></i>
-                            <span class="nav-text">Мои заявки</span>
-                            @if($newProposalsCount > 0)
-                                <span class="badge bg-success rounded-pill pulse">{{ $newProposalsCount }}</span>
-                            @endif
-                        </a>
-                    </li>
+                        <!-- Заявки на аренду для арендатора -->
+                        <li class="nav-item">
+                            <a class="nav-link {{ Request::is('lessee/rental-requests*') ? 'active' : '' }}" href="{{ route('lessee.rental-requests.index') }}">
+                                <i class="nav-icon bi bi-clipboard-plus"></i>
+                                <span class="nav-text">Мои заявки</span>
+                                @if($newProposalsCount > 0)
+                                    <span class="badge bg-success rounded-pill pulse">{{ $newProposalsCount }}</span>
+                                @endif
+                            </a>
+                        </li>
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ Request::is('lessee/cart*') ? 'active' : '' }}" href="{{ route('cart.index') }}">
-                            <i class="nav-icon bi bi-cart"></i>
-                            <span class="nav-text">Корзина</span>
-                            @if($cartItemsCount > 0)
-                                <span class="badge bg-primary rounded-pill pulse">{{ $cartItemsCount }}</span>
-                            @endif
-                        </a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ Request::is('lessee/cart*') ? 'active' : '' }}" href="{{ route('cart.index') }}">
+                                <i class="nav-icon bi bi-cart"></i>
+                                <span class="nav-text">Корзина</span>
+                                @if($cartItemsCount > 0)
+                                    <span class="badge bg-primary rounded-pill pulse">{{ $cartItemsCount }}</span>
+                                @endif
+                            </a>
+                        </li>
 
-                    <li class="nav-item">
-                        <a class="nav-link {{ Request::is('lessee/orders*') ? 'active' : '' }}" href="{{ route('lessee.orders.index') }}">
-                            <i class="nav-icon bi bi-list-task"></i>
-                            <span class="nav-text">Мои заказы</span>
-                        </a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ Request::is('lessee/orders*') ? 'active' : '' }}" href="{{ route('lessee.orders.index') }}">
+                                <i class="nav-icon bi bi-list-task"></i>
+                                <span class="nav-text">Мои заказы</span>
+                            </a>
+                        </li>
 
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" aria-expanded="false">
-                            <div class="nav-icon">
-                                <i class="bi bi-files"></i>
-                            </div>
-                            <span class="nav-text">Документы</span>
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="documentsDropdown">
-                            <li><a class="dropdown-item {{ Request::is('lessee/documents*') && request('type') === 'contracts' ? 'active' : '' }}" href="{{ route('documents.index', ['type' => 'contracts']) }}">Договоры</a></li>
-                            <li><a class="dropdown-item {{ Request::is('lessee/documents*') && request('type') === 'waybills' ? 'active' : '' }}" href="{{ route('documents.index', ['type' => 'waybills']) }}">Путевые листы</a></li>
-                            <li><a class="dropdown-item {{ Request::is('lessee/documents*') && request('type') === 'delivery_notes' ? 'active' : '' }}" href="{{ route('documents.index', ['type' => 'delivery_notes']) }}">Накладные</a></li>
-                            <li><a class="dropdown-item {{ Request::is('lessee/documents*') && request('type') === 'completion_acts' ? 'active' : '' }}" href="{{ route('documents.index', ['type' => 'completion_acts']) }}">Акты выполненных работ</a></li>
-                        </ul>
-                    </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                                <div class="nav-icon">
+                                    <i class="bi bi-files"></i>
+                                </div>
+                                <span class="nav-text">Документы</span>
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="documentsDropdown">
+                                <li><a class="dropdown-item {{ Request::is('lessee/documents*') && request('type') === 'contracts' ? 'active' : '' }}" href="{{ route('documents.index', ['type' => 'contracts']) }}">Договоры</a></li>
+                                <li><a class="dropdown-item {{ Request::is('lessee/documents*') && request('type') === 'waybills' ? 'active' : '' }}" href="{{ route('documents.index', ['type' => 'waybills']) }}">Путевые листы</a></li>
+                                <li><a class="dropdown-item {{ Request::is('lessee/documents*') && request('type') === 'delivery_notes' ? 'active' : '' }}" href="{{ route('documents.index', ['type' => 'delivery_notes']) }}">Накладные</a></li>
+                                <li><a class="dropdown-item {{ Request::is('lessee/documents*') && request('type') === 'completion_acts' ? 'active' : '' }}" href="{{ route('documents.index', ['type' => 'completion_acts']) }}">Акты выполненных работ</a></li>
+                            </ul>
+                        </li>
+                    @endif
                 @endif
             @endif
 
-            <!-- Общие пункты для всех пользователей -->
+            {{-- Общие пункты для всех пользователей (включая администраторов) --}}
             <li class="nav-item">
                 <a class="nav-link {{ Request::is('profile') ? 'active' : '' }}" href="{{ route('profile.edit') }}">
                     <i class="nav-icon bi bi-person"></i>
@@ -460,7 +467,7 @@
                 </a>
             </li>
 
-            <!-- Админ панель (только для администраторов) -->
+            {{-- Админ панель (только для администраторов) --}}
             @if(auth()->user()->isPlatformAdmin())
                 <div class="section-header mt-4">
                     <i class="bi bi-shield-lock"></i>
@@ -472,7 +479,7 @@
                         <span class="nav-text">Главная</span>
                     </a>
                 </li>
-                <!-- ДОБАВЛЕНО: Управление заказами -->
+                <!-- Управление заказами -->
                 <li class="nav-item">
                     <a class="nav-link {{ request()->is('admin/orders*') ? 'active' : '' }}" href="{{ route('admin.orders.index') }}">
                         <i class="nav-icon bi bi-receipt"></i>
@@ -526,7 +533,7 @@
                     </a>
                 </li>
 
-                <!-- Новый раздел: Настройки -->
+                <!-- Настройки -->
                 <div class="section-header mt-4">
                     <i class="bi bi-gear"></i>
                     <h4>Настройки</h4>

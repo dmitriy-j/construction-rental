@@ -1,3 +1,4 @@
+{{-- resources/views/admin/documents/contracts/edit.blade.php --}}
 @extends('layouts.app')
 
 @section('content')
@@ -18,10 +19,11 @@
 
     <div class="card">
         <div class="card-body">
-            <form action="{{ route('admin.contracts.update', $contract) }}" method="POST" enctype="multipart/form-data">
+            <form action="{{ route('admin.contracts.update', $contract) }}" method="POST" enctype="multipart/form-data" id="contract-form">
                 @csrf
                 @method('PUT')
 
+                {{-- Номер и файл --}}
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
@@ -33,7 +35,6 @@
                             @enderror
                         </div>
                     </div>
-
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="file">Файл договора</label>
@@ -52,6 +53,7 @@
                     </div>
                 </div>
 
+                {{-- Описание --}}
                 <div class="form-group">
                     <label for="description">Описание</label>
                     <textarea class="form-control @error('description') is-invalid @enderror"
@@ -61,46 +63,37 @@
                     @enderror
                 </div>
 
+                {{-- Блок выбора контрагента (КАК В CREATE) --}}
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="lessor_company_id">Арендодатель *</label>
-                            <select class="form-control @error('lessor_company_id') is-invalid @enderror"
-                                    id="lessor_company_id" name="lessor_company_id" required>
-                                <option value="">Выберите арендодателя</option>
-                                @foreach($lessorCompanies as $company)
-                                    <option value="{{ $company->id }}"
-                                        {{ old('lessor_company_id', $contract->lessor_company_id) == $company->id ? 'selected' : '' }}>
-                                        {{ $company->legal_name }} (ИНН: {{ $company->inn }})
-                                    </option>
-                                @endforeach
+                            <label for="counterparty_type">Тип контрагента *</label>
+                            <select class="form-control @error('counterparty_type') is-invalid @enderror"
+                                    id="counterparty_type" name="counterparty_type" required>
+                                <option value="">Выберите тип контрагента</option>
+                                <option value="lessor" {{ old('counterparty_type', $contract->counterparty_type) == 'lessor' ? 'selected' : '' }}>Арендодатель</option>
+                                <option value="lessee" {{ old('counterparty_type', $contract->counterparty_type) == 'lessee' ? 'selected' : '' }}>Арендатор</option>
                             </select>
-                            @error('lessor_company_id')
+                            @error('counterparty_type')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
                     </div>
-
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="lessee_company_id">Арендатор *</label>
-                            <select class="form-control @error('lessee_company_id') is-invalid @enderror"
-                                    id="lessee_company_id" name="lessee_company_id" required>
-                                <option value="">Выберите арендатора</option>
-                                @foreach($lesseeCompanies as $company)
-                                    <option value="{{ $company->id }}"
-                                        {{ old('lessee_company_id', $contract->lessee_company_id) == $company->id ? 'selected' : '' }}>
-                                        {{ $company->legal_name }} (ИНН: {{ $company->inn }})
-                                    </option>
-                                @endforeach
+                            <label for="counterparty_company_id">Контрагент *</label>
+                            <select class="form-control @error('counterparty_company_id') is-invalid @enderror"
+                                    id="counterparty_company_id" name="counterparty_company_id" required>
+                                <option value="">Сначала выберите тип контрагента</option>
                             </select>
-                            @error('lessee_company_id')
+                            @error('counterparty_company_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
                     </div>
                 </div>
 
+                {{-- Даты, оплата, штрафы --}}
                 <div class="row">
                     <div class="col-md-3">
                         <div class="form-group">
@@ -112,7 +105,6 @@
                             @enderror
                         </div>
                     </div>
-
                     <div class="col-md-3">
                         <div class="form-group">
                             <label for="end_date">Дата окончания *</label>
@@ -123,7 +115,6 @@
                             @enderror
                         </div>
                     </div>
-
                     <div class="col-md-3">
                         <div class="form-group">
                             <label for="payment_type">Тип оплаты *</label>
@@ -138,7 +129,6 @@
                             @enderror
                         </div>
                     </div>
-
                     <div class="col-md-3">
                         <div class="form-group">
                             <label for="penalty_rate">Штрафная ставка (%) *</label>
@@ -153,6 +143,7 @@
                     </div>
                 </div>
 
+                {{-- Сроки --}}
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
@@ -165,7 +156,6 @@
                             @enderror
                         </div>
                     </div>
-
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="documentation_deadline">Срок документооборота (дни) *</label>
@@ -179,14 +169,15 @@
                     </div>
                 </div>
 
+                {{-- Активность --}}
                 <div class="form-group form-check">
-                    <input type="checkbox" class="form-check-input" id="is_active" name="is_active"
+                    <input type="checkbox" class="form-check-input" id="is_active" name="is_active" value="1"
                            {{ old('is_active', $contract->is_active) ? 'checked' : '' }}>
                     <label class="form-check-label" for="is_active">Активный договор</label>
                 </div>
 
                 <div class="form-group">
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" id="submit-btn">
                         <i class="fas fa-save"></i> Обновить договор
                     </button>
                     <a href="{{ route('admin.contracts.show', $contract) }}" class="btn btn-secondary">Отмена</a>
@@ -195,4 +186,59 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const counterpartyTypeSelect = document.getElementById('counterparty_type');
+    const counterpartyCompanySelect = document.getElementById('counterparty_company_id');
+    const contractForm = document.getElementById('contract-form');
+    const submitBtn = document.getElementById('submit-btn');
+
+    // Данные о компаниях из контроллера
+    const companies = {
+        lessor: @json($lessorCompanies ?? []),
+        lessee: @json($lesseeCompanies ?? [])
+    };
+
+    // Значения из текущего договора (для предзаполнения)
+    const currentType = '{{ old('counterparty_type', $contract->counterparty_type) }}';
+    const currentCompanyId = '{{ old('counterparty_company_id', $contract->counterparty_company_id) }}';
+
+    function updateCompanies() {
+        const selectedType = counterpartyTypeSelect.value;
+        counterpartyCompanySelect.innerHTML = '<option value="">Выберите контрагента</option>';
+
+        if (selectedType && companies[selectedType]) {
+            companies[selectedType].forEach(company => {
+                const option = document.createElement('option');
+                option.value = company.id;
+                option.textContent = `${company.legal_name} (ИНН: ${company.inn})`;
+                if (selectedType === currentType && company.id == currentCompanyId) {
+                    option.selected = true;
+                }
+                counterpartyCompanySelect.appendChild(option);
+            });
+        }
+    }
+
+    counterpartyTypeSelect.addEventListener('change', updateCompanies);
+
+    // Отключаем кнопку при отправке
+    contractForm.addEventListener('submit', function(e) {
+        if (!counterpartyTypeSelect.value || !counterpartyCompanySelect.value) {
+            e.preventDefault();
+            alert('Пожалуйста, выберите тип контрагента и компанию');
+            return false;
+        }
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Обновление...';
+    });
+
+    // Инициализация при загрузке
+    if (currentType) {
+        counterpartyTypeSelect.value = currentType;
+    }
+    updateCompanies();
+});
+</script>
 @endsection

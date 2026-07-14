@@ -1,0 +1,25 @@
+
+.form-actions[data-v-67425c9a] {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+@media (max-width: 768px) {
+.form-actions[data-v-67425c9a] {
+        flex-direction: column;
+        align-items: stretch;
+}
+.form-actions .btn[data-v-67425c9a] {
+        margin-bottom: 0.5rem;
+}
+}
+
+/* Гарантия что карточки не создают лишние отступы */
+.card[data-v-67425c9a] {
+    margin-bottom: 1.5rem;
+}
+.card[data-v-67425c9a]:last-child {
+    margin-bottom: 0;
+}

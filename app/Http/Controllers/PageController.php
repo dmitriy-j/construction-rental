@@ -45,7 +45,7 @@ class PageController extends Controller
         // Отправляем email на office@fap24.ru
         Mail::to('office@fap24.ru')->send(new CooperationRequestMail($validated));
 
-        return redirect()->route('cooperation.form')
+        return redirect()->route('cooperation')
             ->with('success', 'Ваша заявка на партнерство отправлена! Мы свяжемся с вами в ближайшее время.');
     }
 

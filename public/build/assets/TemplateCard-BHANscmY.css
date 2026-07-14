@@ -1,0 +1,15 @@
+
+.template-card[data-v-644b2ea8] {
+  transition: all 0.3s ease;
+}
+.template-card[data-v-644b2ea8]:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+}
+.template-actions .btn[data-v-644b2ea8] {
+  padding: 0.25rem 0.5rem;
+}
+.card-title[data-v-644b2ea8] {
+  color: #2c3e50;
+  font-weight: 600;
+}

@@ -1,0 +1,10 @@
+
+.calculation-steps .step[data-v-055befa9] {
+    padding: 0.25rem 0;
+    border-bottom: 1px dashed #eee;
+}
+.calculation-steps .step[data-v-055befa9]:last-child {
+    border-bottom: none;
+    font-weight: bold;
+    color: #198754;
+}
