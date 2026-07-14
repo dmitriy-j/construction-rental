@@ -48,3 +48,4 @@ Homestead.yaml
 
 # Optional: если есть документация
 /docs/_build/
+analyze.php 
