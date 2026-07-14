@@ -1,10 +1,11 @@
+{{-- resources/views/admin/documents/contracts/show.blade.php --}}
 @extends('layouts.app')
 
 @section('content')
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-md-6">
-            <h1>Договор №{{ $document->number }}</h1>
+            <h1>Договор №{{ $contract->number }}</h1>
         </div>
         <div class="col-md-6 text-right">
             <a href="{{ route('admin.documents.index', ['type' => 'contracts']) }}" class="btn btn-secondary">← Назад к списку</a>
@@ -21,33 +22,33 @@
                     <table class="table table-sm">
                         <tr>
                             <th>Номер договора:</th>
-                            <td>{{ $document->number }}</td>
+                            <td>{{ $contract->number }}</td>
                         </tr>
                         <tr>
                             <th>Тип договора:</th>
                             <td>
-                                <span class="badge badge-{{ $document->counterparty_type === 'lessor' ? 'info' : 'warning' }}">
-                                    {{ $document->counterparty_type === 'lessor' ? 'С арендодателем' : 'С арендатором' }}
+                                <span class="badge badge-{{ $contract->counterparty_type === 'lessor' ? 'info' : 'warning' }}">
+                                    {{ $contract->counterparty_type === 'lessor' ? 'С арендодателем' : 'С арендатором' }}
                                 </span>
                             </td>
                         </tr>
                         <tr>
                             <th>Описание:</th>
-                            <td>{{ $document->description ?? 'Не указано' }}</td>
+                            <td>{{ $contract->description ?? 'Не указано' }}</td>
                         </tr>
                         <tr>
                             <th>Дата начала:</th>
-                            <td>{{ $document->start_date->format('d.m.Y') }}</td>
+                            <td>{{ $contract->start_date->format('d.m.Y') }}</td>
                         </tr>
                         <tr>
                             <th>Дата окончания:</th>
-                            <td>{{ $document->end_date->format('d.m.Y') }}</td>
+                            <td>{{ $contract->end_date->format('d.m.Y') }}</td>
                         </tr>
                         <tr>
                             <th>Статус:</th>
                             <td>
-                                <span class="badge badge-{{ $document->is_active ? 'success' : 'secondary' }}">
-                                    {{ $document->is_active ? 'Активен' : 'Неактивен' }}
+                                <span class="badge badge-{{ $contract->is_active ? 'success' : 'secondary' }}">
+                                    {{ $contract->is_active ? 'Активен' : 'Неактивен' }}
                                 </span>
                             </td>
                         </tr>
@@ -65,15 +66,15 @@
                     <table class="table table-sm">
                         <tr>
                             <th>Тип оплаты:</th>
-                            <td>{{ $document->payment_type }}</td>
+                            <td>{{ $contract->payment_type }}</td>
                         </tr>
                         <tr>
                             <th>Срок оплаты (дни):</th>
-                            <td>{{ $document->payment_deadline }}</td>
+                            <td>{{ $contract->payment_deadline }}</td>
                         </tr>
                         <tr>
                             <th>Штрафная ставка:</th>
-                            <td>{{ $document->penalty_rate ?? 'Не указана' }}</td>
+                            <td>{{ $contract->penalty_rate ?? 'Не указана' }}</td>
                         </tr>
                     </table>
                 </div>
@@ -88,31 +89,31 @@
                     <h5>Информация о контрагенте</h5>
                 </div>
                 <div class="card-body">
-                    @if($document->counterpartyCompany)
+                    @if($contract->counterpartyCompany)
                         <table class="table table-sm">
                             <tr>
                                 <th>Тип контрагента:</th>
-                                <td>{{ $document->counterparty_type === 'lessor' ? 'Арендодатель' : 'Арендатор' }}</td>
+                                <td>{{ $contract->counterparty_type === 'lessor' ? 'Арендодатель' : 'Арендатор' }}</td>
                             </tr>
                             <tr>
                                 <th>Название:</th>
-                                <td>{{ $document->counterpartyCompany->legal_name }}</td>
+                                <td>{{ $contract->counterpartyCompany->legal_name }}</td>
                             </tr>
                             <tr>
                                 <th>ИНН:</th>
-                                <td>{{ $document->counterpartyCompany->inn }}</td>
+                                <td>{{ $contract->counterpartyCompany->inn }}</td>
                             </tr>
                             <tr>
                                 <th>КПП:</th>
-                                <td>{{ $document->counterpartyCompany->kpp }}</td>
+                                <td>{{ $contract->counterpartyCompany->kpp }}</td>
                             </tr>
                             <tr>
                                 <th>ОГРН:</th>
-                                <td>{{ $document->counterpartyCompany->ogrn }}</td>
+                                <td>{{ $contract->counterpartyCompany->ogrn }}</td>
                             </tr>
                             <tr>
                                 <th>Адрес:</th>
-                                <td>{{ $document->counterpartyCompany->legal_address }}</td>
+                                <td>{{ $contract->counterpartyCompany->legal_address }}</td>
                             </tr>
                         </table>
                     @else
@@ -123,12 +124,12 @@
         </div>
     </div>
 
-    @if($document->file_path)
+    @if($contract->file_path)
     <div class="row mt-4">
         <div class="col-md-12">
             <div class="card">
                 <div class="card-body text-center">
-                    <a href="{{ Storage::url($document->file_path) }}" class="btn btn-primary" target="_blank">
+                    <a href="{{ Storage::url($contract->file_path) }}" class="btn btn-primary" target="_blank">
                         📄 Скачать договор (PDF)
                     </a>
                 </div>
@@ -147,18 +148,18 @@
                 </div>
                 <div class="card-body text-center">
                     <div class="btn-group" role="group">
-                        <a href="{{ route('admin.contracts.edit', $document) }}" class="btn btn-warning">
+                        <a href="{{ route('admin.contracts.edit', $contract) }}" class="btn btn-warning">
                             <i class="fas fa-edit"></i> Редактировать договор
                         </a>
                         <a href="{{ route('admin.contracts.index') }}" class="btn btn-secondary">
                             <i class="fas fa-list"></i> К списку договоров
                         </a>
-                        @if($document->file_path)
-                        <a href="{{ route('admin.contracts.download', $document) }}" class="btn btn-success">
+                        @if($contract->file_path)
+                        <a href="{{ route('admin.contracts.download', $contract) }}" class="btn btn-success">
                             <i class="fas fa-download"></i> Скачать файл
                         </a>
                         @endif
-                        <form action="{{ route('admin.contracts.destroy', $document) }}" method="POST" class="d-inline">
+                        <form action="{{ route('admin.contracts.destroy', $contract) }}" method="POST" class="d-inline">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="btn btn-danger"
