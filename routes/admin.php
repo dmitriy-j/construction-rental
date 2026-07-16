@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\MarkupController;
 use App\Http\Controllers\Admin\AdminFinanceController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\InvoiceController; // ДОБАВЛЕН импорт InvoiceController
+use App\Http\Controllers\Admin\AdminRentalRequestController;
 use Illuminate\Support\Facades\Route;
 
 // Админ кабинет
@@ -235,6 +236,18 @@ Route::resource('contracts', ContractController::class)
 Route::get('contracts/{contract}/download', [ContractController::class, 'download'])
     ->name('admin.contracts.download');
 
+
+// Управление заявками
+Route::resource('rental-requests', AdminRentalRequestController::class)
+    ->names([
+        'index' => 'admin.rental-requests.index',
+        'create' => 'admin.rental-requests.create',
+        'store' => 'admin.rental-requests.store',
+        'show' => 'admin.rental-requests.show',
+        'edit' => 'admin.rental-requests.edit',
+        'update' => 'admin.rental-requests.update',
+        'destroy' => 'admin.rental-requests.destroy',
+    ]);
 
 Route::get('/upds/{upd}/debug', [UpdController::class, 'debugTemplate'])->name('admin.upds.debug');
 Route::get('/upds/{upd}/debug-placeholders', [UpdController::class, 'debugPlaceholders'])->name('admin.upds.debug-placeholders');

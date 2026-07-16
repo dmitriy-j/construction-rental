@@ -95,6 +95,7 @@
                     @foreach([
                         ['route'=>'admin.dashboard','icon'=>'bi-speedometer2','label'=>'Главная','check'=>'admin/dashboard'],
                         ['route'=>'admin.orders.index','icon'=>'bi-receipt','label'=>'Управление заказами','check'=>'admin/orders*'],
+                        ['route'=>'admin.rental-requests.index','icon'=>'bi-clipboard-plus','label'=>'Заявки','check'=>'admin/rental-requests*'],
                     ] as $item)
                     <li class="nav-item"><a class="nav-link py-2 px-3 rounded {{ Request::is($item['check']) ? 'active' : '' }}" href="{{ route($item['route']) }}" title="{{ $item['label'] }}"><i class="bi {{ $item['icon'] }} nav-icon"></i><span>{{ $item['label'] }}</span></a></li>
                     @endforeach
