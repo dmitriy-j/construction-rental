@@ -18,7 +18,7 @@
             <div class="border-bottom pb-3 mb-3">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <a href="{{ $notification->data['url'] }}" 
+                        <a href="{{ $notification->data['url'] ?? '#' }}"
                            class="{{ $notification->unread() ? 'fw-bold' : '' }}">
                             {{ $notification->data['message'] }}
                         </a>

@@ -231,9 +231,15 @@ class BulkProposalService
                 continue;
             }
 
-            // Проверка принадлежности
-            if ($equipment->company_id !== $lessor->company_id) {
+            // Проверка принадлежности (платформенную технику может предлагать только платформа)
+            if (!$equipment->isPlatformOwned() && $equipment->company_id !== $lessor->company_id) {
                 $errors[] = "Оборудование '{$equipment->title}' не принадлежит вашей компании";
+                continue;
+            }
+
+            // Платформенную технику может предлагать только компания-платформа
+            if ($equipment->isPlatformOwned() && !$lessor->company?->is_platform) {
+                $errors[] = "Оборудование '{$equipment->title}' доступно только для управления платформой";
                 continue;
             }
 
@@ -327,6 +333,16 @@ class BulkProposalService
     }
 
     /**
+     * 🔥 ВСПОМОГАТЕЛЬНЫЙ МЕТОД для расчета дней аренды
+     */
+    private function calculateRentalDays(RentalRequest $request): int
+    {
+        $start = \Carbon\Carbon::parse($request->rental_period_start);
+        $end = \Carbon\Carbon::parse($request->rental_period_end);
+        return $start->diffInDays($end) + 1;
+    }
+
+    /**
      * Создание заказа из bulk-предложения
      */
 
@@ -364,11 +380,15 @@ class BulkProposalService
         $user = $bulkProposal->rentalRequest->user;
         $firstEquipment = $bulkProposal->bulkItems->first()->equipment;
 
+        // Если первый элемент — платформенная техника, lessor_company_id = null, статус сразу confirmed
+        $isPlatformOwned = $firstEquipment && $firstEquipment->isPlatformOwned();
+        $lessorCompanyId = $isPlatformOwned ? null : $firstEquipment->company_id;
+
         return Order::create([
             'user_id' => $user->id,
             'lessee_company_id' => $user->company_id,
-            'lessor_company_id' => $firstEquipment->company_id,
-            'status' => 'pending_approval',
+            'lessor_company_id' => $lessorCompanyId,
+            'status' => $isPlatformOwned ? 'confirmed' : 'pending_approval',
             'total_amount' => $bulkProposal->proposed_price,
             'start_date' => $bulkProposal->rentalRequest->rental_period_start,
             'end_date' => $bulkProposal->rentalRequest->rental_period_end,
@@ -388,6 +408,10 @@ class BulkProposalService
             $workingHours
         );
 
+        // Определяем компанию-арендодателя для позиции
+        $isPlatformOwned = $proposal->equipment && $proposal->equipment->isPlatformOwned();
+        $lessorCompanyId = $isPlatformOwned ? null : ($proposal->equipment->company_id ?? null);
+
         OrderItem::create([
             'order_id' => $order->id,
             'equipment_id' => $proposal->equipment_id,
@@ -400,6 +424,7 @@ class BulkProposalService
             'platform_fee' => $priceCalculation['platform_fee'],
             'total_price' => $priceCalculation['calculated_price'],
             'period_count' => $workingHours,
+            'lessor_company_id' => $lessorCompanyId,
             'status' => OrderItem::STATUS_PENDING,
         ]);
     }

@@ -111,9 +111,9 @@
         box-shadow: 0 5px 15px rgba(58, 123, 213, 0.3);
     }
 </style>
-@endsection
+@endpush
 
-@section('scripts')
+@push('scripts')
 <script>
     // Таймер для повторной отправки
     let timer = 60;
@@ -139,5 +139,5 @@
     // Запускаем таймер при загрузке
     document.addEventListener('DOMContentLoaded', updateTimer);
 </script>
-@endsection
-@endsection
+@endpush
+@endpush

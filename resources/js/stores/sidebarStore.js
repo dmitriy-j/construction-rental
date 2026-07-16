@@ -6,8 +6,18 @@ document.addEventListener('alpine:init', () => {
         menuHTML: '',
 
         init() {
+            // Применяем начальное состояние к body
+            document.body.classList.toggle('sidebar-mini', this.isMini);
             this.loadMenuData();
-            this.setupEventListeners();
+            // Слушаем клики по кнопке сворачивания
+            this.$nextTick(() => {
+                const btn = document.getElementById('sidebarMinify');
+                if (btn) {
+                    btn.addEventListener('click', (e) => {
+                        this.toggleMini();
+                    });
+                }
+            });
         },
 
         async loadMenuData() {
@@ -22,7 +32,6 @@ document.addEventListener('alpine:init', () => {
         },
 
         generateMenuHTML(menuData) {
-            // Генерация HTML на основе роли пользователя
             return `
                 <div class="section-header">
                     <i class="bi bi-menu-button-wide"></i>
@@ -47,6 +56,7 @@ document.addEventListener('alpine:init', () => {
         toggleMini() {
             this.isMini = !this.isMini;
             localStorage.setItem('sidebarMini', this.isMini);
+            document.body.classList.toggle('sidebar-mini', this.isMini);
             document.dispatchEvent(new CustomEvent('sidebarToggle', { detail: { isMini: this.isMini } }));
         },
 

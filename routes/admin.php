@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\ReportsController;
 use App\Http\Controllers\Admin\AdminNewsController;
 use App\Http\Controllers\Admin\UpdController;
 use App\Http\Controllers\Admin\MarkupController;
+use App\Http\Controllers\Admin\AdminFinanceController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\InvoiceController; // ДОБАВЛЕН импорт InvoiceController
 use Illuminate\Support\Facades\Route;
@@ -34,18 +35,28 @@ Route::prefix('orders')->name('admin.orders.')->group(function () {
 
 // Оборудование
 Route::get('/equipment', [AdminEquipmentController::class, 'index'])->name('admin.equipment.index');
+Route::get('/equipment/create', [AdminEquipmentController::class, 'create'])->name('admin.equipment.create');
+Route::post('/equipment', [AdminEquipmentController::class, 'store'])->name('admin.equipment.store');
 Route::get('/equipment/approve/{equipment}', [AdminEquipmentController::class, 'approve'])->name('admin.equipment.approve');
 Route::get('/equipment/reject/{equipment}', [AdminEquipmentController::class, 'reject'])->name('admin.equipment.reject');
-Route::get('/equipment/{id}', [AdminEquipmentController::class, 'show'])->name('admin.equipment.show');
+Route::get('/equipment/{equipment}/edit', [AdminEquipmentController::class, 'edit'])->name('admin.equipment.edit');
+Route::get('/equipment/{equipment}', [AdminEquipmentController::class, 'show'])->name('admin.equipment.show');
 Route::put('/equipment/{equipment}', [AdminEquipmentController::class, 'update'])->name('admin.equipment.update');
+Route::delete('/equipment/{equipment}', [AdminEquipmentController::class, 'destroy'])->name('admin.equipment.destroy');
 
 // Арендаторы
 Route::get('/lessees', [AdminLesseeController::class, 'index'])->name('admin.lessees.index');
+Route::get('/lessees/{lessee}/edit', [AdminLesseeController::class, 'edit'])->name('admin.lessees.edit');
+Route::put('/lessees/{lessee}', [AdminLesseeController::class, 'update'])->name('admin.lessees.update');
+Route::post('/lessees/{lessee}/verify', [AdminLesseeController::class, 'verify'])->name('admin.lessees.verify');
 Route::get('/lessees/{lessee}', [AdminLesseeController::class, 'show'])->name('admin.lessees.show');
 Route::get('/lessees/{lessee}/orders/{order}', [AdminLesseeController::class, 'showOrder'])->name('admin.lessees.orders.show');
 
 // Арендодатели
 Route::get('/lessors', [AdminLessorController::class, 'index'])->name('admin.lessors.index');
+Route::get('/lessors/{lessor}/edit', [AdminLessorController::class, 'edit'])->name('admin.lessors.edit');
+Route::put('/lessors/{lessor}', [AdminLessorController::class, 'update'])->name('admin.lessors.update');
+Route::post('/lessors/{lessor}/verify', [AdminLessorController::class, 'verify'])->name('admin.lessors.verify');
 Route::get('/lessors/{lessor}', [AdminLessorController::class, 'show'])->name('admin.lessors.show');
 Route::get('/lessors/{lessor}/orders/{order}', [AdminLessorController::class, 'showOrder'])->name('admin.lessors.orders.show');
 
@@ -170,6 +181,20 @@ Route::prefix('finance')->name('admin.finance.')->group(function () {
     Route::post('/transactions/{transaction}/cancel', [FinanceController::class, 'cancelTransaction'])->name('transactions.cancel');
     Route::get('/invoices', [FinanceController::class, 'invoices'])->name('invoices');
     Route::get('/invoices/{invoice}', [FinanceController::class, 'showInvoice'])->name('invoices.show');
+
+    // Долги арендаторов
+    Route::get('/lessee-debts', [AdminFinanceController::class, 'lesseeDebts'])->name('lessee-debts');
+    // Долги перед арендодателями
+    Route::get('/lessor-debts', [AdminFinanceController::class, 'lessorDebts'])->name('lessor-debts');
+    // Ручная корректировка баланса
+    Route::get('/adjustment-create', [AdminFinanceController::class, 'adjustmentCreate'])->name('adjustment-create');
+    Route::post('/adjustment-store', [AdminFinanceController::class, 'adjustmentStore'])->name('adjustment-store');
+    // История корректировок
+    Route::get('/balance-adjustments', [AdminFinanceController::class, 'balanceAdjustments'])->name('balance-adjustments');
+    // Детализация по компании
+    Route::get('/company/{company}', [AdminFinanceController::class, 'companyDetail'])->name('company-detail');
+    // Акт сверки
+    Route::get('/reconciliation/{company}', [AdminFinanceController::class, 'reconciliationAct'])->name('reconciliation-act');
 });
 
 // Банковские выписки
@@ -183,6 +208,9 @@ Route::prefix('bank-statements')->name('admin.bank-statements.')->group(function
     Route::delete('/{bankStatement}', [BankStatementController::class, 'destroy'])->name('destroy');
     Route::post('/pending/{pendingTransaction}/process', [BankStatementController::class, 'processPendingTransaction'])->name('process-pending');
     Route::post('/pending-payout/{pendingPayout}/cancel', [BankStatementController::class, 'cancelPendingPayout'])->name('cancel-payout');
+
+    // Ручное сопоставление транзакции с документом
+    Route::put('/{transaction}/match', [BankStatementController::class, 'matchTransaction'])->name('match-transaction');
 });
 
 // Отчеты

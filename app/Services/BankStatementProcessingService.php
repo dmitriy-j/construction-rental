@@ -15,11 +15,14 @@ class BankStatementProcessingService
 {
     protected $balanceService;
 
+    protected $paymentMatchingService;
+
     protected $platformInn;
 
     public function __construct(BalanceService $balanceService)
     {
         $this->balanceService = $balanceService;
+        $this->paymentMatchingService = app(PaymentMatchingService::class);
         $this->platformInn = config('platform.inn');
 
         if (empty($this->platformInn)) {
@@ -96,6 +99,16 @@ class BankStatementProcessingService
                 'invoice_id' => $invoice?->id,
                 'status' => 'pending',
             ]);
+
+            // Автоматическое сопоставление с документами
+            try {
+                $this->paymentMatchingService->matchTransaction($transaction);
+            } catch (\Exception $e) {
+                Log::warning('Ошибка автоматического сопоставления транзакции', [
+                    'transaction_id' => $transaction->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             $this->processFinancialOperation($transaction, $company, $invoice);
 
@@ -454,28 +467,85 @@ class BankStatementProcessingService
             ? $transactionData['Плательщик1'] ?? 'Неизвестный плательщик'
             : $transactionData['Получатель1'] ?? 'Неизвестный получатель';
 
-        // Определяем правильный тип отложенной записи
-        if ($type === 'outgoing') {
-            // Для исходящих платежей создаем PendingPayout
-            PendingPayout::create([
-                'bank_statement_id' => $bankStatementId,
-                'payee_inn' => $inn,
-                'payee_name' => $name,
-                'amount' => $this->validateAndParseAmount($transactionData['Сумма']),
-                'purpose' => $transactionData['НазначениеПлатежа'] ?? '',
-                'status' => 'pending_registration',
+        try {
+            // Создаём внешнюю компанию автоматически
+            $company = Company::create([
+                'legal_name' => $name,
+                'inn' => $inn !== '0000000000' ? $inn : null,
+                'is_external' => true,
+                'is_lessor' => false,
+                'is_lessee' => false,
+                'status' => 'pending',
             ]);
-        } else {
-            // Для входящих платежей создаем PendingTransaction
-            PendingTransaction::create([
+
+            Log::info("Создана внешняя компания #{$company->id} для незарегистрированного контрагента: {$name}");
+
+            // Создаём транзакцию и сразу запускаем сопоставление
+            $date = isset($transactionData['Дата']) ?
+                \Carbon\Carbon::createFromFormat('d.m.Y', $transactionData['Дата'])->format('Y-m-d') :
+                now()->format('Y-m-d');
+
+            $amount = $this->validateAndParseAmount($transactionData['Сумма'] ?? 0);
+            $idempotencyKey = 'ext_'.$this->generateIdempotencyKey($transactionData);
+
+            $transaction = BankStatementTransaction::create([
                 'bank_statement_id' => $bankStatementId,
-                'company_inn' => $inn,
-                'company_name' => $name,
-                'amount' => $this->validateAndParseAmount($transactionData['Сумма']),
+                'date' => $date,
+                'amount' => $amount,
                 'type' => $type,
-                'transaction_data' => $transactionData,
-                'status' => 'pending_registration',
+                'payer_name' => $transactionData['Плательщик1'] ?? 'Не указан',
+                'payer_inn' => $this->cleanInn($transactionData['ПлательщикИНН'] ?? ''),
+                'payer_account' => $transactionData['ПлательщикСчет'] ?? '',
+                'payer_bic' => $transactionData['ПлательщикБИК'] ?? '',
+                'payee_name' => $transactionData['Получатель1'] ?? 'Не указан',
+                'payee_inn' => $this->cleanInn($transactionData['ПолучательИНН'] ?? ''),
+                'payee_account' => $transactionData['ПолучательСчет'] ?? '',
+                'payee_bic' => $transactionData['ПолучательБИК'] ?? '',
+                'purpose' => $transactionData['НазначениеПлатежа'] ?? 'Не указано',
+                'idempotency_key' => $idempotencyKey,
+                'company_id' => $company->id,
+                'matched_company_id' => $company->id,
+                'status' => 'pending',
             ]);
+
+            // Автоматическое сопоставление
+            try {
+                $this->paymentMatchingService->matchTransaction($transaction);
+            } catch (\Exception $e) {
+                Log::warning('Ошибка сопоставления для внешней компании', [
+                    'transaction_id' => $transaction->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Ошибка создания внешней компании и транзакции', [
+                'inn' => $inn,
+                'name' => $name,
+                'error' => $e->getMessage(),
+            ]);
+
+            // Fallback: создаём отложенную транзакцию как раньше
+            if ($type === 'outgoing') {
+                PendingPayout::create([
+                    'bank_statement_id' => $bankStatementId,
+                    'payee_inn' => $inn,
+                    'payee_name' => $name,
+                    'amount' => $this->validateAndParseAmount($transactionData['Сумма']),
+                    'purpose' => $transactionData['НазначениеПлатежа'] ?? '',
+                    'status' => 'pending_registration',
+                ]);
+            } else {
+                PendingTransaction::create([
+                    'bank_statement_id' => $bankStatementId,
+                    'company_inn' => $inn,
+                    'company_name' => $name,
+                    'amount' => $this->validateAndParseAmount($transactionData['Сумма']),
+                    'type' => $type,
+                    'transaction_data' => $transactionData,
+                    'status' => 'pending_registration',
+                ]);
+            }
         }
     }
 

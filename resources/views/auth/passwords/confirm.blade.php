@@ -48,7 +48,7 @@
         </div>
     </div>
 
-    @section('scripts')
+    @push('scripts')
     <script>
         // Таймер для повторной отправки
         let timer = 60;
@@ -89,5 +89,5 @@
             emailIcon.style.transform = '';
         });
     </script>
-    @endsection
+    @endpush
 </x-auth-layout>

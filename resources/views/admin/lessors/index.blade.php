@@ -9,8 +9,8 @@
         <div class="card-body">
             <form method="GET" class="row g-3">
                 <div class="col-md-5">
-                    <input type="text" name="search" class="form-control" 
-                           placeholder="Поиск (название, ИНН, директор)" 
+                    <input type="text" name="search" class="form-control"
+                           placeholder="Поиск (название, ИНН, директор)"
                            value="{{ request('search') }}">
                 </div>
                 <div class="col-md-3">
@@ -18,7 +18,7 @@
                         <option value="">Все статусы</option>
                         @foreach($statuses as $status)
                             <option value="{{ $status }}" {{ request('status') == $status ? 'selected' : '' }}>
-                                {{ ucfirst($status) }}
+                                {{ $status == 'verified' ? 'Подтверждённые' : ($status == 'rejected' ? 'Отклонённые' : 'Ожидают проверки') }}
                             </option>
                         @endforeach
                     </select>
@@ -71,11 +71,11 @@
                             <td>{{ $lessor->inn }}</td>
                             <td>{{ $lessor->phone }}</td>
                             <td>
-                                <span class="badge bg-{{ 
-                                    $lessor->status == 'verified' ? 'success' : 
-                                    ($lessor->status == 'rejected' ? 'danger' : 'warning') 
+                                <span class="badge bg-{{
+                                    $lessor->status == 'verified' ? 'success' :
+                                    ($lessor->status == 'rejected' ? 'danger' : 'warning')
                                 }}">
-                                    {{ $lessor->status }}
+                                    {{ $lessor->status == 'verified' ? 'Подтверждён' : ($lessor->status == 'rejected' ? 'Отклонён' : 'Ожидает проверки') }}
                                 </span>
                                 @if($lessor->status == 'rejected' && $lessor->rejection_reason)
                                     <div class="text-danger small mt-1">{{ Str::limit($lessor->rejection_reason, 30) }}</div>
@@ -84,20 +84,37 @@
                             <td>{{ $lessor->equipment_count }}</td>
                             <td>{{ $lessor->created_at->format('d.m.Y') }}</td>
                             <td class="text-nowrap">
-                                <a href="{{ route('admin.lessors.show', $lessor) }}" 
+                                <a href="{{ route('admin.lessors.show', $lessor) }}"
                                    class="btn btn-sm btn-info" title="Подробнее">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                <button class="btn btn-sm btn-warning" title="Изменить статус">
-                                    <i class="bi bi-pencil-square"></i>
-                                </button>
+                                <a href="{{ route('admin.lessors.edit', $lessor) }}"
+                                   class="btn btn-sm btn-warning" title="Редактировать">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                @if($lessor->status !== 'verified')
+                                    <form action="{{ route('admin.lessors.verify', $lessor) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <input type="hidden" name="action" value="verify">
+                                        <button type="submit" class="btn btn-sm btn-success" title="Подтвердить"
+                                                onclick="return confirm('Подтвердить компанию?')">
+                                            <i class="bi bi-check-lg"></i>
+                                        </button>
+                                    </form>
+                                @endif
+                                @if($lessor->status !== 'rejected')
+                                    <button type="button" class="btn btn-sm btn-danger" title="Отклонить"
+                                            onclick="showRejectForm('{{ route('admin.lessors.verify', $lessor) }}')">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                @endif
                             </td>
                         </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
-            
+
             <!-- Пагинация -->
             <div class="mt-3">
                 {{ $lessors->withQueryString()->links() }}
@@ -105,4 +122,37 @@
         </div>
     </div>
 </div>
+
+<!-- Modal для отклонения -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="rejectForm">
+                @csrf
+                <input type="hidden" name="action" value="reject">
+                <div class="modal-header">
+                    <h5 class="modal-title">Отклонение компании</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Причина отклонения *</label>
+                    <textarea name="rejection_reason" class="form-control" rows="3" required
+                              placeholder="Укажите причину отклонения..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-danger">Отклонить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function showRejectForm(url) {
+    document.getElementById('rejectForm').action = url;
+    var modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+    modal.show();
+}
+</script>
 @endsection

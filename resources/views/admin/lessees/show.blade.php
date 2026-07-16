@@ -17,12 +17,12 @@
                             <i class="bi bi-building fs-1 text-primary"></i>
                         </div>
                     </div>
-                    
+
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item d-flex justify-content-between">
                             <span>Статус:</span>
-                            <span class="badge bg-{{ $lessee->status == 'verified' ? 'success' : 'warning' }}">
-                                {{ $lessee->status }}
+                            <span class="badge bg-{{ $lessee->status == 'verified' ? 'success' : ($lessee->status == 'rejected' ? 'danger' : 'warning') }}">
+                                {{ $lessee->status == 'verified' ? 'Подтверждён' : ($lessee->status == 'rejected' ? 'Отклонён' : 'Ожидает проверки') }}
                             </span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between">
@@ -52,19 +52,19 @@
                 <div class="card-header">
                     <ul class="nav nav-tabs card-header-tabs" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active" data-bs-toggle="tab" 
+                            <button class="nav-link active" data-bs-toggle="tab"
                                     data-bs-target="#info" type="button" role="tab">
                                 <i class="bi bi-info-circle me-1"></i> Основная информация
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" data-bs-toggle="tab" 
+                            <button class="nav-link" data-bs-toggle="tab"
                                     data-bs-target="#orders" type="button" role="tab">
                                 <i class="bi bi-list-check me-1"></i> Заказы ({{ $orders->total() }})
                             </button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" data-bs-toggle="tab" 
+                            <button class="nav-link" data-bs-toggle="tab"
                                     data-bs-target="#documents" type="button" role="tab">
                                 <i class="bi bi-files me-1"></i> Документы
                             </button>
@@ -165,7 +165,7 @@
                                                 </span>
                                             </td>
                                             <td>
-                                                <a href="{{ route('admin.lessees.orders.show', ['lessee' => $lessee->id, 'order' => $order->id]) }}" 
+                                                <a href="{{ route('admin.lessees.orders.show', ['lessee' => $lessee->id, 'order' => $order->id]) }}"
    class="btn btn-sm btn-outline-primary">
     <i class="bi bi-eye"></i>
 </a>
@@ -175,7 +175,7 @@
                                     </tbody>
                                 </table>
                             </div>
-                            
+
                             <div class="mt-3">
                                 {{ $orders->links() }}
                             </div>

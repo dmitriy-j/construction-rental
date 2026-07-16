@@ -51,7 +51,7 @@
     "name": "sweetalert2.esm.all"
   },
   "resources/js/app.js": {
-    "file": "assets/app-C8SUVgo2.js",
+    "file": "assets/app-CR2YwOmf.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -60,9 +60,6 @@
       "__plugin-vue_export-helper-1tPrXgE0.js",
       "_sweetalert2.esm.all-DkqDp_b4.js",
       "_index-DM4mtReV.js"
-    ],
-    "css": [
-      "assets/app-g67AMydG.css"
     ]
   },
   "resources/js/cart/index.js": {
@@ -331,7 +328,7 @@
     "isEntry": true
   },
   "resources/sass/app.scss": {
-    "file": "assets/app-Cjo03o4r.css",
+    "file": "assets/app-BGaBKLfa.css",
     "src": "resources/sass/app.scss",
     "isEntry": true
   }

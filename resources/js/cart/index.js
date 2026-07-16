@@ -11,20 +11,17 @@ export function initCart() {
     const selectedItems = getSelectedItems();
     const selectedItemsJSON = JSON.stringify(selectedItems);
 
-    // Обновляем поле в форме оформления заказа
     const checkoutInput = document.getElementById('selected-items');
     if (checkoutInput) {
       checkoutInput.value = selectedItemsJSON;
     }
 
-    // Обновляем поле в форме массовых действий
     const bulkFormInput = document.getElementById('selected-items-input');
     if (bulkFormInput) {
       bulkFormInput.value = selectedItemsJSON;
     }
   }
 
-  // Инициализация "Выбрать все"
   function initSelectAll() {
     const selectAll = document.getElementById('select-all');
     if (!selectAll) return;
@@ -33,26 +30,27 @@ export function initCart() {
       document.querySelectorAll('.item-checkbox').forEach(checkbox => {
         checkbox.checked = this.checked;
       });
-      updateSelectedItems(); // Обновляем скрытые поля
+      updateSelectedItems();
     });
 
-    // Обработчик изменений для отдельных чекбоксов
     document.addEventListener('change', function(e) {
       if (e.target.classList.contains('item-checkbox')) {
         const checkboxes = document.querySelectorAll('.item-checkbox');
         const allChecked = [...checkboxes].every(cb => cb.checked);
         selectAll.checked = allChecked;
-        updateSelectedItems(); // Обновляем скрытые поля
+        updateSelectedItems();
       }
     });
   }
 
-  // Инициализация кнопки удаления
   function initRemoveSelected() {
     const removeSelectedBtn = document.getElementById('remove-selected');
     if (!removeSelectedBtn) return;
 
-    removeSelectedBtn.addEventListener('click', function() {
+    removeSelectedBtn.setAttribute('type', 'button');
+
+    removeSelectedBtn.addEventListener('click', async function(e) {
+      e.preventDefault();
       const selected = getSelectedItems();
 
       if (selected.length === 0) {
@@ -60,25 +58,40 @@ export function initCart() {
         return;
       }
 
-      if (confirm(`Вы уверены, что хотите удалить ${selected.length} выбранных позиций?`)) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = document.getElementById('cart-data').dataset.removeSelectedRoute;
-        form.innerHTML = `
-          <input type="hidden" name="_token" value="${document.querySelector('meta[name="csrf-token"]').getAttribute('content')}">
-          <input type="hidden" name="_method" value="DELETE">
-          <input type="hidden" name="items" value="${JSON.stringify(selected)}">
-        `;
-        document.body.appendChild(form);
-        form.submit();
+      if (!confirm(`Удалить ${selected.length} выбранных позиций?`)) return;
+
+      const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+      let success = true;
+
+      for (const id of selected) {
+        try {
+          const res = await fetch('/api/cart/' + id, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': csrfToken }
+          });
+          const data = await res.json();
+          if (!data.success) {
+            console.error('Failed to delete item', id, data);
+            success = false;
+          }
+        } catch(e) {
+          console.error('Error deleting item', id, e);
+          success = false;
+        }
       }
+
+      if (success) {
+        alert('Позиции удалены');
+      } else {
+        alert('Некоторые позиции не удалились (см. консоль)');
+      }
+      location.reload();
     });
   }
 
-  // Добавьте вызов новых функций
   initSelectAll();
   initRemoveSelected();
-  updateSelectedItems(); // Инициализация при загрузке
+  updateSelectedItems();
 
   console.log('Cart module initialized');
 }

@@ -1,41 +1,27 @@
 <!doctype html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-theme="light">
 <head>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='15' fill='%230b5ed7'/><text x='50' y='70' font-family='Raleway' font-weight='700' font-size='50' text-anchor='middle' fill='white'>ФАП</text></svg>">
-    <link rel="icon" type="image/png" sizes="16x16" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABPklEQVQ4y6WTsUoDQRCGPxMkFQoWFiJYKJjKQhBsrS0s7Sz9B76Jj2BjZWdnYWNhY2UhCIKQShBUsLARBEVQ0CJcYXHX3J7cJYlPst3O/PvPzM7sCv9ZAnwD74W3gXngDngB3oBz4AqYAD6AeaBdAq0a4BQY1oBd4BQ4kQHXwGkNuAP2gA3gCJgD1oB74AC4BJrVJ6rAGrAPdIFJYAFoA+vALrAI9IBmFZgEtoF1YAMYAXrAErAJdIFVYFgF2sAOsAQsA6/AKtABloEOMAMMqkAPmAFmw8gK0AeWgFZ4TgODKvAItIF2eN4As8B8eE4B0zVgADwAc8B9eE4C9+F9CgxrwCPwDLwAL8Ab8Ay8hvdL4KkGPAHfxFfh/QN8F97f1Y8a8A58Fv5f4bPw/qx+1IBn4KPwfg8fhfdH9aMGPAMfhfc78F54vwGfNeAVeCm8X4G3wvsF+KoBb8Bb4f0MvBbez8B3DfgAPgvvT+Cz8P4H/gBQeC0ZQqjT9AAAAABJRU5ErkJggg==">
-    <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAA7EAAAOxAGVKw4bAAABdElEQVRYw+2Wv0oDQRCGPxMkFQoWFiJYKJjKQhBsrS0s7Sz9B76Jj2BjZWdnYWNhY2UhCIKQShBUsLARBEVQ0CJcYXHX3J7cJYlPst3O/PvPzM7sCv9ZAnwD74W3gXngDngB3oBz4AqYAD6AeaBdAq0a4BQY1oBd4BQ4kQHXwGkNuAP2gA3gCJgD1oB74AC4BJrVJ6rAGrAPdIFJYAFoA+vALrAI9IBmFZgEtoF1YAMYAXrAErAJdIFVYFgF2sAOsAQsA6/AKtABloEOMAMMqkAPmAFmw8gK0AeWgFZ4TgODKvAItIF2eN4As8B8eE4B0zVgADwAc8B9eM4C9+F9CgxrwCPwDLwAL8Ab8Ay8hvdL4KkGPAHfwFfh/QN8F97f1Y8a8A58Fv5f4bPw/qx+1IBn4KPwfg8fhfdH9aMGPAMfhfc78F54vwGfNeAVeCm8X4G3wvsF+KoBb8Bb4f0MvBbez8B3DfgAPgvvT+Cz8P4H/gBQeC0ZQqjT9AAAAABJRU5ErkJggg==">
-    <link rel="icon" type="image/png" sizes="64x64" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAA7EAAAOxAGVKw4bAAACFUlEQVR4nO2Yv0rbURTHPydBqg4FJ0fBwcG/QRwEQRB0cRAcBEEQdHQQHBwEB0EQBEEQBEEQBEEQBEEQBEEQBEEQBEEQBMFBcBAcBEEQBMFyHc41j5d7k3wXfMn9wIG8e+8593d/3XvPPQH+YwXwA7wX3gbmgTvgBfgCzoErYAL4AOaBdgm0aoBTYFgDdoFT4KQGXAOnNeAO2AM2gCNgDlgD7oED4BJoVp+oAmrAPtAFJYAFoA+vALrAI9IBmFZgEtoF1oAMYAXrAEvAJtAFVoFhFWgDO8ASsAy8AqtAB1gGOsAMMKgCPWAGmA0jK0AfWAJa4TkNDKrAI9AG2uF5A8wC8+E5BUzXgAHwAMwB9+E5CdyH9ykwrAGPwDLwArwAb8Az8Ay8hvdL4KkGPAHfwFfh/QN8F97f1Y8a8A58Fv5f4bPw/qx+1IBn4KPwfg8fhfdH9aMGPAMfhfc78F54vwGfNeAVeCm8X4G3wvsF+KoBb8Bb4X3M/BaeD8D3zXgA/gsvD+Bz8L7H/gDQOG1ZAihTtMAAAAASUVORK5CYII=">
+    <link rel="icon" href="data:image/svg+xml,...">
+    <link rel="icon" type="image/png" sizes="16x16" href="data:image/png;base64,...">
+    <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,...">
+    <link rel="icon" type="image/png" sizes="64x64" href="data:image/png;base64,...">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name', 'Laravel') }}</title>
-
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap" rel="stylesheet">
     <link href="https://fonts.bunny.net/css?family=Nunito" rel="stylesheet">
-
-    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    @vite([
-        'resources/sass/app.scss',
-        'resources/js/app.js'
-    ])
-
+    @vite(['resources/sass/app.scss', 'resources/js/app.js'])
     <style>
         :root {
             --navbar-height: 80px;
             --sidebar-width: 280px;
-            --sidebar-mini-width: 80px;
-            --footer-height: 250px;
+            --footer-height: auto;
             --primary-color: #0b5ed7;
             --primary-dark: #0a58ca;
             --primary-light: #cfe2ff;
@@ -45,356 +31,160 @@
             --text-secondary: #6c757d;
             --divider: #dee2e6;
         }
+        @media (max-width: 768px) { :root { --navbar-height: 70px; } }
+        @media (max-width: 576px) { :root { --navbar-height: 60px; } }
+        body { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important; background-attachment: fixed; }
+        html { overflow-y: scroll; }
+        body { overflow-y: auto; overflow-x: hidden; min-height: 100vh; }
+        #app { min-height: 100vh; }
+        .site-footer { margin-top: auto; }
+        .table td, .table th { vertical-align: middle; }
+        .badge { font-size: 0.85em; padding: 0.35em 0.65em; }
 
-        [data-theme="dark"] {
-            --primary-color: #3d8bfd;
-            --primary-dark: #0d6efd;
-            --primary-light: #1e3a5f;
-            --bg-surface: #1a1d21;
-            --bg-secondary: #2b3035;
-            --text-primary: #f8f9fa;
-            --text-secondary: #adb5bd;
-            --divider: #495057;
-        }
-
-        body {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
-            background-size: cover;
-            background-attachment: fixed;
-        }
-
+        /* Тёмная тема */
         [data-theme="dark"] body {
             background: linear-gradient(135deg, #1a1c23 0%, #232630 50%, #1a1c23 100%) !important;
+            color: #f8f9fa !important;
         }
-
-        /* Content spacing when sidebar is present */
-        .content-area {
-            margin-left: var(--sidebar-width) !important;
-            transition: margin-left 0.3s ease !important;
+        [data-theme="dark"] .card, [data-theme="dark"] .content-section {
+            background: rgba(30,32,40,0.9) !important; color: #f8f9fa !important;
+            border-color: rgba(255,255,255,0.1) !important;
         }
+        [data-theme="dark"] .table, [data-theme="dark"] .table-light, [data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > * { color: #f8f9fa !important; }
+        [data-theme="dark"] .table-light { background: rgba(30,32,40,0.8) !important; }
+        [data-theme="dark"] .text-dark { color: #f8f9fa !important; }
+        [data-theme="dark"] .navbar { background: linear-gradient(135deg, rgba(25,55,109,0.9) 0%, rgba(15,45,99,0.9) 100%) !important; }
+        [data-theme="dark"] .dropdown-menu { background: #2b3035 !important; color: #f8f9fa !important; }
+        [data-theme="dark"] .dropdown-item { color: #f8f9fa !important; }
+        [data-theme="dark"] .dropdown-item:hover { background: rgba(61,139,253,0.2) !important; color: #fff !important; }
+        [data-theme="dark"] a:not(.btn):not(.dropdown-item) { color: #82b1ff !important; }
 
-        body.sidebar-mini .content-area {
-            margin-left: var(--sidebar-mini-width) !important;
+        /* z-index */
+        .modal { z-index: 10050 !important; }
+        .modal-backdrop { z-index: 10040 !important; }
+
+        /* Bootstrap Offcanvas Sidebar — десктоп: всегда виден */
+        .sidebar-offcanvas {
+            width: var(--sidebar-width) !important;
+            border-right: 1px solid var(--divider) !important;
+            background: var(--bg-surface) !important;
+            z-index: 990 !important;
+            overflow: visible !important; /* Важно для dropdown */
         }
-
-        @media (max-width: 991.98px) {
-            .content-area {
-                margin-left: 0 !important;
+        .sidebar-offcanvas .offcanvas-body {
+            overflow: visible !important;
+        }
+        @media (min-width: 992px) {
+            .sidebar-offcanvas {
+                position: fixed !important;
+                top: var(--navbar-height) !important;
+                height: calc(100vh - var(--navbar-height)) !important;
+                transform: none !important;
+                visibility: visible !important;
             }
+            body.sidebar-layout .content-area {
+                margin-left: var(--sidebar-width) !important;
+            }
+            .offcanvas-backdrop { display: none !important; }
+        }
+        @media (max-width: 991.98px) {
+            .sidebar-offcanvas { width: 85vw !important; max-width: 320px !important; }
+            body.sidebar-layout .content-area { margin-left: 0 !important; }
         }
 
-        /* НОВЫЕ СТИЛИ ДЛЯ ПРАВИЛЬНОЙ СТРУКТУРЫ */
-        .main-content-wrapper {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: calc(100vh - var(--navbar-height));
+        /* Стили сайдбара */
+        .sidebar-offcanvas .nav-link {
+            color: var(--text-primary) !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 0.75rem !important;
+            transition: all 0.2s ease !important;
+            position: relative !important;
         }
-
-        .main-container {
-            flex: 1;
-            display: flex;
-            min-height: 100%;
+        .sidebar-offcanvas .nav-link:hover {
+            background: rgba(11,94,215,0.1) !important;
+            color: var(--primary-color) !important;
         }
-
-        .content-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 100%;
+        .sidebar-offcanvas .nav-link.active {
+            background: rgba(11,94,215,0.15) !important;
+            color: var(--primary-color) !important;
+            font-weight: 600 !important;
         }
-
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .content-container {
-            flex: 1;
-            padding: 1rem;
-            max-width: 100%;
-        }
-
-        .site-footer {
-            background: var(--bg-surface);
-            border-top: 1px solid var(--divider);
-            padding: var(--content-padding);
-            color: var(--text-primary);
-            width: 100%;
-            margin-top: auto;
+        .sidebar-offcanvas .nav-icon {
+            width: 24px; height: 24px;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; color: var(--text-secondary);
             flex-shrink: 0;
         }
-
-        /* ГАРАНТИЯ: Футер всегда внизу даже при малом контенте */
-        #app {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
+        .sidebar-offcanvas .nav-link.active .nav-icon { color: var(--primary-color) !important; }
+        .sidebar-offcanvas .section-header {
+            background: rgba(11,94,215,0.05) !important;
+            border-left: 4px solid var(--primary-color) !important;
         }
 
-        body {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
+        /* Dropdown внутри Offcanvas — раскрывается вниз с отступом */
+        .sidebar-offcanvas .dropdown-menu {
+            background: var(--bg-surface) !important;
+            border: 1px solid var(--divider) !important;
+            position: static !important;
+            float: none !important;
+            margin-top: 2px !important;
+            margin-left: 2.5rem !important;
+            z-index: 1050 !important;
+            width: calc(100% - 2.5rem) !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08) !important;
         }
-
-        /* Убираем все лишние ограничения высоты */
-        .main-container,
-        .content-area,
-        .main-content,
-        .content-container {
-            min-height: auto !important;
-            height: auto !important;
+        .sidebar-offcanvas .dropdown-menu .dropdown-item {
+            padding: 0.5rem 1rem !important;
+            font-size: 0.9rem !important;
         }
-
-        /* ЭКСТРЕННЫЙ ФИКС ДЛЯ СТРАНИЦ РЕДАКТИРОВАНИЯ */
-        #rental-request-edit-app {
-            min-height: auto !important;
-            height: auto !important;
-            flex: 1 !important;
-            display: block !important;
-        }
-
-        /* ГАРАНТИЯ ЧТО КОНТЕЙНЕРЫ НЕ МЕШАЮТ */
-        .main-content-wrapper,
-        .main-container,
-        .content-area,
-        .main-content,
-        .content-container {
-            min-height: auto !important;
-            height: auto !important;
-            flex: 1 !important;
-        }
-
-        /* ФИКС ДЛЯ FOOTER - ВСЕГДА ВНИЗУ */
-        .site-footer {
-            margin-top: auto !important;
-            flex-shrink: 0 !important;
+        .sidebar-offcanvas .nav-item {
             position: relative !important;
-            z-index: 10 !important;
         }
-
-        /* ПРИНУДИТЕЛЬНЫЙ ФИКС ДЛЯ СТРАНИЦ С VUE */
-        body:has(#rental-request-edit-app) #app {
-            display: flex !important;
-            flex-direction: column !important;
-            min-height: 100vh !important;
-        }
-
-        body:has(#rental-request-edit-app) .main-content-wrapper {
-            flex: 1 !important;
-        }
-
-
+        .sidebar-offcanvas [data-theme="dark"] .dropdown-menu { background: #2b3035 !important; }
+        .sidebar-offcanvas .app-version { font-size: 0.7rem; }
     </style>
 </head>
-<body class="@yield('body-class', 'd-flex flex-column min-vh-100') @if(session('sidebar_mini')) sidebar-mini @endif">
-    <div id="app" class="d-flex flex-column min-vh-100">
-        <!-- Navbar -->
+<body class="@yield('body-class')">
+    <div id="app" class="d-flex flex-column">
         @include('components.navbar')
-
-        <!-- Основной контент с правильной структурой -->
-        <div class="main-content-wrapper d-flex flex-column flex-grow-1">
-            <div class="main-container d-flex flex-grow-1 @auth sidebar-layout @endauth">
-                <!-- Sidebar -->
-                @auth
-                    @include('partials.sidebar')
-                @endauth
-
-                <!-- Main Content Area -->
-                <div class="content-area flex-grow-1 d-flex flex-column">
-                    <main class="main-content flex-grow-1">
-                        <div class="content-container py-4 px-3 px-lg-4 mobile-padding">
-                            @yield('content')
-                        </div>
-                    </main>
-                </div>
+        <div class="d-flex flex-grow-1">
+            @auth @include('partials.sidebar') @endauth
+            <div class="content-area flex-grow-1 d-flex flex-column">
+                <main class="flex-grow-1">
+                    <div class="content-container py-4 px-3 px-lg-4">
+                        @yield('content')
+                    </div>
+                </main>
             </div>
         </div>
-
-        <!-- Site Footer - ТЕПЕРЬ ВНЕ основного контента -->
-        <footer class="site-footer">
-            @include('components.footer')
-        </footer>
+        <footer class="site-footer">@include('components.footer')</footer>
     </div>
-
-    <!-- Bootstrap JS Bundle -->
+    <div id="cart-icon"></div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- Toastr Notifications -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-
     @stack('scripts')
 <script>
-// ФИКС ДЛЯ DROPDOWN И САЙДБАРА
 document.addEventListener('DOMContentLoaded', function() {
-    // 1. Отключаем агрессивные фиксы для навбара и dropdown
-    function safeMobileFixes() {
-        if (window.innerWidth < 992) {
-            console.log('🔧 Applying safe mobile fixes...');
-
-            // НЕ применяем стили к навбару и dropdown
-            const excludedSelectors = [
-                '.navbar', '.main-navbar', '.dropdown-menu',
-                '.profile-dropdown', '.mobile-auth-controls',
-                '.profile-menu', '.profile-menu-mobile'
-            ];
-
-            // Только для контента, не для навбара
-            const contentContainer = document.querySelector('.content-container');
-            if (contentContainer) {
-                const tables = contentContainer.querySelectorAll('table');
-                tables.forEach(table => {
-                    if (!table.closest('.table-responsive-custom') && !table.closest('.table-responsive')) {
-                        const wrapper = document.createElement('div');
-                        wrapper.className = 'table-responsive-custom';
-                        table.parentNode.insertBefore(wrapper, table);
-                        wrapper.appendChild(table);
-                    }
-                });
-            }
-
-            console.log('✅ Safe mobile fixes applied');
-        }
-    }
-
-    // 2. ФИКС: Закрытие dropdown при ресайзе и гарантия позиционирования
-    function fixDropdownPositioning() {
-        const dropdowns = document.querySelectorAll('.dropdown-menu');
-        dropdowns.forEach(dropdown => {
-            // ГАРАНТИЯ что dropdown не получает лишние стили
-            dropdown.style.maxWidth = '';
-            dropdown.style.overflowX = '';
-            dropdown.style.width = '';
-
-            // Принудительно устанавливаем правильное позиционирование
-            if (window.innerWidth < 992) {
-                // Мобильные dropdown
-                if (dropdown.classList.contains('profile-menu-mobile')) {
-                    dropdown.style.position = 'fixed';
-                    dropdown.style.top = '60px';
-                    dropdown.style.right = '10px';
-                    dropdown.style.left = 'auto';
-                    dropdown.style.zIndex = '10050';
-                }
-            } else {
-                // Десктоп dropdown
-                if (dropdown.classList.contains('profile-menu')) {
-                    dropdown.style.position = 'absolute';
-                    dropdown.style.top = '100%';
-                    dropdown.style.right = '0';
-                    dropdown.style.left = 'auto';
-                    dropdown.style.zIndex = '10050';
-                }
-            }
-        });
-
-        // ГАРАНТИЯ что навбар не получает лишние стили
-        const navbar = document.querySelector('.main-navbar');
-        const container = document.querySelector('.main-navbar .container-fluid');
-        if (navbar) {
-            navbar.style.overflow = 'visible';
-            navbar.style.maxWidth = '';
-        }
-        if (container) {
-            container.style.overflow = 'visible';
-            container.style.maxWidth = '';
-        }
-    }
-
-    // 3. ФИКС: Закрытие всех dropdown при ресайзе
-    function closeDropdownsOnResize() {
-        const dropdowns = document.querySelectorAll('.dropdown-menu.show');
-        dropdowns.forEach(dropdown => {
-            const dropdownToggle = dropdown.previousElementSibling;
-            if (dropdownToggle && bootstrap.Dropdown.getInstance(dropdownToggle)) {
-                bootstrap.Dropdown.getInstance(dropdownToggle).hide();
-            }
-        });
-    }
-
-    // 4. Сайдбар для мобильных
-    const sidebarToggleMobile = document.getElementById('sidebarToggleMobile');
-    const sidebar = document.getElementById('sidebarContainer');
-    const overlay = document.getElementById('sidebarOverlay');
-
-    if (sidebarToggleMobile && sidebar) {
-        sidebarToggleMobile.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            console.log('📱 Открываем сайдбар');
-            sidebar.classList.add('mobile-open');
-            if (overlay) overlay.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        });
-    }
-
-    if (overlay) {
-        overlay.addEventListener('click', function() {
-            sidebar.classList.remove('mobile-open');
-            overlay.classList.remove('active');
-            document.body.style.overflow = '';
-        });
-    }
-
-    // ЗАПУСК ВСЕХ ФИКСОВ
-    safeMobileFixes();
-    fixDropdownPositioning();
-
-    // Обработчики событий
-    window.addEventListener('resize', function() {
-        closeDropdownsOnResize();
-        setTimeout(fixDropdownPositioning, 100);
-        safeMobileFixes();
-
-        // Закрытие сайдбара при переходе на десктоп
-        if (window.innerWidth >= 992) {
-            if (sidebar) sidebar.classList.remove('mobile-open');
-            if (overlay) overlay.classList.remove('active');
-            document.body.style.overflow = '';
+    // Автоматическое оборачивание таблиц
+    document.querySelectorAll('.content-container table:not(.table-responsive-custom table)').forEach(function(table) {
+        if (!table.closest('.table-responsive')) {
+            var w = document.createElement('div'); w.className = 'table-responsive';
+            table.parentNode.insertBefore(w, table); w.appendChild(table);
         }
     });
-
-    // Запуск с задержкой для динамического контента
-    setTimeout(fixDropdownPositioning, 500);
-    setTimeout(safeMobileFixes, 500);
-});
-
-// Гарантия что навбар всегда виден на мобильных
-document.addEventListener('DOMContentLoaded', function() {
-    if (window.innerWidth < 992) {
-        const navbar = document.querySelector('.navbar');
-        if (navbar) {
-            navbar.classList.remove('navbar--hidden');
-        }
+    // Переключатель темы
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', function() {
+            const html = document.documentElement;
+            const theme = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+        });
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
     }
-});
-
-// ФИКС ДЛЯ СТРУКТУРЫ СТРАНИЦЫ - гарантия что футер всегда внизу
-document.addEventListener('DOMContentLoaded', function() {
-    function ensureFooterAtBottom() {
-        const app = document.getElementById('app');
-        const mainContent = document.querySelector('.main-content-wrapper');
-        const footer = document.querySelector('.site-footer');
-
-        if (app && mainContent && footer) {
-            const windowHeight = window.innerHeight;
-            const appHeight = app.offsetHeight;
-
-            if (appHeight < windowHeight) {
-                // Если контента мало, добавляем класс для растягивания
-                app.classList.add('min-vh-100');
-            } else {
-                // Если контента много, убираем фиксированную высоту
-                app.classList.remove('min-vh-100');
-            }
-        }
-    }
-
-    ensureFooterAtBottom();
-    window.addEventListener('resize', ensureFooterAtBottom);
 });
 </script>
 </body>

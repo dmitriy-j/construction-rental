@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class BankStatementTransaction extends Model
 {
@@ -30,11 +31,18 @@ class BankStatementTransaction extends Model
         'invoice_id',
         'status',
         'error_message',
+        // Новые поля сопоставления
+        'document_type',
+        'document_id',
+        'matched_company_id',
+        'is_unmatched',
+        'unmatched_reason',
     ];
 
     protected $casts = [
         'date' => 'date',
         'amount' => 'decimal:2',
+        'is_unmatched' => 'boolean',
     ];
 
     public function bankStatement(): BelongsTo
@@ -50,6 +58,58 @@ class BankStatementTransaction extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    /**
+     * Полиморфная связь с привязанным документом (Upd, Invoice, Order)
+     */
+    public function document(): MorphTo
+    {
+        return $this->morphTo('document', 'document_type', 'document_id');
+    }
+
+    /**
+     * Найденный контрагент
+     */
+    public function matchedCompany(): BelongsTo
+    {
+        return $this->belongsTo(Company::class, 'matched_company_id');
+    }
+
+    /**
+     * Получить тип документа на русском
+     */
+    public function getDocumentTypeLabelAttribute(): string
+    {
+        return match ($this->document_type) {
+            'upd' => 'УПД',
+            'invoice' => 'Счёт',
+            'order' => 'Заказ',
+            'contract' => 'Договор',
+            default => 'Не определён',
+        };
+    }
+
+    /**
+     * Статус сопоставления на русском
+     */
+    public function getMatchingStatusLabelAttribute(): string
+    {
+        if ($this->document_type && $this->document_id) {
+            return 'Сопоставлен';
+        }
+        if ($this->is_unmatched) {
+            return 'Не сопоставлен';
+        }
+        return 'Ожидает';
+    }
+
+    /**
+     * Получить сумму со знаком для отображения
+     */
+    public function getSignedAmountAttribute(): float
+    {
+        return $this->type === 'credit' ? $this->amount : -$this->amount;
     }
 
     public function source()

@@ -104,12 +104,20 @@ class CatalogController extends Controller
         $defaultStart = $nextAvailable ?: now()->addDay();
         $defaultEnd = $defaultStart->copy()->addDays(1);
 
-        // Загружаем компанию арендодателя с локациями
-
-        $equipment->load('company.locations');
-
+        $equipment->load(['company.locations', 'specifications']);
         $equipment->increment('views');
 
-        return view('catalog.show', compact('equipment', 'defaultStart', 'defaultEnd'));
+        // Расчёт финальной цены
+        $term = $equipment->rentalTerms->first();
+        $basePrice = $term ? (float)$term->price_per_hour : 0;
+        $finalPrice = $basePrice;
+
+        if (!$equipment->isPlatformOwned() && auth()->check() && auth()->user()->company) {
+            $pricingService = app(\App\Services\PricingService::class);
+            $markup = $pricingService->getPlatformMarkup($equipment, auth()->user()->company, 1);
+            $finalPrice = $basePrice + $pricingService->applyMarkup($basePrice, $markup);
+        }
+
+        return view('catalog.show', compact('equipment', 'defaultStart', 'defaultEnd', 'finalPrice'));
     }
 }

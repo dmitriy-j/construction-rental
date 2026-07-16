@@ -281,7 +281,7 @@
         </div>
     </div>
 </div>
-@endsection
+@endpush
 
 @section('styles')
 <style>
@@ -304,9 +304,9 @@
         border-radius: 0.2rem;
     }
 </style>
-@endsection
+@endpush
 
-@section('scripts')
+@push('scripts')
 <script>
     $(document).ready(function() {
         // Активация табов при загрузке страницы на основе URL хэша
@@ -356,4 +356,4 @@
         });
     });
 </script>
-@endsection
+@endpush

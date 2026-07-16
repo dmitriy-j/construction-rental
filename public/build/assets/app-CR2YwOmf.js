@@ -1,6 +1,4 @@
 var __defProp = Object.defineProperty;
-var __defProps = Object.defineProperties;
-var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
 var __getOwnPropSymbols = Object.getOwnPropertySymbols;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __propIsEnum = Object.prototype.propertyIsEnumerable;
@@ -16,7 +14,6 @@ var __spreadValues = (a, b) => {
     }
   return a;
 };
-var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
 var __async = (__this, __arguments, generator) => {
   return new Promise((resolve, reject) => {
     var fulfilled = (value) => {
@@ -37,849 +34,1578 @@ var __async = (__this, __arguments, generator) => {
     step((generator = generator.apply(__this, __arguments)).next());
   });
 };
-import { a as createElementBlock, e as createCommentVNode, b as createBaseVNode, t as toDisplayString, u as withModifiers, w as withDirectives, v as vModelSelect, F as Fragment, r as renderList, j as vModelText, d as createTextVNode, o as openBlock, x as createBlock, n as normalizeClass, g as resolveComponent, c as createApp } from "./runtime-dom.esm-bundler-BObhqzw5.js";
+var _d;
+import { a as createElementBlock, o as openBlock, b as createBaseVNode, e as createCommentVNode, d as createTextVNode, w as withDirectives, j as vModelText, v as vModelSelect, F as Fragment, r as renderList, t as toDisplayString, n as normalizeClass, c as createApp } from "./runtime-dom.esm-bundler-BObhqzw5.js";
 import { _ as _export_sfc } from "./_plugin-vue_export-helper-1tPrXgE0.js";
 import { C as Chart, r as registerables, S as Swal } from "./sweetalert2.esm.all-DkqDp_b4.js";
 import { a as axios } from "./index-DM4mtReV.js";
-const _sfc_main$1 = {
-  name: "ProposalModal",
-  props: {
-    show: {
-      type: Boolean,
-      default: false
-    },
-    request: {
-      type: Object,
-      default: null
+class EventBus {
+  constructor() {
+    this.listeners = {};
+  }
+  on(event, callback) {
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
     }
-  },
-  data() {
-    return {
-      submitting: false,
-      myEquipment: [],
-      form: {
-        equipment_id: "",
-        proposed_price: 0,
-        proposed_quantity: 1,
-        message: ""
-      }
+    this.listeners[event].push(callback);
+    return () => {
+      this.listeners[event] = this.listeners[event].filter((cb) => cb !== callback);
     };
-  },
-  computed: {
-    calculatedPrice() {
-      if (!this.form.proposed_price || !this.request) return null;
-      const clientSaving = Math.max(0, (this.request.max_hourly_rate || this.request.hourly_rate) - this.form.proposed_price);
-      const fixedMarkup = 100;
-      const percentageMarkup = clientSaving * 0.3;
-      const totalMarkup = fixedMarkup + percentageMarkup;
-      const finalPrice = this.form.proposed_price + totalMarkup;
-      return {
-        client_saving: clientSaving,
-        platform_markup: {
-          fixed: fixedMarkup,
-          percentage: percentageMarkup,
-          total: totalMarkup
-        },
-        final_price: finalPrice
-      };
-    }
-  },
-  methods: {
-    loadMyEquipment() {
-      return __async(this, null, function* () {
-        try {
-          const response = yield fetch("/api/lessor/equipment/my");
-          const data2 = yield response.json();
-          if (data2.success) {
-            this.myEquipment = data2.data;
-          }
-        } catch (error2) {
-          console.error("Ошибка загрузки оборудования:", error2);
-        }
-      });
-    },
-    submitProposal() {
-      return __async(this, null, function* () {
-        this.submitting = true;
-        try {
-          const response = yield fetch(`/api/rental-requests/${this.request.id}/proposals`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content,
-              "X-Requested-With": "XMLHttpRequest"
-            },
-            body: JSON.stringify(this.form)
-          });
-          const data2 = yield response.json();
-          if (data2.success) {
-            this.$emit("proposal-created", data2.data);
-            this.$emit("close");
-            alert("Предложение успешно отправлено!");
-          } else {
-            throw new Error(data2.message);
-          }
-        } catch (error2) {
-          console.error("Ошибка отправки предложения:", error2);
-          alert("Ошибка: " + error2.message);
-        } finally {
-          this.submitting = false;
-        }
-      });
-    },
-    formatCurrency(amount) {
-      return new Intl.NumberFormat("ru-RU", {
-        style: "currency",
-        currency: "RUB",
-        minimumFractionDigits: 0
-      }).format(amount);
-    },
-    formatDate(dateString) {
-      return new Date(dateString).toLocaleDateString("ru-RU");
-    }
-  },
-  watch: {
-    show: {
-      immediate: true,
-      handler(newVal) {
-        var _a;
-        if (newVal) {
-          this.loadMyEquipment();
-          this.form = {
-            equipment_id: "",
-            proposed_price: ((_a = this.request) == null ? void 0 : _a.hourly_rate) || 0,
-            proposed_quantity: 1,
-            message: ""
-          };
-        }
-      }
+  }
+  emit(event, data2) {
+    if (this.listeners[event]) {
+      this.listeners[event].forEach((cb) => cb(data2));
     }
   }
-};
-const _hoisted_1$1 = {
-  key: 0,
-  class: "modal fade show d-block",
-  tabindex: "-1",
-  role: "dialog"
-};
-const _hoisted_2$1 = {
-  class: "modal-dialog modal-lg",
-  role: "document"
-};
-const _hoisted_3$1 = { class: "modal-content" };
-const _hoisted_4$1 = { class: "modal-header" };
-const _hoisted_5$1 = { class: "modal-body" };
-const _hoisted_6$1 = {
-  key: 0,
-  class: "request-info mb-3 p-3 bg-light rounded"
-};
-const _hoisted_7$1 = { class: "mb-1" };
-const _hoisted_8$1 = { class: "mb-3" };
-const _hoisted_9$1 = ["value"];
-const _hoisted_10$1 = { class: "mb-3" };
-const _hoisted_11$1 = { class: "mb-3" };
-const _hoisted_12$1 = ["max"];
-const _hoisted_13$1 = { class: "mb-3" };
-const _hoisted_14$1 = {
-  key: 0,
-  class: "price-calculation p-3 bg-light rounded mb-3"
-};
-const _hoisted_15$1 = { class: "d-flex justify-content-between" };
-const _hoisted_16$1 = { class: "d-flex justify-content-between" };
-const _hoisted_17$1 = { class: "d-flex justify-content-between fw-bold" };
-const _hoisted_18$1 = { class: "text-success" };
-const _hoisted_19$1 = { class: "modal-footer" };
-const _hoisted_20$1 = ["disabled"];
-const _hoisted_21$1 = {
-  key: 0,
-  class: "spinner-border spinner-border-sm me-2"
-};
-const _hoisted_22$1 = {
-  key: 1,
-  class: "modal-backdrop fade show"
-};
-function _sfc_render$1(_ctx, _cache, $props, $setup, $data, $options) {
-  return openBlock(), createElementBlock(Fragment, null, [
-    $props.show ? (openBlock(), createElementBlock("div", _hoisted_1$1, [
-      createBaseVNode("div", _hoisted_2$1, [
-        createBaseVNode("div", _hoisted_3$1, [
-          createBaseVNode("div", _hoisted_4$1, [
-            _cache[8] || (_cache[8] = createBaseVNode("h5", { class: "modal-title" }, "Отправить предложение", -1)),
-            createBaseVNode("button", {
-              type: "button",
-              class: "btn-close",
-              onClick: _cache[0] || (_cache[0] = ($event) => _ctx.$emit("close"))
-            })
-          ]),
-          createBaseVNode("div", _hoisted_5$1, [
-            $props.request ? (openBlock(), createElementBlock("div", _hoisted_6$1, [
-              createBaseVNode("h6", null, "Заявка: " + toDisplayString($props.request.title), 1),
-              createBaseVNode("p", _hoisted_7$1, "Период: " + toDisplayString($options.formatDate($props.request.rental_period.start)) + " - " + toDisplayString($options.formatDate($props.request.rental_period.end)), 1)
-            ])) : createCommentVNode("", true),
-            createBaseVNode("form", {
-              onSubmit: _cache[5] || (_cache[5] = withModifiers((...args) => $options.submitProposal && $options.submitProposal(...args), ["prevent"]))
-            }, [
-              createBaseVNode("div", _hoisted_8$1, [
-                _cache[10] || (_cache[10] = createBaseVNode("label", { class: "form-label" }, "Выберите оборудование *", -1)),
-                withDirectives(createBaseVNode("select", {
-                  "onUpdate:modelValue": _cache[1] || (_cache[1] = ($event) => $data.form.equipment_id = $event),
-                  class: "form-select",
-                  required: ""
-                }, [
-                  _cache[9] || (_cache[9] = createBaseVNode("option", { value: "" }, "Выберите оборудование", -1)),
-                  (openBlock(true), createElementBlock(Fragment, null, renderList($data.myEquipment, (equipment) => {
-                    return openBlock(), createElementBlock("option", {
-                      key: equipment.id,
-                      value: equipment.id
-                    }, toDisplayString(equipment.title) + " (" + toDisplayString(equipment.brand) + " " + toDisplayString(equipment.model) + ") ", 9, _hoisted_9$1);
-                  }), 128))
-                ], 512), [
-                  [vModelSelect, $data.form.equipment_id]
-                ])
-              ]),
-              createBaseVNode("div", _hoisted_10$1, [
-                _cache[11] || (_cache[11] = createBaseVNode("label", { class: "form-label" }, "Предлагаемая цена (₽/час) *", -1)),
-                withDirectives(createBaseVNode("input", {
-                  type: "number",
-                  "onUpdate:modelValue": _cache[2] || (_cache[2] = ($event) => $data.form.proposed_price = $event),
-                  class: "form-control",
-                  min: "0",
-                  step: "50",
-                  required: ""
-                }, null, 512), [
-                  [
-                    vModelText,
-                    $data.form.proposed_price,
-                    void 0,
-                    { number: true }
-                  ]
-                ])
-              ]),
-              createBaseVNode("div", _hoisted_11$1, [
-                _cache[12] || (_cache[12] = createBaseVNode("label", { class: "form-label" }, "Количество *", -1)),
-                withDirectives(createBaseVNode("input", {
-                  type: "number",
-                  "onUpdate:modelValue": _cache[3] || (_cache[3] = ($event) => $data.form.proposed_quantity = $event),
-                  class: "form-control",
-                  min: "1",
-                  max: $props.request.total_quantity,
-                  required: ""
-                }, null, 8, _hoisted_12$1), [
-                  [
-                    vModelText,
-                    $data.form.proposed_quantity,
-                    void 0,
-                    { number: true }
-                  ]
-                ])
-              ]),
-              createBaseVNode("div", _hoisted_13$1, [
-                _cache[13] || (_cache[13] = createBaseVNode("label", { class: "form-label" }, "Сообщение арендатору *", -1)),
-                withDirectives(createBaseVNode("textarea", {
-                  "onUpdate:modelValue": _cache[4] || (_cache[4] = ($event) => $data.form.message = $event),
-                  class: "form-control",
-                  rows: "4",
-                  placeholder: "Опишите ваше предложение...",
-                  required: ""
-                }, null, 512), [
-                  [vModelText, $data.form.message]
-                ])
-              ]),
-              $options.calculatedPrice ? (openBlock(), createElementBlock("div", _hoisted_14$1, [
-                _cache[17] || (_cache[17] = createBaseVNode("h6", null, "Расчет стоимости:", -1)),
-                createBaseVNode("div", _hoisted_15$1, [
-                  _cache[14] || (_cache[14] = createBaseVNode("span", null, "Ваша цена:", -1)),
-                  createBaseVNode("span", null, toDisplayString($options.formatCurrency($data.form.proposed_price)) + "/час", 1)
-                ]),
-                createBaseVNode("div", _hoisted_16$1, [
-                  _cache[15] || (_cache[15] = createBaseVNode("span", null, "Наценка платформы:", -1)),
-                  createBaseVNode("span", null, "+ " + toDisplayString($options.formatCurrency($options.calculatedPrice.platform_markup.total)), 1)
-                ]),
-                createBaseVNode("div", _hoisted_17$1, [
-                  _cache[16] || (_cache[16] = createBaseVNode("span", null, "Итог для арендатора:", -1)),
-                  createBaseVNode("span", _hoisted_18$1, toDisplayString($options.formatCurrency($options.calculatedPrice.final_price)) + "/час", 1)
-                ])
-              ])) : createCommentVNode("", true)
-            ], 32)
-          ]),
-          createBaseVNode("div", _hoisted_19$1, [
-            createBaseVNode("button", {
-              type: "button",
-              class: "btn btn-outline-secondary",
-              onClick: _cache[6] || (_cache[6] = ($event) => _ctx.$emit("close"))
-            }, "Отмена"),
-            createBaseVNode("button", {
-              type: "submit",
-              class: "btn btn-primary",
-              disabled: $data.submitting,
-              onClick: _cache[7] || (_cache[7] = (...args) => $options.submitProposal && $options.submitProposal(...args))
-            }, [
-              $data.submitting ? (openBlock(), createElementBlock("span", _hoisted_21$1)) : createCommentVNode("", true),
-              _cache[18] || (_cache[18] = createTextVNode(" Отправить предложение ", -1))
-            ], 8, _hoisted_20$1)
-          ])
-        ])
-      ])
-    ])) : createCommentVNode("", true),
-    $props.show ? (openBlock(), createElementBlock("div", _hoisted_22$1)) : createCommentVNode("", true)
-  ], 64);
 }
-const ProposalModal = /* @__PURE__ */ _export_sfc(_sfc_main$1, [["render", _sfc_render$1], ["__scopeId", "data-v-d7e7afe4"]]);
-const _sfc_main = {
-  name: "PublicRentalRequests",
-  components: { ProposalModal },
-  props: {
-    userRole: String,
-    authUser: Object
-  },
+window.cartBus = new EventBus();
+const _sfc_main$1 = {
   data() {
     return {
-      loading: true,
-      error: null,
-      requests: { data: [], meta: {}, links: {} },
-      filterCategories: [],
-      locations: [],
-      filters: {
-        category_id: "",
-        location_id: "",
-        sort: "newest"
-      },
+      equipment: [],
+      meta: { current_page: 1, last_page: 1, total: 0 },
+      filters: { category: "", location: "", min_price: null, max_price: null, search: "" },
+      sort: "newest",
+      perPage: 12,
+      loading: false,
+      filterOptions: { categories: [], locations: [] },
+      searchTimer: null,
       showModal: false,
-      selectedRequest: null,
-      currentUser: null,
-      authChecked: false
+      modalEquipment: null,
+      form: {
+        start_date: "",
+        end_date: "",
+        shifts_per_day: 1,
+        hours_per_shift: 8,
+        quantity: 1,
+        address: ""
+      },
+      priceData: null,
+      adding: false,
+      error: null
     };
   },
   computed: {
+    total() {
+      return this.meta.total;
+    },
+    minDate() {
+      const d = /* @__PURE__ */ new Date();
+      d.setDate(d.getDate() + 1);
+      return d.toISOString().split("T")[0];
+    },
     pages() {
-      if (!this.requests.meta) return [];
-      const current = this.requests.meta.current_page;
-      const last = this.requests.meta.last_page;
-      const range = 2;
-      let start2 = Math.max(1, current - range);
-      let end = Math.min(last, current + range);
-      if (end - start2 < range * 2) {
-        if (current < last / 2) {
-          end = Math.min(last, start2 + range * 2);
-        } else {
-          start2 = Math.max(1, end - range * 2);
-        }
-      }
-      const pages = [];
-      for (let i = start2; i <= end; i++) {
-        pages.push(i);
-      }
-      return pages;
-    },
-    isAuthenticatedLessor() {
-      return this.authUser && this.authUser.company && this.authUser.company.is_lessor;
-    },
-    // 🎯 Ключевое исправление: обрабатываем данные заявок
-    processedRequests() {
-      if (!this.requests.data || !Array.isArray(this.requests.data)) {
-        return [];
-      }
-      return this.requests.data.map((request) => {
-        const processed = __spreadProps(__spreadValues({}, request), {
-          rental_period_display: this.getRentalPeriodDisplay(
-            request.rental_period_start,
-            request.rental_period_end
-          ),
-          rental_days: this.calculateRentalDays(
-            request.rental_period_start,
-            request.rental_period_end
-          ),
-          created_at_display: this.formatDate(request.created_at),
-          items: (request.items || []).map((item) => __spreadProps(__spreadValues({}, item), {
-            formatted_specifications: item.formatted_specifications || this.formatSpecifications(item.specifications)
-          }))
-        });
-        if (this.isAuthenticatedLessor && request.lessor_pricing) {
-          processed.lessor_pricing = request.lessor_pricing;
-        }
-        return processed;
-      });
+      let p = [], start2 = Math.max(1, this.meta.current_page - 2);
+      let end = Math.min(this.meta.last_page, start2 + 4);
+      for (let i = start2; i <= end; i++) p.push(i);
+      return p;
     }
   },
   methods: {
-    // 🔧 Исправленный метод для отображения периода аренды
-    getRentalPeriodDisplay(startDate, endDate) {
-      if (!startDate || !endDate) {
-        return "Период не указан";
-      }
-      try {
-        const start2 = this.formatDate(startDate);
-        const end = this.formatDate(endDate);
-        return `${start2} - ${end}`;
-      } catch (error2) {
-        console.error("Ошибка форматирования периода аренды:", error2);
-        return "Ошибка даты";
-      }
-    },
-    // 🔧 Исправленный расчет дней аренды
-    calculateRentalDays(startDate, endDate) {
-      if (!startDate || !endDate) {
-        return 0;
-      }
-      try {
-        const start2 = new Date(startDate);
-        const end = new Date(endDate);
-        if (isNaN(start2.getTime()) || isNaN(end.getTime())) {
-          return 0;
-        }
-        const timeDiff = end.getTime() - start2.getTime();
-        const dayDiff = Math.ceil(timeDiff / (1e3 * 3600 * 24)) + 1;
-        return dayDiff > 0 ? dayDiff : 0;
-      } catch (error2) {
-        console.error("Ошибка расчета дней аренды:", error2);
-        return 0;
-      }
-    },
-    // 🔧 Улучшенное форматирование спецификаций
-    formatSpecifications(specs) {
-      if (!specs || !Array.isArray(specs)) {
-        return [];
-      }
-      return specs.map((spec) => {
-        if (typeof spec === "string") {
-          return { formatted: spec };
-        }
-        if (spec.formatted) {
-          return spec;
-        }
-        if (spec.label && spec.value) {
-          const unit = spec.unit ? ` ${spec.unit}` : "";
-          return __spreadProps(__spreadValues({}, spec), {
-            formatted: `${spec.label}: ${spec.value}${unit}`
-          });
-        }
-        return { formatted: JSON.stringify(spec) };
-      });
-    },
-    loadUser() {
+    loadEquipment() {
       return __async(this, null, function* () {
-        try {
-          const response = yield fetch("/api/user", {
-            headers: {
-              "Accept": "application/json",
-              "X-Requested-With": "XMLHttpRequest"
-            },
-            credentials: "include"
-          });
-          if (response.ok) {
-            this.currentUser = yield response.json();
-            console.log("✅ Пользователь загружен:", this.currentUser);
-          } else {
-            console.log("⚠️ Пользователь не авторизован");
-            this.currentUser = null;
-          }
-        } catch (error2) {
-          console.error("❌ Ошибка загрузки пользователя:", error2);
-          this.currentUser = null;
-        } finally {
-          this.authChecked = true;
-        }
-      });
-    },
-    loadRequests(page = 1) {
-      return __async(this, null, function* () {
-        var _a, _b;
         this.loading = true;
-        this.error = null;
+        const params = new URLSearchParams({
+          page: this.meta.current_page,
+          per_page: this.perPage,
+          sort: this.sort,
+          category: this.filters.category,
+          location: this.filters.location,
+          min_price: this.filters.min_price || "",
+          max_price: this.filters.max_price || "",
+          search: this.filters.search
+        });
         try {
-          const params = new URLSearchParams(__spreadValues({
-            page
-          }, this.filters));
-          const apiUrl = `/api/public/rental-requests?${params}`;
-          const response = yield fetch(apiUrl, {
-            headers: {
-              "Accept": "application/json",
-              "X-Requested-With": "XMLHttpRequest"
-            },
-            credentials: "include"
-          });
-          if (!response.ok) {
-            throw new Error(`HTTP ошибка! Статус: ${response.status}`);
-          }
-          const data2 = yield response.json();
-          if (data2.success) {
-            this.requests = data2.data;
-            this.filterCategories = ((_a = data2.filters) == null ? void 0 : _a.categories) || [];
-            this.locations = ((_b = data2.filters) == null ? void 0 : _b.locations) || [];
-            console.log(
-              "✅ Заявки загружены с преобразованными ценами:",
-              this.requests.data.map((r) => {
-                var _a2;
-                return {
-                  id: r.id,
-                  has_lessor_pricing: !!r.lessor_pricing,
-                  lessor_budget: (_a2 = r.lessor_pricing) == null ? void 0 : _a2.total_lessor_budget
-                };
-              })
-            );
-          } else {
-            throw new Error(data2.message || "Ошибка сервера");
-          }
-        } catch (error2) {
-          console.error("❌ Ошибка загрузки заявок:", error2);
-          this.error = `Не удалось загрузить заявки: ${error2.message}`;
-          this.requests = { data: [], meta: { total: 0, current_page: 1, last_page: 1 } };
-        } finally {
-          this.loading = false;
+          const res = yield fetch("/api/equipment?" + params.toString());
+          const data2 = yield res.json();
+          this.equipment = data2.data || [];
+          this.meta = data2.meta || { current_page: 1, last_page: 1, total: 0 };
+          if (data2.filters) this.filterOptions = data2.filters;
+        } catch (e) {
+          console.error(e);
         }
+        this.loading = false;
       });
-    },
-    canMakeProposal(request) {
-      return this.isAuthenticatedLessor;
     },
     changePage(page) {
-      if (page >= 1 && page <= this.requests.meta.last_page) {
-        this.loadRequests(page);
-      }
+      if (page < 1 || page > this.meta.last_page) return;
+      this.meta.current_page = page;
+      this.loadEquipment();
     },
-    viewRequest(id) {
-      if (!id) {
-        console.error("ID заявки не указан");
-        return;
-      }
-      window.location.href = `/portal/rental-requests/${id}`;
+    onSearchInput() {
+      clearTimeout(this.searchTimer);
+      this.searchTimer = setTimeout(() => this.loadEquipment(), 300);
     },
-    showProposalModal(request) {
-      if (!this.canMakeProposal(request)) {
-        this.redirectToLogin();
-        return;
-      }
-      this.selectedRequest = request;
+    resetFilters() {
+      this.filters = { category: "", location: "", min_price: null, max_price: null, search: "" };
+      this.sort = "newest";
+      this.meta.current_page = 1;
+      this.loadEquipment();
+    },
+    openAddModal(eq) {
+      this.modalEquipment = eq;
+      const d = /* @__PURE__ */ new Date();
+      d.setDate(d.getDate() + 1);
+      const tomorrow = d.toISOString().split("T")[0];
+      const dayAfter = new Date(d);
+      dayAfter.setDate(dayAfter.getDate() + 1);
+      this.form = {
+        start_date: tomorrow,
+        end_date: dayAfter.toISOString().split("T")[0],
+        shifts_per_day: 1,
+        hours_per_shift: 8,
+        quantity: 1,
+        address: ""
+      };
+      this.priceData = null;
+      this.error = null;
       this.showModal = true;
+      document.body.classList.add("modal-open");
+      this.recalculatePrice();
     },
-    onProposalCreated() {
+    closeModal() {
       this.showModal = false;
-      this.loadRequests(this.requests.meta.current_page);
-      alert("Предложение успешно отправлено!");
+      document.body.classList.remove("modal-open");
     },
-    redirectToLogin() {
-      window.location.href = "/login";
+    recalculatePrice() {
+      return __async(this, null, function* () {
+        if (!this.form.start_date || !this.form.end_date || !this.modalEquipment) return;
+        try {
+          const params = new URLSearchParams({
+            start_date: this.form.start_date,
+            end_date: this.form.end_date,
+            shifts_per_day: this.form.shifts_per_day || 1,
+            hours_per_shift: this.form.hours_per_shift || 8,
+            quantity: this.form.quantity || 1
+          });
+          const res = yield fetch(`/api/equipment/${this.modalEquipment.id}/price?` + params.toString());
+          const data2 = yield res.json();
+          if (data2.success) {
+            this.priceData = data2;
+          } else {
+            console.error("Price API error:", data2);
+          }
+        } catch (e) {
+          console.error("Price recalculation error:", e);
+        }
+      });
     },
-    formatDate(dateString) {
-      if (!dateString) return "—";
-      try {
-        return new Date(dateString).toLocaleDateString("ru-RU");
-      } catch (error2) {
-        console.error("Ошибка форматирования даты:", error2, dateString);
-        return "—";
-      }
-    },
-    formatCurrency(amount) {
-      if (!amount && amount !== 0) return "0 ₽";
-      try {
-        return new Intl.NumberFormat("ru-RU", {
-          style: "currency",
-          currency: "RUB",
-          minimumFractionDigits: 0
-        }).format(amount);
-      } catch (error2) {
-        console.error("Ошибка форматирования валюты:", error2, amount);
-        return "0 ₽";
-      }
+    addToCart() {
+      return __async(this, null, function* () {
+        if (!this.form.start_date || !this.form.end_date) {
+          this.error = "Выберите даты аренды";
+          return;
+        }
+        if (!this.priceData || !this.priceData.is_available) {
+          this.error = "Техника недоступна на выбранные даты";
+          return;
+        }
+        this.adding = true;
+        this.error = null;
+        try {
+          const res = yield fetch("/api/cart", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": window.csrfToken },
+            body: JSON.stringify({
+              equipment_id: this.modalEquipment.id,
+              start_date: this.form.start_date,
+              end_date: this.form.end_date,
+              shifts_per_day: this.form.shifts_per_day,
+              hours_per_shift: this.form.hours_per_shift,
+              quantity: this.form.quantity,
+              address: this.form.address
+            })
+          });
+          const data2 = yield res.json();
+          if (data2.success) {
+            this.closeModal();
+            if (window.cartBus) {
+              window.cartBus.emit("cart-updated", data2);
+            }
+          } else {
+            this.error = data2.error || "Ошибка добавления в корзину";
+          }
+        } catch (e) {
+          console.error("Add to cart error:", e);
+          this.error = "Ошибка соединения с сервером";
+        }
+        this.adding = false;
+      });
     }
   },
   mounted() {
-    return __async(this, null, function* () {
-      yield this.loadUser();
-      yield this.loadRequests();
-      console.log("Vue Component mounted. User role prop:", this.userRole);
-      console.log("Auth user prop:", this.authUser);
-      console.log("Is authenticated lessor (computed):", this.isAuthenticatedLessor);
-      console.log("📋 Обработанные заявки:", this.processedRequests);
-    });
+    this.loadEquipment();
   }
 };
-const _hoisted_1 = { class: "public-rental-requests" };
-const _hoisted_2 = { key: 0 };
-const _hoisted_3 = { key: 1 };
-const _hoisted_4 = { class: "filters-section bg-light p-4 mb-4" };
-const _hoisted_5 = { class: "row g-3" };
-const _hoisted_6 = { class: "col-md-4" };
-const _hoisted_7 = ["value"];
-const _hoisted_8 = { class: "col-md-4" };
-const _hoisted_9 = ["value"];
-const _hoisted_10 = { class: "col-md-4" };
-const _hoisted_11 = { class: "requests-list" };
-const _hoisted_12 = {
+const _hoisted_1$1 = { class: "container-fluid" };
+const _hoisted_2$1 = { class: "row" };
+const _hoisted_3$1 = { class: "col-lg-3 col-xl-2 mb-4" };
+const _hoisted_4$1 = { class: "card shadow-sm" };
+const _hoisted_5$1 = { class: "card-header bg-white d-flex justify-content-between align-items-center" };
+const _hoisted_6$1 = { class: "card-body" };
+const _hoisted_7$1 = { class: "mb-3" };
+const _hoisted_8$1 = { class: "mb-3" };
+const _hoisted_9$1 = ["value"];
+const _hoisted_10$1 = { class: "mb-3" };
+const _hoisted_11$1 = ["value"];
+const _hoisted_12$1 = { class: "mb-3" };
+const _hoisted_13$1 = { class: "row g-1" };
+const _hoisted_14$1 = { class: "col-6" };
+const _hoisted_15$1 = { class: "col-6" };
+const _hoisted_16$1 = { class: "mb-3" };
+const _hoisted_17$1 = { class: "mb-3" };
+const _hoisted_18$1 = { class: "col-lg-9 col-xl-10" };
+const _hoisted_19$1 = { class: "d-flex justify-content-between align-items-center mb-3" };
+const _hoisted_20$1 = { class: "mb-0" };
+const _hoisted_21$1 = { class: "text-muted fs-6" };
+const _hoisted_22$1 = {
   key: 0,
+  class: "text-muted small"
+};
+const _hoisted_23$1 = {
+  key: 0,
+  class: "row g-3"
+};
+const _hoisted_24$1 = { class: "card h-100 shadow-sm" };
+const _hoisted_25$1 = { class: "position-relative" };
+const _hoisted_26$1 = ["src"];
+const _hoisted_27$1 = {
+  key: 0,
+  class: "position-absolute top-0 end-0 m-2 badge bg-primary"
+};
+const _hoisted_28$1 = { class: "card-body d-flex flex-column" };
+const _hoisted_29$1 = { class: "fw-bold text-truncate" };
+const _hoisted_30$1 = { class: "small text-muted mb-1" };
+const _hoisted_31$1 = { class: "d-flex justify-content-between small text-muted mb-2" };
+const _hoisted_32$1 = { class: "mt-auto" };
+const _hoisted_33$1 = { class: "d-flex justify-content-between align-items-center" };
+const _hoisted_34$1 = { class: "fs-5 fw-bold text-primary" };
+const _hoisted_35$1 = {
+  key: 0,
+  class: "text-warning small"
+};
+const _hoisted_36$1 = { class: "d-grid gap-1 mt-2" };
+const _hoisted_37$1 = ["href"];
+const _hoisted_38$1 = ["onClick"];
+const _hoisted_39$1 = {
+  key: 1,
   class: "text-center py-5"
 };
-const _hoisted_13 = {
+const _hoisted_40$1 = {
+  key: 2,
+  class: "text-center py-5"
+};
+const _hoisted_41$1 = {
+  key: 3,
+  class: "mt-4 d-flex justify-content-between align-items-center"
+};
+const _hoisted_42$1 = { class: "small text-muted" };
+const _hoisted_43$1 = { class: "pagination pagination-sm mb-0" };
+const _hoisted_44$1 = ["onClick"];
+const _hoisted_45$1 = {
   key: 1,
-  class: "alert alert-danger text-center"
+  class: "modal fade show d-block",
+  tabindex: "-1",
+  style: { "z-index": "10060" }
+};
+const _hoisted_46$1 = {
+  class: "modal-dialog modal-lg modal-dialog-centered",
+  style: { "max-width": "700px" }
+};
+const _hoisted_47$1 = { class: "modal-content" };
+const _hoisted_48$1 = { class: "modal-header bg-white" };
+const _hoisted_49$1 = { class: "modal-title" };
+const _hoisted_50$1 = { class: "modal-body" };
+const _hoisted_51$1 = { class: "row g-3" };
+const _hoisted_52$1 = { class: "col-md-6" };
+const _hoisted_53$1 = { class: "card bg-light h-100" };
+const _hoisted_54$1 = { class: "card-body" };
+const _hoisted_55$1 = { class: "mb-3" };
+const _hoisted_56$1 = ["min"];
+const _hoisted_57$1 = { class: "mb-3" };
+const _hoisted_58$1 = ["min"];
+const _hoisted_59$1 = { class: "mb-3" };
+const _hoisted_60$1 = { class: "col-md-6" };
+const _hoisted_61$1 = { class: "card bg-light h-100" };
+const _hoisted_62$1 = { class: "card-body" };
+const _hoisted_63$1 = { class: "mb-3" };
+const _hoisted_64$1 = { class: "mb-3" };
+const _hoisted_65$1 = ["value"];
+const _hoisted_66$1 = { class: "mb-3" };
+const _hoisted_67$1 = {
+  key: 0,
+  class: "card mt-3 border-primary"
+};
+const _hoisted_68$1 = { class: "card-body" };
+const _hoisted_69$1 = { class: "row text-center" };
+const _hoisted_70$1 = { class: "col-4 border-end" };
+const _hoisted_71$1 = { class: "fs-5 fw-bold" };
+const _hoisted_72$1 = { class: "col-4 border-end" };
+const _hoisted_73$1 = { class: "fs-5 fw-bold" };
+const _hoisted_74$1 = { class: "col-4" };
+const _hoisted_75 = { class: "fs-5 fw-bold text-primary" };
+const _hoisted_76 = { class: "d-flex justify-content-between align-items-center" };
+const _hoisted_77 = { class: "small text-muted" };
+const _hoisted_78 = { class: "text-end" };
+const _hoisted_79 = { class: "fs-4 fw-bold text-success" };
+const _hoisted_80 = {
+  key: 0,
+  class: "alert alert-warning mt-2 mb-0 py-2 small"
+};
+const _hoisted_81 = {
+  key: 1,
+  class: "alert alert-danger mt-3 py-2 small"
+};
+const _hoisted_82 = { class: "modal-footer bg-light" };
+const _hoisted_83 = ["disabled"];
+const _hoisted_84 = {
+  key: 0,
+  class: "spinner-border spinner-border-sm me-1"
+};
+const _hoisted_85 = {
+  key: 1,
+  class: "bi bi-cart-plus me-1"
+};
+function _sfc_render$1(_ctx, _cache, $props, $setup, $data, $options) {
+  var _a;
+  return openBlock(), createElementBlock("div", null, [
+    createBaseVNode("div", _hoisted_1$1, [
+      createBaseVNode("div", _hoisted_2$1, [
+        createBaseVNode("div", _hoisted_3$1, [
+          createBaseVNode("div", _hoisted_4$1, [
+            createBaseVNode("div", _hoisted_5$1, [
+              _cache[32] || (_cache[32] = createBaseVNode("h5", { class: "mb-0" }, [
+                createBaseVNode("i", { class: "bi bi-funnel text-primary" }),
+                createTextVNode(" Фильтры")
+              ], -1)),
+              createBaseVNode("button", {
+                class: "btn btn-sm btn-outline-secondary",
+                onClick: _cache[0] || (_cache[0] = (...args) => $options.resetFilters && $options.resetFilters(...args))
+              }, "Сброс")
+            ]),
+            createBaseVNode("div", _hoisted_6$1, [
+              createBaseVNode("div", _hoisted_7$1, [
+                _cache[33] || (_cache[33] = createBaseVNode("label", { class: "form-label fw-semibold small" }, "Поиск", -1)),
+                withDirectives(createBaseVNode("input", {
+                  type: "text",
+                  class: "form-control form-control-sm",
+                  "onUpdate:modelValue": _cache[1] || (_cache[1] = ($event) => $data.filters.search = $event),
+                  onInput: _cache[2] || (_cache[2] = (...args) => $options.onSearchInput && $options.onSearchInput(...args))
+                }, null, 544), [
+                  [vModelText, $data.filters.search]
+                ])
+              ]),
+              createBaseVNode("div", _hoisted_8$1, [
+                _cache[35] || (_cache[35] = createBaseVNode("label", { class: "form-label fw-semibold small" }, "Категория", -1)),
+                withDirectives(createBaseVNode("select", {
+                  class: "form-select form-select-sm",
+                  "onUpdate:modelValue": _cache[3] || (_cache[3] = ($event) => $data.filters.category = $event),
+                  onChange: _cache[4] || (_cache[4] = (...args) => $options.loadEquipment && $options.loadEquipment(...args))
+                }, [
+                  _cache[34] || (_cache[34] = createBaseVNode("option", { value: "" }, "Все", -1)),
+                  (openBlock(true), createElementBlock(Fragment, null, renderList($data.filterOptions.categories, (c) => {
+                    return openBlock(), createElementBlock("option", {
+                      key: c.id,
+                      value: c.id
+                    }, toDisplayString(c.name), 9, _hoisted_9$1);
+                  }), 128))
+                ], 544), [
+                  [vModelSelect, $data.filters.category]
+                ])
+              ]),
+              createBaseVNode("div", _hoisted_10$1, [
+                _cache[37] || (_cache[37] = createBaseVNode("label", { class: "form-label fw-semibold small" }, "Локация", -1)),
+                withDirectives(createBaseVNode("select", {
+                  class: "form-select form-select-sm",
+                  "onUpdate:modelValue": _cache[5] || (_cache[5] = ($event) => $data.filters.location = $event),
+                  onChange: _cache[6] || (_cache[6] = (...args) => $options.loadEquipment && $options.loadEquipment(...args))
+                }, [
+                  _cache[36] || (_cache[36] = createBaseVNode("option", { value: "" }, "Все", -1)),
+                  (openBlock(true), createElementBlock(Fragment, null, renderList($data.filterOptions.locations, (l) => {
+                    return openBlock(), createElementBlock("option", {
+                      key: l.id,
+                      value: l.id
+                    }, toDisplayString(l.name), 9, _hoisted_11$1);
+                  }), 128))
+                ], 544), [
+                  [vModelSelect, $data.filters.location]
+                ])
+              ]),
+              createBaseVNode("div", _hoisted_12$1, [
+                _cache[38] || (_cache[38] = createBaseVNode("label", { class: "form-label fw-semibold small" }, "Цена (₽/час)", -1)),
+                createBaseVNode("div", _hoisted_13$1, [
+                  createBaseVNode("div", _hoisted_14$1, [
+                    withDirectives(createBaseVNode("input", {
+                      type: "number",
+                      class: "form-control form-control-sm",
+                      placeholder: "от",
+                      "onUpdate:modelValue": _cache[7] || (_cache[7] = ($event) => $data.filters.min_price = $event),
+                      onChange: _cache[8] || (_cache[8] = (...args) => $options.loadEquipment && $options.loadEquipment(...args))
+                    }, null, 544), [
+                      [
+                        vModelText,
+                        $data.filters.min_price,
+                        void 0,
+                        { number: true }
+                      ]
+                    ])
+                  ]),
+                  createBaseVNode("div", _hoisted_15$1, [
+                    withDirectives(createBaseVNode("input", {
+                      type: "number",
+                      class: "form-control form-control-sm",
+                      placeholder: "до",
+                      "onUpdate:modelValue": _cache[9] || (_cache[9] = ($event) => $data.filters.max_price = $event),
+                      onChange: _cache[10] || (_cache[10] = (...args) => $options.loadEquipment && $options.loadEquipment(...args))
+                    }, null, 544), [
+                      [
+                        vModelText,
+                        $data.filters.max_price,
+                        void 0,
+                        { number: true }
+                      ]
+                    ])
+                  ])
+                ])
+              ]),
+              createBaseVNode("div", _hoisted_16$1, [
+                _cache[40] || (_cache[40] = createBaseVNode("label", { class: "form-label fw-semibold small" }, "Сортировка", -1)),
+                withDirectives(createBaseVNode("select", {
+                  class: "form-select form-select-sm",
+                  "onUpdate:modelValue": _cache[11] || (_cache[11] = ($event) => $data.sort = $event),
+                  onChange: _cache[12] || (_cache[12] = (...args) => $options.loadEquipment && $options.loadEquipment(...args))
+                }, [..._cache[39] || (_cache[39] = [
+                  createBaseVNode("option", { value: "newest" }, "Новые", -1),
+                  createBaseVNode("option", { value: "price_asc" }, "Дешёвые", -1),
+                  createBaseVNode("option", { value: "price_desc" }, "Дорогие", -1),
+                  createBaseVNode("option", { value: "popular" }, "Популярные", -1)
+                ])], 544), [
+                  [vModelSelect, $data.sort]
+                ])
+              ]),
+              createBaseVNode("div", _hoisted_17$1, [
+                _cache[42] || (_cache[42] = createBaseVNode("label", { class: "form-label fw-semibold small" }, "На странице", -1)),
+                withDirectives(createBaseVNode("select", {
+                  class: "form-select form-select-sm",
+                  "onUpdate:modelValue": _cache[13] || (_cache[13] = ($event) => $data.perPage = $event),
+                  onChange: _cache[14] || (_cache[14] = (...args) => $options.loadEquipment && $options.loadEquipment(...args))
+                }, [..._cache[41] || (_cache[41] = [
+                  createBaseVNode("option", { value: "12" }, "12", -1),
+                  createBaseVNode("option", { value: "24" }, "24", -1),
+                  createBaseVNode("option", { value: "48" }, "48", -1)
+                ])], 544), [
+                  [vModelSelect, $data.perPage]
+                ])
+              ])
+            ])
+          ])
+        ]),
+        createBaseVNode("div", _hoisted_18$1, [
+          createBaseVNode("div", _hoisted_19$1, [
+            createBaseVNode("h2", _hoisted_20$1, [
+              _cache[43] || (_cache[43] = createTextVNode("Каталог техники ", -1)),
+              createBaseVNode("small", _hoisted_21$1, "(" + toDisplayString($options.total) + " ед.)", 1)
+            ]),
+            $data.loading ? (openBlock(), createElementBlock("span", _hoisted_22$1, [..._cache[44] || (_cache[44] = [
+              createBaseVNode("i", { class: "bi bi-hourglass-split" }, null, -1),
+              createTextVNode(" Загрузка...", -1)
+            ])])) : createCommentVNode("", true)
+          ]),
+          !$data.loading ? (openBlock(), createElementBlock("div", _hoisted_23$1, [
+            (openBlock(true), createElementBlock(Fragment, null, renderList($data.equipment, (eq) => {
+              return openBlock(), createElementBlock("div", {
+                key: eq.id,
+                class: "col-xl-3 col-lg-4 col-md-6"
+              }, [
+                createBaseVNode("div", _hoisted_24$1, [
+                  createBaseVNode("div", _hoisted_25$1, [
+                    createBaseVNode("img", {
+                      src: eq.main_image_url || "/images/no-image.svg",
+                      class: "card-img-top",
+                      alt: "",
+                      style: { "height": "200px", "object-fit": "cover" }
+                    }, null, 8, _hoisted_26$1),
+                    eq.is_platform_owned ? (openBlock(), createElementBlock("span", _hoisted_27$1, [..._cache[45] || (_cache[45] = [
+                      createBaseVNode("i", { class: "bi bi-building-gear" }, null, -1),
+                      createTextVNode(" Платформа", -1)
+                    ])])) : createCommentVNode("", true)
+                  ]),
+                  createBaseVNode("div", _hoisted_28$1, [
+                    createBaseVNode("h6", _hoisted_29$1, toDisplayString(eq.brand) + " " + toDisplayString(eq.model), 1),
+                    createBaseVNode("p", _hoisted_30$1, toDisplayString(eq.title), 1),
+                    createBaseVNode("div", _hoisted_31$1, [
+                      createBaseVNode("span", null, [
+                        _cache[46] || (_cache[46] = createBaseVNode("i", { class: "bi bi-calendar" }, null, -1)),
+                        createTextVNode(" " + toDisplayString(eq.year), 1)
+                      ]),
+                      createBaseVNode("span", null, [
+                        _cache[47] || (_cache[47] = createBaseVNode("i", { class: "bi bi-geo-alt" }, null, -1)),
+                        createTextVNode(" " + toDisplayString(eq.location_name), 1)
+                      ])
+                    ]),
+                    createBaseVNode("div", _hoisted_32$1, [
+                      createBaseVNode("div", _hoisted_33$1, [
+                        createBaseVNode("span", _hoisted_34$1, [
+                          createTextVNode(toDisplayString(eq.final_price) + " ₽", 1),
+                          _cache[48] || (_cache[48] = createBaseVNode("small", { class: "fw-normal text-muted fs-6" }, "/час", -1))
+                        ]),
+                        eq.rating > 0 ? (openBlock(), createElementBlock("span", _hoisted_35$1, [
+                          _cache[49] || (_cache[49] = createBaseVNode("i", { class: "bi bi-star-fill" }, null, -1)),
+                          createTextVNode(" " + toDisplayString(eq.rating), 1)
+                        ])) : createCommentVNode("", true)
+                      ]),
+                      createBaseVNode("div", _hoisted_36$1, [
+                        createBaseVNode("a", {
+                          href: "/catalog/" + eq.id,
+                          class: "btn btn-outline-primary btn-sm"
+                        }, "Подробнее", 8, _hoisted_37$1),
+                        createBaseVNode("button", {
+                          class: "btn btn-primary btn-sm",
+                          onClick: ($event) => $options.openAddModal(eq)
+                        }, [..._cache[50] || (_cache[50] = [
+                          createBaseVNode("i", { class: "bi bi-cart-plus" }, null, -1),
+                          createTextVNode(" В корзину", -1)
+                        ])], 8, _hoisted_38$1)
+                      ])
+                    ])
+                  ])
+                ])
+              ]);
+            }), 128))
+          ])) : createCommentVNode("", true),
+          $data.loading ? (openBlock(), createElementBlock("div", _hoisted_39$1, [..._cache[51] || (_cache[51] = [
+            createBaseVNode("div", { class: "spinner-border text-primary" }, null, -1)
+          ])])) : createCommentVNode("", true),
+          !$data.loading && $data.equipment.length === 0 ? (openBlock(), createElementBlock("div", _hoisted_40$1, [..._cache[52] || (_cache[52] = [
+            createBaseVNode("i", { class: "bi bi-box-seam display-1 text-muted" }, null, -1),
+            createBaseVNode("p", { class: "mt-3 text-muted" }, "Техника не найдена", -1)
+          ])])) : createCommentVNode("", true),
+          $data.meta.last_page > 1 ? (openBlock(), createElementBlock("nav", _hoisted_41$1, [
+            createBaseVNode("span", _hoisted_42$1, "Стр. " + toDisplayString($data.meta.current_page) + "/" + toDisplayString($data.meta.last_page), 1),
+            createBaseVNode("ul", _hoisted_43$1, [
+              createBaseVNode("li", {
+                class: normalizeClass(["page-item", { disabled: $data.meta.current_page <= 1 }])
+              }, [
+                createBaseVNode("button", {
+                  class: "page-link",
+                  onClick: _cache[15] || (_cache[15] = ($event) => $options.changePage($data.meta.current_page - 1))
+                }, "«")
+              ], 2),
+              (openBlock(true), createElementBlock(Fragment, null, renderList($options.pages, (p) => {
+                return openBlock(), createElementBlock("li", {
+                  class: normalizeClass(["page-item", { active: p === $data.meta.current_page }]),
+                  key: p
+                }, [
+                  createBaseVNode("button", {
+                    class: "page-link",
+                    onClick: ($event) => $options.changePage(p)
+                  }, toDisplayString(p), 9, _hoisted_44$1)
+                ], 2);
+              }), 128)),
+              createBaseVNode("li", {
+                class: normalizeClass(["page-item", { disabled: $data.meta.current_page >= $data.meta.last_page }])
+              }, [
+                createBaseVNode("button", {
+                  class: "page-link",
+                  onClick: _cache[16] || (_cache[16] = ($event) => $options.changePage($data.meta.current_page + 1))
+                }, "»")
+              ], 2)
+            ])
+          ])) : createCommentVNode("", true)
+        ])
+      ])
+    ]),
+    $data.showModal ? (openBlock(), createElementBlock("div", {
+      key: 0,
+      class: "modal-backdrop fade show",
+      onClick: _cache[17] || (_cache[17] = (...args) => $options.closeModal && $options.closeModal(...args))
+    })) : createCommentVNode("", true),
+    $data.showModal ? (openBlock(), createElementBlock("div", _hoisted_45$1, [
+      createBaseVNode("div", _hoisted_46$1, [
+        createBaseVNode("div", _hoisted_47$1, [
+          createBaseVNode("div", _hoisted_48$1, [
+            createBaseVNode("h5", _hoisted_49$1, [
+              _cache[53] || (_cache[53] = createBaseVNode("i", { class: "bi bi-cart-plus text-primary me-2" }, null, -1)),
+              createTextVNode(" Добавить: " + toDisplayString($data.modalEquipment.brand) + " " + toDisplayString($data.modalEquipment.model), 1)
+            ]),
+            createBaseVNode("button", {
+              type: "button",
+              class: "btn-close",
+              onClick: _cache[18] || (_cache[18] = (...args) => $options.closeModal && $options.closeModal(...args))
+            })
+          ]),
+          createBaseVNode("div", _hoisted_50$1, [
+            createBaseVNode("div", _hoisted_51$1, [
+              createBaseVNode("div", _hoisted_52$1, [
+                createBaseVNode("div", _hoisted_53$1, [
+                  createBaseVNode("div", _hoisted_54$1, [
+                    _cache[57] || (_cache[57] = createBaseVNode("h6", { class: "fw-bold mb-3" }, [
+                      createBaseVNode("i", { class: "bi bi-calendar-range me-2" }),
+                      createTextVNode("Период аренды")
+                    ], -1)),
+                    createBaseVNode("div", _hoisted_55$1, [
+                      _cache[54] || (_cache[54] = createBaseVNode("label", { class: "form-label small fw-semibold" }, "Дата начала", -1)),
+                      withDirectives(createBaseVNode("input", {
+                        type: "date",
+                        class: "form-control",
+                        "onUpdate:modelValue": _cache[19] || (_cache[19] = ($event) => $data.form.start_date = $event),
+                        min: $options.minDate,
+                        onChange: _cache[20] || (_cache[20] = (...args) => $options.recalculatePrice && $options.recalculatePrice(...args))
+                      }, null, 40, _hoisted_56$1), [
+                        [vModelText, $data.form.start_date]
+                      ])
+                    ]),
+                    createBaseVNode("div", _hoisted_57$1, [
+                      _cache[55] || (_cache[55] = createBaseVNode("label", { class: "form-label small fw-semibold" }, "Дата окончания", -1)),
+                      withDirectives(createBaseVNode("input", {
+                        type: "date",
+                        class: "form-control",
+                        "onUpdate:modelValue": _cache[21] || (_cache[21] = ($event) => $data.form.end_date = $event),
+                        min: $data.form.start_date || $options.minDate,
+                        onChange: _cache[22] || (_cache[22] = (...args) => $options.recalculatePrice && $options.recalculatePrice(...args))
+                      }, null, 40, _hoisted_58$1), [
+                        [vModelText, $data.form.end_date]
+                      ])
+                    ]),
+                    createBaseVNode("div", _hoisted_59$1, [
+                      _cache[56] || (_cache[56] = createBaseVNode("label", { class: "form-label small fw-semibold" }, "Адрес доставки (опционально)", -1)),
+                      withDirectives(createBaseVNode("input", {
+                        type: "text",
+                        class: "form-control",
+                        "onUpdate:modelValue": _cache[23] || (_cache[23] = ($event) => $data.form.address = $event),
+                        placeholder: "г. Москва, ул. Строителей, д. 10"
+                      }, null, 512), [
+                        [vModelText, $data.form.address]
+                      ])
+                    ])
+                  ])
+                ])
+              ]),
+              createBaseVNode("div", _hoisted_60$1, [
+                createBaseVNode("div", _hoisted_61$1, [
+                  createBaseVNode("div", _hoisted_62$1, [
+                    _cache[62] || (_cache[62] = createBaseVNode("h6", { class: "fw-bold mb-3" }, [
+                      createBaseVNode("i", { class: "bi bi-gear me-2" }),
+                      createTextVNode("Условия работы")
+                    ], -1)),
+                    createBaseVNode("div", _hoisted_63$1, [
+                      _cache[59] || (_cache[59] = createBaseVNode("label", { class: "form-label small fw-semibold" }, "Смен в сутки", -1)),
+                      withDirectives(createBaseVNode("select", {
+                        class: "form-select",
+                        "onUpdate:modelValue": _cache[24] || (_cache[24] = ($event) => $data.form.shifts_per_day = $event),
+                        onChange: _cache[25] || (_cache[25] = (...args) => $options.recalculatePrice && $options.recalculatePrice(...args))
+                      }, [..._cache[58] || (_cache[58] = [
+                        createBaseVNode("option", { value: 1 }, "1 смена", -1),
+                        createBaseVNode("option", { value: 2 }, "2 смены", -1)
+                      ])], 544), [
+                        [
+                          vModelSelect,
+                          $data.form.shifts_per_day,
+                          void 0,
+                          { number: true }
+                        ]
+                      ])
+                    ]),
+                    createBaseVNode("div", _hoisted_64$1, [
+                      _cache[60] || (_cache[60] = createBaseVNode("label", { class: "form-label small fw-semibold" }, "Часов в смене", -1)),
+                      withDirectives(createBaseVNode("select", {
+                        class: "form-select",
+                        "onUpdate:modelValue": _cache[26] || (_cache[26] = ($event) => $data.form.hours_per_shift = $event),
+                        onChange: _cache[27] || (_cache[27] = (...args) => $options.recalculatePrice && $options.recalculatePrice(...args))
+                      }, [
+                        (openBlock(), createElementBlock(Fragment, null, renderList([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], (h) => {
+                          return createBaseVNode("option", {
+                            key: h,
+                            value: h
+                          }, toDisplayString(h) + " ч", 9, _hoisted_65$1);
+                        }), 64))
+                      ], 544), [
+                        [
+                          vModelSelect,
+                          $data.form.hours_per_shift,
+                          void 0,
+                          { number: true }
+                        ]
+                      ])
+                    ]),
+                    createBaseVNode("div", _hoisted_66$1, [
+                      _cache[61] || (_cache[61] = createBaseVNode("label", { class: "form-label small fw-semibold" }, "Количество единиц", -1)),
+                      withDirectives(createBaseVNode("input", {
+                        type: "number",
+                        class: "form-control",
+                        "onUpdate:modelValue": _cache[28] || (_cache[28] = ($event) => $data.form.quantity = $event),
+                        min: "1",
+                        onChange: _cache[29] || (_cache[29] = (...args) => $options.recalculatePrice && $options.recalculatePrice(...args))
+                      }, null, 544), [
+                        [
+                          vModelText,
+                          $data.form.quantity,
+                          void 0,
+                          { number: true }
+                        ]
+                      ])
+                    ])
+                  ])
+                ])
+              ])
+            ]),
+            $data.priceData ? (openBlock(), createElementBlock("div", _hoisted_67$1, [
+              createBaseVNode("div", _hoisted_68$1, [
+                _cache[68] || (_cache[68] = createBaseVNode("h6", { class: "fw-bold text-primary mb-3" }, [
+                  createBaseVNode("i", { class: "bi bi-calculator me-2" }),
+                  createTextVNode("Предварительный расчёт")
+                ], -1)),
+                createBaseVNode("div", _hoisted_69$1, [
+                  createBaseVNode("div", _hoisted_70$1, [
+                    _cache[63] || (_cache[63] = createBaseVNode("div", { class: "small text-muted" }, "Дней аренды", -1)),
+                    createBaseVNode("div", _hoisted_71$1, toDisplayString($data.priceData.days), 1)
+                  ]),
+                  createBaseVNode("div", _hoisted_72$1, [
+                    _cache[64] || (_cache[64] = createBaseVNode("div", { class: "small text-muted" }, "Всего часов", -1)),
+                    createBaseVNode("div", _hoisted_73$1, toDisplayString($data.priceData.total_hours), 1)
+                  ]),
+                  createBaseVNode("div", _hoisted_74$1, [
+                    _cache[65] || (_cache[65] = createBaseVNode("div", { class: "small text-muted" }, "Ставка/час", -1)),
+                    createBaseVNode("div", _hoisted_75, toDisplayString($data.priceData.final_price_per_hour) + " ₽", 1)
+                  ])
+                ]),
+                _cache[69] || (_cache[69] = createBaseVNode("hr", null, null, -1)),
+                createBaseVNode("div", _hoisted_76, [
+                  createBaseVNode("div", _hoisted_77, toDisplayString($data.priceData.days) + " дн. × " + toDisplayString($data.priceData.total_hours) + " ч работы", 1),
+                  createBaseVNode("div", _hoisted_78, [
+                    _cache[66] || (_cache[66] = createBaseVNode("div", { class: "small text-muted" }, "Итоговая стоимость", -1)),
+                    createBaseVNode("div", _hoisted_79, toDisplayString($data.priceData.total_final) + " ₽", 1)
+                  ])
+                ]),
+                !$data.priceData.is_available ? (openBlock(), createElementBlock("div", _hoisted_80, [..._cache[67] || (_cache[67] = [
+                  createBaseVNode("i", { class: "bi bi-exclamation-triangle me-1" }, null, -1),
+                  createTextVNode(" Техника недоступна на выбранные даты ", -1)
+                ])])) : createCommentVNode("", true)
+              ])
+            ])) : createCommentVNode("", true),
+            $data.error ? (openBlock(), createElementBlock("div", _hoisted_81, toDisplayString($data.error), 1)) : createCommentVNode("", true)
+          ]),
+          createBaseVNode("div", _hoisted_82, [
+            createBaseVNode("button", {
+              type: "button",
+              class: "btn btn-secondary",
+              onClick: _cache[30] || (_cache[30] = (...args) => $options.closeModal && $options.closeModal(...args))
+            }, "Отмена"),
+            createBaseVNode("button", {
+              type: "button",
+              class: "btn btn-primary",
+              onClick: _cache[31] || (_cache[31] = (...args) => $options.addToCart && $options.addToCart(...args)),
+              disabled: $data.adding || !((_a = $data.priceData) == null ? void 0 : _a.is_available)
+            }, [
+              $data.adding ? (openBlock(), createElementBlock("span", _hoisted_84)) : (openBlock(), createElementBlock("i", _hoisted_85)),
+              createTextVNode(" " + toDisplayString($data.adding ? "Добавление..." : "Добавить в корзину"), 1)
+            ], 8, _hoisted_83)
+          ])
+        ])
+      ])
+    ])) : createCommentVNode("", true)
+  ]);
+}
+const CatalogApp = /* @__PURE__ */ _export_sfc(_sfc_main$1, [["render", _sfc_render$1]]);
+const MONTHS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+const DAYS_OF_WEEK = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+const _sfc_main = {
+  props: {
+    equipmentId: { type: [Number, String], required: true }
+  },
+  data() {
+    return {
+      equipment: {},
+      loading: true,
+      form: {
+        start_date: "",
+        end_date: "",
+        shifts_per_day: 1,
+        hours_per_shift: 8,
+        quantity: 1,
+        address: ""
+      },
+      priceData: null,
+      adding: false,
+      error: null,
+      // Календарь
+      currentMonth: (/* @__PURE__ */ new Date()).getMonth(),
+      currentYear: (/* @__PURE__ */ new Date()).getFullYear(),
+      bookedDates: [],
+      calendarDays: []
+    };
+  },
+  computed: {
+    minDate() {
+      const d = /* @__PURE__ */ new Date();
+      d.setDate(d.getDate() + 1);
+      return d.toISOString().split("T")[0];
+    },
+    currentMonthName() {
+      return MONTHS[this.currentMonth] || "";
+    }
+  },
+  methods: {
+    loadEquipment() {
+      return __async(this, null, function* () {
+        try {
+          const res = yield fetch(`/api/equipment/${this.equipmentId}`);
+          const data2 = yield res.json();
+          if (data2.error) {
+            this.error = data2.error;
+            return;
+          }
+          this.equipment = data2;
+          const tomorrow = data2.default_start || this.minDate;
+          const d = new Date(tomorrow);
+          d.setDate(d.getDate() + 1);
+          this.form.start_date = tomorrow;
+          this.form.end_date = d.toISOString().split("T")[0];
+          this.loadAvailability();
+          this.recalculatePrice();
+        } catch (e) {
+          this.error = "Ошибка загрузки данных";
+        }
+        this.loading = false;
+      });
+    },
+    loadAvailability() {
+      return __async(this, null, function* () {
+        try {
+          const res = yield fetch(`/api/equipment/${this.equipmentId}/availability?month=${this.currentMonth + 1}&year=${this.currentYear}`);
+          const data2 = yield res.json();
+          if (data2.success) {
+            this.bookedDates = data2.booked_dates || [];
+          } else {
+            this.bookedDates = [];
+          }
+        } catch (e) {
+          this.bookedDates = [];
+        }
+        this.buildCalendar();
+      });
+    },
+    buildCalendar() {
+      const days = [];
+      const firstDay = new Date(this.currentYear, this.currentMonth, 1);
+      const lastDay = new Date(this.currentYear, this.currentMonth + 1, 0);
+      const startOffset = firstDay.getDay();
+      for (let i = 0; i < startOffset; i++) {
+        days.push({ empty: true });
+      }
+      for (let d = 1; d <= lastDay.getDate(); d++) {
+        const date = new Date(this.currentYear, this.currentMonth, d);
+        const dateStr = date.toISOString().split("T")[0];
+        const today = /* @__PURE__ */ new Date();
+        today.setHours(0, 0, 0, 0);
+        days.push({
+          empty: false,
+          date: dateStr,
+          dateNum: d,
+          dayOfWeek: DAYS_OF_WEEK[date.getDay()],
+          isBooked: this.bookedDates.includes(dateStr),
+          isPast: date <= today,
+          isToday: date.getTime() === today.getTime()
+        });
+      }
+      this.calendarDays = days;
+    },
+    dayClass(day) {
+      if (day.empty) return "";
+      if (day.isBooked || day.isPast) return "bg-danger text-white";
+      return "bg-success text-white";
+    },
+    selectDay(day) {
+      if (day.empty || day.isBooked || day.isPast) return;
+      if (!this.form.start_date || this.form.start_date && this.form.end_date) {
+        this.form.start_date = day.date;
+        this.form.end_date = "";
+      } else {
+        if (day.date >= this.form.start_date) {
+          this.form.end_date = day.date;
+        } else {
+          this.form.start_date = day.date;
+        }
+      }
+      this.recalculatePrice();
+    },
+    onDateChange() {
+      this.recalculatePrice();
+    },
+    prevMonth() {
+      if (this.currentMonth === 0) {
+        this.currentMonth = 11;
+        this.currentYear--;
+      } else {
+        this.currentMonth--;
+      }
+      this.loadAvailability();
+    },
+    nextMonth() {
+      if (this.currentMonth === 11) {
+        this.currentMonth = 0;
+        this.currentYear++;
+      } else {
+        this.currentMonth++;
+      }
+      this.loadAvailability();
+    },
+    recalculatePrice() {
+      return __async(this, null, function* () {
+        if (!this.form.start_date || !this.form.end_date) return;
+        try {
+          const params = new URLSearchParams({
+            start_date: this.form.start_date,
+            end_date: this.form.end_date,
+            shifts_per_day: this.form.shifts_per_day || 1,
+            hours_per_shift: this.form.hours_per_shift || 8,
+            quantity: this.form.quantity || 1
+          });
+          const res = yield fetch(`/api/equipment/${this.equipmentId}/price?` + params.toString());
+          const data2 = yield res.json();
+          if (data2.success) {
+            this.priceData = data2;
+          }
+        } catch (e) {
+          console.error("Price recalculation error:", e);
+        }
+      });
+    },
+    addToCart() {
+      return __async(this, null, function* () {
+        if (!this.form.start_date || !this.form.end_date) {
+          this.error = "Выберите даты аренды";
+          return;
+        }
+        if (!this.priceData || !this.priceData.is_available) {
+          this.error = "Техника недоступна на выбранные даты";
+          return;
+        }
+        this.adding = true;
+        this.error = null;
+        try {
+          const res = yield fetch("/api/cart", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": window.csrfToken },
+            body: JSON.stringify({
+              equipment_id: this.equipmentId,
+              start_date: this.form.start_date,
+              end_date: this.form.end_date,
+              shifts_per_day: this.form.shifts_per_day,
+              hours_per_shift: this.form.hours_per_shift,
+              quantity: this.form.quantity,
+              address: this.form.address
+            })
+          });
+          const data2 = yield res.json();
+          if (data2.success) {
+            if (window.cartBus) {
+              window.cartBus.emit("cart-updated", data2);
+            }
+            alert("Техника добавлена в корзину!");
+          } else {
+            this.error = data2.error || "Ошибка добавления в корзину";
+          }
+        } catch (e) {
+          console.error("Add to cart error:", e);
+          this.error = "Ошибка соединения с сервером";
+        }
+        this.adding = false;
+      });
+    }
+  },
+  mounted() {
+    this.loadEquipment();
+  }
+};
+const _hoisted_1 = { class: "container-fluid" };
+const _hoisted_2 = {
+  "aria-label": "breadcrumb",
+  class: "mb-3"
+};
+const _hoisted_3 = { class: "breadcrumb" };
+const _hoisted_4 = { class: "breadcrumb-item active" };
+const _hoisted_5 = { class: "row g-4" };
+const _hoisted_6 = { class: "col-lg-6" };
+const _hoisted_7 = { class: "card shadow-sm" };
+const _hoisted_8 = { class: "card-body p-2" };
+const _hoisted_9 = {
+  id: "detailCarousel",
+  class: "carousel slide",
+  "data-bs-ride": "carousel"
+};
+const _hoisted_10 = { class: "carousel-inner" };
+const _hoisted_11 = ["src", "alt"];
+const _hoisted_12 = {
+  key: 0,
+  class: "carousel-item active"
+};
+const _hoisted_13 = {
+  key: 0,
+  class: "carousel-control-prev",
+  type: "button",
+  "data-bs-target": "#detailCarousel",
+  "data-bs-slide": "prev"
 };
 const _hoisted_14 = {
-  key: 2,
-  class: "alert alert-info text-center"
-};
-const _hoisted_15 = {
-  key: 3,
-  class: "row"
-};
-const _hoisted_16 = { class: "card h-100 rental-request-card" };
-const _hoisted_17 = { class: "card-header d-flex justify-content-between align-items-center" };
-const _hoisted_18 = { class: "card-title mb-0" };
-const _hoisted_19 = { class: "badge bg-primary" };
-const _hoisted_20 = { class: "card-body" };
-const _hoisted_21 = { class: "card-text" };
-const _hoisted_22 = { class: "request-meta mb-3" };
-const _hoisted_23 = { class: "d-flex justify-content-between text-muted small mb-2" };
-const _hoisted_24 = { class: "d-flex justify-content-between text-muted small" };
-const _hoisted_25 = {
-  key: 0,
-  class: "request-items"
-};
-const _hoisted_26 = {
-  key: 0,
-  class: "specifications small text-muted mt-1"
-};
-const _hoisted_27 = {
   key: 1,
-  class: "budget-info mt-3 p-3 bg-light rounded"
+  class: "carousel-control-next",
+  type: "button",
+  "data-bs-target": "#detailCarousel",
+  "data-bs-slide": "next"
 };
-const _hoisted_28 = { class: "d-flex justify-content-between align-items-center" };
-const _hoisted_29 = { class: "text-success fw-bold" };
-const _hoisted_30 = { class: "pricing-details mt-2" };
-const _hoisted_31 = { class: "rental-info small text-muted mt-2" };
-const _hoisted_32 = {
-  key: 2,
-  class: "budget-info mt-3 p-3 bg-light rounded"
+const _hoisted_15 = { class: "col-lg-6" };
+const _hoisted_16 = { class: "card shadow-sm" };
+const _hoisted_17 = { class: "card-body" };
+const _hoisted_18 = { class: "d-flex justify-content-between align-items-start mb-2" };
+const _hoisted_19 = { class: "mb-1" };
+const _hoisted_20 = { class: "text-muted mb-0" };
+const _hoisted_21 = {
+  key: 0,
+  class: "badge bg-primary fs-6"
 };
-const _hoisted_33 = {
-  key: 3,
-  class: "budget-info mt-3 p-3 bg-light rounded"
+const _hoisted_22 = {
+  key: 0,
+  class: "mb-2"
 };
-const _hoisted_34 = { class: "card-footer" };
-const _hoisted_35 = { class: "d-flex justify-content-between align-items-center" };
-const _hoisted_36 = ["onClick"];
-const _hoisted_37 = ["onClick", "disabled"];
-const _hoisted_38 = {
-  key: 4,
-  class: "mt-4"
-};
-const _hoisted_39 = { class: "pagination justify-content-center" };
+const _hoisted_23 = { class: "small text-muted ms-1" };
+const _hoisted_24 = { class: "mb-3" };
+const _hoisted_25 = { class: "d-flex align-items-baseline gap-2" };
+const _hoisted_26 = { class: "display-6 fw-bold text-primary" };
+const _hoisted_27 = { class: "row g-2 mb-3" };
+const _hoisted_28 = { class: "col-6" };
+const _hoisted_29 = { class: "bg-light rounded p-2 text-center" };
+const _hoisted_30 = { class: "col-6" };
+const _hoisted_31 = { class: "bg-light rounded p-2 text-center" };
+const _hoisted_32 = { class: "col-6" };
+const _hoisted_33 = { class: "bg-light rounded p-2 text-center" };
+const _hoisted_34 = { class: "col-6" };
+const _hoisted_35 = { class: "bg-light rounded p-2 text-center" };
+const _hoisted_36 = { class: "card bg-light mb-3" };
+const _hoisted_37 = { class: "card-body" };
+const _hoisted_38 = { class: "mb-2" };
+const _hoisted_39 = { class: "row g-1" };
 const _hoisted_40 = ["onClick"];
+const _hoisted_41 = { class: "small fw-bold" };
+const _hoisted_42 = { class: "small" };
+const _hoisted_43 = { class: "d-flex justify-content-between mb-2" };
+const _hoisted_44 = { class: "card bg-light mb-3" };
+const _hoisted_45 = { class: "card-body" };
+const _hoisted_46 = { class: "row g-2 mb-2" };
+const _hoisted_47 = { class: "col-6" };
+const _hoisted_48 = ["min"];
+const _hoisted_49 = { class: "col-6" };
+const _hoisted_50 = ["min"];
+const _hoisted_51 = { class: "row g-2 mb-2" };
+const _hoisted_52 = { class: "col-6" };
+const _hoisted_53 = { class: "col-6" };
+const _hoisted_54 = ["value"];
+const _hoisted_55 = { class: "mb-2" };
+const _hoisted_56 = {
+  key: 1,
+  class: "card border-primary mb-3"
+};
+const _hoisted_57 = { class: "card-body py-2" };
+const _hoisted_58 = { class: "d-flex justify-content-between align-items-center" };
+const _hoisted_59 = { class: "small text-muted" };
+const _hoisted_60 = { class: "text-end" };
+const _hoisted_61 = { class: "fs-4 fw-bold text-success" };
+const _hoisted_62 = {
+  key: 0,
+  class: "alert alert-warning mt-2 mb-0 py-1 small"
+};
+const _hoisted_63 = {
+  key: 2,
+  class: "alert alert-danger py-2 small"
+};
+const _hoisted_64 = { class: "d-grid gap-2" };
+const _hoisted_65 = ["disabled"];
+const _hoisted_66 = {
+  key: 0,
+  class: "spinner-border spinner-border-sm me-1"
+};
+const _hoisted_67 = {
+  key: 1,
+  class: "bi bi-cart-plus me-1"
+};
+const _hoisted_68 = {
+  key: 0,
+  class: "card shadow-sm mt-4"
+};
+const _hoisted_69 = { class: "card-body" };
+const _hoisted_70 = { class: "mb-0" };
+const _hoisted_71 = {
+  key: 1,
+  class: "card shadow-sm mt-4"
+};
+const _hoisted_72 = { class: "card-body" };
+const _hoisted_73 = { class: "table table-sm" };
+const _hoisted_74 = {
+  class: "text-muted",
+  style: { "width": "40%" }
+};
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
-  var _a, _b;
-  const _component_ProposalModal = resolveComponent("ProposalModal");
+  var _a;
   return openBlock(), createElementBlock("div", _hoisted_1, [
-    $props.userRole === "lessor" ? (openBlock(), createElementBlock("h2", _hoisted_2, "Панель арендодателя: " + toDisplayString((_b = (_a = $props.authUser) == null ? void 0 : _a.company) == null ? void 0 : _b.legal_name), 1)) : (openBlock(), createElementBlock("h2", _hoisted_3, "Публичные заявки на аренду")),
-    createBaseVNode("div", _hoisted_4, [
-      createBaseVNode("div", _hoisted_5, [
-        createBaseVNode("div", _hoisted_6, [
-          _cache[11] || (_cache[11] = createBaseVNode("label", { class: "form-label" }, "Категория", -1)),
-          withDirectives(createBaseVNode("select", {
-            "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event) => $data.filters.category_id = $event),
-            class: "form-select",
-            onChange: _cache[1] || (_cache[1] = (...args) => $options.loadRequests && $options.loadRequests(...args))
-          }, [
-            _cache[10] || (_cache[10] = createBaseVNode("option", { value: "" }, "Все категории", -1)),
-            (openBlock(true), createElementBlock(Fragment, null, renderList($data.filterCategories, (category) => {
-              return openBlock(), createElementBlock("option", {
-                key: category.id,
-                value: category.id
-              }, toDisplayString(category.name), 9, _hoisted_7);
-            }), 128))
-          ], 544), [
-            [vModelSelect, $data.filters.category_id]
+    createBaseVNode("nav", _hoisted_2, [
+      createBaseVNode("ol", _hoisted_3, [
+        _cache[12] || (_cache[12] = createBaseVNode("li", { class: "breadcrumb-item" }, [
+          createBaseVNode("a", { href: "/catalog" }, "Каталог")
+        ], -1)),
+        createBaseVNode("li", _hoisted_4, toDisplayString($data.equipment.brand) + " " + toDisplayString($data.equipment.model), 1)
+      ])
+    ]),
+    createBaseVNode("div", _hoisted_5, [
+      createBaseVNode("div", _hoisted_6, [
+        createBaseVNode("div", _hoisted_7, [
+          createBaseVNode("div", _hoisted_8, [
+            createBaseVNode("div", _hoisted_9, [
+              createBaseVNode("div", _hoisted_10, [
+                (openBlock(true), createElementBlock(Fragment, null, renderList($data.equipment.images, (img, key) => {
+                  return openBlock(), createElementBlock("div", {
+                    key,
+                    class: normalizeClass(["carousel-item", { active: key === 0 }])
+                  }, [
+                    createBaseVNode("img", {
+                      src: img,
+                      class: "d-block w-100 rounded",
+                      alt: $data.equipment.title,
+                      style: { "height": "400px", "object-fit": "cover" }
+                    }, null, 8, _hoisted_11)
+                  ], 2);
+                }), 128)),
+                !$data.equipment.images || $data.equipment.images.length === 0 ? (openBlock(), createElementBlock("div", _hoisted_12, [..._cache[13] || (_cache[13] = [
+                  createBaseVNode("div", {
+                    class: "bg-light d-flex align-items-center justify-content-center rounded",
+                    style: { "height": "400px" }
+                  }, [
+                    createBaseVNode("i", { class: "bi bi-image display-1 text-muted" })
+                  ], -1)
+                ])])) : createCommentVNode("", true)
+              ]),
+              $data.equipment.images && $data.equipment.images.length > 1 ? (openBlock(), createElementBlock("button", _hoisted_13, [..._cache[14] || (_cache[14] = [
+                createBaseVNode("span", { class: "carousel-control-prev-icon bg-dark rounded-circle" }, null, -1)
+              ])])) : createCommentVNode("", true),
+              $data.equipment.images && $data.equipment.images.length > 1 ? (openBlock(), createElementBlock("button", _hoisted_14, [..._cache[15] || (_cache[15] = [
+                createBaseVNode("span", { class: "carousel-control-next-icon bg-dark rounded-circle" }, null, -1)
+              ])])) : createCommentVNode("", true)
+            ])
           ])
-        ]),
-        createBaseVNode("div", _hoisted_8, [
-          _cache[13] || (_cache[13] = createBaseVNode("label", { class: "form-label" }, "Локация", -1)),
-          withDirectives(createBaseVNode("select", {
-            "onUpdate:modelValue": _cache[2] || (_cache[2] = ($event) => $data.filters.location_id = $event),
-            class: "form-select",
-            onChange: _cache[3] || (_cache[3] = (...args) => $options.loadRequests && $options.loadRequests(...args))
-          }, [
-            _cache[12] || (_cache[12] = createBaseVNode("option", { value: "" }, "Все локации", -1)),
-            (openBlock(true), createElementBlock(Fragment, null, renderList($data.locations, (location) => {
-              return openBlock(), createElementBlock("option", {
-                key: location.id,
-                value: location.id
-              }, toDisplayString(location.name), 9, _hoisted_9);
-            }), 128))
-          ], 544), [
-            [vModelSelect, $data.filters.location_id]
-          ])
-        ]),
-        createBaseVNode("div", _hoisted_10, [
-          _cache[15] || (_cache[15] = createBaseVNode("label", { class: "form-label" }, "Сортировка", -1)),
-          withDirectives(createBaseVNode("select", {
-            "onUpdate:modelValue": _cache[4] || (_cache[4] = ($event) => $data.filters.sort = $event),
-            class: "form-select",
-            onChange: _cache[5] || (_cache[5] = (...args) => $options.loadRequests && $options.loadRequests(...args))
-          }, [..._cache[14] || (_cache[14] = [
-            createBaseVNode("option", { value: "newest" }, "Сначала новые", -1),
-            createBaseVNode("option", { value: "budget" }, "По бюджету", -1),
-            createBaseVNode("option", { value: "proposals" }, "По количеству предложений", -1)
-          ])], 544), [
-            [vModelSelect, $data.filters.sort]
+        ])
+      ]),
+      createBaseVNode("div", _hoisted_15, [
+        createBaseVNode("div", _hoisted_16, [
+          createBaseVNode("div", _hoisted_17, [
+            createBaseVNode("div", _hoisted_18, [
+              createBaseVNode("div", null, [
+                createBaseVNode("h2", _hoisted_19, toDisplayString($data.equipment.brand) + " " + toDisplayString($data.equipment.model), 1),
+                createBaseVNode("p", _hoisted_20, toDisplayString($data.equipment.title), 1)
+              ]),
+              $data.equipment.is_platform_owned ? (openBlock(), createElementBlock("span", _hoisted_21, [..._cache[16] || (_cache[16] = [
+                createBaseVNode("i", { class: "bi bi-building-gear" }, null, -1),
+                createTextVNode(" Техника платформы", -1)
+              ])])) : createCommentVNode("", true)
+            ]),
+            $data.equipment.rating > 0 ? (openBlock(), createElementBlock("div", _hoisted_22, [
+              (openBlock(), createElementBlock(Fragment, null, renderList(5, (i) => {
+                return createBaseVNode("i", {
+                  key: i,
+                  class: normalizeClass(["bi", i <= Math.round($data.equipment.rating) ? "bi-star-fill" : i - 0.5 <= $data.equipment.rating ? "bi-star-half" : "bi-star"]),
+                  style: { "color": "#ffc107" }
+                }, null, 2);
+              }), 64)),
+              createBaseVNode("span", _hoisted_23, toDisplayString($data.equipment.rating), 1)
+            ])) : createCommentVNode("", true),
+            createBaseVNode("div", _hoisted_24, [
+              createBaseVNode("div", _hoisted_25, [
+                createBaseVNode("span", _hoisted_26, toDisplayString($data.priceData ? $data.priceData.final_price_per_hour : $data.equipment.final_price) + " ₽", 1),
+                _cache[17] || (_cache[17] = createBaseVNode("span", { class: "text-muted" }, "/ час", -1))
+              ])
+            ]),
+            _cache[36] || (_cache[36] = createBaseVNode("hr", null, null, -1)),
+            createBaseVNode("div", _hoisted_27, [
+              createBaseVNode("div", _hoisted_28, [
+                createBaseVNode("div", _hoisted_29, [
+                  _cache[18] || (_cache[18] = createBaseVNode("small", { class: "text-muted d-block" }, "Год выпуска", -1)),
+                  createBaseVNode("strong", null, toDisplayString($data.equipment.year), 1)
+                ])
+              ]),
+              createBaseVNode("div", _hoisted_30, [
+                createBaseVNode("div", _hoisted_31, [
+                  _cache[19] || (_cache[19] = createBaseVNode("small", { class: "text-muted d-block" }, "Наработка", -1)),
+                  createBaseVNode("strong", null, toDisplayString($data.equipment.hours_worked) + " ч", 1)
+                ])
+              ]),
+              createBaseVNode("div", _hoisted_32, [
+                createBaseVNode("div", _hoisted_33, [
+                  _cache[20] || (_cache[20] = createBaseVNode("small", { class: "text-muted d-block" }, "Габариты", -1)),
+                  createBaseVNode("strong", null, toDisplayString($data.equipment.dimensions), 1)
+                ])
+              ]),
+              createBaseVNode("div", _hoisted_34, [
+                createBaseVNode("div", _hoisted_35, [
+                  _cache[21] || (_cache[21] = createBaseVNode("small", { class: "text-muted d-block" }, "Локация", -1)),
+                  createBaseVNode("strong", null, toDisplayString($data.equipment.location), 1)
+                ])
+              ])
+            ]),
+            createBaseVNode("div", _hoisted_36, [
+              createBaseVNode("div", _hoisted_37, [
+                _cache[25] || (_cache[25] = createBaseVNode("h6", { class: "fw-bold mb-3" }, [
+                  createBaseVNode("i", { class: "bi bi-calendar-check me-2" }),
+                  createTextVNode("Календарь доступности")
+                ], -1)),
+                createBaseVNode("div", _hoisted_38, [
+                  _cache[22] || (_cache[22] = createBaseVNode("div", { class: "d-flex gap-1 small mb-2" }, [
+                    createBaseVNode("span", { class: "badge bg-success" }, "Свободно"),
+                    createBaseVNode("span", { class: "badge bg-danger" }, "Занято")
+                  ], -1)),
+                  createBaseVNode("div", _hoisted_39, [
+                    (openBlock(true), createElementBlock(Fragment, null, renderList($data.calendarDays, (day, idx) => {
+                      return openBlock(), createElementBlock("div", {
+                        key: idx,
+                        class: "col",
+                        style: { "min-width": "14%" }
+                      }, [
+                        createBaseVNode("div", {
+                          class: normalizeClass(["text-center p-1 rounded", $options.dayClass(day)]),
+                          onClick: ($event) => $options.selectDay(day)
+                        }, [
+                          createBaseVNode("div", _hoisted_41, toDisplayString(day.dayOfWeek), 1),
+                          createBaseVNode("div", _hoisted_42, toDisplayString(day.dateNum), 1)
+                        ], 10, _hoisted_40)
+                      ]);
+                    }), 128))
+                  ])
+                ]),
+                createBaseVNode("div", _hoisted_43, [
+                  createBaseVNode("button", {
+                    class: "btn btn-sm btn-outline-secondary",
+                    onClick: _cache[0] || (_cache[0] = (...args) => $options.prevMonth && $options.prevMonth(...args))
+                  }, [..._cache[23] || (_cache[23] = [
+                    createBaseVNode("i", { class: "bi bi-chevron-left" }, null, -1)
+                  ])]),
+                  createBaseVNode("strong", null, toDisplayString($options.currentMonthName) + " " + toDisplayString($data.currentYear), 1),
+                  createBaseVNode("button", {
+                    class: "btn btn-sm btn-outline-secondary",
+                    onClick: _cache[1] || (_cache[1] = (...args) => $options.nextMonth && $options.nextMonth(...args))
+                  }, [..._cache[24] || (_cache[24] = [
+                    createBaseVNode("i", { class: "bi bi-chevron-right" }, null, -1)
+                  ])])
+                ])
+              ])
+            ]),
+            createBaseVNode("div", _hoisted_44, [
+              createBaseVNode("div", _hoisted_45, [
+                _cache[32] || (_cache[32] = createBaseVNode("h6", { class: "fw-bold mb-3" }, [
+                  createBaseVNode("i", { class: "bi bi-gear me-2" }),
+                  createTextVNode("Параметры аренды")
+                ], -1)),
+                createBaseVNode("div", _hoisted_46, [
+                  createBaseVNode("div", _hoisted_47, [
+                    _cache[26] || (_cache[26] = createBaseVNode("label", { class: "form-label small fw-semibold" }, "Дата начала", -1)),
+                    withDirectives(createBaseVNode("input", {
+                      type: "date",
+                      class: "form-control",
+                      "onUpdate:modelValue": _cache[2] || (_cache[2] = ($event) => $data.form.start_date = $event),
+                      min: $options.minDate,
+                      onChange: _cache[3] || (_cache[3] = (...args) => $options.onDateChange && $options.onDateChange(...args))
+                    }, null, 40, _hoisted_48), [
+                      [vModelText, $data.form.start_date]
+                    ])
+                  ]),
+                  createBaseVNode("div", _hoisted_49, [
+                    _cache[27] || (_cache[27] = createBaseVNode("label", { class: "form-label small fw-semibold" }, "Дата окончания", -1)),
+                    withDirectives(createBaseVNode("input", {
+                      type: "date",
+                      class: "form-control",
+                      "onUpdate:modelValue": _cache[4] || (_cache[4] = ($event) => $data.form.end_date = $event),
+                      min: $data.form.start_date || $options.minDate,
+                      onChange: _cache[5] || (_cache[5] = (...args) => $options.onDateChange && $options.onDateChange(...args))
+                    }, null, 40, _hoisted_50), [
+                      [vModelText, $data.form.end_date]
+                    ])
+                  ])
+                ]),
+                createBaseVNode("div", _hoisted_51, [
+                  createBaseVNode("div", _hoisted_52, [
+                    _cache[29] || (_cache[29] = createBaseVNode("label", { class: "form-label small fw-semibold" }, "Смен в сутки", -1)),
+                    withDirectives(createBaseVNode("select", {
+                      class: "form-select",
+                      "onUpdate:modelValue": _cache[6] || (_cache[6] = ($event) => $data.form.shifts_per_day = $event),
+                      onChange: _cache[7] || (_cache[7] = (...args) => $options.recalculatePrice && $options.recalculatePrice(...args))
+                    }, [..._cache[28] || (_cache[28] = [
+                      createBaseVNode("option", { value: 1 }, "1 смена", -1),
+                      createBaseVNode("option", { value: 2 }, "2 смены", -1)
+                    ])], 544), [
+                      [
+                        vModelSelect,
+                        $data.form.shifts_per_day,
+                        void 0,
+                        { number: true }
+                      ]
+                    ])
+                  ]),
+                  createBaseVNode("div", _hoisted_53, [
+                    _cache[30] || (_cache[30] = createBaseVNode("label", { class: "form-label small fw-semibold" }, "Часов в смене", -1)),
+                    withDirectives(createBaseVNode("select", {
+                      class: "form-select",
+                      "onUpdate:modelValue": _cache[8] || (_cache[8] = ($event) => $data.form.hours_per_shift = $event),
+                      onChange: _cache[9] || (_cache[9] = (...args) => $options.recalculatePrice && $options.recalculatePrice(...args))
+                    }, [
+                      (openBlock(), createElementBlock(Fragment, null, renderList([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], (h) => {
+                        return createBaseVNode("option", {
+                          key: h,
+                          value: h
+                        }, toDisplayString(h) + " ч", 9, _hoisted_54);
+                      }), 64))
+                    ], 544), [
+                      [
+                        vModelSelect,
+                        $data.form.hours_per_shift,
+                        void 0,
+                        { number: true }
+                      ]
+                    ])
+                  ])
+                ]),
+                createBaseVNode("div", _hoisted_55, [
+                  _cache[31] || (_cache[31] = createBaseVNode("label", { class: "form-label small fw-semibold" }, "Адрес доставки (опционально)", -1)),
+                  withDirectives(createBaseVNode("input", {
+                    type: "text",
+                    class: "form-control",
+                    "onUpdate:modelValue": _cache[10] || (_cache[10] = ($event) => $data.form.address = $event),
+                    placeholder: "г. Москва, ул. Строителей, д. 10"
+                  }, null, 512), [
+                    [vModelText, $data.form.address]
+                  ])
+                ])
+              ])
+            ]),
+            $data.priceData ? (openBlock(), createElementBlock("div", _hoisted_56, [
+              createBaseVNode("div", _hoisted_57, [
+                createBaseVNode("div", _hoisted_58, [
+                  createBaseVNode("div", _hoisted_59, toDisplayString($data.priceData.days) + " дн. × " + toDisplayString($data.priceData.total_hours) + " ч", 1),
+                  createBaseVNode("div", _hoisted_60, [
+                    _cache[33] || (_cache[33] = createBaseVNode("div", { class: "small text-muted" }, "Итого", -1)),
+                    createBaseVNode("div", _hoisted_61, toDisplayString($data.priceData.total_final) + " ₽", 1)
+                  ])
+                ]),
+                !$data.priceData.is_available ? (openBlock(), createElementBlock("div", _hoisted_62, [..._cache[34] || (_cache[34] = [
+                  createBaseVNode("i", { class: "bi bi-exclamation-triangle me-1" }, null, -1),
+                  createTextVNode(" Техника недоступна на выбранные даты ", -1)
+                ])])) : createCommentVNode("", true)
+              ])
+            ])) : createCommentVNode("", true),
+            $data.error ? (openBlock(), createElementBlock("div", _hoisted_63, toDisplayString($data.error), 1)) : createCommentVNode("", true),
+            createBaseVNode("div", _hoisted_64, [
+              createBaseVNode("button", {
+                class: "btn btn-primary btn-lg",
+                onClick: _cache[11] || (_cache[11] = (...args) => $options.addToCart && $options.addToCart(...args)),
+                disabled: $data.adding || !((_a = $data.priceData) == null ? void 0 : _a.is_available)
+              }, [
+                $data.adding ? (openBlock(), createElementBlock("span", _hoisted_66)) : (openBlock(), createElementBlock("i", _hoisted_67)),
+                createTextVNode(" " + toDisplayString($data.adding ? "Добавление..." : "Добавить в корзину"), 1)
+              ], 8, _hoisted_65),
+              _cache[35] || (_cache[35] = createBaseVNode("a", {
+                href: "/catalog",
+                class: "btn btn-outline-secondary"
+              }, [
+                createBaseVNode("i", { class: "bi bi-arrow-left" }),
+                createTextVNode(" Вернуться в каталог ")
+              ], -1))
+            ])
           ])
         ])
       ])
     ]),
-    createBaseVNode("div", _hoisted_11, [
-      $data.loading ? (openBlock(), createElementBlock("div", _hoisted_12, [..._cache[16] || (_cache[16] = [
-        createBaseVNode("div", {
-          class: "spinner-border text-primary",
-          role: "status"
-        }, [
-          createBaseVNode("span", { class: "visually-hidden" }, "Загрузка...")
-        ], -1)
-      ])])) : $data.error ? (openBlock(), createElementBlock("div", _hoisted_13, toDisplayString($data.error), 1)) : $data.requests.data.length === 0 ? (openBlock(), createElementBlock("div", _hoisted_14, " Публичные заявки не найдены ")) : (openBlock(), createElementBlock("div", _hoisted_15, [
-        (openBlock(true), createElementBlock(Fragment, null, renderList($options.processedRequests, (request) => {
-          var _a2;
-          return openBlock(), createElementBlock("div", {
-            class: "col-lg-6 mb-4",
-            key: request.id
-          }, [
-            createBaseVNode("div", _hoisted_16, [
-              createBaseVNode("div", _hoisted_17, [
-                createBaseVNode("h5", _hoisted_18, toDisplayString(request.title || "Без названия"), 1),
-                createBaseVNode("span", _hoisted_19, toDisplayString(request.active_proposals_count || 0) + " предложений", 1)
-              ]),
-              createBaseVNode("div", _hoisted_20, [
-                createBaseVNode("p", _hoisted_21, toDisplayString(request.description || "Описание отсутствует"), 1),
-                createBaseVNode("div", _hoisted_22, [
-                  createBaseVNode("div", _hoisted_23, [
-                    createBaseVNode("span", null, [
-                      _cache[17] || (_cache[17] = createBaseVNode("i", { class: "fas fa-calendar-alt me-1" }, null, -1)),
-                      createTextVNode(" " + toDisplayString(request.rental_period_display), 1)
-                    ]),
-                    createBaseVNode("span", null, toDisplayString(request.rental_days) + " дней", 1)
-                  ]),
-                  createBaseVNode("div", _hoisted_24, [
-                    createBaseVNode("span", null, [
-                      _cache[18] || (_cache[18] = createBaseVNode("i", { class: "fas fa-map-marker-alt me-1" }, null, -1)),
-                      createTextVNode(" " + toDisplayString(((_a2 = request.location) == null ? void 0 : _a2.name) || "Локация не указана"), 1)
-                    ]),
-                    createBaseVNode("span", null, toDisplayString(request.created_at_display), 1)
-                  ])
-                ]),
-                request.items && request.items.length > 0 ? (openBlock(), createElementBlock("div", _hoisted_25, [
-                  _cache[19] || (_cache[19] = createBaseVNode("h6", { class: "mb-2" }, "Требуемая техника:", -1)),
-                  (openBlock(true), createElementBlock(Fragment, null, renderList(request.items, (item, index) => {
-                    var _a3;
-                    return openBlock(), createElementBlock("div", {
-                      key: index,
-                      class: "request-item mb-2"
-                    }, [
-                      createBaseVNode("strong", null, toDisplayString(((_a3 = item.category) == null ? void 0 : _a3.name) || "Без категории"), 1),
-                      createTextVNode(" × " + toDisplayString(item.quantity || 1) + " ", 1),
-                      item.specifications && item.specifications.length > 0 ? (openBlock(), createElementBlock("div", _hoisted_26, [
-                        (openBlock(true), createElementBlock(Fragment, null, renderList(item.formatted_specifications || item.specifications, (spec) => {
-                          return openBlock(), createElementBlock("div", {
-                            key: spec.key || spec
-                          }, toDisplayString(spec.formatted || spec.label || spec), 1);
-                        }), 128))
-                      ])) : createCommentVNode("", true)
-                    ]);
-                  }), 128))
-                ])) : createCommentVNode("", true),
-                $options.isAuthenticatedLessor && request.lessor_pricing ? (openBlock(), createElementBlock("div", _hoisted_27, [
-                  createBaseVNode("div", _hoisted_28, [
-                    _cache[20] || (_cache[20] = createBaseVNode("span", { class: "fw-bold" }, "Бюджет для вас:", -1)),
-                    createBaseVNode("span", _hoisted_29, toDisplayString($options.formatCurrency(request.lessor_pricing.total_lessor_budget || 0)), 1)
-                  ]),
-                  createBaseVNode("div", _hoisted_30, [
-                    (openBlock(true), createElementBlock(Fragment, null, renderList(request.lessor_pricing.items, (item) => {
-                      return openBlock(), createElementBlock("div", {
-                        key: item.item_id,
-                        class: "price-item small text-muted mb-1"
-                      }, toDisplayString(item.category_name) + ": " + toDisplayString(item.quantity) + " шт. × " + toDisplayString($options.formatCurrency(item.lessor_price)) + "/час ", 1);
-                    }), 128))
-                  ]),
-                  createBaseVNode("div", _hoisted_31, [
-                    _cache[21] || (_cache[21] = createBaseVNode("i", { class: "fas fa-clock me-1" }, null, -1)),
-                    createTextVNode(" " + toDisplayString(request.lessor_pricing.working_hours) + " часов (" + toDisplayString(request.lessor_pricing.rental_days) + " дней) ", 1)
-                  ])
-                ])) : $options.isAuthenticatedLessor ? (openBlock(), createElementBlock("div", _hoisted_32, [..._cache[22] || (_cache[22] = [
-                  createBaseVNode("div", { class: "text-center text-muted" }, [
-                    createBaseVNode("i", { class: "fas fa-info-circle me-1" }),
-                    createTextVNode(" Бюджет заявки доступен при просмотре деталей ")
-                  ], -1)
-                ])])) : (openBlock(), createElementBlock("div", _hoisted_33, [..._cache[23] || (_cache[23] = [
-                  createBaseVNode("div", { class: "text-center text-muted" }, [
-                    createBaseVNode("i", { class: "fas fa-info-circle me-1" }),
-                    createTextVNode(" Войдите как арендодатель для просмотра бюджета ")
-                  ], -1)
-                ])]))
-              ]),
-              createBaseVNode("div", _hoisted_34, [
-                createBaseVNode("div", _hoisted_35, [
-                  createBaseVNode("button", {
-                    class: "btn btn-outline-primary btn-sm",
-                    onClick: ($event) => $options.viewRequest(request.id)
-                  }, [..._cache[24] || (_cache[24] = [
-                    createBaseVNode("i", { class: "fas fa-eye me-1" }, null, -1),
-                    createTextVNode("Подробнее ", -1)
-                  ])], 8, _hoisted_36),
-                  $options.isAuthenticatedLessor ? (openBlock(), createElementBlock("button", {
-                    key: 0,
-                    class: "btn btn-primary btn-sm",
-                    onClick: ($event) => $options.showProposalModal(request),
-                    disabled: !$options.canMakeProposal(request)
-                  }, [..._cache[25] || (_cache[25] = [
-                    createBaseVNode("i", { class: "fas fa-paper-plane me-1" }, null, -1),
-                    createTextVNode("Предложить ", -1)
-                  ])], 8, _hoisted_37)) : (openBlock(), createElementBlock("button", {
-                    key: 1,
-                    class: "btn btn-outline-secondary btn-sm",
-                    onClick: _cache[6] || (_cache[6] = (...args) => $options.redirectToLogin && $options.redirectToLogin(...args))
-                  }, " Войдите для предложения "))
-                ])
-              ])
-            ])
-          ]);
-        }), 128))
-      ])),
-      $data.requests.meta && $data.requests.meta.last_page > 1 ? (openBlock(), createElementBlock("nav", _hoisted_38, [
-        createBaseVNode("ul", _hoisted_39, [
-          createBaseVNode("li", {
-            class: normalizeClass(["page-item", { disabled: !$data.requests.links || !$data.requests.links.prev }])
-          }, [
-            createBaseVNode("button", {
-              class: "page-link",
-              onClick: _cache[7] || (_cache[7] = ($event) => $options.changePage($data.requests.meta.current_page - 1))
-            }, "Назад")
-          ], 2),
-          (openBlock(true), createElementBlock(Fragment, null, renderList($options.pages, (page) => {
-            var _a2;
-            return openBlock(), createElementBlock("li", {
-              key: page,
-              class: normalizeClass(["page-item", { active: page === (((_a2 = $data.requests.meta) == null ? void 0 : _a2.current_page) || 1) }])
-            }, [
-              createBaseVNode("button", {
-                class: "page-link",
-                onClick: ($event) => $options.changePage(page)
-              }, toDisplayString(page), 9, _hoisted_40)
-            ], 2);
-          }), 128)),
-          createBaseVNode("li", {
-            class: normalizeClass(["page-item", { disabled: !$data.requests.links || !$data.requests.links.next }])
-          }, [
-            createBaseVNode("button", {
-              class: "page-link",
-              onClick: _cache[8] || (_cache[8] = ($event) => $options.changePage($data.requests.meta.current_page + 1))
-            }, "Вперед")
-          ], 2)
+    $data.equipment.description ? (openBlock(), createElementBlock("div", _hoisted_68, [
+      _cache[37] || (_cache[37] = createBaseVNode("div", { class: "card-header bg-white" }, [
+        createBaseVNode("h5", { class: "mb-0" }, "Описание")
+      ], -1)),
+      createBaseVNode("div", _hoisted_69, [
+        createBaseVNode("p", _hoisted_70, toDisplayString($data.equipment.description), 1)
+      ])
+    ])) : createCommentVNode("", true),
+    $data.equipment.specifications && $data.equipment.specifications.length > 0 ? (openBlock(), createElementBlock("div", _hoisted_71, [
+      _cache[38] || (_cache[38] = createBaseVNode("div", { class: "card-header bg-white" }, [
+        createBaseVNode("h5", { class: "mb-0" }, "Характеристики")
+      ], -1)),
+      createBaseVNode("div", _hoisted_72, [
+        createBaseVNode("table", _hoisted_73, [
+          createBaseVNode("tbody", null, [
+            (openBlock(true), createElementBlock(Fragment, null, renderList($data.equipment.specifications, (spec) => {
+              return openBlock(), createElementBlock("tr", {
+                key: spec.key
+              }, [
+                createBaseVNode("th", _hoisted_74, toDisplayString(spec.key), 1),
+                createBaseVNode("td", null, toDisplayString(spec.value), 1)
+              ]);
+            }), 128))
+          ])
         ])
-      ])) : createCommentVNode("", true),
-      $data.showModal ? (openBlock(), createBlock(_component_ProposalModal, {
-        key: 5,
-        request: $data.selectedRequest,
-        onClose: _cache[9] || (_cache[9] = ($event) => $data.showModal = false),
-        onProposalCreated: $options.onProposalCreated
-      }, null, 8, ["request", "onProposalCreated"])) : createCommentVNode("", true)
-    ])
+      ])
+    ])) : createCommentVNode("", true)
   ]);
 }
-const RentalRequests = /* @__PURE__ */ _export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-c0fe6b41"]]);
+const CatalogDetail = /* @__PURE__ */ _export_sfc(_sfc_main, [["render", _sfc_render]]);
+const CartIcon = {
+  data() {
+    return { count: 0, items: [], proposalItems: [], total: 0 };
+  },
+  methods: {
+    loadCart() {
+      return __async(this, null, function* () {
+        try {
+          const res = yield fetch("/api/cart");
+          const data2 = yield res.json();
+          this.count = data2.count || 0;
+          this.items = (data2.items || []).map((item) => {
+            const base = parseFloat(item.base_price) || 0;
+            const fee = parseFloat(item.platform_fee) || 0;
+            const period = parseInt(item.period_count) || 1;
+            const qty = parseInt(item.quantity) || 1;
+            item.total_price = parseFloat(item.total_price) || (base + fee) * period * qty;
+            return item;
+          });
+          this.total = data2.total || this.items.reduce((s, i) => s + (i.total_price || 0), 0);
+          const totalDelivery = this.items.reduce((s, i) => s + (parseFloat(i.delivery_cost) || 0), 0);
+          this.total += totalDelivery;
+          try {
+            const res2 = yield fetch("/api/proposal-cart");
+            const data22 = yield res2.json();
+            this.proposalItems = (data22.items || []).map((item) => {
+              item.total_price = parseFloat(item.total_price) || 0;
+              return item;
+            });
+            this.count += data22.count || 0;
+          } catch (e) {
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      });
+    },
+    openPanel() {
+      document.getElementById("cartPanel").classList.add("show");
+      document.body.classList.add("modal-open");
+    },
+    closePanel() {
+      document.getElementById("cartPanel").classList.remove("show");
+      document.body.classList.remove("modal-open");
+    },
+    removeItem(id) {
+      fetch("/api/cart/" + id, { method: "DELETE", headers: { "X-CSRF-TOKEN": window.csrfToken } }).then((r) => r.json()).then((d) => {
+        if (d.success) this.loadCart();
+      });
+    },
+    removeProposalItem(id) {
+      fetch("/api/proposal-cart/" + id, { method: "DELETE", headers: { "X-CSRF-TOKEN": window.csrfToken } }).then((r) => r.json()).then((d) => {
+        if (d.success) this.loadCart();
+      });
+    },
+    cleanupBrokenItems() {
+      if (!confirm("Удалить ВСЕ позиции из корзины?")) return;
+      const promises = this.items.map(
+        (item) => fetch("/api/cart/" + item.id, { method: "DELETE", headers: { "X-CSRF-TOKEN": window.csrfToken } })
+      );
+      Promise.all(promises).then(() => {
+        alert("Корзина очищена");
+        this.loadCart();
+      });
+    },
+    formatPrice(val) {
+      return Number(val || 0).toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+  },
+  mounted() {
+    this.loadCart();
+    if (window.cartBus) {
+      window.cartBus.on("cart-updated", () => {
+        this.loadCart();
+      });
+    }
+    document.addEventListener("cart-refresh", () => {
+      this.loadCart();
+    });
+  },
+  template: `
+    <div>
+        <button class="btn btn-primary rounded-circle position-fixed shadow cart-icon" @click="openPanel" style="bottom:20px;right:20px;width:60px;height:60px;z-index:9999;">
+            <i class="bi bi-cart fs-4"></i>
+            <span v-if="count > 0" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">{{ count }}</span>
+        </button>
+        <div class="offcanvas offcanvas-end" id="cartPanel" tabindex="-1" style="z-index:10060;">
+            <div class="offcanvas-header">
+                <h5>Корзина <small v-if="total > 0" class="text-muted fs-6">({{ formatPrice(total) }} ₽)</small></h5>
+                <button type="button" class="btn-close" @click="closePanel"></button>
+            </div>
+            <div class="offcanvas-body">
+                <ul class="nav nav-tabs mb-3">
+                    <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#cartItems">Техника</a></li>
+                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#proposalItems">Заявки</a></li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="cartItems">
+                        <div v-for="item in items" :key="item.id" class="card mb-2">
+                            <div class="card-body p-2">
+                                <div class="d-flex gap-2">
+                                    <img :src="item.equipment?.main_image_url || (item.equipment?.mainImage?.path ? '/storage/' + item.equipment.mainImage.path : '/images/no-image.svg')" style="width:60px;height:60px;object-fit:cover;border-radius:6px;">
+                                    <div class="flex-grow-1 small">
+                                        <strong>{{ item.equipment?.title || item.equipment?.brand + ' ' + item.equipment?.model || 'Техника' }}</strong><br>
+                                        <span v-if="item.start_date">{{ item.start_date }} — {{ item.end_date }}</span><br>
+                                        <span v-if="item.hours_per_shift">{{ item.shifts_per_day }} см. × {{ item.hours_per_shift }} ч</span>
+                                        <div class="d-flex justify-content-between mt-1">
+                                            <span class="text-muted">{{ formatPrice(item.base_price) }} ₽/ч</span>
+                                            <span class="fw-bold text-primary">{{ formatPrice(item.total_price) }} ₽</span>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-danger" @click="removeItem(item.id)"><i class="bi bi-trash"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="items.length === 0" class="text-muted small text-center py-3">Корзина пуста</div>
+                        <div v-if="items.length > 0">
+                            <div v-for="item in items" :key="item.id">
+                                <div v-if="item.delivery_cost > 0 && item.address && item.address.trim() !== ''" class="small border-top pt-1 mt-1" :title="''">
+                                    <div class="small text-muted">
+                                        <i class="bi bi-truck me-1"></i><strong>Доставка:</strong>
+                                        <span class="fw-bold text-primary ms-1">{{ formatPrice(item.delivery_cost) }} ₽</span>
+                                    </div>
+                                    <div v-if="item.equipment?.location_name" class="small text-muted ms-1" :title="''">
+                                        📍 Откуда: {{ item.equipment.location_name }}
+                                    </div>
+                                    <div v-if="item.address" class="small text-muted ms-1" :title="''">
+                                        📍 Куда: {{ item.address }}
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn btn-outline-danger btn-sm w-100 mt-2" @click="cleanupBrokenItems">
+                                <i class="bi bi-trash3 me-1"></i>Очистить корзину полностью
+                            </button>
+                            <a href="/checkout" class="btn btn-primary w-100 mt-2">Перейти к оформлению</a>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="proposalItems">
+                        <div v-for="item in proposalItems" :key="item.id" class="card mb-2">
+                            <div class="card-body p-2 small">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <strong>{{ item.equipment?.title || 'Предложение' }}</strong><br>
+                                        Цена: <span class="text-primary fw-bold">{{ formatPrice(item.total_price) }} ₽</span>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-danger" @click="removeProposalItem(item.id)"><i class="bi bi-trash"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-if="proposalItems.length === 0" class="text-muted small text-center py-3">Нет предложений</div>
+                        <a v-if="proposalItems.length > 0" href="/checkout" class="btn btn-primary w-100 mt-3">Перейти к оформлению</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>`
+};
 function initRipple() {
   document.addEventListener("click", function(e) {
     const rippleBtn = e.target.closest(".ripple");
@@ -4432,76 +5158,41 @@ window.Alpine = module_default;
 module_default.start();
 window.Chart = Chart;
 window.Swal = Swal;
+window.csrfToken = ((_d = document.querySelector('meta[name="csrf-token"]')) == null ? void 0 : _d.getAttribute("content")) || "";
+if (document.getElementById("catalog-app")) {
+  createApp(CatalogApp).mount("#catalog-app");
+}
+if (document.getElementById("catalog-detail-app") && window.__EQUIPMENT_ID__) {
+  const detailApp = createApp(CatalogDetail, {
+    equipmentId: window.__EQUIPMENT_ID__
+  });
+  detailApp.mount("#catalog-detail-app");
+}
+if (document.getElementById("cart-icon")) {
+  const cartApp = createApp({ components: { CartIcon }, template: "<CartIcon />" });
+  cartApp.component("CartIcon", CartIcon);
+  cartApp.mount("#cart-icon");
+}
+window.addEventListener("DOMContentLoaded", function() {
+  if (window.cartBus) {
+    window.cartBus.on("cart-updated", function() {
+      const event = new CustomEvent("cart-refresh");
+      document.dispatchEvent(event);
+    });
+  }
+});
 document.addEventListener("DOMContentLoaded", function() {
   try {
     initTheme();
     initSmartNavbar();
     initRipple();
-  } catch (error2) {
-    console.error("Ошибка инициализации модулей:", error2);
-  }
-});
-function initializeVueApps() {
-  const appManager = window.vueAppManager;
-  const rentalRequestsAppElement = document.getElementById("rental-requests-app");
-  if (rentalRequestsAppElement && appManager && appManager.canInitialize("rental-requests-app")) {
-    try {
-      const rentalRequestsApp = createApp({});
-      rentalRequestsApp.config.globalProperties.$swal = Swal;
-      rentalRequestsApp.config.errorHandler = (err, vm, info) => {
-        console.error("Глобальная ошибка Vue:", err);
-        console.error("Компонент:", vm);
-        console.error("Информация:", info);
-      };
-      rentalRequestsApp.component("rental-requests", RentalRequests);
-      rentalRequestsApp.mount("#rental-requests-app");
-      appManager.registerApp("rental-requests-app", rentalRequestsApp);
-    } catch (error2) {
-      console.error("Ошибка монтирования Rental Requests App:", error2);
-    }
-  }
-  document.getElementById("rental-request-show-app");
-  document.getElementById("lessor-rental-requests-app");
-}
-function initializeAdaptiveSidebar() {
-  const sidebar = document.getElementById("sidebarContainer");
-  if (!sidebar) return;
-  function updateSidebarDimensions() {
-    const navbar = document.querySelector(".navbar");
-    const isMobile = window.innerWidth < 992;
-    if (isMobile) {
-      sidebar.style.top = "0";
-      sidebar.style.height = "100vh";
-    } else {
-      const navbarHeight = navbar ? navbar.offsetHeight : 80;
-      sidebar.style.top = `${navbarHeight}px`;
-      sidebar.style.height = `calc(100vh - ${navbarHeight}px)`;
-    }
-  }
-  const minifyBtn = document.getElementById("sidebarMinify");
-  if (minifyBtn) {
-    minifyBtn.addEventListener("click", function() {
-      document.body.classList.toggle("sidebar-mini");
-      localStorage.setItem("sidebarMini", document.body.classList.contains("sidebar-mini"));
-    });
-  }
-  let resizeTimeout;
-  window.addEventListener("resize", function() {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(updateSidebarDimensions, 250);
-  });
-  updateSidebarDimensions();
-}
-window.addEventListener("load", function() {
-  const isPublicRequestPage = document.getElementById("public-rental-request-show-app");
-  if (!isPublicRequestPage) {
-    initializeVueApps();
-    initializeAdaptiveSidebar();
+  } catch (e) {
+    console.error(e);
   }
 });
 window.addEventListener("error", function(e) {
-  console.error("Глобальная ошибка:", e.error);
+  console.error("Global error:", e.error);
 });
 window.addEventListener("unhandledrejection", function(e) {
-  console.error("Необработанный Promise rejection:", e.reason);
+  console.error("Unhandled rejection:", e.reason);
 });

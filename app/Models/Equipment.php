@@ -19,6 +19,7 @@ class Equipment extends Model
         'title', 'slug', 'description', 'company_id', 'category_id',
         'location_id', 'brand', 'model', 'year', 'hours_worked',
         'rating', 'is_featured', 'is_approved', 'views', 'equipment_import_id', 'license_plate',
+        'is_platform_owned',
     ];
 
     protected $casts = [
@@ -28,9 +29,13 @@ class Equipment extends Model
 
     public function company()
     {
-        return $this->belongsTo(Company::class)->withDefault([
-            'legal_name' => 'Компания недоступна',
-        ]);
+        return $this->belongsTo(Company::class)->withDefault(function ($company, $equipment) {
+            if ($equipment->is_platform_owned) {
+                $company->legal_name = 'Собственная техника платформы';
+            } else {
+                $company->legal_name = 'Компания недоступна';
+            }
+        });
     }
 
     public function equipmentImport()
@@ -196,11 +201,36 @@ class Equipment extends Model
         return (float) $value;
     }
 
+    /**
+     * Проверка, является ли техника собственной платформы
+     */
+    public function isPlatformOwned(): bool
+    {
+        return $this->is_platform_owned || is_null($this->company_id);
+    }
+
+    /**
+     * Аксессор для отображения владельца техники
+     */
+    public function getOwnerNameAttribute(): string
+    {
+        if ($this->isPlatformOwned()) {
+            return 'Собственная техника платформы';
+        }
+
+        return $this->company->legal_name ?? 'Не указан';
+    }
+
     public function getDisplayPriceAttribute()
     {
         if (! $this->rentalTerms->isEmpty()) {
             $term = $this->rentalTerms->first();
             $price = $term->price_per_hour;
+
+            // Для платформенной техники показываем цену без наценки
+            if ($this->isPlatformOwned()) {
+                return number_format($price, 2).' ₽/час';
+            }
 
             // ДОБАВЛЕНО: безопасная проверка пользователя
             $user = auth()->user();

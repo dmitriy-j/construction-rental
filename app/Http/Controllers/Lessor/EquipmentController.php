@@ -28,6 +28,7 @@ class EquipmentController extends Controller
     public function index()
     {
         $equipments = Equipment::where('company_id', auth()->user()->company_id)
+            ->where('is_platform_owned', false) // Исключаем платформенную технику
             ->with('category', 'location', 'images')
             ->get();
 
@@ -46,6 +47,7 @@ class EquipmentController extends Controller
 
     public function store(StoreEquipmentRequest $request)
     {
+        // Запрещаем арендодателю создавать платформенную технику
         \Log::info('[EquipmentController] Store request data:', $request->all());
 
         try {

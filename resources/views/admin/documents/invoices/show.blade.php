@@ -326,7 +326,7 @@
 </div>
 
 <!-- JavaScript для отладки -->
-@section('scripts')
+@push('scripts')
 <script>
     console.log('Данные оборудования для отладки:', @json($invoice_data['equipment_data'] ?? null));
 
@@ -337,5 +337,5 @@
         console.warn('❌ Гос. номер НЕ найден в данных оборудования');
     @endif
 </script>
-@endsection
+@endpush
 @endsection

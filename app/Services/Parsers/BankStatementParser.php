@@ -6,284 +6,497 @@ use Illuminate\Support\Facades\Log;
 
 class BankStatementParser
 {
+    protected array $errors = [];
+
+    /**
+     * Доступные форматы дат для распознавания
+     */
+    protected array $dateFormats = [
+        'd.m.Y',
+        'd/m/Y',
+        'd.m.y',
+        'Y-m-d',
+        'Y/m/d',
+    ];
+
     public function parse(string $content): array
     {
-        // Конвертируем из Windows-1251 в UTF-8
-        $content = $this->convertWindows1251ToUtf8($content);
+        $this->errors = [];
 
-        Log::debug('BankStatementParser: начат парсинг файла после конвертации', [
-            'content_length' => strlen($content),
-            'first_500_chars' => substr($content, 0, 500)
+        // Конвертируем из Windows-1251 в UTF-8
+        $content = $this->convertToUtf8($content);
+
+        Log::debug('BankStatementParser: начат парсинг', [
+            'length' => strlen($content),
+            'preview' => mb_substr($content, 0, 300),
         ]);
 
         if ($this->is1CFormat($content)) {
-            Log::debug('BankStatementParser: определен формат 1C');
-            return $this->parse1CTextFormat($content);
-        } else {
-            Log::debug('BankStatementParser: определен текстовый формат');
-            return $this->parseTextFormat($content);
+            Log::debug('BankStatementParser: формат 1C');
+            return $this->parse1CFormat($content);
         }
+
+        // Пробуем автоопределение разделителя
+        $delimiter = $this->detectDelimiter($content);
+        Log::debug('BankStatementParser: определён разделитель', ['delimiter' => $delimiter === "\t" ? 'TAB' : ($delimiter ?: 'не определён')]);
+
+        if ($delimiter) {
+            return $this->parseDelimitedFormat($content, $delimiter);
+        }
+
+        // Fallback: старый парсер
+        Log::warning('BankStatementParser: формат не определён, попытка text fallback');
+        return $this->parseTextFormat($content);
     }
 
-    protected function convertWindows1251ToUtf8(string $content): string
+    /**
+     * Получить ошибки парсинга
+     */
+    public function getErrors(): array
     {
-        // Прямая конвертация из Windows-1251 в UTF-8
-        $converted = iconv('Windows-1251', 'UTF-8//IGNORE', $content);
+        return $this->errors;
+    }
 
-        if ($converted === false) {
-            Log::warning('Не удалось конвертировать из Windows-1251 в UTF-8, используем оригинал');
-            return $content;
+    // ---- Кодировка ----
+
+    protected function convertToUtf8(string $content): string
+    {
+        // Пробуем iconv
+        $converted = @iconv('Windows-1251', 'UTF-8//IGNORE', $content);
+        if ($converted !== false && $converted !== $content) {
+            return $converted;
         }
 
-        Log::debug('Успешно сконвертировано из Windows-1251 в UTF-8', [
-            'original_size' => strlen($content),
-            'converted_size' => strlen($converted)
-        ]);
+        // Пробуем mb_convert_encoding
+        if (function_exists('mb_convert_encoding')) {
+            $detected = mb_detect_encoding($content, ['UTF-8', 'Windows-1251', 'KOI8-R'], true);
+            if ($detected && $detected !== 'UTF-8') {
+                return mb_convert_encoding($content, 'UTF-8', $detected);
+            }
+        }
 
-        return $converted;
+        return $content;
     }
+
+    // ---- Определение формата ----
 
     protected function is1CFormat(string $content): bool
     {
-        return strpos($content, '1CClientBankExchange') !== false ||
-               strpos($content, 'СекцияДокумент') !== false;
+        return str_contains($content, '1CClientBankExchange') ||
+               str_contains($content, 'СекцияДокумент');
     }
 
-    protected function parse1CTextFormat(string $content): array
+    /**
+     * Автоопределение разделителя в текстовом файле
+     */
+    protected function detectDelimiter(string $content): ?string
     {
-        $transactions = [];
         $lines = explode("\n", trim($content));
-        $currentTransaction = [];
-        $inTransaction = false;
-        $documentCount = 0;
+        $sampleLines = array_slice($lines, 0, 20);
+        $delimiterScore = [];
 
-        Log::debug('1C Parser: начат разбор после конвертации', ['lines_count' => count($lines)]);
+        $candidates = ["\t", ';', ',', '|'];
 
-        foreach ($lines as $lineNumber => $line) {
-            $line = trim($line);
+        foreach ($candidates as $delim) {
+            $score = 0;
+            $consistent = 0;
 
-            // Логируем ключевые строки для отладки
-            if (str_contains($line, 'СекцияДокумент') || str_contains($line, 'КонецДокумента')) {
-                Log::debug("1C Parser Key Line {$lineNumber}", ['line' => $line]);
-            }
+            foreach ($sampleLines as $i => $line) {
+                if (empty(trim($line))) continue;
 
-            // Ищем начало ЛЮБОЙ секции документа
-            if (str_starts_with($line, 'СекцияДокумент=')) {
-                $documentCount++;
-                Log::debug("1C Parser: найден начало документа #{$documentCount} на строке {$lineNumber}", ['line' => $line]);
-                $inTransaction = true;
-                $currentTransaction = [];
-                $currentTransaction['ТипДокумента'] = str_replace('СекцияДокумент=', '', $line);
-                continue;
-            }
-
-            if (str_starts_with($line, 'КонецДокумента')) {
-                if ($inTransaction) {
-                    Log::debug("1C Parser: найден конец документа #{$documentCount} на строке {$lineNumber}");
-                    $inTransaction = false;
-
-                    // Обработка и валидация транзакции
-                    if ($this->isValidTransaction($currentTransaction)) {
-                        // Нормализуем данные
-                        $normalizedTransaction = $this->normalizeTransactionData($currentTransaction);
-                        $transactions[] = $normalizedTransaction;
-
-                        Log::debug('1C Parser: добавлена транзакция', [
-                            'document_number' => $documentCount,
-                            'type' => $normalizedTransaction['ТипДокумента'] ?? 'unknown',
-                            'amount' => $normalizedTransaction['Сумма'],
-                            'payer_inn' => $normalizedTransaction['ПлательщикИНН'] ?? '',
-                            'payee_inn' => $normalizedTransaction['ПолучательИНН'] ?? ''
-                        ]);
-                    } else {
-                        Log::warning('1C Parser: пропущена невалидная транзакция', [
-                            'document_number' => $documentCount,
-                            'transaction' => $currentTransaction
-                        ]);
+                $count = substr_count($line, $delim);
+                if ($count > 0) {
+                    $score += $count;
+                    // Если первая строка (заголовок) имеет столько же разделителей — бонус
+                    if ($i === 0) {
+                        $headerCount = $count;
+                    }
+                    if ($i > 0 && isset($headerCount) && $count === $headerCount) {
+                        $consistent++;
                     }
                 }
-                continue;
             }
 
-            if ($inTransaction && str_contains($line, '=')) {
-                [$key, $value] = explode('=', $line, 2);
-                $currentTransaction[trim($key)] = trim($value);
+            $delimiterScore[$delim] = [
+                'score' => $score,
+                'consistent' => $consistent,
+            ];
+        }
+
+        // Выбираем разделитель с наибольшим количеством совпадений
+        $best = null;
+        $bestScore = 0;
+        foreach ($delimiterScore as $delim => $data) {
+            if ($data['score'] > $bestScore) {
+                $bestScore = $data['score'];
+                $best = $delim;
             }
         }
 
-        Log::info('1C Parser: итоговый результат', [
-            'total_documents' => $documentCount,
-            'valid_transactions' => count($transactions)
+        // Минимум 2 вхождения для уверенности
+        return ($bestScore >= 2) ? $best : null;
+    }
+
+    // ---- Парсер 1C ----
+
+    protected function parse1CFormat(string $content): array
+    {
+        $transactions = [];
+        // Извлекаем начальный остаток
+        $openingBalance = $this->extractOpeningBalance($content);
+
+        $lines = explode("\n", trim($content));
+        $currentTx = [];
+        $inTx = false;
+        $docCount = 0;
+
+        foreach ($lines as $num => $line) {
+            $line = trim($line);
+            if (empty($line)) continue;
+
+            try {
+                if (str_starts_with($line, 'СекцияДокумент=')) {
+                    $docCount++;
+                    $inTx = true;
+                    $currentTx = ['ТипДокумента' => substr($line, 16)];
+                    $currentTx['_line_start'] = $num;
+                    continue;
+                }
+
+                if (str_starts_with($line, 'КонецДокумента')) {
+                    $inTx = false;
+                    if ($this->isValidTransaction($currentTx)) {
+                        $transactions[] = $this->normalizeTransactionData($currentTx);
+                    }
+                    continue;
+                }
+
+                if ($inTx && str_contains($line, '=')) {
+                    [$key, $value] = explode('=', $line, 2);
+                    $currentTx[trim($key)] = trim($value);
+                }
+            } catch (\Exception $e) {
+                $this->errors[] = "Строка {$num}: ошибка обработки — {$e->getMessage()}";
+                Log::warning("1C Parser error at line {$num}", ['error' => $e->getMessage(), 'line' => $line]);
+            }
+        }
+
+        Log::info('1C Parser завершён', [
+            'документов' => $docCount,
+            'транзакций' => count($transactions),
+            'ошибок' => count($this->errors),
+            'остаток' => $openingBalance,
         ]);
 
         return $transactions;
     }
 
-    protected function isValidTransaction(array $transaction): bool
+    protected function extractOpeningBalance(string $content): ?float
     {
-        // Минимальные требования для валидной транзакции
-        $hasAmount = !empty($transaction['Сумма']) && $this->validateAndParseAmount($transaction['Сумма']) > 0;
-        $hasDate = !empty($transaction['Дата']);
-        $hasParties = (!empty($transaction['ПлательщикИНН']) && $transaction['ПлательщикИНН'] !== '0000000000') ||
-                     (!empty($transaction['ПолучательИНН']) && $transaction['ПолучательИНН'] !== '0000000000');
-
-        $isValid = $hasAmount && $hasDate && $hasParties;
-
-        if (!$isValid) {
-            Log::debug('Транзакция невалидна', [
-                'hasAmount' => $hasAmount,
-                'hasDate' => $hasDate,
-                'hasParties' => $hasParties,
-                'transaction_keys' => array_keys($transaction)
-            ]);
+        if (preg_match('/НачальныйОстаток\s*=\s*([\d\.,]+)/', $content, $m)) {
+            return (float) str_replace([' ', ','], ['', '.'], trim($m[1]));
         }
-
-        return $isValid;
+        return null;
     }
 
-    protected function normalizeTransactionData(array $transaction): array
+    protected function isValidTransaction(array $tx): bool
     {
-        $normalized = [];
+        $amount = $this->parseAmount($tx['Сумма'] ?? '');
+        $hasDate = !empty($tx['Дата']);
+        $hasInn = ($tx['ПлательщикИНН'] ?? '') !== '0000000000'
+               || ($tx['ПолучательИНН'] ?? '') !== '0000000000';
+        return $amount > 0 && $hasDate && $hasInn;
+    }
 
-        // Маппинг полей 1C в наши поля
-        $fieldMapping = [
-            'Номер' => 'Номер',
-            'Дата' => 'Дата',
-            'Сумма' => 'Сумма',
-            'ПлательщикСчет' => 'ПлательщикСчет',
-            'ПлательщикИНН' => 'ПлательщикИНН',
-            'Плательщик1' => 'Плательщик1',
-            'ПлательщикРасчСчет' => 'ПлательщикСчет',
-            'ПлательщикБИК' => 'ПлательщикБИК',
-            'ПолучательСчет' => 'ПолучательСчет',
-            'ПолучательИНН' => 'ПолучательИНН',
-            'Получатель1' => 'Получатель1',
-            'ПолучательРасчСчет' => 'ПолучательСчет',
-            'ПолучательБИК' => 'ПолучательБИК',
-            'НазначениеПлатежа' => 'НазначениеПлатежа',
-            'Назначение' => 'НазначениеПлатежа',
-            'ТипДокумента' => 'ТипДокумента'
+    // ---- Парсер с разделителем ----
+
+    protected function parseDelimitedFormat(string $content, string $delimiter): array
+    {
+        $transactions = [];
+        $lines = explode("\n", trim($content));
+        $headerMap = $this->detectColumnHeaders($lines, $delimiter);
+        $startLine = $headerMap ? 1 : 0;
+
+        // Пропускаем шапку (строки до первой транзакции)
+        $actualStart = $this->findFirstDataLine($lines, $delimiter, $startLine);
+
+        for ($i = $actualStart; $i < count($lines); $i++) {
+            $line = trim($lines[$i]);
+            if (empty($line)) continue;
+
+            // Пропускаем итоговые строки
+            if ($this->isSummaryLine($line)) continue;
+
+            try {
+                $parts = explode($delimiter, $line);
+                $parts = array_map('trim', $parts);
+
+                // Если есть заголовки — используем маппинг
+                if ($headerMap) {
+                    $tx = $this->mapColumns($parts, $headerMap);
+                } else {
+                    $tx = $this->parseByPosition($parts);
+                }
+
+                if ($tx && $this->isValidTransaction($tx)) {
+                    $transactions[] = $this->normalizeTransactionData($tx);
+                }
+            } catch (\Exception $e) {
+                $this->errors[] = "Строка {$i}: {$e->getMessage()}";
+                Log::warning("Delimited parser error at line {$i}", ['error' => $e->getMessage()]);
+            }
+        }
+
+        return $transactions;
+    }
+
+    /**
+     * Определение заголовков колонок по первой строке
+     */
+    protected function detectColumnHeaders(array $lines, string $delimiter): ?array
+    {
+        if (empty($lines)) return null;
+
+        $first = trim($lines[0]);
+        $parts = explode($delimiter, $first);
+        $parts = array_map('trim', $parts);
+
+        // Типичные названия колонок для банковских выписок
+        $knownHeaders = [
+            'дата', 'date', 'сумма', 'sum', 'amount',
+            'плательщик', 'payer', 'получатель', 'payee',
+            'инн', 'inn', 'назначение', 'purpose', 'назначение платежа',
+            'счет', 'account', 'бИК', 'bic', 'номер', 'number',
+            'тип', 'type', 'вид', 'kind',
         ];
 
-        foreach ($fieldMapping as $sourceField => $targetField) {
-            if (isset($transaction[$sourceField])) {
-                $normalized[$targetField] = $transaction[$sourceField];
+        $foundHeaders = [];
+        foreach ($parts as $i => $header) {
+            $headerLow = mb_strtolower(trim($header));
+            foreach ($knownHeaders as $known) {
+                if (mb_strpos($headerLow, $known) !== false) {
+                    $foundHeaders[$i] = $headerLow;
+                    break;
+                }
             }
         }
 
-        // Обработка суммы
-        if (isset($normalized['Сумма'])) {
-            $normalized['Сумма'] = $this->validateAndParseAmount($normalized['Сумма']);
-        }
+        return !empty($foundHeaders) ? $foundHeaders : null;
+    }
 
-        // Обработка даты
-        if (isset($normalized['Дата'])) {
-            try {
-                // Сохраняем оригинальный формат даты
-                $normalized['Дата'] = \Carbon\Carbon::createFromFormat('d.m.Y', $normalized['Дата'])->format('d.m.Y');
-            } catch (\Exception $e) {
-                Log::warning('Неверный формат даты в транзакции', [
-                    'date' => $normalized['Дата'],
-                    'transaction' => $normalized
-                ]);
-                $normalized['Дата'] = now()->format('d.m.Y');
+    /**
+     * Поиск первой строки с данными (пропуск шапки)
+     */
+    protected function findFirstDataLine(array $lines, string $delimiter, int $startFrom): int
+    {
+        for ($i = $startFrom; $i < min(count($lines), 10); $i++) {
+            $line = trim($lines[$i]);
+            if (empty($line)) continue;
+
+            $parts = explode($delimiter, $line);
+            // Проверяем, что строка содержит дату и сумму
+            if (count($parts) >= 3) {
+                $hasDate = false;
+                $hasNumber = false;
+                foreach ($parts as $p) {
+                    $p = trim($p);
+                    if (preg_match('/^\d{2}[\.\/]\d{2}[\.\/]\d{2,4}$/', $p)) $hasDate = true;
+                    if (preg_match('/^[\d\s\.,]+$/', $p) && strlen($p) >= 4) $hasNumber = true;
+                }
+                if ($hasDate && $hasNumber) return $i;
             }
         }
-
-        // Очистка ИНН
-        if (isset($normalized['ПлательщикИНН'])) {
-            $normalized['ПлательщикИНН'] = $this->cleanInn($normalized['ПлательщикИНН']);
-        }
-        if (isset($normalized['ПолучательИНН'])) {
-            $normalized['ПолучательИНН'] = $this->cleanInn($normalized['ПолучательИНН']);
-        }
-
-        // Генерация idempotency key
-        $normalized['idempotency_key'] = $this->generateIdempotencyKey($normalized);
-
-        return $normalized;
+        return $startFrom;
     }
 
-    protected function validateAndParseAmount($amount): float
+    /**
+     * Проверка на итоговую строку
+     */
+    protected function isSummaryLine(string $line): bool
     {
-        if (is_string($amount)) {
-            // Удаляем все пробелы (тысячные разделители) и заменяем запятые на точки
-            $amount = str_replace([' ', ','], ['', '.'], trim($amount));
+        $summaryKeywords = ['итого', 'всего', 'total', 'sum', 'остаток', 'balance',
+                           'и т о г о', 'конец', 'end'];
+        $lineLow = mb_strtolower($line);
+        foreach ($summaryKeywords as $kw) {
+            if (mb_strpos($lineLow, $kw) !== false) return true;
         }
-
-        if (!is_numeric($amount)) {
-            Log::warning('Некорректный формат суммы', ['amount' => $amount]);
-            return 0.0;
-        }
-
-        $parsedAmount = (float) $amount;
-
-        if ($parsedAmount <= 0) {
-            Log::warning('Сумма должна быть положительной', ['amount' => $amount]);
-            return 0.0;
-        }
-
-        return $parsedAmount;
+        return false;
     }
 
-    protected function cleanInn(?string $inn): string
+    /**
+     * Маппинг колонок по заголовкам
+     */
+    protected function mapColumns(array $parts, array $headerMap): array
     {
-        if (empty($inn)) {
-            return '0000000000';
+        $tx = [];
+        foreach ($headerMap as $idx => $header) {
+            $value = $parts[$idx] ?? '';
+
+            if (str_contains($header, 'дата') || $header === 'date') {
+                $tx['Дата'] = $value;
+            } elseif (str_contains($header, 'сумм') || str_contains($header, 'amount') || $header === 'sum') {
+                $tx['Сумма'] = $value;
+            } elseif (str_contains($header, 'плательщик') || $header === 'payer') {
+                if (str_contains($header, 'инн') || str_contains($header, 'inn')) {
+                    $tx['ПлательщикИНН'] = $value;
+                } elseif (str_contains($header, 'счет') || str_contains($header, 'account')) {
+                    $tx['ПлательщикСчет'] = $value;
+                } elseif (str_contains($header, 'бик') || $header === 'bic') {
+                    $tx['ПлательщикБИК'] = $value;
+                } else {
+                    $tx['Плательщик1'] = $value;
+                }
+            } elseif (str_contains($header, 'получатель') || $header === 'payee') {
+                if (str_contains($header, 'инн') || str_contains($header, 'inn')) {
+                    $tx['ПолучательИНН'] = $value;
+                } elseif (str_contains($header, 'счет') || str_contains($header, 'account')) {
+                    $tx['ПолучательСчет'] = $value;
+                } elseif (str_contains($header, 'бик') || $header === 'bic') {
+                    $tx['ПолучательБИК'] = $value;
+                } else {
+                    $tx['Получатель1'] = $value;
+                }
+            } elseif (str_contains($header, 'назначен') || $header === 'purpose') {
+                $tx['НазначениеПлатежа'] = $value;
+            } elseif (str_contains($header, 'номер') || $header === 'number') {
+                $tx['Номер'] = $value;
+            } elseif (str_contains($header, 'тип') || $header === 'type' || $header === 'kind') {
+                $tx['ТипДокумента'] = $value;
+            }
         }
-
-        $cleaned = preg_replace('/[^0-9]/', '', $inn);
-        return !empty($cleaned) ? $cleaned : '0000000000';
+        return $tx;
     }
 
-    protected function generateIdempotencyKey(array $transaction): string
+    /**
+     * Парсинг по позициям (если нет заголовков)
+     */
+    protected function parseByPosition(array $parts): array
     {
-        $uniqueSourceString = implode('|', [
-            $transaction['Номер'] ?? '',
-            $transaction['Дата'] ?? '',
-            $transaction['Сумма'] ?? '',
-            $transaction['ПлательщикИНН'] ?? '',
-            $transaction['ПолучательИНН'] ?? '',
-            $transaction['НазначениеПлатежа'] ?? '',
-        ]);
-
-        return 'bank_stmt_'.md5($uniqueSourceString);
+        $tx = [];
+        // Ожидается: Дата, Плательщик, Счёт/ИНН, Сумма, Назначение, ...
+        foreach ($parts as $i => $p) {
+            $p = trim($p);
+            if (preg_match('/^\d{2}[\.\/]\d{2}[\.\/]\d{2,4}$/', $p) && empty($tx['Дата'])) {
+                $tx['Дата'] = $p;
+            } elseif (preg_match('/^[\d\s\.,]+$/', $p) && !isset($tx['Сумма']) && strlen($p) >= 4) {
+                $tx['Сумма'] = $p;
+            } elseif (preg_match('/^\d{10,12}$/', $p)) {
+                if (!isset($tx['ПлательщикИНН'])) $tx['ПлательщикИНН'] = $p;
+                else $tx['ПолучательИНН'] = $p;
+            } elseif (!isset($tx['Плательщик1']) && mb_strlen($p) > 5) {
+                $tx['Плательщик1'] = $p;
+            } elseif (!isset($tx['НазначениеПлатежа']) && mb_strlen($p) > 10) {
+                $tx['НазначениеПлатежа'] = $p;
+            }
+        }
+        return $tx;
     }
+
+    // ---- Старый текстовый парсер (fallback) ----
 
     protected function parseTextFormat(string $content): array
     {
         $transactions = [];
         $lines = explode("\n", $content);
 
-        foreach ($lines as $line) {
-            if (empty(trim($line))) {
-                continue;
-            }
+        foreach ($lines as $num => $line) {
+            if (empty(trim($line))) continue;
+            if ($this->isSummaryLine($line)) continue;
 
-            $parts = preg_split('/\s{2,}/', trim($line));
-
-            if (count($parts) >= 5) {
-                $transaction = [
-                    'date' => $parts[0],
-                    'amount' => (float) preg_replace('/[^0-9.]/', '', $parts[3]),
-                    'payer_name' => $parts[1],
-                    'payer_inn' => $this->extractInn($parts[2]),
-                    'purpose' => $parts[4],
-                    'idempotency_key' => 'bank_'.md5($parts[0].$parts[3].$parts[4]),
-                ];
-
-                $transactions[] = $transaction;
+            try {
+                $parts = preg_split('/\s{2,}/', trim($line));
+                if (count($parts) >= 5) {
+                    $transactions[] = $this->normalizeTransactionData([
+                        'Дата' => $parts[0],
+                        'Сумма' => (float) preg_replace('/[^0-9.,]/', '', $parts[3]),
+                        'Плательщик1' => $parts[1],
+                        'ПлательщикИНН' => $this->extractInn($parts[2]),
+                        'НазначениеПлатежа' => $parts[4],
+                    ]);
+                }
+            } catch (\Exception $e) {
+                $this->errors[] = "Строка {$num}: {$e->getMessage()}";
             }
         }
-
-        Log::info('Text Parser: распознано транзакций', ['count' => count($transactions)]);
 
         return $transactions;
     }
 
     protected function extractInn(string $text): string
     {
-        preg_match('/\b\d{10,12}\b/', $text, $matches);
-        return $matches[0] ?? '';
+        preg_match('/\b\d{10,12}\b/', $text, $m);
+        return $m[0] ?? '';
+    }
+
+    // ---- Общие методы ----
+
+    protected function parseAmount($amount): float
+    {
+        if (is_string($amount)) {
+            $amount = str_replace([' ', ','], ['', '.'], trim($amount));
+        }
+        return is_numeric($amount) ? (float)$amount : 0.0;
+    }
+
+    protected function cleanInn(?string $inn): string
+    {
+        if (empty($inn)) return '0000000000';
+        $c = preg_replace('/[^0-9]/', '', $inn);
+        return $c ?: '0000000000';
+    }
+
+    protected function normalizeTransactionData(array $tx): array
+    {
+        $normalized = [];
+        $fieldMapping = [
+            'Номер' => 'Номер', 'Дата' => 'Дата', 'Сумма' => 'Сумма',
+            'ПлательщикСчет' => 'ПлательщикСчет', 'ПлательщикИНН' => 'ПлательщикИНН',
+            'Плательщик1' => 'Плательщик1', 'ПлательщикРасчСчет' => 'ПлательщикСчет',
+            'ПлательщикБИК' => 'ПлательщикБИК',
+            'ПолучательСчет' => 'ПолучательСчет', 'ПолучательИНН' => 'ПолучательИНН',
+            'Получатель1' => 'Получатель1', 'ПолучательРасчСчет' => 'ПолучательСчет',
+            'ПолучательБИК' => 'ПолучательБИК',
+            'НазначениеПлатежа' => 'НазначениеПлатежа', 'Назначение' => 'НазначениеПлатежа',
+            'ТипДокумента' => 'ТипДокумента',
+        ];
+
+        foreach ($fieldMapping as $src => $dst) {
+            if (isset($tx[$src])) $normalized[$dst] = $tx[$src];
+        }
+
+        // Сумма
+        if (isset($normalized['Сумма'])) {
+            $normalized['Сумма'] = $this->parseAmount($normalized['Сумма']);
+        }
+
+        // Дата — пробуем разные форматы
+        if (isset($normalized['Дата'])) {
+            $date = null;
+            foreach ($this->dateFormats as $fmt) {
+                try {
+                    $date = \Carbon\Carbon::createFromFormat($fmt, $normalized['Дата']);
+                    if ($date) break;
+                } catch (\Exception $e) {}
+            }
+            $normalized['Дата'] = $date ? $date->format('d.m.Y') : now()->format('d.m.Y');
+        }
+
+        // ИНН
+        if (isset($normalized['ПлательщикИНН'])) $normalized['ПлательщикИНН'] = $this->cleanInn($normalized['ПлательщикИНН']);
+        if (isset($normalized['ПолучательИНН'])) $normalized['ПолучательИНН'] = $this->cleanInn($normalized['ПолучательИНН']);
+
+        // Idempotency key
+        $normalized['idempotency_key'] = $this->generateIdempotencyKey($normalized);
+
+        return $normalized;
+    }
+
+    protected function generateIdempotencyKey(array $tx): string
+    {
+        return 'bank_'.md5(implode('|', [
+            $tx['Номер'] ?? '', $tx['Дата'] ?? '', $tx['Сумма'] ?? '',
+            $tx['ПлательщикИНН'] ?? '', $tx['ПолучательИНН'] ?? '',
+            $tx['НазначениеПлатежа'] ?? '',
+        ]));
     }
 }

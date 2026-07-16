@@ -38,7 +38,14 @@
                         <option value="0" {{ request('is_approved') === '0' ? 'selected' : '' }}>На проверке</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <select name="owner_type" class="form-select">
+                        <option value="">Вся техника</option>
+                        <option value="platform" {{ request('owner_type') === 'platform' ? 'selected' : '' }}>Техника платформы</option>
+                        <option value="lessor" {{ request('owner_type') === 'lessor' ? 'selected' : '' }}>Техника арендодателей</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <button type="submit" class="btn btn-primary">Применить</button>
                     <a href="{{ route('admin.equipment.index') }}" class="btn btn-outline-secondary">Сбросить</a>
                 </div>
@@ -50,7 +57,12 @@
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Список техники</h5>
-            <span>Всего: {{ $equipment->total() }}</span>
+            <div>
+                <a href="{{ route('admin.equipment.create') }}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-lg"></i> Добавить технику
+                </a>
+                <span class="ms-2">Всего: {{ $equipment->total() }}</span>
+            </div>
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -62,13 +74,13 @@
                             <th>Бренд</th>
                             <th>Модель</th>
                             <th>Год</th>
-                            <th>Компания</th>
+                            <th>Владелец</th>
                             <th>Категория</th>
                             <th>Локация</th>
                             <th>Часы</th>
-                            <th>Цены аренды</th>
+                            <th>Цена/час</th>
                             <th>Статус</th>
-                            <th>Дата добавления</th>
+                            <th>Дата</th>
                             <th>Действия</th>
                         </tr>
                     </thead>
@@ -80,7 +92,17 @@
                             <td>{{ $item->brand }}</td>
                             <td>{{ $item->model }}</td>
                             <td>{{ $item->year }}</td>
-                            <td>{{ $item->company->name }}</td>
+                            <td>
+                                @if($item->isPlatformOwned())
+                                    <span class="badge bg-info">
+                                        <i class="bi bi-building-gear"></i> Платформа
+                                    </span>
+                                @else
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-building"></i> {{ $item->owner_name }}
+                                    </span>
+                                @endif
+                            </td>
                             <td>{{ $item->category->name }}</td>
                             <td>{{ $item->location->name }}</td>
                             <td>{{ number_format($item->hours_worked, 2) }} </td>
@@ -92,7 +114,7 @@
 
     @if($terms->price_per_hour)
         <div class="d-flex justify-content-between">
-            
+
             <span>{{ number_format($terms->price_per_hour, 2) }}</span>
         </div>
     @endif
@@ -104,19 +126,32 @@
                             </td>
                             <td>{{ $item->created_at->format('d.m.Y H:i') }}</td>
                             <td class="text-nowrap">
-                                
+
                                 <a href="{{ route('admin.equipment.show', $item) }}"
                                    class="btn btn-sm btn-info"
                                    title="Подробнее">
                                     <i class="bi bi-eye"></i>
                                 </a>
+                                <a href="{{ route('admin.equipment.edit', $item) }}"
+                                   class="btn btn-sm btn-warning"
+                                   title="Редактировать">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form action="{{ route('admin.equipment.destroy', $item) }}" method="POST" class="d-inline"
+                                      onsubmit="return confirm('Удалить технику?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Удалить">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
                             </td>
                         </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
-            
+
             <!-- Пагинация -->
             <div class="mt-3">
                 {{ $equipment->withQueryString()->links() }}

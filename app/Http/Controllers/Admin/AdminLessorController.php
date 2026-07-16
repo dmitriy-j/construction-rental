@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Order;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AdminLessorController extends Controller
 {
@@ -22,11 +23,11 @@ class AdminLessorController extends Controller
             });
         }
 
-        if ($status = $request->status) {
-            $query->where('status', $status);
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
         }
 
-        $lessors = $query->paginate(25)->withQueryString();
+        $lessors = $query->orderBy('created_at', 'desc')->paginate(25)->withQueryString();
 
         return view('admin.lessors.index', [
             'lessors' => $lessors,
@@ -38,7 +39,6 @@ class AdminLessorController extends Controller
     {
         abort_unless($lessor->is_lessor, 404);
 
-        // Загружаем технику с пагинацией и условиями аренды
         $equipment = $lessor->equipment()
             ->with(['rentalTerms', 'category'])
             ->latest()
@@ -46,9 +46,80 @@ class AdminLessorController extends Controller
 
         return view('admin.lessors.show', [
             'lessor' => $lessor,
-            'equipment' => $equipment, // Передаем пагинированный список
+            'equipment' => $equipment,
             'statuses' => ['pending', 'verified', 'rejected'],
         ]);
+    }
+
+    public function edit(Company $lessor)
+    {
+        abort_unless($lessor->is_lessor, 404);
+
+        return view('admin.lessors.edit', [
+            'lessor' => $lessor,
+        ]);
+    }
+
+    public function update(Request $request, Company $lessor)
+    {
+        abort_unless($lessor->is_lessor, 404);
+
+        $validated = $request->validate([
+            'legal_name' => 'required|string|max:255',
+            'inn' => 'required|string|max:12',
+            'kpp' => 'nullable|string|max:9',
+            'ogrn' => 'nullable|string|max:15',
+            'okpo' => 'nullable|string|max:10',
+            'legal_address' => 'nullable|string|max:500',
+            'actual_address' => 'nullable|string|max:500',
+            'director_name' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:20',
+            'contacts' => 'nullable|string|max:500',
+            'bank_name' => 'nullable|string|max:255',
+            'bank_account' => 'nullable|string|max:20',
+            'bik' => 'nullable|string|max:9',
+            'correspondent_account' => 'nullable|string|max:20',
+            'legal_type' => 'nullable|string|in:ooo,ip',
+        ]);
+
+        $lessor->update($validated);
+
+        return redirect()->route('admin.lessors.show', $lessor)
+            ->with('success', 'Данные арендодателя обновлены!');
+    }
+
+    public function verify(Company $lessor, Request $request)
+    {
+        abort_unless($lessor->is_lessor, 404);
+
+        $request->validate([
+            'action' => 'required|in:verify,reject',
+            'rejection_reason' => 'required_if:action,reject|nullable|string|max:500',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            if ($request->action === 'verify') {
+                $lessor->update([
+                    'status' => 'verified',
+                    'verified_at' => now(),
+                    'rejection_reason' => null,
+                ]);
+            } else {
+                $lessor->update([
+                    'status' => 'rejected',
+                    'verified_at' => null,
+                    'rejection_reason' => $request->rejection_reason,
+                ]);
+            }
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => 'Ошибка: '.$e->getMessage()]);
+        }
+
+        return redirect()->route('admin.lessors.show', $lessor)
+            ->with('success', $request->action === 'verify' ? 'Арендодатель подтверждён!' : 'Арендодатель отклонён!');
     }
 
     public function showOrder(Company $lessor, Order $order)

@@ -84,9 +84,9 @@
         </div>
     </div>
 </div>
-@endsection
+@endpush
 
-@section('scripts')
+@push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
@@ -95,4 +95,4 @@
         })
     });
 </script>
-@endsection
+@endpush

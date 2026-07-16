@@ -32,6 +32,33 @@ class PricingService
         // Базовая стоимость (цена арендодателя)
         $baseCost = $term->price_per_hour * $workingHours;
 
+        // Проверка: если техника платформы — наценка не применяется
+        $equipment = $term->equipment;
+        if ($equipment && $equipment->isPlatformOwned()) {
+            Log::debug('Platform-owned equipment in price calculation — no markup applied', [
+                'equipment_id' => $equipment->id,
+                'base_cost' => $baseCost,
+            ]);
+
+            $pricePerHour = $baseCost / max(1, $workingHours);
+
+            return [
+                'base_price' => $baseCost,
+                'platform_fee' => 0,
+                'discount_amount' => 0,
+                'final_price' => $baseCost,
+                'base_price_per_unit' => $pricePerHour,
+                'working_hours' => $workingHours,
+                'markup_type' => 'none',
+                'markup_value' => 0,
+                'markup_details' => [
+                    'source' => 'platform_owned',
+                    'markup_amount' => 0,
+                    'final_price' => $baseCost,
+                ],
+            ];
+        }
+
         // НОВЫЙ РАСЧЕТ: Используем унифицированный сервис наценок
         $markupResult = $this->markupCalculationService->calculateMarkup(
             $term->price_per_hour, // цена за час
@@ -89,6 +116,30 @@ class PricingService
         float $proposedPrice, // Цена арендодателя
         int $workingHours
     ): array {
+        // Базовая стоимость (цена арендодателя)
+        $baseCost = $proposedPrice * $workingHours;
+
+        // Проверка: если техника платформы — наценка не применяется
+        if ($equipment && $equipment->isPlatformOwned()) {
+            Log::debug('Platform-owned equipment in proposal price — no markup applied', [
+                'equipment_id' => $equipment->id,
+                'base_cost' => $baseCost,
+            ]);
+
+            $pricePerHour = $baseCost / max(1, $workingHours);
+
+            return [
+                'calculated_price' => $baseCost,
+                'price_per_hour' => $pricePerHour,
+                'platform_fee' => 0,
+                'working_hours' => $workingHours,
+                'markup_details' => [
+                    'source' => 'platform_owned',
+                    'markup_amount' => 0,
+                ],
+            ];
+        }
+
         // НОВЫЙ РАСЧЕТ: Используем унифицированный сервис наценок для контекста rental_request
         $markupResult = $this->markupCalculationService->calculateMarkup(
             $proposedPrice, // цена арендодателя за час
@@ -99,9 +150,6 @@ class PricingService
             null, // компания арендодателя
             $request->user->company_id // компания арендатора
         );
-
-        // Базовая стоимость (цена арендодателя)
-        $baseCost = $proposedPrice * $workingHours;
 
         // Наценка платформы из нового сервиса
         $platformFee = $markupResult['markup_amount'];
@@ -239,6 +287,19 @@ class PricingService
 
     public function getPlatformMarkup(Equipment $equipment, ?Company $lesseeCompany, int $workingHours): array
     {
+        // Проверка: если техника платформы — наценка 0
+        if ($equipment->isPlatformOwned()) {
+            return [
+                'type' => 'none',
+                'value' => 0,
+                'amount' => 0,
+                'details' => [
+                    'source' => 'platform_owned',
+                    'markup_amount' => 0,
+                ]
+            ];
+        }
+
         $markupResult = $this->markupCalculationService->calculateMarkup(
             $equipment->rentalTerms->first()?->price_per_hour ?? 0,
             'order',

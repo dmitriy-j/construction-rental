@@ -136,9 +136,9 @@
         </div>
     </div>
 </div>
-@endsection
+@endpush
 
-@section('scripts')
+@push('scripts')
 <script>
 $(document).ready(function() {
     // Проверка доступности при изменении дат
@@ -166,4 +166,4 @@ $(document).ready(function() {
     $('#start_date, #end_date').change(checkAvailability);
 });
 </script>
-@endsection
+@endpush

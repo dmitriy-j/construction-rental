@@ -1,19 +1,20 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h3 class="card-title mb-0">Банковские выписки</h3>
-        <div class="card-tools d-flex gap-2">
-            <a href="{{ route('admin.bank-statements.pending') }}" class="btn btn-warning">
-                <i class="fas fa-clock mr-1"></i> Отложенные транзакции
-                <span class="badge badge-light ml-1">{{ $pendingCount }}</span>
-            </a>
-            <a href="{{ route('admin.bank-statements.create') }}" class="btn btn-primary">
-                <i class="fas fa-upload mr-1"></i> Загрузить выписку
-            </a>
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0">Банковские выписки</h3>
+            <div class="card-tools d-flex gap-2">
+                <a href="{{ route('admin.bank-statements.pending') }}" class="btn btn-warning">
+                    <i class="bi bi-clock"></i> Отложенные транзакции
+                    <span class="badge bg-light ms-1">{{ $pendingCount }}</span>
+                </a>
+                <a href="{{ route('admin.bank-statements.create') }}" class="btn btn-primary">
+                    <i class="bi bi-upload"></i> Загрузить выписку
+                </a>
+            </div>
         </div>
-    </div>
 
     <div class="card-body p-0">
         <div class="table-responsive">

@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\BankStatement;
 use App\Models\BankStatementTransaction;
+use App\Models\Invoice;
+use App\Models\Order;
 use App\Models\PendingPayout;
 use App\Models\PendingTransaction;
 use App\Models\RefundTransaction;
+use App\Models\Upd;
 use App\Services\BalanceService;
 use App\Services\BankStatementProcessingService;
 use App\Services\Parsers\BankStatementParser;
@@ -467,5 +470,70 @@ class BankStatementController extends Controller
             'status' => 'processed',
             'notes' => 'Обработано администратором: '.auth()->user()->name,
         ]);
+    }
+
+    /**
+     * Ручное сопоставление транзакции с документом
+     */
+    public function matchTransaction(Request $request, BankStatementTransaction $transaction)
+    {
+        $validated = $request->validate([
+            'document_type' => 'required|in:upd,invoice,order',
+            'document_number' => 'required|string',
+            'matched_company_id' => 'nullable|exists:companies,id',
+        ]);
+
+        try {
+            $documentId = null;
+            $document = null;
+
+            // Ищем документ по номеру
+            if ($validated['document_type'] === 'upd') {
+                $document = Upd::where('number', $validated['document_number'])->first();
+            } elseif ($validated['document_type'] === 'invoice') {
+                $document = Invoice::where('number', $validated['document_number'])->first();
+            } elseif ($validated['document_type'] === 'order') {
+                $document = Order::where('company_order_number', $validated['document_number'])
+                    ->orWhere('id', $validated['document_number'])
+                    ->first();
+            }
+
+            if (!$document) {
+                return back()->with('error', 'Документ с таким номером не найден');
+            }
+
+            $documentId = $document->id;
+
+            // Проверка суммы (погрешность ±1 рубль)
+            $tolerance = 1.0;
+            $docAmount = match ($validated['document_type']) {
+                'upd' => $document->total_amount,
+                'invoice' => $document->amount,
+                'order' => $document->total_amount,
+                default => 0,
+            };
+
+            $amountMatch = abs((float)$transaction->amount - (float)$docAmount) <= $tolerance;
+
+            // Обновляем транзакцию
+            $transaction->update([
+                'document_type' => $validated['document_type'],
+                'document_id' => $documentId,
+                'matched_company_id' => $validated['matched_company_id'] ?? $transaction->matched_company_id,
+                'is_unmatched' => !$amountMatch,
+                'unmatched_reason' => $amountMatch ? null : 'Сумма транзакции не совпадает с суммой документа (±1₽)',
+                'invoice_id' => $validated['document_type'] === 'invoice' ? $documentId : $transaction->invoice_id,
+                'status' => $amountMatch ? 'processed' : $transaction->status,
+            ]);
+
+            $message = $amountMatch
+                ? 'Транзакция успешно сопоставлена с документом'
+                : 'Транзакция сопоставлена, но сумма не совпадает (требуется проверка)';
+
+            return redirect()->back()->with('success', $message);
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Ошибка сопоставления: ' . $e->getMessage());
+        }
     }
 }

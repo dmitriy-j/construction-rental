@@ -24,6 +24,31 @@ class MarkupCalculationService
         ?int $companyId = null,
         ?int $lesseeCompanyId = null
     ): array {
+        // Проверка: если техника принадлежит платформе — наценка = 0
+        if ($equipmentId) {
+            $equipment = Equipment::find($equipmentId);
+            if ($equipment && $equipment->isPlatformOwned()) {
+                Log::debug('Platform-owned equipment detected — markup set to 0', [
+                    'equipment_id' => $equipmentId,
+                    'base_price' => $basePrice,
+                ]);
+
+                return [
+                    'base_price' => $basePrice,
+                    'markup_type' => 'none',
+                    'markup_value' => 0,
+                    'markup_amount' => 0,
+                    'final_price' => $basePrice,
+                    'working_hours' => $workingHours,
+                    'calculation_details' => [
+                        'source' => 'platform_owned',
+                        'rules' => [],
+                        'calculation_type' => 'none'
+                    ]
+                ];
+            }
+        }
+
         $markup = $this->findApplicableMarkup(
             $entityType,
             $equipmentId,
