@@ -3,19 +3,6 @@
 @section('title', 'Публичные заявки')
 
 @section('content')
-<div style="display: none;">
-    <p>User Role from Backend: {{ $user && $user->company && $user->company->is_lessor ? 'lessor' : 'guest' }}</p>
-    <p>User Company Loaded: {{ $user && $user->company ? 'YES' : 'NO' }}</p>
-    <p>Is Lessor: {{ $user && $user->company && $user->company->is_lessor ? 'YES' : 'NO' }}</p>
-</div>
-
-<div id="rental-requests-app">
-    <rental-requests
-        :user-role="'{{ $user && $user->company && $user->company->is_lessor ? 'lessor' : 'guest' }}'"
-        :auth-user="{{ $user ?? 'null' }}"
-        :initial-requests="{{ json_encode($rentalRequests->items()) }}"
-    />
-</div>
 <div class="container-fluid py-4">
     <h1 class="h3 mb-4">Заявки на аренду</h1>
 
