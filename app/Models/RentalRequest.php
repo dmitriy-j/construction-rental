@@ -67,9 +67,23 @@ class RentalRequest extends Model
         return $query->where(function ($q) use ($user) {
             $q->where('visibility', 'public')
             ->orWhere(function ($q2) use ($user) {
-                // Для приватных заявок - проверяем доступ арендодателя
+                // Для приватных заявок - проверяем доступ арендодателя:
+                // категории в items заявки должны совпадать с категориями оборудования арендодателя
                 $q2->where('visibility', 'private')
-                    ->whereIn('category_id', $user->company->equipment()->pluck('category_id'));
+                    ->whereHas('items', function ($itemQuery) use ($user) {
+                        $categoryIds = $user->company->equipment()
+                            ->whereNotNull('category_id')
+                            ->pluck('category_id')
+                            ->unique()
+                            ->toArray();
+
+                        if (!empty($categoryIds)) {
+                            $itemQuery->whereIn('category_id', $categoryIds);
+                        } else {
+                            // Если у арендодателя нет оборудования - не показываем приватные заявки
+                            $itemQuery->whereRaw('1 = 0');
+                        }
+                    });
             });
         });
     }

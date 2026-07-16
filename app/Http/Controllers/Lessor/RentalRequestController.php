@@ -29,8 +29,8 @@ class RentalRequestController extends Controller
     {
         try {
             $query = RentalRequest::where('status', 'active')
-                ->where('visibility', 'public')
                 ->where('expires_at', '>', now())
+                ->visibleToLessor(auth()->user())
                 ->with([
                     'items.category',
                     'location',
@@ -139,8 +139,8 @@ class RentalRequestController extends Controller
     {
         try {
             $rentalRequest = RentalRequest::where('status', 'active')
-                ->where('visibility', 'public')
                 ->where('expires_at', '>', now())
+                ->visibleToLessor(auth()->user())
                 ->with([
                     'items.category',
                     'location',
