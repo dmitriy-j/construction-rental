@@ -3,9 +3,11 @@
 namespace App\Providers;
 
 use App\Models\User;
-use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider; // Исправлено: добавлен правильный импорт
+use App\Models\RentalRequest;
 use App\Models\Markup; // Импортируйте вашу модель
+use App\Policies\RentalRequestPolicy;
 use App\Policies\MarkupPolicy; // Импортируйте вашу политику
+use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider; // Исправлено: добавлен правильный импорт
 use Illuminate\Support\Facades\Gate;
 
 class AuthServiceProvider extends ServiceProvider
@@ -22,6 +24,7 @@ class AuthServiceProvider extends ServiceProvider
         Waybill::class => WaybillPolicy::class,
         EquipmentImport::class => EquipmentImportPolicy::class,
         Markup::class => MarkupPolicy::class,
+        RentalRequest::class => RentalRequestPolicy::class,
     ];
 
     /**

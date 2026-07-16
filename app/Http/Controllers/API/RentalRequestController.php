@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\RentalRequestResource;
 use App\Models\RentalRequest;
 use App\Models\Category;
 use App\Models\Location;
@@ -73,7 +74,7 @@ class RentalRequestController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $requests,
+                'data' => RentalRequestResource::collection($requests),
                 'filters' => [
                     'status' => $status,
                     'search' => $search,
@@ -215,10 +216,8 @@ class RentalRequestController extends Controller
 
             $responseData = [
                 'success' => true,
-                'data' => $request,
+                'data' => new RentalRequestResource($request),
                 'grouped_by_category' => $groupedByCategory,
-                'proposals' => $proposals->values(),
-                'comments' => $comments->values(),
                 'summary' => [
                     'total_items' => $request->items->count(),
                     'total_quantity' => $request->items->sum('quantity'),
@@ -525,7 +524,12 @@ class RentalRequestController extends Controller
     public function acceptProposal($requestId, $proposalId): JsonResponse
     {
         try {
-            $proposal = RentalRequestResponse::where('rental_request_id', $requestId)
+            // Проверяем, что заявка принадлежит текущему пользователю
+            $rentalRequest = RentalRequest::where('user_id', auth()->id())
+                ->where('id', $requestId)
+                ->firstOrFail();
+
+            $proposal = RentalRequestResponse::where('rental_request_id', $rentalRequest->id)
                 ->where('id', $proposalId)
                 ->firstOrFail();
 
@@ -547,7 +551,12 @@ class RentalRequestController extends Controller
     public function rejectProposal($requestId, $proposalId): JsonResponse
     {
         try {
-            $proposal = RentalRequestResponse::where('rental_request_id', $requestId)
+            // Проверяем, что заявка принадлежит текущему пользователю
+            $rentalRequest = RentalRequest::where('user_id', auth()->id())
+                ->where('id', $requestId)
+                ->firstOrFail();
+
+            $proposal = RentalRequestResponse::where('rental_request_id', $rentalRequest->id)
                 ->where('id', $proposalId)
                 ->firstOrFail();
 

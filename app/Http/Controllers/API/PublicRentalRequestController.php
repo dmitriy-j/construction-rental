@@ -4,6 +4,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\RentalRequestResource;
 use App\Models\RentalRequest;
 use App\Models\Category;
 use App\Models\Location;
@@ -74,13 +75,6 @@ class PublicRentalRequestController extends Controller
                         $lessorPricing = $pricingService->calculateLessorPrices($rentalRequest);
                         $rentalRequest->lessor_pricing = $lessorPricing;
 
-                        // Скрываем оригинальные цены от арендодателя
-                        unset(
-                            $rentalRequest->hourly_rate,
-                            $rentalRequest->max_hourly_rate,
-                            $rentalRequest->total_budget
-                        );
-
                     } catch (\Exception $e) {
                         \Log::error('Error transforming request prices: ' . $e->getMessage(), [
                             'request_id' => $rentalRequest->id
@@ -96,7 +90,7 @@ class PublicRentalRequestController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $requests,
+                'data' => RentalRequestResource::collection($requests),
                 'filters' => [
                     'categories' => $filterCategories,
                     'locations' => $locations
@@ -177,7 +171,7 @@ class PublicRentalRequestController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $request
+                'data' => new RentalRequestResource($request)
             ]);
 
         } catch (\Exception $e) {

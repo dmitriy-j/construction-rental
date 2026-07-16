@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Lessor;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\RentalRequestResource;
 use App\Models\RentalRequest;
 use App\Models\Category;
 use App\Models\Location;
@@ -143,7 +144,6 @@ class RentalRequestController extends Controller
                 ->with([
                     'items.category',
                     'location',
-                    'user.company',
                     'responses' => function($query) {
                         $query->where('lessor_id', auth()->id())
                             ->with(['equipment', 'bulkItems.equipment']);
@@ -167,6 +167,25 @@ class RentalRequestController extends Controller
                 ->with('category')
                 ->orderBy('usage_count', 'desc')
                 ->get();
+
+            // Скрываем данные арендатора от арендодателя
+            $rentalRequest->makeHidden([
+                'user_id',
+                'company_id',
+                'user',
+                'company',
+                'hourly_rate',
+                'total_budget',
+                'calculated_budget_from',
+                'calculated_budget_to',
+                'budget_from',
+                'budget_to',
+                'max_hourly_rate',
+            ]);
+
+            // Добавляем только название компании арендатора
+            $lesseeCompanyName = $rentalRequest->user?->company?->legal_name;
+            $rentalRequest->lessee_company_name = $lesseeCompanyName;
 
             return view('lessor.rental-requests.show', [
                 'request' => $rentalRequest,
