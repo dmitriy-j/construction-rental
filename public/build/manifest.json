@@ -15,6 +15,10 @@
       "assets/CreateRentalRequestForm-DF6_2uTd.css"
     ]
   },
+  "_RentalRequests-g67AMydG.css": {
+    "file": "assets/RentalRequests-g67AMydG.css",
+    "src": "_RentalRequests-g67AMydG.css"
+  },
   "_RequestItems-Cig7CHK3.js": {
     "file": "assets/RequestItems-Cig7CHK3.js",
     "name": "RequestItems",
@@ -51,7 +55,7 @@
     "name": "sweetalert2.esm.all"
   },
   "resources/js/app.js": {
-    "file": "assets/app-CR2YwOmf.js",
+    "file": "assets/app-EcETxDzT.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -60,6 +64,9 @@
       "__plugin-vue_export-helper-1tPrXgE0.js",
       "_sweetalert2.esm.all-DkqDp_b4.js",
       "_index-DM4mtReV.js"
+    ],
+    "css": [
+      "assets/RentalRequests-g67AMydG.css"
     ]
   },
   "resources/js/cart/index.js": {
@@ -291,7 +298,7 @@
     ]
   },
   "resources/js/pages/rental-requests.js": {
-    "file": "assets/rental-requests-4343Mvoo.js",
+    "file": "assets/rental-requests-CiVnWNaP.js",
     "name": "rental-requests",
     "src": "resources/js/pages/rental-requests.js",
     "isEntry": true,
@@ -300,7 +307,7 @@
       "__plugin-vue_export-helper-1tPrXgE0.js"
     ],
     "css": [
-      "assets/rental-requests-CLS0nSUF.css"
+      "assets/RentalRequests-g67AMydG.css"
     ]
   },
   "resources/js/ripple.js": {

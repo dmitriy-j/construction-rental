@@ -1,0 +1,34 @@
+
+.modal-backdrop[data-v-d7e7afe4] {
+    opacity: 0.5;
+}
+.price-calculation[data-v-d7e7afe4] {
+    border-left: 4px solid #0d6efd;
+}
+
+.rental-request-card[data-v-c0fe6b41] {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.rental-request-card[data-v-c0fe6b41]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.request-meta[data-v-c0fe6b41] {
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 1rem;
+}
+.specifications[data-v-c0fe6b41] {
+    max-height: 100px;
+    overflow-y: auto;
+    font-size: 0.85em;
+}
+.budget-info[data-v-c0fe6b41] {
+    border-left: 4px solid #28a745;
+}
+.request-item[data-v-c0fe6b41] {
+    padding: 0.5rem;
+    border-bottom: 1px solid #f8f9fa;
+}
+.request-item[data-v-c0fe6b41]:last-child {
+    border-bottom: none;
+}
