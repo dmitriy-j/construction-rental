@@ -137,18 +137,33 @@ class RentalRequestResource extends JsonResource
             ]);
         }
 
-        // Гость — только базовые поля, без цен и контактов
+        // Гость (неавторизованный) — только базовая информация, без цен, контактов, спецификаций
         elseif ($isGuest) {
-            $data = array_merge($data, [
-                'total_equipment_quantity' => $this->total_equipment_quantity,
-                'desired_specifications' => $this->desired_specifications,
-                'rental_period_start' => $this->rental_period_start,
-                'rental_period_end' => $this->rental_period_end,
-                'active_proposals_count' => $this->active_proposals_count ?? 0,
-            ]);
-            // Убираем чувствительные поля
-            unset($data['description']);
-            $data['description_short'] = mb_substr($this->description ?? '', 0, 200);
+            // Категории из items (первая категория как основная)
+            $categoryName = null;
+            $categoryId = null;
+            if ($this->relationLoaded('items') && $this->items->isNotEmpty()) {
+                $firstItem = $this->items->first();
+                $categoryName = $firstItem->category?->name;
+                $categoryId = $firstItem->category_id;
+            }
+
+            $data = [
+                'id' => $this->id,
+                'title' => $this->title,
+                'description_short' => mb_substr($this->description ?? '', 0, 200),
+                'status' => $this->status,
+                'status_text' => $this->status_text,
+                'status_color' => $this->status_color,
+                'category' => $categoryName,
+                'category_id' => $categoryId,
+                'location' => $this->whenLoaded('location', fn() => [
+                    'id' => $this->location?->id,
+                    'name' => $this->location?->name,
+                ]),
+                'created_at' => $this->created_at,
+                'expires_at' => $this->expires_at,
+            ];
         }
 
         return $data;
