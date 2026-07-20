@@ -298,7 +298,7 @@
     ]
   },
   "resources/js/pages/rental-requests.js": {
-    "file": "assets/rental-requests-CiVnWNaP.js",
+    "file": "assets/rental-requests-CDuFqlUN.js",
     "name": "rental-requests",
     "src": "resources/js/pages/rental-requests.js",
     "isEntry": true,
@@ -307,6 +307,7 @@
       "__plugin-vue_export-helper-1tPrXgE0.js"
     ],
     "css": [
+      "assets/rental-requests-CLS0nSUF.css",
       "assets/RentalRequests-g67AMydG.css"
     ]
   },

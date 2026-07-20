@@ -1,20 +1,19 @@
 import { createApp } from 'vue';
 import RentalRequests from '../Views/RentalRequests.vue';
+import RentalRequestList from '../components/RentalRequest/RentalRequestList.vue';
 
-console.log('🟢 rental-requests.js - Инициализация Vue приложения для публичных заявок');
+console.log('🟢 rental-requests.js - Инициализация Vue приложений');
 
 document.addEventListener('DOMContentLoaded', function() {
-    const appContainer = document.getElementById('rental-requests-app');
-
-    if (appContainer) {
+    // 1. Публичная страница /requests
+    const publicContainer = document.getElementById('rental-requests-app');
+    if (publicContainer) {
         console.log('✅ Найден контейнер #rental-requests-app');
-
         try {
-            // Получаем props из data-атрибутов контейнера
-            const userRole = appContainer.dataset.userRole || 'guest';
+            const userRole = publicContainer.dataset.userRole || 'guest';
             let authUser = null;
             try {
-                authUser = appContainer.dataset.authUser ? JSON.parse(appContainer.dataset.authUser) : null;
+                authUser = publicContainer.dataset.authUser ? JSON.parse(publicContainer.dataset.authUser) : null;
             } catch (e) {}
 
             const app = createApp(RentalRequests, {
@@ -22,21 +21,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 authUser: authUser,
             });
             app.mount('#rental-requests-app');
-            console.log('🎉 Vue приложение публичных заявок успешно смонтировано');
+            console.log('🎉 Публичные заявки смонтированы');
         } catch (error) {
-            console.error('❌ Ошибка монтирования Vue приложения:', error);
+            console.error('❌ Ошибка монтирования публичных заявок:', error);
         }
-    } else {
-        console.log('❌ Контейнер #rental-requests-app не найден, ищем альтернативный...');
-        const altContainer = document.getElementById('rental-request-app');
-        if (altContainer) {
-            try {
-                const app = createApp(RentalRequests);
-                app.mount('#rental-request-app');
-                console.log('🎉 Vue смонтирован на #rental-request-app (альтернативный)');
-            } catch (error) {
-                console.error('❌ Ошибка монтирования альтернативного приложения:', error);
-            }
-        }
+        return; // Не проверяем другие контейнеры
     }
+
+    // 2. ЛК арендатора /lessee/rental-requests
+    const lesseeContainer = document.getElementById('rental-request-list-app');
+    if (lesseeContainer) {
+        console.log('✅ Найден контейнер #rental-request-list-app');
+        try {
+            const app = createApp(RentalRequestList);
+            app.mount('#rental-request-list-app');
+            console.log('🎉 Список заявок арендатора смонтирован');
+        } catch (error) {
+            console.error('❌ Ошибка монтирования списка заявок:', error);
+        }
+        return;
+    }
+
+    console.log('❌ Ни один контейнер не найден');
 });

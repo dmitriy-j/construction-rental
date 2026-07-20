@@ -74,7 +74,7 @@ class RentalRequestController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => RentalRequestResource::collection($requests),
+                'data' => $requests,
                 'filters' => [
                     'status' => $status,
                     'search' => $search,
