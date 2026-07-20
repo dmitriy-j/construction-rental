@@ -349,7 +349,9 @@ const _sfc_main = {
         }
         this.submitting = true;
         try {
-          const response = yield fetch(this.updateUrl, {
+          const url = new URL(this.updateUrl, window.location.origin);
+          url.searchParams.set("_method", "PUT");
+          const response = yield fetch(url.toString(), {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -771,7 +773,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     ]))
   ]);
 }
-const EditRentalRequestForm = /* @__PURE__ */ _export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-67425c9a"]]);
+const EditRentalRequestForm = /* @__PURE__ */ _export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-577cc9da"]]);
 console.log("🎯 rental-request-edit.js: Скрипт начал выполнение");
 function fixPageStructure() {
   console.log("🔧 Исправляем структуру страницы...");

@@ -511,7 +511,11 @@ export default {
             this.submitting = true;
 
             try {
-                const response = await fetch(this.updateUrl, {
+                // 🐛 ИСПРАВЛЕНИЕ: _method не работает в JSON-теле, передаём через query-параметр
+                const url = new URL(this.updateUrl, window.location.origin);
+                url.searchParams.set('_method', 'PUT');
+
+                const response = await fetch(url.toString(), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
