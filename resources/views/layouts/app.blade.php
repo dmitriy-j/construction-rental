@@ -66,8 +66,8 @@
             width: var(--sidebar-width) !important;
             border-right: 1px solid var(--divider) !important;
             background: var(--bg-surface) !important;
-            z-index: 990 !important;
-            overflow: visible !important; /* Важно для dropdown */
+            z-index: 1045 !important;
+            overflow: visible !important;
         }
         .sidebar-offcanvas .offcanvas-body {
             overflow: visible !important;
@@ -86,8 +86,18 @@
             .offcanvas-backdrop { display: none !important; }
         }
         @media (max-width: 991.98px) {
-            .sidebar-offcanvas { width: 85vw !important; max-width: 320px !important; }
+            .sidebar-offcanvas {
+                width: 85vw !important;
+                max-width: 320px !important;
+                top: var(--navbar-height) !important;
+                height: calc(100vh - var(--navbar-height)) !important;
+            }
+            .sidebar-offcanvas .offcanvas-header,
+            .sidebar-offcanvas .user-profile-card {
+                padding-top: 10px !important;
+            }
             body.sidebar-layout .content-area { margin-left: 0 !important; }
+            .offcanvas-backdrop { display: block !important; }
         }
 
         /* Стили сайдбара */

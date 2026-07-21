@@ -5,10 +5,16 @@
         <div class="col-lg-3 col-xl-2 mb-4">
           <div class="card shadow-sm">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
-              <h5 class="mb-0"><i class="bi bi-funnel text-primary"></i> Фильтры</h5>
+              <h5 class="mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-funnel text-primary"></i>
+                <span class="d-none d-sm-inline">Фильтры</span>
+                <button class="btn btn-sm btn-link d-sm-none p-0 ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="true">
+                  <i class="bi bi-chevron-down"></i>
+                </button>
+              </h5>
               <button class="btn btn-sm btn-outline-secondary" @click="resetFilters">Сброс</button>
             </div>
-            <div class="card-body">
+            <div class="card-body collapse show" id="filterCollapse">
               <div class="mb-3">
                 <label class="form-label fw-semibold small">Поиск</label>
                 <input type="text" class="form-control form-control-sm" v-model="filters.search" @input="onSearchInput">
@@ -63,7 +69,7 @@
             <div v-for="eq in equipment" :key="eq.id" class="col-xl-3 col-lg-4 col-md-6">
               <div class="card h-100 shadow-sm">
                 <div class="position-relative">
-                  <img :src="eq.main_image_url || '/images/no-image.svg'" class="card-img-top" alt="" style="height:200px;object-fit:cover;">
+                  <img :src="eq.main_image_url || '/images/no-image.svg'" class="card-img-top" alt="" loading="lazy" style="height:200px;object-fit:cover;">
                   <span v-if="eq.is_platform_owned" class="position-absolute top-0 end-0 m-2 badge bg-primary"><i class="bi bi-building-gear"></i> Платформа</span>
                 </div>
                 <div class="card-body d-flex flex-column">

@@ -40,7 +40,7 @@ export default defineConfig({
         outDir: 'public/build',
         emptyOutDir: true,
         sourcemap: false,
-        minify: false,
+        minify: 'esbuild',
         chunkSizeWarningLimit: 1000,
     },
 });

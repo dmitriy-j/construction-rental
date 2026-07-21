@@ -7,7 +7,7 @@
     try { $newRentalRequestsCount = \App\Services\RequestMatchingService::getNewRequestsCount(auth()->user()); } catch (\Exception $e) { $newRentalRequestsCount = 0; }
     $unreadContactMessagesCount = \App\Models\ContactMessage::where('is_read', false)->count();
 @endphp
-<div class="offcanvas offcanvas-start sidebar-offcanvas" id="sidebarOffcanvas" data-bs-scroll="true" data-bs-backdrop="false">
+<div class="offcanvas offcanvas-start sidebar-offcanvas" id="sidebarOffcanvas" data-bs-scroll="true" data-bs-backdrop="true" data-bs-keyboard="false">
     <div class="offcanvas-body p-0 d-flex flex-column" style="height: 100%;">
         <div class="user-profile-card p-3 border-bottom">
             <div class="d-flex align-items-center gap-3">

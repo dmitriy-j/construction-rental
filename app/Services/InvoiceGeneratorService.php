@@ -248,8 +248,8 @@ class InvoiceGeneratorService
     protected function preparePlatformData(): array
     {
         return [
-            'name' => config('app.name', 'ConstructionRental'),
-            'legal_name' => config('app.company.legal_name', 'ConstructionRental Platform'),
+            'name' => config('app.name', 'ФАП Федеральная арендная платформа'),
+            'legal_name' => config('app.company.legal_name', 'ФАП Федеральная арендная платформа'),
             'inn' => config('app.company.inn', ''),
             'kpp' => config('app.company.kpp', ''),
             'address' => config('app.company.address', ''),

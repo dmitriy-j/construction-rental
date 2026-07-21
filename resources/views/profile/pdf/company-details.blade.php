@@ -82,8 +82,7 @@
     </div>
 
     <div class="footer">
-        <p>Сформировано в системе ConstructionRental</p>
-        <p>cr.loc</p>
+        <p>Сформировано в системе ФАП Федеральная арендная платформа</p>
     </div>
 </body>
 </html>

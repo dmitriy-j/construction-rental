@@ -209,13 +209,19 @@
 
 .main-navbar .container-fluid { overflow: visible !important; }
 
-/* --- Логотип --- */
+    /* --- Логотип --- */
+.navbar-brand img {
+    max-height: 40px !important;
+    width: auto !important;
+}
 .navbar-logo-container {
     display: flex; align-items: center; justify-content: center;
     height: 55px; padding: 0; transition: all 0.3s ease;
 }
 .navbar-logo-img {
-    height: 100%; width: auto; min-width: 170px;
+    height: 100%; width: auto;
+    max-height: 55px;
+    max-width: 190px;
     transition: all 0.3s ease; object-fit: contain;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 }
@@ -223,7 +229,19 @@
 .navbar-brand:hover .navbar-logo-img { transform: scale(1.03); }
 @media (min-width: 1200px) {
     .navbar-logo-container { height: 60px; }
-    .navbar-logo-img { min-width: 190px; }
+    .navbar-logo-img { max-width: 220px; }
+}
+@media (max-width: 991.98px) {
+    .navbar-logo-container { height: 42px; }
+    .navbar-logo-img { max-height: 42px; max-width: 150px; }
+}
+@media (max-width: 480px) {
+    .navbar-logo-container { height: 36px; }
+    .navbar-logo-img { max-height: 36px; max-width: 120px; }
+}
+@media (max-width: 360px) {
+    .navbar-logo-container { height: 32px; }
+    .navbar-logo-img { max-height: 32px; max-width: 100px; }
 }
 
 /* --- Пункты меню --- */
@@ -463,16 +481,19 @@ body { padding-top: 65px !important; }
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Бургер сайдбара
+    // Бургер сайдбара - используем Bootstrap Offcanvas API
     const sidebarToggle = document.getElementById('sidebarToggleMobile');
-    const sidebar = document.getElementById('sidebarContainer');
-    const overlay = document.getElementById('sidebarOverlay');
-    if (sidebarToggle && sidebar) {
+    const sidebarOffcanvas = document.getElementById('sidebarOffcanvas');
+    if (sidebarToggle && sidebarOffcanvas) {
+        // Создаём экземпляр Offcanvas если его нет
+        let offcanvas = bootstrap.Offcanvas.getInstance(sidebarOffcanvas);
+        if (!offcanvas) {
+            offcanvas = new bootstrap.Offcanvas(sidebarOffcanvas);
+        }
         sidebarToggle.addEventListener('click', function(e) {
-            e.preventDefault(); e.stopPropagation();
-            sidebar.classList.add('mobile-open');
-            if (overlay) overlay.classList.add('active');
-            document.body.style.overflow = 'hidden';
+            e.preventDefault();
+            e.stopPropagation();
+            offcanvas.toggle();
         });
     }
 
