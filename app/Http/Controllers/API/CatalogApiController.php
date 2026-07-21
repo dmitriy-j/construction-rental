@@ -47,12 +47,13 @@ class CatalogApiController extends Controller
             }
 
             $sort = $request->sort ?? 'newest';
-            match ($sort) {
-                'price_asc' => $query->orderBy('year', 'asc'),
-                'price_desc' => $query->orderBy('year', 'desc'),
-                'popular' => $query->orderBy('views', 'desc'),
-                default => $query->latest(),
-            };
+            switch ($sort) {
+                case 'price_asc':  $query->orderBy('year', 'asc'); break;
+                case 'price_desc': $query->orderBy('year', 'desc'); break;
+                case 'popular':    $query->orderBy('views', 'desc'); break;
+                default:           $query->latest();
+            }
+>>>>>>>>
 
             $perPage = min((int)($request->per_page ?? 12), 48);
             $equipments = $query->paginate($perPage);
