@@ -41,7 +41,6 @@ class AdminEquipmentController extends Controller
         $categories = Category::all();
         return view('admin.equipment.index', compact('equipment', 'companies', 'categories', 'sortColumn', 'sortDirection'));
     }
->>>>>>>>
 
     public function create()
     {
