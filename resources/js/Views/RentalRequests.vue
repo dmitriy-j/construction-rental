@@ -47,12 +47,12 @@
                 {{ error }}
             </div>
 
-            <div v-else-if="requests.data.length === 0" class="alert alert-info text-center">
+            <div v-else-if="!requests || !requests.data || requests.data.length === 0" class="alert alert-info text-center">
                 Публичные заявки не найдены
             </div>
 
             <div v-else class="row">
-                <div class="col-lg-6 mb-4" v-for="request in processedRequests" :key="request.id">
+                <div class="col-lg-6 mb-4" v-for="request in processedRequests || []" :key="request.id">
                     <div class="card h-100 rental-request-card">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h5 class="card-title mb-0">{{ request.title || 'Без названия' }}</h5>
@@ -85,7 +85,7 @@
                                 <h6 class="mb-2">Требуемая техника:</h6>
                                 <div v-for="(item, index) in request.items" :key="index" class="request-item mb-2">
                                     <strong>{{ item.category?.name || 'Без категории' }}</strong> × {{ item.quantity || 1 }}
-                                    <div v-if="item.specifications && item.specifications.length > 0"
+                                    <div v-if="item.specifications && Array.isArray(item.specifications) && item.specifications.length > 0"
                                          class="specifications small text-muted mt-1">
                                         <div v-for="spec in item.formatted_specifications || item.specifications"
                                              :key="spec.key || spec">
@@ -250,11 +250,13 @@ export default {
 
         // 🎯 Ключевое исправление: обрабатываем данные заявок
          processedRequests() {
-            if (!this.requests.data || !Array.isArray(this.requests.data)) {
+            // Защита от undefined
+            const requestsData = this.requests && this.requests.data;
+            if (!requestsData || !Array.isArray(requestsData)) {
                 return [];
             }
 
-            return this.requests.data.map(request => {
+            return requestsData.map(request => {
                 const processed = {
                     ...request,
                     rental_period_display: this.getRentalPeriodDisplay(
@@ -404,16 +406,20 @@ export default {
                 const data = await response.json();
 
                 if (data.success) {
-                    this.requests = data.data;
+                    // data.data - это объект пагинатора с полями data, meta, links
+                    const requestData = data.data || { data: [], meta: {}, links: {} };
+                    this.requests = requestData;
                     this.filterCategories = data.filters?.categories || [];
                     this.locations = data.filters?.locations || [];
 
-                    console.log('✅ Заявки загружены с преобразованными ценами:',
-                        this.requests.data.map(r => ({
-                            id: r.id,
-                            has_lessor_pricing: !!r.lessor_pricing,
-                            lessor_budget: r.lessor_pricing?.total_lessor_budget
-                        }))
+                    console.log('✅ Заявки загружены:',
+                        Array.isArray(requestData.data)
+                            ? requestData.data.map(r => ({
+                                id: r.id,
+                                has_lessor_pricing: !!r.lessor_pricing,
+                                lessor_budget: r.lessor_pricing?.total_lessor_budget
+                              }))
+                            : []
                     );
                 } else {
                     throw new Error(data.message || 'Ошибка сервера');

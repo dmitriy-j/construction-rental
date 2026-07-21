@@ -161,6 +161,8 @@ class RentalRequestResource extends JsonResource
                     'id' => $this->location?->id,
                     'name' => $this->location?->name,
                 ]),
+                'rental_period_start' => $this->rental_period_start,
+                'rental_period_end' => $this->rental_period_end,
                 'created_at' => $this->created_at,
                 'expires_at' => $this->expires_at,
             ];

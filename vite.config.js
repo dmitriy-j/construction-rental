@@ -12,6 +12,7 @@ export default defineConfig({
                 'resources/js/pages/rental-request-show.js',
                 'resources/js/pages/rental-request-edit.js',
                 'resources/js/pages/rental-requests.js',
+                'resources/js/pages/unified-requests.js',
                 'resources/js/pages/lessor-rental-requests.js',
                 'resources/js/pages/lessor-rental-request-detail.js',
                 'resources/js/pages/public-rental-request-show.js',

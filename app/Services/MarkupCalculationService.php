@@ -63,7 +63,7 @@ class MarkupCalculationService
     /**
      * Поиск применяемой наценки по приоритету
      */
-     private function findApplicableMarkup(
+     public function findApplicableMarkup(
         string $entityType,
         ?int $equipmentId,
         ?int $categoryId,

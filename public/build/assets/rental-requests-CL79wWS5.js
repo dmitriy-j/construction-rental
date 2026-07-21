@@ -37,7 +37,7 @@ var __async = (__this, __arguments, generator) => {
     step((generator = generator.apply(__this, __arguments)).next());
   });
 };
-import { a as createElementBlock, o as openBlock, e as createCommentVNode, b as createBaseVNode, t as toDisplayString, u as withModifiers, w as withDirectives, v as vModelSelect, F as Fragment, r as renderList, j as vModelText, d as createTextVNode, g as resolveComponent, x as createBlock, n as normalizeClass, h as createStaticVNode, f as normalizeStyle, c as createApp } from "./runtime-dom.esm-bundler-BObhqzw5.js";
+import { a as createElementBlock, o as openBlock, d as createCommentVNode, b as createBaseVNode, t as toDisplayString, u as withModifiers, w as withDirectives, v as vModelSelect, F as Fragment, r as renderList, j as vModelText, e as createTextVNode, g as resolveComponent, x as createBlock, n as normalizeClass, h as createStaticVNode, f as normalizeStyle, c as createApp } from "./runtime-dom.esm-bundler-DgO_AsNV.js";
 /* empty css                                                                        */
 import { _ as _export_sfc } from "./_plugin-vue_export-helper-1tPrXgE0.js";
 const _sfc_main$2 = {
@@ -375,10 +375,11 @@ const _sfc_main$1 = {
     },
     // 🎯 Ключевое исправление: обрабатываем данные заявок
     processedRequests() {
-      if (!this.requests.data || !Array.isArray(this.requests.data)) {
+      const requestsData = this.requests && this.requests.data;
+      if (!requestsData || !Array.isArray(requestsData)) {
         return [];
       }
-      return this.requests.data.map((request) => {
+      return requestsData.map((request) => {
         const processed = __spreadProps(__spreadValues({}, request), {
           rental_period_display: this.getRentalPeriodDisplay(
             request.rental_period_start,
@@ -502,19 +503,20 @@ const _sfc_main$1 = {
           }
           const data = yield response.json();
           if (data.success) {
-            this.requests = data.data;
+            const requestData = data.data || { data: [], meta: {}, links: {} };
+            this.requests = requestData;
             this.filterCategories = ((_a = data.filters) == null ? void 0 : _a.categories) || [];
             this.locations = ((_b = data.filters) == null ? void 0 : _b.locations) || [];
             console.log(
-              "✅ Заявки загружены с преобразованными ценами:",
-              this.requests.data.map((r) => {
+              "✅ Заявки загружены:",
+              Array.isArray(requestData.data) ? requestData.data.map((r) => {
                 var _a2;
                 return {
                   id: r.id,
                   has_lessor_pricing: !!r.lessor_pricing,
                   lessor_budget: (_a2 = r.lessor_pricing) == null ? void 0 : _a2.total_lessor_budget
                 };
-              })
+              }) : []
             );
           } else {
             throw new Error(data.message || "Ошибка сервера");
@@ -730,8 +732,8 @@ function _sfc_render$1(_ctx, _cache, $props, $setup, $data, $options) {
         }, [
           createBaseVNode("span", { class: "visually-hidden" }, "Загрузка...")
         ], -1)
-      ])])) : $data.error ? (openBlock(), createElementBlock("div", _hoisted_13$1, toDisplayString($data.error), 1)) : $data.requests.data.length === 0 ? (openBlock(), createElementBlock("div", _hoisted_14$1, " Публичные заявки не найдены ")) : (openBlock(), createElementBlock("div", _hoisted_15$1, [
-        (openBlock(true), createElementBlock(Fragment, null, renderList($options.processedRequests, (request) => {
+      ])])) : $data.error ? (openBlock(), createElementBlock("div", _hoisted_13$1, toDisplayString($data.error), 1)) : !$data.requests || !$data.requests.data || $data.requests.data.length === 0 ? (openBlock(), createElementBlock("div", _hoisted_14$1, " Публичные заявки не найдены ")) : (openBlock(), createElementBlock("div", _hoisted_15$1, [
+        (openBlock(true), createElementBlock(Fragment, null, renderList($options.processedRequests || [], (request) => {
           var _a2;
           return openBlock(), createElementBlock("div", {
             class: "col-lg-6 mb-4",
@@ -770,7 +772,7 @@ function _sfc_render$1(_ctx, _cache, $props, $setup, $data, $options) {
                     }, [
                       createBaseVNode("strong", null, toDisplayString(((_a3 = item.category) == null ? void 0 : _a3.name) || "Без категории"), 1),
                       createTextVNode(" × " + toDisplayString(item.quantity || 1) + " ", 1),
-                      item.specifications && item.specifications.length > 0 ? (openBlock(), createElementBlock("div", _hoisted_26$1, [
+                      item.specifications && Array.isArray(item.specifications) && item.specifications.length > 0 ? (openBlock(), createElementBlock("div", _hoisted_26$1, [
                         (openBlock(true), createElementBlock(Fragment, null, renderList(item.formatted_specifications || item.specifications, (spec) => {
                           return openBlock(), createElementBlock("div", {
                             key: spec.key || spec
@@ -878,12 +880,12 @@ function _sfc_render$1(_ctx, _cache, $props, $setup, $data, $options) {
     ])
   ]);
 }
-const RentalRequests = /* @__PURE__ */ _export_sfc(_sfc_main$1, [["render", _sfc_render$1], ["__scopeId", "data-v-c0fe6b41"]]);
+const RentalRequests = /* @__PURE__ */ _export_sfc(_sfc_main$1, [["render", _sfc_render$1], ["__scopeId", "data-v-99c5ea40"]]);
 const _sfc_main = {
   name: "RentalRequestList",
   data() {
     return {
-      requests: {},
+      requests: { data: [], meta: {}, links: {} },
       statistics: [],
       filters: {
         status: "all",
@@ -1107,21 +1109,23 @@ const _sfc_main = {
     },
     getStatusColor(status) {
       const colors = {
+        "draft": "secondary",
         "active": "success",
+        "paused": "warning",
         "processing": "warning",
         "completed": "primary",
-        "cancelled": "danger",
-        "draft": "secondary"
+        "cancelled": "danger"
       };
       return colors[status] || "light";
     },
     getStatusText(status) {
       const texts = {
+        "draft": "Черновик",
         "active": "Активна",
+        "paused": "Приостановлена",
         "processing": "В процессе",
         "completed": "Завершена",
-        "cancelled": "Отменена",
-        "draft": "Черновик"
+        "cancelled": "Отменена"
       };
       return texts[status] || status;
     },
@@ -1228,6 +1232,7 @@ const _hoisted_59 = {
   class: "text-center py-5"
 };
 function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
+  var _a;
   return openBlock(), createElementBlock("div", _hoisted_1, [
     createBaseVNode("div", _hoisted_2, [
       _cache[13] || (_cache[13] = createBaseVNode("h1", { class: "page-title" }, "Мои заявки на аренду", -1)),
@@ -1275,7 +1280,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
               "onUpdate:modelValue": _cache[0] || (_cache[0] = ($event) => $data.filters.status = $event),
               onChange: _cache[1] || (_cache[1] = (...args) => $options.loadRequests && $options.loadRequests(...args))
             }, [..._cache[14] || (_cache[14] = [
-              createStaticVNode('<option value="all" data-v-c33d2922>Все статусы</option><option value="active" data-v-c33d2922>Активные</option><option value="processing" data-v-c33d2922>В процессе</option><option value="completed" data-v-c33d2922>Завершенные</option><option value="cancelled" data-v-c33d2922>Отмененные</option>', 5)
+              createStaticVNode('<option value="all" data-v-ff5acf46>Все статусы</option><option value="draft" data-v-ff5acf46>Черновик</option><option value="active" data-v-ff5acf46>Активные</option><option value="paused" data-v-ff5acf46>Приостановленные</option><option value="processing" data-v-ff5acf46>В процессе</option><option value="completed" data-v-ff5acf46>Завершенные</option><option value="cancelled" data-v-ff5acf46>Отмененные</option>', 7)
             ])], 544), [
               [vModelSelect, $data.filters.status]
             ])
@@ -1326,7 +1331,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
       ])
     ]),
     createBaseVNode("div", _hoisted_17, [
-      createBaseVNode("h5", _hoisted_18, "Найдено заявок: " + toDisplayString($data.requests.total), 1),
+      createBaseVNode("h5", _hoisted_18, "Найдено заявок: " + toDisplayString(((_a = $data.requests.meta) == null ? void 0 : _a.total) || 0), 1),
       createBaseVNode("div", _hoisted_19, [
         createBaseVNode("button", {
           type: "button",
@@ -1378,11 +1383,11 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
                   createBaseVNode("td", null, [
                     request.items && request.items.length > 0 ? (openBlock(), createElementBlock("div", _hoisted_26, [
                       (openBlock(true), createElementBlock(Fragment, null, renderList(request.items, (item) => {
-                        var _a;
+                        var _a2;
                         return openBlock(), createElementBlock("span", {
                           key: item.id,
                           class: "badge bg-light text-dark mb-1 me-1"
-                        }, toDisplayString(((_a = item.category) == null ? void 0 : _a.name) || "Без категории"), 1);
+                        }, toDisplayString(((_a2 = item.category) == null ? void 0 : _a2.name) || "Без категории"), 1);
                       }), 128))
                     ])) : (openBlock(), createElementBlock("span", _hoisted_27, "Нет позиций"))
                   ]),
@@ -1486,11 +1491,11 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
                   _cache[27] || (_cache[27] = createBaseVNode("span", null, "Категории:", -1)),
                   createBaseVNode("div", _hoisted_45, [
                     (openBlock(true), createElementBlock(Fragment, null, renderList(request.items, (item) => {
-                      var _a;
+                      var _a2;
                       return openBlock(), createElementBlock("span", {
                         key: item.id,
                         class: "badge bg-light text-dark d-block mb-1"
-                      }, toDisplayString(((_a = item.category) == null ? void 0 : _a.name) || "Без категории"), 1);
+                      }, toDisplayString(((_a2 = item.category) == null ? void 0 : _a2.name) || "Без категории"), 1);
                     }), 128))
                   ])
                 ]),
@@ -1538,7 +1543,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
         ]);
       }), 128))
     ])) : createCommentVNode("", true),
-    $data.requests.data && $data.requests.data.length === 0 ? (openBlock(), createElementBlock("div", _hoisted_57, [
+    !$data.loading && $data.requests.data && $data.requests.data.length === 0 ? (openBlock(), createElementBlock("div", _hoisted_57, [
       _cache[34] || (_cache[34] = createBaseVNode("i", { class: "fas fa-clipboard-list fa-4x text-muted mb-3" }, null, -1)),
       _cache[35] || (_cache[35] = createBaseVNode("h4", null, "Заявки не найдены", -1)),
       _cache[36] || (_cache[36] = createBaseVNode("p", { class: "text-muted" }, "Попробуйте изменить параметры фильтрации", -1)),
@@ -1561,7 +1566,7 @@ function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
     ])])) : createCommentVNode("", true)
   ]);
 }
-const RentalRequestList = /* @__PURE__ */ _export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-c33d2922"]]);
+const RentalRequestList = /* @__PURE__ */ _export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-ff5acf46"]]);
 console.log("🟢 rental-requests.js - Инициализация Vue приложений");
 document.addEventListener("DOMContentLoaded", function() {
   const publicContainer = document.getElementById("rental-requests-app");

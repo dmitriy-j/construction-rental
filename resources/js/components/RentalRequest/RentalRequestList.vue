@@ -35,7 +35,9 @@
                         <label class="form-label">Статус заявки</label>
                         <select class="form-select" v-model="filters.status" @change="loadRequests">
                             <option value="all">Все статусы</option>
+                            <option value="draft">Черновик</option>
                             <option value="active">Активные</option>
+                            <option value="paused">Приостановленные</option>
                             <option value="processing">В процессе</option>
                             <option value="completed">Завершенные</option>
                             <option value="cancelled">Отмененные</option>
@@ -70,7 +72,7 @@
 
         <!-- Переключение вида -->
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">Найдено заявок: {{ requests.total }}</h5>
+                        <h5 class="mb-0">Найдено заявок: {{ requests.meta?.total || 0 }}</h5>
             <div class="btn-group" role="group">
                 <button type="button" class="btn btn-outline-primary" :class="{ active: viewMode === 'table' }"
                         @click="viewMode = 'table'">
@@ -250,7 +252,7 @@
         </div>
 
         <!-- Пустое состояние -->
-        <div v-if="requests.data && requests.data.length === 0" class="text-center py-5">
+            <div v-if="!loading && requests.data && requests.data.length === 0" class="text-center py-5">
             <i class="fas fa-clipboard-list fa-4x text-muted mb-3"></i>
             <h4>Заявки не найдены</h4>
             <p class="text-muted">Попробуйте изменить параметры фильтрации</p>
@@ -275,7 +277,7 @@ export default {
     name: 'RentalRequestList',
     data() {
         return {
-            requests: {},
+            requests: { data: [], meta: {}, links: {} },
             statistics: [],
             filters: {
                 status: 'all',
@@ -524,22 +526,24 @@ export default {
 
         getStatusColor(status) {
             const colors = {
+                'draft': 'secondary',
                 'active': 'success',
+                'paused': 'warning',
                 'processing': 'warning',
                 'completed': 'primary',
-                'cancelled': 'danger',
-                'draft': 'secondary'
+                'cancelled': 'danger'
             };
             return colors[status] || 'light';
         },
 
         getStatusText(status) {
             const texts = {
+                'draft': 'Черновик',
                 'active': 'Активна',
+                'paused': 'Приостановлена',
                 'processing': 'В процессе',
                 'completed': 'Завершена',
-                'cancelled': 'Отменена',
-                'draft': 'Черновик'
+                'cancelled': 'Отменена'
             };
             return texts[status] || status;
         },

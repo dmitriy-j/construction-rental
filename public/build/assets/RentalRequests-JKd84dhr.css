@@ -6,29 +6,29 @@
     border-left: 4px solid #0d6efd;
 }
 
-.rental-request-card[data-v-c0fe6b41] {
+.rental-request-card[data-v-99c5ea40] {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-.rental-request-card[data-v-c0fe6b41]:hover {
+.rental-request-card[data-v-99c5ea40]:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
-.request-meta[data-v-c0fe6b41] {
+.request-meta[data-v-99c5ea40] {
     border-bottom: 1px solid #e9ecef;
     padding-bottom: 1rem;
 }
-.specifications[data-v-c0fe6b41] {
+.specifications[data-v-99c5ea40] {
     max-height: 100px;
     overflow-y: auto;
     font-size: 0.85em;
 }
-.budget-info[data-v-c0fe6b41] {
+.budget-info[data-v-99c5ea40] {
     border-left: 4px solid #28a745;
 }
-.request-item[data-v-c0fe6b41] {
+.request-item[data-v-99c5ea40] {
     padding: 0.5rem;
     border-bottom: 1px solid #f8f9fa;
 }
-.request-item[data-v-c0fe6b41]:last-child {
+.request-item[data-v-99c5ea40]:last-child {
     border-bottom: none;
 }

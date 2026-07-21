@@ -25,7 +25,7 @@
                         <option value="all">Все статусы</option>
                         @foreach($statuses as $s)
                             <option value="{{ $s }}" {{ request('status') == $s ? 'selected' : '' }}>
-                                {{ __('rental_request.status_' . $s) ?: $s }}
+                                {{ \App\Models\RentalRequest::getStatusText($s) }}
                             </option>
                         @endforeach
                     </select>

@@ -261,10 +261,18 @@ class RentalRequest extends Model
     // Атрибуты
     public function getStatusTextAttribute()
     {
-        return match ($this->status) {
+        return self::getStatusText($this->status);
+    }
+
+    /**
+     * Статический метод для получения текста статуса по коду
+     */
+    public static function getStatusText($status): string
+    {
+        return match ($status) {
             self::STATUS_DRAFT => 'Черновик',
             self::STATUS_ACTIVE => 'Активна',
-            self::STATUS_PAUSED => 'Приостановлена', // ДОБАВЛЕНО
+            self::STATUS_PAUSED => 'Приостановлена',
             self::STATUS_PROCESSING => 'В обработке',
             self::STATUS_COMPLETED => 'Завершена',
             self::STATUS_CANCELLED => 'Отменена',

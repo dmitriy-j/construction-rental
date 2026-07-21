@@ -32,7 +32,7 @@
                                 <select name="status" class="form-select">
                                     @foreach($statuses as $s)
                                         <option value="{{ $s }}" {{ $rentalRequest->status === $s ? 'selected' : '' }}>
-                                            {{ $rentalRequest->getStatusTextAttribute() ?: $s }}
+                                            {{ \App\Models\RentalRequest::getStatusText($s) }}
                                         </option>
                                     @endforeach
                                 </select>

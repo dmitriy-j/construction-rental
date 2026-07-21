@@ -38,12 +38,13 @@ class RentalRequestPricingService
             ]);
 
             // НОВЫЙ РАСЧЕТ: Используем унифицированный сервис для обратного применения наценки
+            $lesseeCompanyId = $request->user?->company_id;
             $markup = $this->markupCalculationService->findApplicableMarkup(
                 'rental_request',
                 null, // equipment_id - пока не известен
                 $item->category_id,
                 null, // company_id арендодателя
-                $request->user->company_id // компания арендатора
+                $lesseeCompanyId // компания арендатора
             );
 
             // Обратное применение наценки - из цены арендатора получаем цену для арендодателя

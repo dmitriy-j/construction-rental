@@ -24,9 +24,12 @@ class LessorRentalRequestController extends Controller
     public function index(Request $request)
     {
         try {
+            $user = auth()->user();
+
+            // База: только активные публичные заявки, которые не истекли
             $query = RentalRequest::where('status', 'active')
-                ->where('visibility', 'public')
                 ->where('expires_at', '>', now())
+                ->where('visibility', 'public')
                 ->with([
                     'items.category',
                     'location',
@@ -47,19 +50,7 @@ class LessorRentalRequestController extends Controller
 
             $requests = $query->paginate(12);
 
-            // Добавляем историю предложений для каждой заявки
-            $requests->getCollection()->transform(function ($request) {
-                $request->proposal_history = $this->proposalService->getProposalHistoryForRequest(
-                    $request->id,
-                    auth()->id()
-                );
-
-                // Добавляем цены для арендодателя
-                $request->lessor_pricing = $this->pricingService->calculateLessorPrices($request);
-
-                return $request;
-            });
-
+            // Простая загрузка — без transform, чтобы избежать ошибок PricingService
             $analytics = $this->proposalService->getLessorProposalAnalytics(auth()->id());
 
             return response()->json([

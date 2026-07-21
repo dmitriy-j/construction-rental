@@ -1,5 +1,5 @@
 import { _ as _export_sfc } from "./_plugin-vue_export-helper-1tPrXgE0.js";
-import { a as createElementBlock, o as openBlock, b as createBaseVNode, e as createCommentVNode, n as normalizeClass, t as toDisplayString } from "./runtime-dom.esm-bundler-BObhqzw5.js";
+import { a as createElementBlock, o as openBlock, b as createBaseVNode, d as createCommentVNode, n as normalizeClass, t as toDisplayString } from "./runtime-dom.esm-bundler-DgO_AsNV.js";
 const _sfc_main = {
   name: "QuickActionCard",
   props: {

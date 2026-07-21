@@ -31,7 +31,10 @@ class PublicRentalRequestController extends Controller
 
             $query = RentalRequest::where('status', 'active')
                 ->where('visibility', 'public')
-                ->where('expires_at', '>', now())
+                ->where(function($q) {
+                    $q->where('expires_at', '>', now())
+                      ->orWhereNull('expires_at');
+                })
                 ->with(['items.category', 'location', 'user.company']) // Добавили user.company
                 ->withCount(['responses as active_proposals_count' => function ($q) {
                     $q->where('status', 'pending')->where('expires_at', '>', now());
