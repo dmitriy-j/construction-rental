@@ -1,0 +1,32 @@
+
+.kpi-card[data-v-9f2266ab] {
+    transition: transform 0.2s, box-shadow 0.2s;
+    border-radius: 12px;
+}
+.kpi-card[data-v-9f2266ab]:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+}
+.kpi-title[data-v-9f2266ab] {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    font-weight: 600;
+}
+.kpi-value[data-v-9f2266ab] {
+    font-weight: 700;
+    font-size: 1.5rem;
+}
+.kpi-icon[data-v-9f2266ab] {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.card[data-v-9f2266ab] {
+    border-radius: 12px;
+    border: none;
+    transition: box-shadow 0.2s;
+}

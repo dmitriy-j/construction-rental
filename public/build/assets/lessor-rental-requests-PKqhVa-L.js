@@ -1,6 +1,6 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/LessorRentalRequestList-DrPZ-CP3.js","assets/AnalyticsDashboard-BQ71M7_t.js","assets/RealTimeAnalytics-B0WV39m2.js","assets/_plugin-vue_export-helper-1tPrXgE0.js","assets/runtime-dom.esm-bundler-DgO_AsNV.js","assets/RealTimeAnalytics-B0oM9t9d.css","assets/StrategicAnalytics-uc6cXoOI.js","assets/StrategicAnalytics-DxYYXjft.css","assets/ProposalTemplates-OIORVCGX.js","assets/ProposalTemplates-DN6vGbLH.css","assets/QuickActionCard-Dnuq7SJ0.js","assets/QuickActionCard-BIYSPUtv.css","assets/sweetalert2.esm.all-DkqDp_b4.js","assets/AnalyticsDashboard-DPcyE9S5.css","assets/LessorRentalRequestList-CICIyho3.css","assets/TemplateCard-73Ow4mRz.js","assets/TemplateCard-BHANscmY.css","assets/RentalRequestDetail-XmX6D_Nt.js","assets/RentalRequestDetail-C0KhZ2Mz.css"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/LessorRentalRequestList-tXAwJ7Do.js","assets/AnalyticsDashboard-C_wZNFe-.js","assets/RealTimeAnalytics-BhHcL_D1.js","assets/_plugin-vue_export-helper-1tPrXgE0.js","assets/runtime-dom.esm-bundler-B1SmakJY.js","assets/RealTimeAnalytics-B0oM9t9d.css","assets/StrategicAnalytics-C-9ozH55.js","assets/StrategicAnalytics-DxYYXjft.css","assets/ProposalTemplates-C28XrMZz.js","assets/ProposalTemplates-DN6vGbLH.css","assets/QuickActionCard-N2EgdIP3.js","assets/QuickActionCard-BIYSPUtv.css","assets/chart-glRV5hiV.js","assets/sweetalert2.esm.all-BKnM2LmJ.js","assets/AnalyticsDashboard-DPcyE9S5.css","assets/LessorRentalRequestList-CICIyho3.css","assets/TemplateCard-BKuhNzlv.js","assets/TemplateCard-BHANscmY.css","assets/RentalRequestDetail-Cn3Pctkm.js","assets/RentalRequestDetail-C0KhZ2Mz.css"])))=>i.map(i=>d[i]);
 import { _ as __vitePreload } from "./preload-helper-DCPvANlu.js";
-import { c as createApp } from "./runtime-dom.esm-bundler-DgO_AsNV.js";
+import { c as createApp } from "./runtime-dom.esm-bundler-B1SmakJY.js";
 console.log("🚀 lessor-rental-requests.js: Начало загрузки ЛК арендодателя");
 document.addEventListener("DOMContentLoaded", function() {
   console.log("🔍 Поиск элемента lessor-rental-requests-app...");
@@ -13,14 +13,14 @@ document.addEventListener("DOMContentLoaded", function() {
   }
   console.log("✅ Элемент найден, начинаем загрузку Vue компонентов...");
   Promise.all([
-    __vitePreload(() => import("./LessorRentalRequestList-DrPZ-CP3.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14]) : void 0),
-    __vitePreload(() => import("./AnalyticsDashboard-BQ71M7_t.js"), true ? __vite__mapDeps([1,2,3,4,5,6,7,8,9,10,11,12,13]) : void 0),
-    __vitePreload(() => import("./ProposalTemplates-OIORVCGX.js"), true ? __vite__mapDeps([8,4,3,9]) : void 0),
-    __vitePreload(() => import("./RealTimeAnalytics-B0WV39m2.js"), true ? __vite__mapDeps([2,3,4,5]) : void 0),
-    __vitePreload(() => import("./StrategicAnalytics-uc6cXoOI.js"), true ? __vite__mapDeps([6,3,4,7]) : void 0),
-    __vitePreload(() => import("./QuickActionCard-Dnuq7SJ0.js"), true ? __vite__mapDeps([10,3,4,11]) : void 0),
-    __vitePreload(() => import("./TemplateCard-73Ow4mRz.js"), true ? __vite__mapDeps([15,3,4,16]) : void 0),
-    __vitePreload(() => import("./RentalRequestDetail-XmX6D_Nt.js"), true ? __vite__mapDeps([17,4,8,3,9,18]) : void 0)
+    __vitePreload(() => import("./LessorRentalRequestList-tXAwJ7Do.js"), true ? __vite__mapDeps([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]) : void 0),
+    __vitePreload(() => import("./AnalyticsDashboard-C_wZNFe-.js"), true ? __vite__mapDeps([1,2,3,4,5,6,7,8,9,10,11,12,13,14]) : void 0),
+    __vitePreload(() => import("./ProposalTemplates-C28XrMZz.js"), true ? __vite__mapDeps([8,4,3,9]) : void 0),
+    __vitePreload(() => import("./RealTimeAnalytics-BhHcL_D1.js"), true ? __vite__mapDeps([2,3,4,5]) : void 0),
+    __vitePreload(() => import("./StrategicAnalytics-C-9ozH55.js"), true ? __vite__mapDeps([6,3,4,7]) : void 0),
+    __vitePreload(() => import("./QuickActionCard-N2EgdIP3.js"), true ? __vite__mapDeps([10,3,4,11]) : void 0),
+    __vitePreload(() => import("./TemplateCard-BKuhNzlv.js"), true ? __vite__mapDeps([16,3,4,17]) : void 0),
+    __vitePreload(() => import("./RentalRequestDetail-Cn3Pctkm.js"), true ? __vite__mapDeps([18,4,8,3,9,19]) : void 0)
     // 🔥 ДОБАВЛЕНО
   ]).then(([
     LessorRentalRequestListModule,

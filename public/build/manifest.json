@@ -1,42 +1,62 @@
 {
-  "_CreateRentalRequestForm-B47uNgD-.js": {
-    "file": "assets/CreateRentalRequestForm-B47uNgD-.js",
+  "_CreateRentalRequestForm-DF6_2uTd.css": {
+    "file": "assets/CreateRentalRequestForm-DF6_2uTd.css",
+    "src": "_CreateRentalRequestForm-DF6_2uTd.css"
+  },
+  "_CreateRentalRequestForm-FjSWOR-z.js": {
+    "file": "assets/CreateRentalRequestForm-FjSWOR-z.js",
     "name": "CreateRentalRequestForm",
     "imports": [
-      "_RequestItems-Cw80oooO.js",
+      "_RequestItems-C3EKllyv.js",
       "__plugin-vue_export-helper-1tPrXgE0.js",
-      "_runtime-dom.esm-bundler-DgO_AsNV.js"
+      "_runtime-dom.esm-bundler-B1SmakJY.js"
     ],
     "css": [
       "assets/CreateRentalRequestForm-DF6_2uTd.css"
     ]
   },
-  "_CreateRentalRequestForm-DF6_2uTd.css": {
-    "file": "assets/CreateRentalRequestForm-DF6_2uTd.css",
-    "src": "_CreateRentalRequestForm-DF6_2uTd.css"
+  "_DashboardDateFilter-BPP8BuuH.js": {
+    "file": "assets/DashboardDateFilter-BPP8BuuH.js",
+    "name": "DashboardDateFilter",
+    "imports": [
+      "_chart-glRV5hiV.js",
+      "_runtime-dom.esm-bundler-B1SmakJY.js",
+      "__plugin-vue_export-helper-1tPrXgE0.js"
+    ],
+    "css": [
+      "assets/DashboardDateFilter-CdegJ0dF.css"
+    ]
+  },
+  "_DashboardDateFilter-CdegJ0dF.css": {
+    "file": "assets/DashboardDateFilter-CdegJ0dF.css",
+    "src": "_DashboardDateFilter-CdegJ0dF.css"
   },
   "_RentalRequests-JKd84dhr.css": {
     "file": "assets/RentalRequests-JKd84dhr.css",
     "src": "_RentalRequests-JKd84dhr.css"
   },
-  "_RequestItems-CqBQtC-C.css": {
-    "file": "assets/RequestItems-CqBQtC-C.css",
-    "src": "_RequestItems-CqBQtC-C.css"
-  },
-  "_RequestItems-Cw80oooO.js": {
-    "file": "assets/RequestItems-Cw80oooO.js",
+  "_RequestItems-C3EKllyv.js": {
+    "file": "assets/RequestItems-C3EKllyv.js",
     "name": "RequestItems",
     "imports": [
-      "_runtime-dom.esm-bundler-DgO_AsNV.js",
+      "_runtime-dom.esm-bundler-B1SmakJY.js",
       "__plugin-vue_export-helper-1tPrXgE0.js"
     ],
     "css": [
       "assets/RequestItems-CqBQtC-C.css"
     ]
   },
+  "_RequestItems-CqBQtC-C.css": {
+    "file": "assets/RequestItems-CqBQtC-C.css",
+    "src": "_RequestItems-CqBQtC-C.css"
+  },
   "__plugin-vue_export-helper-1tPrXgE0.js": {
     "file": "assets/_plugin-vue_export-helper-1tPrXgE0.js",
     "name": "_plugin-vue_export-helper"
+  },
+  "_chart-glRV5hiV.js": {
+    "file": "assets/chart-glRV5hiV.js",
+    "name": "chart"
   },
   "_index-DM4mtReV.js": {
     "file": "assets/index-DM4mtReV.js",
@@ -46,24 +66,25 @@
     "file": "assets/preload-helper-DCPvANlu.js",
     "name": "preload-helper"
   },
-  "_runtime-dom.esm-bundler-DgO_AsNV.js": {
-    "file": "assets/runtime-dom.esm-bundler-DgO_AsNV.js",
+  "_runtime-dom.esm-bundler-B1SmakJY.js": {
+    "file": "assets/runtime-dom.esm-bundler-B1SmakJY.js",
     "name": "runtime-dom.esm-bundler"
   },
-  "_sweetalert2.esm.all-DkqDp_b4.js": {
-    "file": "assets/sweetalert2.esm.all-DkqDp_b4.js",
+  "_sweetalert2.esm.all-BKnM2LmJ.js": {
+    "file": "assets/sweetalert2.esm.all-BKnM2LmJ.js",
     "name": "sweetalert2.esm.all"
   },
   "resources/js/app.js": {
-    "file": "assets/app-C4DyqmJc.js",
+    "file": "assets/app-DMROIuLD.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
     "imports": [
-      "_runtime-dom.esm-bundler-DgO_AsNV.js",
+      "_runtime-dom.esm-bundler-B1SmakJY.js",
       "__plugin-vue_export-helper-1tPrXgE0.js",
-      "_sweetalert2.esm.all-DkqDp_b4.js",
-      "_index-DM4mtReV.js"
+      "_chart-glRV5hiV.js",
+      "_index-DM4mtReV.js",
+      "_sweetalert2.esm.all-BKnM2LmJ.js"
     ],
     "css": [
       "assets/RentalRequests-JKd84dhr.css"
@@ -76,19 +97,19 @@
     "isEntry": true
   },
   "resources/js/components.js": {
-    "file": "assets/components-sQ9hwlTq.js",
+    "file": "assets/components-CtSwxgj2.js",
     "name": "components",
     "src": "resources/js/components.js",
     "isEntry": true,
     "imports": [
-      "_runtime-dom.esm-bundler-DgO_AsNV.js",
-      "_RequestItems-Cw80oooO.js",
-      "_CreateRentalRequestForm-B47uNgD-.js",
+      "_runtime-dom.esm-bundler-B1SmakJY.js",
+      "_RequestItems-C3EKllyv.js",
+      "_CreateRentalRequestForm-FjSWOR-z.js",
       "__plugin-vue_export-helper-1tPrXgE0.js"
     ]
   },
   "resources/js/components/Lessor/AnalyticsDashboard.vue": {
-    "file": "assets/AnalyticsDashboard-BQ71M7_t.js",
+    "file": "assets/AnalyticsDashboard-C_wZNFe-.js",
     "name": "AnalyticsDashboard",
     "src": "resources/js/components/Lessor/AnalyticsDashboard.vue",
     "isDynamicEntry": true,
@@ -97,40 +118,42 @@
       "resources/js/components/Lessor/StrategicAnalytics.vue",
       "resources/js/components/Lessor/ProposalTemplates.vue",
       "resources/js/components/Lessor/QuickActionCard.vue",
-      "_sweetalert2.esm.all-DkqDp_b4.js",
+      "_chart-glRV5hiV.js",
       "__plugin-vue_export-helper-1tPrXgE0.js",
-      "_runtime-dom.esm-bundler-DgO_AsNV.js"
+      "_runtime-dom.esm-bundler-B1SmakJY.js",
+      "_sweetalert2.esm.all-BKnM2LmJ.js"
     ],
     "css": [
       "assets/AnalyticsDashboard-DPcyE9S5.css"
     ]
   },
   "resources/js/components/Lessor/LessorRentalRequestList.vue": {
-    "file": "assets/LessorRentalRequestList-DrPZ-CP3.js",
+    "file": "assets/LessorRentalRequestList-tXAwJ7Do.js",
     "name": "LessorRentalRequestList",
     "src": "resources/js/components/Lessor/LessorRentalRequestList.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/components/Lessor/AnalyticsDashboard.vue",
       "__plugin-vue_export-helper-1tPrXgE0.js",
-      "_runtime-dom.esm-bundler-DgO_AsNV.js",
+      "_runtime-dom.esm-bundler-B1SmakJY.js",
       "resources/js/components/Lessor/RealTimeAnalytics.vue",
       "resources/js/components/Lessor/StrategicAnalytics.vue",
       "resources/js/components/Lessor/ProposalTemplates.vue",
       "resources/js/components/Lessor/QuickActionCard.vue",
-      "_sweetalert2.esm.all-DkqDp_b4.js"
+      "_chart-glRV5hiV.js",
+      "_sweetalert2.esm.all-BKnM2LmJ.js"
     ],
     "css": [
       "assets/LessorRentalRequestList-CICIyho3.css"
     ]
   },
   "resources/js/components/Lessor/ProposalTemplates.vue": {
-    "file": "assets/ProposalTemplates-OIORVCGX.js",
+    "file": "assets/ProposalTemplates-C28XrMZz.js",
     "name": "ProposalTemplates",
     "src": "resources/js/components/Lessor/ProposalTemplates.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_runtime-dom.esm-bundler-DgO_AsNV.js",
+      "_runtime-dom.esm-bundler-B1SmakJY.js",
       "__plugin-vue_export-helper-1tPrXgE0.js"
     ],
     "css": [
@@ -138,38 +161,38 @@
     ]
   },
   "resources/js/components/Lessor/QuickActionCard.vue": {
-    "file": "assets/QuickActionCard-Dnuq7SJ0.js",
+    "file": "assets/QuickActionCard-N2EgdIP3.js",
     "name": "QuickActionCard",
     "src": "resources/js/components/Lessor/QuickActionCard.vue",
     "isDynamicEntry": true,
     "imports": [
       "__plugin-vue_export-helper-1tPrXgE0.js",
-      "_runtime-dom.esm-bundler-DgO_AsNV.js"
+      "_runtime-dom.esm-bundler-B1SmakJY.js"
     ],
     "css": [
       "assets/QuickActionCard-BIYSPUtv.css"
     ]
   },
   "resources/js/components/Lessor/RealTimeAnalytics.vue": {
-    "file": "assets/RealTimeAnalytics-B0WV39m2.js",
+    "file": "assets/RealTimeAnalytics-BhHcL_D1.js",
     "name": "RealTimeAnalytics",
     "src": "resources/js/components/Lessor/RealTimeAnalytics.vue",
     "isDynamicEntry": true,
     "imports": [
       "__plugin-vue_export-helper-1tPrXgE0.js",
-      "_runtime-dom.esm-bundler-DgO_AsNV.js"
+      "_runtime-dom.esm-bundler-B1SmakJY.js"
     ],
     "css": [
       "assets/RealTimeAnalytics-B0oM9t9d.css"
     ]
   },
   "resources/js/components/Lessor/RentalRequestDetail.vue": {
-    "file": "assets/RentalRequestDetail-XmX6D_Nt.js",
+    "file": "assets/RentalRequestDetail-Cn3Pctkm.js",
     "name": "RentalRequestDetail",
     "src": "resources/js/components/Lessor/RentalRequestDetail.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_runtime-dom.esm-bundler-DgO_AsNV.js",
+      "_runtime-dom.esm-bundler-B1SmakJY.js",
       "resources/js/components/Lessor/ProposalTemplates.vue",
       "__plugin-vue_export-helper-1tPrXgE0.js"
     ],
@@ -178,29 +201,77 @@
     ]
   },
   "resources/js/components/Lessor/StrategicAnalytics.vue": {
-    "file": "assets/StrategicAnalytics-uc6cXoOI.js",
+    "file": "assets/StrategicAnalytics-C-9ozH55.js",
     "name": "StrategicAnalytics",
     "src": "resources/js/components/Lessor/StrategicAnalytics.vue",
     "isDynamicEntry": true,
     "imports": [
       "__plugin-vue_export-helper-1tPrXgE0.js",
-      "_runtime-dom.esm-bundler-DgO_AsNV.js"
+      "_runtime-dom.esm-bundler-B1SmakJY.js"
     ],
     "css": [
       "assets/StrategicAnalytics-DxYYXjft.css"
     ]
   },
   "resources/js/components/Lessor/TemplateCard.vue": {
-    "file": "assets/TemplateCard-73Ow4mRz.js",
+    "file": "assets/TemplateCard-BKuhNzlv.js",
     "name": "TemplateCard",
     "src": "resources/js/components/Lessor/TemplateCard.vue",
     "isDynamicEntry": true,
     "imports": [
       "__plugin-vue_export-helper-1tPrXgE0.js",
-      "_runtime-dom.esm-bundler-DgO_AsNV.js"
+      "_runtime-dom.esm-bundler-B1SmakJY.js"
     ],
     "css": [
       "assets/TemplateCard-BHANscmY.css"
+    ]
+  },
+  "resources/js/dashboards/admin.js": {
+    "file": "assets/admin-BHsqaa6-.js",
+    "name": "admin",
+    "src": "resources/js/dashboards/admin.js",
+    "isEntry": true,
+    "imports": [
+      "_runtime-dom.esm-bundler-B1SmakJY.js",
+      "_index-DM4mtReV.js",
+      "_DashboardDateFilter-BPP8BuuH.js",
+      "_chart-glRV5hiV.js",
+      "__plugin-vue_export-helper-1tPrXgE0.js"
+    ],
+    "css": [
+      "assets/admin-IeGQvnR3.css"
+    ]
+  },
+  "resources/js/dashboards/lessee.js": {
+    "file": "assets/lessee-CT1b9_eC.js",
+    "name": "lessee",
+    "src": "resources/js/dashboards/lessee.js",
+    "isEntry": true,
+    "imports": [
+      "_runtime-dom.esm-bundler-B1SmakJY.js",
+      "_index-DM4mtReV.js",
+      "_DashboardDateFilter-BPP8BuuH.js",
+      "_chart-glRV5hiV.js",
+      "__plugin-vue_export-helper-1tPrXgE0.js"
+    ],
+    "css": [
+      "assets/lessee-CtUki-m0.css"
+    ]
+  },
+  "resources/js/dashboards/lessor.js": {
+    "file": "assets/lessor-idsv4FDE.js",
+    "name": "lessor",
+    "src": "resources/js/dashboards/lessor.js",
+    "isEntry": true,
+    "imports": [
+      "_runtime-dom.esm-bundler-B1SmakJY.js",
+      "_index-DM4mtReV.js",
+      "_DashboardDateFilter-BPP8BuuH.js",
+      "_chart-glRV5hiV.js",
+      "__plugin-vue_export-helper-1tPrXgE0.js"
+    ],
+    "css": [
+      "assets/lessor-BmtQ8i-6.css"
     ]
   },
   "resources/js/navbar.js": {
@@ -210,13 +281,13 @@
     "isEntry": true
   },
   "resources/js/pages/lessor-rental-request-detail.js": {
-    "file": "assets/lessor-rental-request-detail-DDqN99yI.js",
+    "file": "assets/lessor-rental-request-detail-C0MnECGe.js",
     "name": "lessor-rental-request-detail",
     "src": "resources/js/pages/lessor-rental-request-detail.js",
     "isEntry": true,
     "imports": [
       "_preload-helper-DCPvANlu.js",
-      "_runtime-dom.esm-bundler-DgO_AsNV.js"
+      "_runtime-dom.esm-bundler-B1SmakJY.js"
     ],
     "dynamicImports": [
       "resources/js/components/Lessor/RentalRequestDetail.vue",
@@ -224,13 +295,13 @@
     ]
   },
   "resources/js/pages/lessor-rental-requests.js": {
-    "file": "assets/lessor-rental-requests-DzNBdigu.js",
+    "file": "assets/lessor-rental-requests-PKqhVa-L.js",
     "name": "lessor-rental-requests",
     "src": "resources/js/pages/lessor-rental-requests.js",
     "isEntry": true,
     "imports": [
       "_preload-helper-DCPvANlu.js",
-      "_runtime-dom.esm-bundler-DgO_AsNV.js"
+      "_runtime-dom.esm-bundler-B1SmakJY.js"
     ],
     "dynamicImports": [
       "resources/js/components/Lessor/LessorRentalRequestList.vue",
@@ -244,12 +315,12 @@
     ]
   },
   "resources/js/pages/public-rental-request-show.js": {
-    "file": "assets/public-rental-request-show-zR8D71e8.js",
+    "file": "assets/public-rental-request-show-yRefQkCs.js",
     "name": "public-rental-request-show",
     "src": "resources/js/pages/public-rental-request-show.js",
     "isEntry": true,
     "imports": [
-      "_runtime-dom.esm-bundler-DgO_AsNV.js",
+      "_runtime-dom.esm-bundler-B1SmakJY.js",
       "_index-DM4mtReV.js",
       "__plugin-vue_export-helper-1tPrXgE0.js"
     ],
@@ -258,25 +329,25 @@
     ]
   },
   "resources/js/pages/rental-request-create.js": {
-    "file": "assets/rental-request-create-DCxqQMMI.js",
+    "file": "assets/rental-request-create-C98SOE5H.js",
     "name": "rental-request-create",
     "src": "resources/js/pages/rental-request-create.js",
     "isEntry": true,
     "imports": [
-      "_runtime-dom.esm-bundler-DgO_AsNV.js",
-      "_CreateRentalRequestForm-B47uNgD-.js",
-      "_RequestItems-Cw80oooO.js",
+      "_runtime-dom.esm-bundler-B1SmakJY.js",
+      "_CreateRentalRequestForm-FjSWOR-z.js",
+      "_RequestItems-C3EKllyv.js",
       "__plugin-vue_export-helper-1tPrXgE0.js"
     ]
   },
   "resources/js/pages/rental-request-edit.js": {
-    "file": "assets/rental-request-edit-DfbbyitP.js",
+    "file": "assets/rental-request-edit-RstD_RSD.js",
     "name": "rental-request-edit",
     "src": "resources/js/pages/rental-request-edit.js",
     "isEntry": true,
     "imports": [
-      "_runtime-dom.esm-bundler-DgO_AsNV.js",
-      "_RequestItems-Cw80oooO.js",
+      "_runtime-dom.esm-bundler-B1SmakJY.js",
+      "_RequestItems-C3EKllyv.js",
       "__plugin-vue_export-helper-1tPrXgE0.js"
     ],
     "css": [
@@ -284,12 +355,12 @@
     ]
   },
   "resources/js/pages/rental-request-show.js": {
-    "file": "assets/rental-request-show-C3vxT8O6.js",
+    "file": "assets/rental-request-show-Bo5heZKD.js",
     "name": "rental-request-show",
     "src": "resources/js/pages/rental-request-show.js",
     "isEntry": true,
     "imports": [
-      "_runtime-dom.esm-bundler-DgO_AsNV.js",
+      "_runtime-dom.esm-bundler-B1SmakJY.js",
       "__plugin-vue_export-helper-1tPrXgE0.js",
       "_index-DM4mtReV.js"
     ],
@@ -298,12 +369,12 @@
     ]
   },
   "resources/js/pages/rental-requests.js": {
-    "file": "assets/rental-requests-CL79wWS5.js",
+    "file": "assets/rental-requests-Bezzqw2d.js",
     "name": "rental-requests",
     "src": "resources/js/pages/rental-requests.js",
     "isEntry": true,
     "imports": [
-      "_runtime-dom.esm-bundler-DgO_AsNV.js",
+      "_runtime-dom.esm-bundler-B1SmakJY.js",
       "__plugin-vue_export-helper-1tPrXgE0.js"
     ],
     "css": [
@@ -312,12 +383,12 @@
     ]
   },
   "resources/js/pages/unified-requests.js": {
-    "file": "assets/unified-requests-F0xK9K9K.js",
+    "file": "assets/unified-requests-CVrph-xx.js",
     "name": "unified-requests",
     "src": "resources/js/pages/unified-requests.js",
     "isEntry": true,
     "imports": [
-      "_runtime-dom.esm-bundler-DgO_AsNV.js",
+      "_runtime-dom.esm-bundler-B1SmakJY.js",
       "__plugin-vue_export-helper-1tPrXgE0.js"
     ]
   },
@@ -346,7 +417,7 @@
     "isEntry": true
   },
   "resources/sass/app.scss": {
-    "file": "assets/app-BGaBKLfa.css",
+    "file": "assets/app-DGCD7xSM.css",
     "src": "resources/sass/app.scss",
     "isEntry": true
   }

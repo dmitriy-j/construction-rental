@@ -37,8 +37,8 @@ var __async = (__this, __arguments, generator) => {
     step((generator = generator.apply(__this, __arguments)).next());
   });
 };
-import { g as resolveComponent, a as createElementBlock, o as openBlock, b as createBaseVNode, d as createCommentVNode, t as toDisplayString, e as createTextVNode, F as Fragment, r as renderList, n as normalizeClass, h as createStaticVNode, i as createVNode, w as withDirectives, v as vModelSelect, j as vModelText, k as ref, l as watch, m as onMounted } from "./runtime-dom.esm-bundler-DgO_AsNV.js";
-import ProposalTemplates from "./ProposalTemplates-OIORVCGX.js";
+import { g as resolveComponent, a as createElementBlock, o as openBlock, b as createBaseVNode, d as createCommentVNode, t as toDisplayString, e as createTextVNode, F as Fragment, r as renderList, n as normalizeClass, h as createStaticVNode, i as createVNode, w as withDirectives, v as vModelSelect, j as vModelText, k as ref, l as watch, m as onMounted } from "./runtime-dom.esm-bundler-B1SmakJY.js";
+import ProposalTemplates from "./ProposalTemplates-C28XrMZz.js";
 import { _ as _export_sfc } from "./_plugin-vue_export-helper-1tPrXgE0.js";
 const _sfc_main = {
   name: "RentalRequestDetail",

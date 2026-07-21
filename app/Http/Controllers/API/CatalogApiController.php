@@ -53,7 +53,6 @@ class CatalogApiController extends Controller
                 case 'popular':    $query->orderBy('views', 'desc'); break;
                 default:           $query->latest();
             }
->>>>>>>>
 
             $perPage = min((int)($request->per_page ?? 12), 48);
             $equipments = $query->paginate($perPage);

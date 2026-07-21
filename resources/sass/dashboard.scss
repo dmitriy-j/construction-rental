@@ -1,0 +1,169 @@
+// =====================
+// Dashboard Styles
+// =====================
+
+.dashboard {
+    // KPI Cards
+    .kpi-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border-radius: 12px;
+        border: none;
+        cursor: default;
+
+        &:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        .kpi-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6c757d;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .kpi-value {
+            font-weight: 700;
+            font-size: 1.4rem;
+            color: var(--text-primary, #1a1d21);
+        }
+
+        .kpi-icon {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            flex-shrink: 0;
+        }
+    }
+
+    // Cards
+    .card {
+        border-radius: 12px;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        transition: box-shadow 0.2s ease;
+
+        .card-header {
+            padding: 1rem 1.25rem;
+        }
+
+        .card-body {
+            padding: 1.25rem;
+        }
+    }
+
+    // Tables
+    .table {
+        th {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            font-weight: 600;
+            color: #6c757d;
+            border-bottom-width: 1px;
+        }
+
+        td {
+            vertical-align: middle;
+            font-size: 0.9rem;
+        }
+    }
+
+    // Badges
+    .badge {
+        font-weight: 500;
+        padding: 0.35em 0.65em;
+    }
+
+    // Animations
+    .fade-in {
+        animation: fadeInUp 0.4s ease forwards;
+        opacity: 0;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+}
+
+// Dark theme adjustments
+[data-theme="dark"] {
+    .dashboard {
+        .card {
+            background: rgba(30, 32, 40, 0.8);
+            backdrop-filter: blur(10px);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .table {
+            --bs-table-bg: transparent;
+            color: #e0e3ff;
+
+            th {
+                color: #adb5bd;
+                border-bottom-color: rgba(255, 255, 255, 0.1);
+            }
+
+            td {
+                border-color: rgba(255, 255, 255, 0.05);
+            }
+
+            tbody tr:hover {
+                background: rgba(255, 255, 255, 0.03);
+            }
+        }
+
+        .kpi-value {
+            color: #e0e3ff;
+        }
+
+        .table-light {
+            background: rgba(255, 255, 255, 0.05);
+            color: #adb5bd;
+        }
+    }
+}
+
+// Mobile adjustments
+@media (max-width: 768px) {
+    .dashboard {
+        .kpi-card .kpi-value {
+            font-size: 1.1rem;
+        }
+
+        .card-body {
+            padding: 0.75rem !important;
+        }
+    }
+}
+
+@media (max-width: 576px) {
+    .dashboard {
+        .kpi-card {
+            .kpi-title {
+                font-size: 0.65rem;
+            }
+            .kpi-value {
+                font-size: 1rem;
+            }
+            .kpi-icon {
+                width: 36px;
+                height: 36px;
+                font-size: 0.9rem;
+            }
+        }
+    }
+}

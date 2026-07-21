@@ -37,7 +37,7 @@ var __async = (__this, __arguments, generator) => {
     step((generator = generator.apply(__this, __arguments)).next());
   });
 };
-import { k as ref, p as computed, l as watch, m as onMounted, a as createElementBlock, o as openBlock, b as createBaseVNode, d as createCommentVNode, e as createTextVNode, n as normalizeClass, F as Fragment, r as renderList, t as toDisplayString, w as withDirectives, v as vModelSelect, j as vModelText, q as withKeys, s as vModelCheckbox } from "./runtime-dom.esm-bundler-DgO_AsNV.js";
+import { k as ref, p as computed, l as watch, m as onMounted, a as createElementBlock, o as openBlock, b as createBaseVNode, d as createCommentVNode, e as createTextVNode, n as normalizeClass, F as Fragment, r as renderList, t as toDisplayString, w as withDirectives, v as vModelSelect, j as vModelText, q as withKeys, s as vModelCheckbox } from "./runtime-dom.esm-bundler-B1SmakJY.js";
 import { _ as _export_sfc } from "./_plugin-vue_export-helper-1tPrXgE0.js";
 const _sfc_main = {
   name: "ProposalTemplates",

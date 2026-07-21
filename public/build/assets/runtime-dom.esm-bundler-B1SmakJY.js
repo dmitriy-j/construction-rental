@@ -1391,6 +1391,9 @@ function isRef(r) {
 function ref(value) {
   return createRef(value, false);
 }
+function shallowRef(value) {
+  return createRef(value, true);
+}
 function createRef(rawValue, shallow) {
   if (isRef(rawValue)) {
     return rawValue;
@@ -2088,6 +2091,14 @@ function setTransitionHooks(vnode, hooks) {
   } else {
     vnode.transition = hooks;
   }
+}
+// @__NO_SIDE_EFFECTS__
+function defineComponent(options, extraOptions) {
+  return isFunction$1(options) ? (
+    // #8236: extend call and options.name access are considered side-effects
+    // by Rollup, so we have to wrap it in a pure-annotated IIFE.
+    /* @__PURE__ */ (() => extend$1({ name: options.name }, extraOptions, { setup: options }))()
+  ) : options;
 }
 function markAsyncBoundary(instance) {
   instance.ids = [instance.ids[0] + instance.ids[2]++ + "-", 0, 0];
@@ -5715,6 +5726,34 @@ const computed = (getterOrOptions, debugOptions) => {
   const c = computed$1(getterOrOptions, debugOptions, isInSSRComponentSetup);
   return c;
 };
+function h(type, propsOrChildren, children) {
+  const doCreateVNode = (type2, props, children2) => {
+    setBlockTracking(-1);
+    try {
+      return createVNode(type2, props, children2);
+    } finally {
+      setBlockTracking(1);
+    }
+  };
+  const l = arguments.length;
+  if (l === 2) {
+    if (isObject$1(propsOrChildren) && !isArray$1(propsOrChildren)) {
+      if (isVNode(propsOrChildren)) {
+        return doCreateVNode(type, null, [propsOrChildren]);
+      }
+      return doCreateVNode(type, propsOrChildren);
+    } else {
+      return doCreateVNode(type, null, propsOrChildren);
+    }
+  } else {
+    if (l > 3) {
+      children = Array.prototype.slice.call(arguments, 2);
+    } else if (l === 3 && isVNode(children)) {
+      children = [children];
+    }
+    return doCreateVNode(type, propsOrChildren, children);
+  }
+}
 const version = "3.5.21";
 /**
 * @vue/shared v3.5.21
@@ -6551,7 +6590,14 @@ function normalizeContainer(container) {
   return container;
 }
 export {
+  h as A,
+  version as B,
+  onUnmounted as C,
+  toRaw as D,
+  nextTick as E,
   Fragment as F,
+  isProxy as G,
+  vModelDynamic as H,
   createElementBlock as a,
   createBaseVNode as b,
   createApp as c,
@@ -6576,5 +6622,6 @@ export {
   vModelSelect as v,
   withDirectives as w,
   createBlock as x,
-  vModelDynamic as y
+  defineComponent as y,
+  shallowRef as z
 };

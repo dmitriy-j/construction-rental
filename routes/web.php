@@ -60,6 +60,13 @@ Route::prefix('api')->name('api.')->group(function () {
     Route::post('/orders/proposal', [OrderApiController::class, 'storeFromProposal'])->name('orders.proposal');
     // Очистка битых позиций в корзине
     Route::post('/cleanup-cart', [\App\Http\Controllers\Api\CartCleanupController::class, 'cleanup'])->name('cleanup-cart');
+
+    // Dashboard API endpoints (require auth)
+    Route::middleware('auth')->group(function () {
+        Route::get('/admin/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'getData'])->name('admin.dashboard.data');
+        Route::get('/lessee/dashboard', [\App\Http\Controllers\Lessee\DashboardController::class, 'getData'])->name('lessee.dashboard.data');
+        Route::get('/lessor/dashboard', [\App\Http\Controllers\Lessor\DashboardController::class, 'getData'])->name('lessor.dashboard.data');
+    });
 });
 
 // Статические страницы
