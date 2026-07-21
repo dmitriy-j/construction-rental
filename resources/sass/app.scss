@@ -8,6 +8,7 @@
 @import 'mobile-navbar';
 @import 'mobile-fixes';
 @import 'dashboard';
+@import 'static-pages';
 
 // Федеральная цветовая схема ФАП
 :root {
@@ -148,9 +149,14 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  margin-left: var(--sidebar-width);
+  margin-left: 0;
   transition: margin-left 0.3s ease;
   min-height: calc(100vh - var(--navbar-height));
+
+  // Отступ слева только когда сайдбар открыт (авторизованные пользователи)
+  body.sidebar-open & {
+    margin-left: var(--sidebar-width);
+  }
 
   // УБИРАЕМ ВСЕ overflow - прокрутка будет на уровне body
   overflow: visible;
@@ -1111,3 +1117,17 @@ body {
   height: auto !important;
 }
 
+// =====================
+// ГЛАВНЫЙ ФИКС: отступ контента только при открытом сайдбаре
+// =====================
+// Приоритетное правило — перекрывает все старые безусловные margin-left
+body:not(.sidebar-open) .content-area {
+  margin-left: 0 !important;
+  width: 100% !important;
+}
+@media (max-width: 991.98px) {
+  .content-area {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+}

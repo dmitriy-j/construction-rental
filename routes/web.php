@@ -21,14 +21,14 @@ use App\Http\Controllers\Api\ProposalCartController;
 use App\Http\Controllers\Api\OrderApiController;
 
 // Главная страница
-Route::get('/', function () { return view('home'); })->name('home');
+Route::get('/', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+Route::post('/contact', [App\Http\Controllers\HomeController::class, 'contact'])->name('home.contact');
 
 // Заявки
 Route::get('/requests', [RentalRequestController::class, 'index'])->name('rental-requests.index');
 Route::get('/portal/rental-requests/{id}', function ($id) {
     return view('public.rental-request-show', ['rentalRequestId' => $id]);
 })->name('portal.rental-requests.show');
-Route::get('/contacts', [PageController::class, 'contacts'])->name('pages.contacts');
 
 // Каталог
 Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog.index');
@@ -70,8 +70,9 @@ Route::prefix('api')->name('api.')->group(function () {
 });
 
 // Статические страницы
-Route::get('/free', fn () => view('free'))->name('free');
-Route::get('/cooperation', fn () => view('cooperation'))->name('cooperation');
+Route::redirect('/free', '/catalog', 301)->name('free');
+Route::get('/cooperation', [PageController::class, 'cooperation'])->name('cooperation');
+Route::post('/cooperation', [PageController::class, 'submitCooperation'])->name('cooperation.submit');
 Route::get('/jobs', fn () => view('jobs'))->name('jobs');
 Route::get('/about', [PageController::class, 'about'])->name('about');
 Route::get('/contacts', [PageController::class, 'contacts'])->name('contacts');

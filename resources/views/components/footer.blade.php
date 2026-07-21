@@ -23,7 +23,6 @@
                     <li><a href="/about">О компании</a></li>
                     <li><a href="/catalog">Каталог техники</a></li>
                     <li><a href="/requests">Заявки</a></li>
-                    <li><a href="/free">Свободная техника</a></li>
                     <li><a href="/repair">Ремонт</a></li>
                 </ul>
             </div>

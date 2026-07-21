@@ -1,10 +1,7 @@
 <!doctype html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-theme="light">
 <head>
-    <link rel="icon" href="data:image/svg+xml,...">
-    <link rel="icon" type="image/png" sizes="16x16" href="data:image/png;base64,...">
-    <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,...">
-    <link rel="icon" type="image/png" sizes="64x64" href="data:image/png;base64,...">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('images/logo/fap-logo.svg') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <meta charset="utf-8">
@@ -17,6 +14,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
+    @stack('styles')
     <style>
         :root {
             --navbar-height: 80px;
@@ -145,7 +143,7 @@
         .sidebar-offcanvas .app-version { font-size: 0.7rem; }
     </style>
 </head>
-<body class="@yield('body-class')">
+<body class="@auth sidebar-open @endauth @yield('body-class')">
     <div id="app" class="d-flex flex-column">
         @include('components.navbar')
         <div class="d-flex flex-grow-1">

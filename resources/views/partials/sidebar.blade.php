@@ -5,6 +5,7 @@
     try { $cartItemsCount = App\Services\CartService::getCartItemsCount(auth()->user()); } catch (Exception $e) { $cartItemsCount = 0; }
     try { $newProposalsCount = App\Services\ProposalManagementService::getNewProposalsCount(auth()->user()); } catch (Exception $e) { $newProposalsCount = 0; }
     try { $newRentalRequestsCount = \App\Services\RequestMatchingService::getNewRequestsCount(auth()->user()); } catch (\Exception $e) { $newRentalRequestsCount = 0; }
+    $unreadContactMessagesCount = \App\Models\ContactMessage::where('is_read', false)->count();
 @endphp
 <div class="offcanvas offcanvas-start sidebar-offcanvas" id="sidebarOffcanvas" data-bs-scroll="true" data-bs-backdrop="false">
     <div class="offcanvas-body p-0 d-flex flex-column" style="height: 100%;">
@@ -96,8 +97,9 @@
                         ['route'=>'admin.dashboard','icon'=>'bi-speedometer2','label'=>'Главная','check'=>'admin/dashboard'],
                         ['route'=>'admin.orders.index','icon'=>'bi-receipt','label'=>'Управление заказами','check'=>'admin/orders*'],
                         ['route'=>'admin.rental-requests.index','icon'=>'bi-clipboard-plus','label'=>'Заявки','check'=>'admin/rental-requests*'],
+                        ['route'=>'admin.contacts.index','icon'=>'bi-envelope','label'=>'Обращения','check'=>'admin/contacts*'],
                     ] as $item)
-                    <li class="nav-item"><a class="nav-link py-2 px-3 rounded {{ Request::is($item['check']) ? 'active' : '' }}" href="{{ route($item['route']) }}" title="{{ $item['label'] }}"><i class="bi {{ $item['icon'] }} nav-icon"></i><span>{{ $item['label'] }}</span></a></li>
+                    <li class="nav-item"><a class="nav-link py-2 px-3 rounded {{ Request::is($item['check']) ? 'active' : '' }}" href="{{ route($item['route']) }}" title="{{ $item['label'] }}"><i class="bi {{ $item['icon'] }} nav-icon"></i><span>{{ $item['label'] }}</span>@if($item['route'] === 'admin.contacts.index' && $unreadContactMessagesCount > 0)<span class="badge bg-danger rounded-pill ms-auto">{{ $unreadContactMessagesCount }}</span>@endif</a></li>
                     @endforeach
                     <li class="nav-item">
                         <a class="nav-link py-2 px-3 rounded {{ request()->is('admin/equipment*') ? 'active' : '' }}" data-bs-toggle="collapse" href="#techMenu" role="button" title="Техника"><i class="bi bi-tools nav-icon"></i><span>Техника</span><i class="bi bi-chevron-down ms-auto small"></i></a>

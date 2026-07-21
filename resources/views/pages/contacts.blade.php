@@ -1,617 +1,358 @@
 @extends('layouts.app')
 
-@section('title', 'Контакты - Федеральная Арендная Платформа')
-@section('page-title', 'Контакты')
-@section('background-text', 'Свяжитесь с нами')
+@section('title', 'Контакты — Федеральная Арендная Платформа')
 
 @section('content')
-<div class="container">
-    @if(!$platform || !$platform->exists)
-        <div class="alert alert-warning">
-            <h5>Информация о компании временно недоступна</h5>
-            <p class="mb-0">Пожалуйста, свяжитесь с нами по телефону или email для получения актуальной информации.</p>
-        </div>
-    @endif
-
-    <div class="row">
-        <!-- Основная контактная информация -->
-        <div class="col-lg-8">
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-building me-2"></i>Реквизиты компании
-                    </h5>
-                </div>
-                <div class="card-body">
-                    @if($platform && $platform->exists)
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6 class="text-primary mb-3">Основная информация</h6>
-                            @if($platform->legal_name)
-                            <div class="mb-3">
-                                <strong>Название компании:</strong>
-                                <div class="text-muted">{{ $platform->legal_name }}</div>
-                            </div>
-                            @endif
-
-                            @if($platform->short_name)
-                            <div class="mb-3">
-                                <strong>Краткое название:</strong>
-                                <div class="text-muted">{{ $platform->short_name }}</div>
-                            </div>
-                            @endif
-
-                            @if($platform->inn)
-                            <div class="mb-3">
-                                <strong>ИНН:</strong>
-                                <div class="text-muted">{{ $platform->inn }}</div>
-                            </div>
-                            @endif
-
-                            @if($platform->kpp)
-                            <div class="mb-3">
-                                <strong>КПП:</strong>
-                                <div class="text-muted">{{ $platform->kpp }}</div>
-                            </div>
-                            @endif
-                        </div>
-
-                        <div class="col-md-6">
-                            <h6 class="text-primary mb-3">Регистрационные данные</h6>
-                            @if($platform->ogrn)
-                            <div class="mb-3">
-                                <strong>ОГРН:</strong>
-                                <div class="text-muted">{{ $platform->ogrn }}</div>
-                            </div>
-                            @endif
-
-                            @if($platform->okpo)
-                            <div class="mb-3">
-                                <strong>ОКПО:</strong>
-                                <div class="text-muted">{{ $platform->okpo }}</div>
-                            </div>
-                            @endif
-
-                            <!-- УДАЛЕНО: Свидетельство о регистрации -->
-                        </div>
-                    </div>
-                    @else
-                    <div class="text-center py-4">
-                        <i class="bi bi-building fs-1 text-muted mb-3"></i>
-                        <p class="text-muted">Информация о компании загружается...</p>
-                    </div>
-                    @endif
-                </div>
-            </div>
-
-            <!-- Адреса -->
-            <div class="card mb-4">
-                <div class="card-header bg-success text-white">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-geo-alt me-2"></i>Адреса
-                    </h5>
-                </div>
-                <div class="card-body">
-                    @if($platform && $platform->exists)
-                    <div class="row">
-                        @if($platform->legal_address)
-                        <div class="col-md-6 mb-3">
-                            <strong>Юридический адрес:</strong>
-                            <div class="text-muted">{{ $platform->legal_address }}</div>
-                        </div>
-                        @endif
-
-                        @if($platform->physical_address)
-                        <div class="col-md-6 mb-3">
-                            <strong>Фактический адрес:</strong>
-                            <div class="text-muted">{{ $platform->physical_address }}</div>
-                        </div>
-                        @endif
-
-                        @if($platform->post_address)
-                        <div class="col-md-6 mb-3">
-                            <strong>Почтовый адрес:</strong>
-                            <div class="text-muted">{{ $platform->post_address }}</div>
-                        </div>
-                        @endif
-                    </div>
-                    @else
-                    <div class="text-center py-3">
-                        <p class="text-muted mb-0">Адресная информация временно недоступна</p>
-                    </div>
-                    @endif
-                </div>
+{{-- ============================================================
+    1. HERO-БЛОК
+    ============================================================ --}}
+<section class="page-hero">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h1 class="display-4 fw-bold text-white mb-3 animate__animated animate__fadeInUp">
+                    Контакты
+                </h1>
+                <p class="lead text-white-50 mb-0 animate__animated animate__fadeInUp animate__delay-1s">
+                    Свяжитесь с нами любым удобным способом
+                </p>
             </div>
         </div>
+    </div>
+</section>
 
-        <!-- Боковая панель с контактами -->
-        <div class="col-lg-4">
-            <!-- Контактная информация -->
-            <div class="card mb-4">
-                <div class="card-header bg-info text-white">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-telephone me-2"></i>Контакты
-                    </h5>
-                </div>
-                <div class="card-body">
-                    @if($platform && $platform->exists)
-                        @if($platform->phone)
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="bi bi-telephone-fill text-primary me-3 fs-5"></i>
-                            <div>
-                                <strong>Телефон</strong>
-                                <div class="text-muted">{{ $platform->phone }}</div>
-                            </div>
-                        </div>
-                        @endif
+{{-- ============================================================
+    2. КОНТАКТНАЯ ИНФОРМАЦИЯ
+    ============================================================ --}}
+<section class="page-section">
+    <div class="container">
+        <div class="row g-4">
+            {{-- Левая колонка: контакты --}}
+            <div class="col-lg-5">
+                <h2 class="page-section-title fw-bold mb-4 d-inline-block">Как с нами связаться</h2>
 
-                        @if($platform->email)
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="bi bi-envelope-fill text-primary me-3 fs-5"></i>
-                            <div>
-                                <strong>Email</strong>
-                                <div class="text-muted">
-                                    <a href="mailto:{{ $platform->email }}" class="text-decoration-none">
-                                        {{ $platform->email }}
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                        @endif
-
-                        @if($platform->website)
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="bi bi-globe text-primary me-3 fs-5"></i>
-                            <div>
-                                <strong>Сайт</strong>
-                                <div class="text-muted">
-                                    <a href="{{ $platform->website }}" target="_blank" class="text-decoration-none">
-                                        {{ $platform->website }}
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                        @endif
-
-                        <!-- Дополнительные телефоны -->
-                        @if($platform->additional_phones && count($platform->additional_phones) > 0)
-                        <div class="mb-3">
-                            <strong>Дополнительные телефоны:</strong>
-                            @foreach($platform->additional_phones as $phone)
-                            <div class="text-muted small">{{ $phone }}</div>
-                            @endforeach
-                        </div>
-                        @endif
-                    @else
-                    <div class="text-center py-3">
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="bi bi-telephone-fill text-primary me-3 fs-5"></i>
-                            <div>
-                                <strong>Телефон</strong>
-                                <div class="text-muted">+7 (929) 533-32-06</div>
-                            </div>
-                        </div>
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="bi bi-envelope-fill text-primary me-3 fs-5"></i>
-                            <div>
-                                <strong>Email</strong>
-                                <div class="text-muted">
-                                    <a href="mailto:office@fap24.ru" class="text-decoration-none">
-                                        office@fap24.ru
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
+                @if($platform && $platform->exists)
+                <div class="d-flex align-items-start mb-4">
+                    <div class="icon-circle bg-primary flex-shrink-0 me-3">
+                        <i class="bi bi-telephone-fill fs-4 text-white"></i>
                     </div>
-                    @endif
+                    <div>
+                        <h5 class="fw-bold mb-1">Телефон</h5>
+                        <a href="tel:{{ $platform->phone }}" class="text-decoration-none fs-5 text-primary">{{ $platform->phone }}</a>
+                    </div>
                 </div>
+
+                <div class="d-flex align-items-start mb-4">
+                    <div class="icon-circle bg-success flex-shrink-0 me-3">
+                        <i class="bi bi-envelope-fill fs-4 text-white"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-1">Email</h5>
+                        <a href="mailto:{{ $platform->email }}" class="text-decoration-none fs-5">{{ $platform->email }}</a>
+                    </div>
+                </div>
+
+                @if($platform->physical_address)
+                <div class="d-flex align-items-start mb-4">
+                    <div class="icon-circle bg-info flex-shrink-0 me-3">
+                        <i class="bi bi-geo-alt-fill fs-4 text-white"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-1">Адрес</h5>
+                        <p class="mb-0 text-muted">{{ $platform->physical_address }}</p>
+                    </div>
+                </div>
+                @endif
+
+                @if($platform->legal_address)
+                <div class="d-flex align-items-start mb-4">
+                    <div class="icon-circle bg-secondary flex-shrink-0 me-3">
+                        <i class="bi bi-building fs-4 text-white"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-1">Юридический адрес</h5>
+                        <p class="mb-0 text-muted">{{ $platform->legal_address }}</p>
+                    </div>
+                </div>
+                @endif
+
+                @if($platform->ceo_name)
+                <div class="d-flex align-items-start mb-4">
+                    <div class="icon-circle bg-warning flex-shrink-0 me-3">
+                        <i class="bi bi-person-badge fs-4 text-dark"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-1">Руководство</h5>
+                        <p class="mb-0 text-muted">{{ $platform->ceo_name }}{{ $platform->ceo_position ? ' — ' . $platform->ceo_position : '' }}</p>
+                    </div>
+                </div>
+                @endif
+
+                @if($platform->additional_phones && count($platform->additional_phones) > 0)
+                <div class="d-flex align-items-start mb-4">
+                    <div class="icon-circle bg-danger flex-shrink-0 me-3">
+                        <i class="bi bi-telephone-plus fs-4 text-white"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-1">Доп. телефоны</h5>
+                        @foreach($platform->additional_phones as $phone)
+                            <p class="mb-0 text-muted">{{ $phone }}</p>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                @endif
+
+                {{-- Социальные сети --}}
+                @if($platform && $platform->website)
+                <div class="d-flex align-items-start mb-4">
+                    <div class="icon-circle bg-primary flex-shrink-0 me-3">
+                        <i class="bi bi-globe fs-4 text-white"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-1">Сайт</h5>
+                        <a href="{{ $platform->website }}" target="_blank" class="text-decoration-none">{{ $platform->website }}</a>
+                    </div>
+                </div>
+                @endif
+
+                {{-- Реквизиты --}}
+                @if($platform && $platform->exists)
+                <div class="card border-0 shadow-sm mt-4">
+                    <div class="card-body">
+                        <h5 class="fw-bold mb-3">
+                            <i class="bi bi-file-text text-primary me-2"></i>Реквизиты
+                        </h5>
+                        @if($platform->inn)
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">ИНН</span>
+                            <span class="fw-semibold">{{ $platform->inn }}</span>
+                        </div>
+                        @endif
+                        @if($platform->kpp)
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">КПП</span>
+                            <span class="fw-semibold">{{ $platform->kpp }}</span>
+                        </div>
+                        @endif
+                        @if($platform->ogrn)
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">ОГРН</span>
+                            <span class="fw-semibold">{{ $platform->ogrn }}</span>
+                        </div>
+                        @endif
+                        @if($platform->okpo)
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">ОКПО</span>
+                            <span class="fw-semibold">{{ $platform->okpo }}</span>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+                @endif
             </div>
 
-            <!-- Руководство -->
-            <div class="card mb-4">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-person-badge me-2"></i>Руководство
-                    </h5>
-                </div>
-                <div class="card-body">
-                    @if($platform && $platform->exists)
-                        @if($platform->ceo_name)
-                        <div class="mb-3">
-                            <strong>Генеральный директор:</strong>
-                            <div class="text-muted">{{ $platform->ceo_name }}</div>
-                            @if($platform->ceo_position)
-                            <small class="text-muted">({{ $platform->ceo_position }})</small>
-                            @endif
+            {{-- Правая колонка: карта и форма --}}
+            <div class="col-lg-7">
+                {{-- Карта --}}
+                @if($platform && $platform->exists && $platform->physical_address)
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-dark text-white py-3">
+                        <h5 class="mb-0"><i class="bi bi-map me-2"></i>Мы на карте</h5>
+                    </div>
+                    <div class="card-body p-0 position-relative" style="min-height: 400px;">
+                        <div id="contacts-map" style="width: 100%; height: 400px; background: #e9ecef;"></div>
+                        <div id="contacts-map-loader"
+                             style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                                    background: rgba(255,255,255,0.95); display: flex;
+                                    align-items: center; justify-content: center; z-index: 1000;">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary mb-3" role="status">
+                                    <span class="visually-hidden">Загрузка...</span>
+                                </div>
+                                <p class="text-muted">Загрузка карты...</p>
+                            </div>
                         </div>
-                        @endif
+                    </div>
+                </div>
+                @endif
 
-                        <!-- УДАЛЕНО: Главный бухгалтер -->
-                    @else
-                    <div class="text-center py-3">
-                        <p class="text-muted mb-0">Информация о руководстве временно недоступна</p>
+                {{-- Форма обратной связи (упрощённая) --}}
+                <div class="contact-form-card bg-white rounded-4 shadow-sm p-4 p-lg-5">
+                    <h4 class="fw-bold mb-4">
+                        <i class="bi bi-chat-dots text-primary me-2"></i>Напишите нам
+                    </h4>
+
+                    @if(session('success'))
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="bi bi-check-circle me-2"></i> {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                     @endif
-                </div>
-            </div>
 
-            <!-- ЗАМЕНА: Федеральный статус на информацию о компании -->
-            <div class="card">
-                <div class="card-header bg-secondary text-white">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-info-circle me-2"></i>О компании
-                    </h5>
-                </div>
-                <div class="card-body text-center">
-                    <div class="company-badge badge mb-3 p-2 fs-6">
-                        <i class="bi bi-building me-1"></i>Федеральная Арендная Платформа
-                    </div>
-                    <p class="text-muted small mb-2">
-                        <i class="bi bi-check-circle text-success me-1"></i>
-                        Платформа аренды строительной техники
-                    </p>
-                    <p class="text-muted small mb-2">
-                        <i class="bi bi-check-circle text-success me-1"></i>
-                        B2B решения для бизнеса
-                    </p>
-                    <p class="text-muted small mb-0">
-                        <i class="bi bi-check-circle text-success me-1"></i>
-                        Работаем с 2024 года
-                    </p>
+                    <form id="contactForm" action="{{ route('home.contact') }}" method="POST" novalidate>
+                        @csrf
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Ваше имя *</label>
+                                <input type="text" class="form-control form-control-lg" name="name" required placeholder="Иван Петров">
+                                <div class="invalid-feedback">Пожалуйста, укажите ваше имя</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Телефон *</label>
+                                <input type="tel" class="form-control form-control-lg" name="phone" required placeholder="+7 (999) 123-45-67">
+                                <div class="invalid-feedback">Пожалуйста, укажите номер телефона</div>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Email <span class="text-muted">(необязательно)</span></label>
+                                <input type="email" class="form-control form-control-lg" name="email" placeholder="ivan@example.com">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Сообщение</label>
+                                <textarea class="form-control form-control-lg" name="message" rows="4" placeholder="Опишите ваш вопрос..."></textarea>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold" id="contactSubmitBtn">
+                                <i class="bi bi-send me-2"></i> Отправить
+                            </button>
+                        </div>
+                        <div id="contactSuccess" class="alert alert-success mt-3 d-none">
+                            <i class="bi bi-check-circle me-2"></i> <span id="contactSuccessMsg"></span>
+                        </div>
+                        <div id="contactError" class="alert alert-danger mt-3 d-none">
+                            <i class="bi bi-exclamation-circle me-2"></i> <span id="contactErrorMsg"></span>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Карта -->
-    @if($platform && $platform->exists && $platform->physical_address)
-    <div class="card mt-4">
-        <div class="card-header bg-dark text-white">
-            <h5 class="card-title mb-0">
-                <i class="bi bi-map me-2"></i>Мы на карте
-            </h5>
-        </div>
-        <div class="card-body p-0 position-relative">
-            <!-- КОНТЕЙНЕР ДЛЯ КАРТЫ -->
-            <div id="contacts-map" style="width: 100%; height: 400px;"></div>
-            <div id="contacts-map-loader" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.95); display: flex; align-items: center; justify-content: center; z-index: 1000;">
-                <div class="text-center">
-                    <div class="spinner-border text-primary mb-3" role="status">
-                        <span class="visually-hidden">Загрузка карты...</span>
-                    </div>
-                    <p class="text-muted">Загрузка карты...</p>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endif
-</div>
-
-<style>
-.card {
-    border: none;
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-    transition: box-shadow 0.15s ease-in-out;
-}
-
-.card:hover {
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-}
-
-.card-header {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
-}
-
-.text-muted {
-    color: #6c757d !important;
-}
-
-.company-badge {
-    background: linear-gradient(135deg, #28a745, #20c997);
-    color: white;
-    font-weight: 600;
-}
-
-/* КРИТИЧЕСКИЕ СТИЛИ ДЛЯ КАРТЫ */
-#contacts-map {
-    width: 100% !important;
-    height: 400px !important;
-    min-height: 400px !important;
-    position: relative !important;
-    display: block !important;
-    background: #e9ecef !important;
-}
-
-/* ГАРАНТИЯ ОТОБРАЖЕНИЯ ЯНДЕКС КАРТ */
-.ymaps-2-1-79-map,
-.ymaps-2-1-79-inner-panes,
-.ymaps-2-1-79-ground-pane {
-    width: 100% !important;
-    height: 100% !important;
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-}
-
-.ymaps-2-1-79-map {
-    border-radius: 0 0 0.375rem 0.375rem !important;
-}
-
-/* Улучшение для мобильных устройств */
-@media (max-width: 768px) {
-    #contacts-map {
-        height: 350px !important;
-        min-height: 350px !important;
-    }
-}
-</style>
+</section>
 @endsection
 
 @push('scripts')
+{{-- Яндекс.Карты --}}
 @if($platform && $platform->exists && $platform->physical_address)
 <script src="https://api-maps.yandex.ru/2.1/?apikey=bd8c3925-2d3e-448a-b6d3-c2c53a112615&lang=ru_RU" type="text/javascript"></script>
 <script>
-// ГАРАНТИРОВАННО РАБОТАЮЩАЯ ИНТЕРАКТИВНАЯ КАРТА
 (function() {
     'use strict';
 
-    console.log('🗺️ Инициализация гарантированно работающей карты...');
-
-    let map = null;
-    let mapInitialized = false;
     const mapContainer = document.getElementById('contacts-map');
     const mapLoader = document.getElementById('contacts-map-loader');
+    if (!mapContainer) return;
 
-    if (!mapContainer) {
-        console.error('❌ Контейнер карты не найден');
-        return;
-    }
-
-    // 1. ПРИНУДИТЕЛЬНАЯ УСТАНОВКА СТИЛЕЙ ПЕРЕД ИНИЦИАЛИЗАЦИЕЙ
-    function enforceContainerStyles() {
-        console.log('📏 Устанавливаем принудительные стили контейнера...');
-
-        // Жестко фиксируем размеры
-        mapContainer.style.cssText = `
-            width: 100% !important;
-            height: 400px !important;
-            min-height: 400px !important;
-            position: relative !important;
-            display: block !important;
-            background: #e9ecef !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            z-index: 1 !important;
-            overflow: hidden !important;
-        `;
-
-        // Принудительный reflow
-        void mapContainer.offsetHeight;
-    }
-
-    // 2. ФУНКЦИЯ ДЛЯ СТАТИЧЕСКОЙ КАРТЫ (запасной вариант)
     function showStaticMap() {
-        console.log('🔄 Активируем запасной вариант - статическую карту...');
-
-        if (mapContainer) {
-            const containerWidth = Math.max(mapContainer.offsetWidth, 600);
-            const containerHeight = 400;
-
-            const staticMapUrl = `https://static-maps.yandex.ru/1.x/?ll=37.652714,55.863631&z=16&size=${containerWidth},${containerHeight}&l=map&pt=37.652714,55.863631,pm2dbl`;
-
-            mapContainer.innerHTML = `
-                <div style="width: 100%; height: 400px; background: #f8f9fa; border-radius: 0 0 0.375rem 0.375rem; overflow: hidden; position: relative;">
-                    <img src="${staticMapUrl}"
-                         alt="Федеральная Арендная Платформа - {{ $platform->physical_address }}"
-                         style="width: 100%; height: 100%; object-fit: cover; display: block;">
-                    <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0, 0, 0, 0.7); color: white; padding: 0.75rem; font-size: 14px;">
-                        <p class="mb-1"><strong>Адрес:</strong> {{ $platform->physical_address }}</p>
-                        <p class="mb-0"><strong>Телефон:</strong> {{ $platform->phone ?? '+7 (929) 533-32-06' }}</p>
-                    </div>
-                </div>
-            `;
-        }
-
-        if (mapLoader) {
-            mapLoader.style.display = 'none';
-        }
+        const width = Math.max(mapContainer.offsetWidth, 600);
+        const src = `https://static-maps.yandex.ru/1.x/?ll=37.652714,55.863631&z=16&size=${width},400&l=map&pt=37.652714,55.863631,pm2dbl`;
+        mapContainer.innerHTML = `<img src="${src}" alt="Карта" style="width:100%;height:100%;object-fit:cover;">`;
+        if (mapLoader) mapLoader.style.display = 'none';
     }
 
-    // 3. ОСНОВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ ИНТЕРАКТИВНОЙ КАРТЫ
-    function initializeInteractiveMap() {
-        if (mapInitialized) return;
+    function initMap() {
+        if (typeof ymaps === 'undefined') { setTimeout(initMap, 200); return; }
+        ymaps.ready(function() {
+            try {
+                var map = new ymaps.Map('contacts-map', {
+                    center: [55.863631, 37.652714],
+                    zoom: 16,
+                    controls: ['zoomControl', 'fullscreenControl']
+                }, { suppressMapOpenBlock: true });
+                var pm = new ymaps.Placemark([55.863631, 37.652714], {
+                    hintContent: 'Федеральная Арендная Платформа',
+                    balloonContentBody: '<strong>Адрес:</strong> {{ $platform->physical_address }}<br><strong>Телефон:</strong> {{ $platform->phone ?? '+7 (929) 533-32-06' }}'
+                }, { preset: 'islands#blueBusinessIcon' });
+                map.geoObjects.add(pm);
+                setTimeout(function() {
+                    if (mapLoader) mapLoader.style.display = 'none';
+                }, 500);
+                map.events.add('error', showStaticMap);
+            } catch(e) { showStaticMap(); }
+        });
+    }
 
-        // Проверяем Яндекс Карты
-        if (typeof ymaps === 'undefined') {
-            console.log('⏳ Ожидаем загрузку Яндекс Карт...');
-            setTimeout(initializeInteractiveMap, 100);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initMap);
+    } else {
+        initMap();
+    }
+
+    setTimeout(function() {
+        if (mapLoader && mapLoader.style.display !== 'none') showStaticMap();
+    }, 6000);
+})();
+</script>
+@endif
+
+{{-- Валидация и отправка формы --}}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var contactForm = document.getElementById('contactForm');
+    if (!contactForm) return;
+
+    var submitBtn = document.getElementById('contactSubmitBtn');
+    var successAlert = document.getElementById('contactSuccess');
+    var successMsg = document.getElementById('contactSuccessMsg');
+    var errorAlert = document.getElementById('contactError');
+    var errorMsg = document.getElementById('contactErrorMsg');
+
+    contactForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        successAlert.classList.add('d-none');
+        errorAlert.classList.add('d-none');
+
+        if (!contactForm.checkValidity()) {
+            e.stopPropagation();
+            contactForm.classList.add('was-validated');
             return;
         }
 
-        ymaps.ready(() => {
-            if (mapInitialized) return;
+        var formData = new FormData(contactForm);
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Отправка...';
 
-            try {
-                console.log('🎯 Создаем интерактивную карту...');
-
-                // Убеждаемся что контейнер готов
-                enforceContainerStyles();
-
-                // Даем время на применение стилей
-                setTimeout(() => {
-                    if (mapInitialized) return;
-
-                    try {
-                        // СОЗДАЕМ КАРТУ
-                        map = new ymaps.Map('contacts-map', {
-                            center: [55.863631, 37.652714],
-                            zoom: 16,
-                            controls: ['zoomControl', 'fullscreenControl', 'typeSelector', 'searchControl']
-                        }, {
-                            suppressMapOpenBlock: true,
-                            yandexMapDisablePoiInteractivity: false
-                        });
-
-                        // СОЗДАЕМ МЕТКУ
-                        const placemark = new ymaps.Placemark([55.863631, 37.652714], {
-                            hintContent: 'Федеральная Арендная Платформа',
-                            balloonContentHeader: 'Федеральная Арендная Платформа',
-                            balloonContentBody: `
-                                <div style="max-width: 250px;">
-                                    <p style="margin: 8px 0; font-size: 14px;">
-                                        <strong>Адрес:</strong><br>
-                                        {{ $platform->physical_address }}
-                                    </p>
-                                    <p style="margin: 8px 0; font-size: 14px;">
-                                        <strong>Телефон:</strong><br>
-                                        {{ $platform->phone ?? '+7 (929) 533-32-06' }}
-                                    </p>
-                                </div>
-                            `
-                        }, {
-                            preset: 'islands#blueBusinessIcon',
-                            iconColor: '#0056b3'
-                        });
-
-                        map.geoObjects.add(placemark);
-
-                        // КРИТИЧЕСКИЙ ФИКС: Используем таймаут вместо ненадежного события 'load'
-                        setTimeout(() => {
-                            console.log('✅ Карта создана (таймаут)');
-                            mapInitialized = true;
-
-                            if (mapLoader) {
-                                mapLoader.style.display = 'none';
-                            }
-
-                            // Принудительно обновляем карту
-                            if (map) {
-                                // Используем стандартные методы API
-                                try {
-                                    // Этот метод существует в официальном API
-                                    if (map.behaviors && map.behaviors.get('drag')) {
-                                        // Просто обновляем визуализацию
-                                        map.setCenter([55.863631, 37.652714]);
-                                    }
-                                } catch (e) {
-                                    console.log('ℹ️ Стандартный метод обновления не сработал:', e);
-                                }
-                            }
-                        }, 1000);
-
-                        // Обработчик ошибок
-                        map.events.add('error', (error) => {
-                            console.error('❌ Ошибка интерактивной карты:', error);
-                            showStaticMap();
-                        });
-
-                    } catch (error) {
-                        console.error('💥 Ошибка при создании карты:', error);
-                        showStaticMap();
-                    }
-                }, 100);
-
-            } catch (error) {
-                console.error('💥 Критическая ошибка в ymaps.ready:', error);
-                showStaticMap();
+        fetch(contactForm.action, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                successMsg.textContent = data.message;
+                successAlert.classList.remove('d-none');
+                contactForm.reset();
+                contactForm.classList.remove('was-validated');
+            } else {
+                errorMsg.textContent = data.message || 'Произошла ошибка.';
+                errorAlert.classList.remove('d-none');
             }
+        })
+        .catch(function() {
+            errorMsg.textContent = 'Произошла ошибка. Попробуйте позже.';
+            errorAlert.classList.remove('d-none');
+        })
+        .finally(function() {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-send me-2"></i> Отправить';
         });
-    }
+    });
 
-    // 4. УМНАЯ ИНИЦИАЛИЗАЦИЯ С ПРОВЕРКОЙ ВИДИМОСТИ
-    function smartInitialization() {
-        console.log('🚀 Запуск умной инициализации...');
-
-        // Сначала устанавливаем стили
-        enforceContainerStyles();
-
-        // Проверяем видимость контейнера
-        function isContainerVisible() {
-            const rect = mapContainer.getBoundingClientRect();
-            return rect.width > 0 && rect.height > 0;
-        }
-
-        if (!isContainerVisible()) {
-            console.log('👀 Контейнер не видим, ждем...');
-            // Ждем пока контейнер станет видимым
-            const checkVisibility = setInterval(() => {
-                if (isContainerVisible()) {
-                    clearInterval(checkVisibility);
-                    console.log('✅ Контейнер стал видимым, инициализируем карту');
-                    initializeInteractiveMap();
+    // Появление карточек при скролле
+    var cards = document.querySelectorAll('.feature-card, .team-card');
+    if (cards.length) {
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate__animated', 'animate__fadeInUp');
+                    observer.unobserve(entry.target);
                 }
-            }, 100);
-
-            // Таймаут проверки видимости
-            setTimeout(() => {
-                clearInterval(checkVisibility);
-                if (!mapInitialized) {
-                    console.log('⏰ Таймаут видимости, пробуем инициализировать');
-                    initializeInteractiveMap();
-                }
-            }, 3000);
-        } else {
-            console.log('✅ Контейнер видим, инициализируем сразу');
-            initializeInteractiveMap();
-        }
-
-        // Дополнительные попытки
-        setTimeout(() => !mapInitialized && initializeInteractiveMap(), 2000);
-        setTimeout(() => !mapInitialized && initializeInteractiveMap(), 4000);
-
-        // Финальный fallback
-        setTimeout(() => {
-            if (!mapInitialized) {
-                console.log('🆘 Финальный таймаут - показываем статическую карту');
-                showStaticMap();
-            }
-        }, 8000);
+            });
+        }, { threshold: 0.1 });
+        cards.forEach(function(el) { el.style.opacity = '0'; observer.observe(el); });
     }
-
-    // 5. ЗАПУСК
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('📄 DOM загружен, запускаем умную инициализацию');
-            smartInitialization();
-        });
-    } else {
-        console.log('⚡ DOM уже загружен, запускаем умную инициализацию');
-        smartInitialization();
-    }
-
-})();
+});
 </script>
-
-<!-- КРИТИЧЕСКИЕ СТИЛИ ДЛЯ ГАРАНТИИ -->
-<style>
-    /* АБСОЛЮТНАЯ ГАРАНТИЯ РАЗМЕРОВ */
-    #contacts-map {
-        width: 100% !important;
-        height: 400px !important;
-        min-height: 400px !important;
-        position: relative !important;
-        display: block !important;
-        background: #e9ecef !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        z-index: 1 !important;
-        overflow: hidden !important;
-    }
-
-    /* ГАРАНТИЯ ДЛЯ YANDEX MAPS */
-    .ymaps-2-1-79-map,
-    .ymaps-2-1-79-inner-panes,
-    .ymaps-2-1-79-ground-pane {
-        width: 100% !important;
-        height: 100% !important;
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-    }
-
-    .ymaps-2-1-79-map {
-        border-radius: 0 0 0.375rem 0.375rem !important;
-    }
-</style>
-@endif
 @endpush
