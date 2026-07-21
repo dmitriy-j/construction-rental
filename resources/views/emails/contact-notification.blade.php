@@ -116,39 +116,39 @@
         <div class="email-body">
             <div class="field-group">
                 <div class="field-label">Дата и время</div>
-                <div class="field-value">{{ $message->created_at->format('d.m.Y H:i') }}</div>
+                <div class="field-value">{{ $contactMessage->created_at->format('d.m.Y H:i') }}</div>
             </div>
 
             <div class="field-group">
                 <div class="field-label">Имя отправителя</div>
-                <div class="field-value">{{ $message->name }}</div>
+                <div class="field-value">{{ $contactMessage->name }}</div>
             </div>
 
             <div class="field-group">
                 <div class="field-label">Телефон</div>
                 <div class="field-value">
-                    <a href="tel:{{ $message->phone }}" style="color: #0b5ed7; text-decoration: none;">
-                        {{ $message->phone }}
+                    <a href="tel:{{ $contactMessage->phone }}" style="color: #0b5ed7; text-decoration: none;">
+                        {{ $contactMessage->phone }}
                     </a>
                 </div>
             </div>
 
-            @if($message->email)
+            @if($contactMessage->email)
             <div class="field-group">
                 <div class="field-label">Email</div>
                 <div class="field-value">
-                    <a href="mailto:{{ $message->email }}" style="color: #0b5ed7; text-decoration: none;">
-                        {{ $message->email }}
+                    <a href="mailto:{{ $contactMessage->email }}" style="color: #0b5ed7; text-decoration: none;">
+                        {{ $contactMessage->email }}
                     </a>
                 </div>
             </div>
             @endif
 
-            @if($message->message)
+            @if($contactMessage->message)
             <div class="field-group">
                 <div class="field-label">Сообщение</div>
                 <div class="message-box">
-                    <div class="field-value">{{ $message->message }}</div>
+                    <div class="field-value">{{ $contactMessage->message }}</div>
                 </div>
             </div>
             @endif

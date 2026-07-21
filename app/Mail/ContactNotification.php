@@ -13,11 +13,11 @@ class ContactNotification extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public ContactMessage $message;
+    public ContactMessage $contactMessage;
 
     public function __construct(ContactMessage $message)
     {
-        $this->message = $message;
+        $this->contactMessage = $message;
     }
 
     public function envelope(): Envelope
