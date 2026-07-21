@@ -17,14 +17,12 @@ use App\Http\Controllers\Admin\UpdController;
 use App\Http\Controllers\Admin\MarkupController;
 use App\Http\Controllers\Admin\AdminFinanceController;
 use App\Http\Controllers\Admin\AdminOrderController;
-use App\Http\Controllers\Admin\InvoiceController; // ДОБАВЛЕН импорт InvoiceController
+use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Admin\AdminRentalRequestController;
 use Illuminate\Support\Facades\Route;
 
-// Админ кабинет
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 
-// РАЗДЕЛ УПРАВЛЕНИЯ ЗАКАЗАМИ
 Route::prefix('orders')->name('admin.orders.')->group(function () {
     Route::get('/', [AdminOrderController::class, 'index'])->name('index');
     Route::get('/{order}', [AdminOrderController::class, 'show'])->name('show');
@@ -34,7 +32,8 @@ Route::prefix('orders')->name('admin.orders.')->group(function () {
     Route::post('/{order}/force-update-dates', [AdminOrderController::class, 'forceUpdateDates'])->name('force-update-dates');
 });
 
-// Оборудование
+Route::post('/locations', [\App\Http\Controllers\Admin\AdminLocationController::class, 'store'])->name('admin.locations.store');
+
 Route::get('/equipment', [AdminEquipmentController::class, 'index'])->name('admin.equipment.index');
 Route::get('/equipment/create', [AdminEquipmentController::class, 'create'])->name('admin.equipment.create');
 Route::post('/equipment', [AdminEquipmentController::class, 'store'])->name('admin.equipment.store');
@@ -45,7 +44,6 @@ Route::get('/equipment/{equipment}', [AdminEquipmentController::class, 'show'])-
 Route::put('/equipment/{equipment}', [AdminEquipmentController::class, 'update'])->name('admin.equipment.update');
 Route::delete('/equipment/{equipment}', [AdminEquipmentController::class, 'destroy'])->name('admin.equipment.destroy');
 
-// Арендаторы
 Route::get('/lessees', [AdminLesseeController::class, 'index'])->name('admin.lessees.index');
 Route::get('/lessees/{lessee}/edit', [AdminLesseeController::class, 'edit'])->name('admin.lessees.edit');
 Route::put('/lessees/{lessee}', [AdminLesseeController::class, 'update'])->name('admin.lessees.update');
@@ -53,7 +51,6 @@ Route::post('/lessees/{lessee}/verify', [AdminLesseeController::class, 'verify']
 Route::get('/lessees/{lessee}', [AdminLesseeController::class, 'show'])->name('admin.lessees.show');
 Route::get('/lessees/{lessee}/orders/{order}', [AdminLesseeController::class, 'showOrder'])->name('admin.lessees.orders.show');
 
-// Арендодатели
 Route::get('/lessors', [AdminLessorController::class, 'index'])->name('admin.lessors.index');
 Route::get('/lessors/{lessor}/edit', [AdminLessorController::class, 'edit'])->name('admin.lessors.edit');
 Route::put('/lessors/{lessor}', [AdminLessorController::class, 'update'])->name('admin.lessors.update');
@@ -61,7 +58,6 @@ Route::post('/lessors/{lessor}/verify', [AdminLessorController::class, 'verify']
 Route::get('/lessors/{lessor}', [AdminLessorController::class, 'show'])->name('admin.lessors.show');
 Route::get('/lessors/{lessor}/orders/{order}', [AdminLessorController::class, 'showOrder'])->name('admin.lessors.orders.show');
 
-// Админские новости
 Route::resource('news', AdminNewsController::class)
     ->except(['show'])
     ->names([
@@ -73,7 +69,6 @@ Route::resource('news', AdminNewsController::class)
         'destroy' => 'admin.news.destroy',
     ]);
 
-// Управление шаблонами Excel
 Route::resource('excel-mappings', ExcelMappingController::class)->names([
     'index' => 'admin.excel-mappings.index',
     'create' => 'admin.excel-mappings.create',
@@ -87,7 +82,6 @@ Route::resource('excel-mappings', ExcelMappingController::class)->names([
 Route::get('excel-mappings/{excelMapping}/download-example', [ExcelMappingController::class, 'downloadExample'])
     ->name('admin.excel-mappings.download-example');
 
-// Управление УПД
 Route::prefix('upds')->name('admin.upds.')->group(function () {
     Route::get('/', [UpdController::class, 'index'])->name('index');
     Route::get('/{upd}', [UpdController::class, 'show'])->name('show');
@@ -95,32 +89,25 @@ Route::prefix('upds')->name('admin.upds.')->group(function () {
     Route::post('/{upd}/accept', [UpdController::class, 'accept'])->name('accept');
     Route::post('/{upd}/reject', [UpdController::class, 'reject'])->name('reject');
     Route::delete('/{upd}', [UpdController::class, 'destroy'])->name('destroy');
-
-    // Скачивание
-    Route::get('/{upd}/download', [UpdController::class, 'download'])->name('download'); // Загруженные файлы
-    Route::get('/{upd}/download-generated', [UpdController::class, 'downloadGenerated'])->name('download-generated'); // Генерация на лету
+    Route::get('/{upd}/download', [UpdController::class, 'download'])->name('download');
+    Route::get('/{upd}/download-generated', [UpdController::class, 'downloadGenerated'])->name('download-generated');
 });
 
-// Управление счетами
 Route::prefix('invoices')->name('admin.invoices.')->group(function () {
     Route::get('/', [InvoiceController::class, 'index'])->name('index');
     Route::get('/{invoice}', [InvoiceController::class, 'show'])->name('show');
     Route::get('/{invoice}/download', [InvoiceController::class, 'download'])->name('download');
     Route::post('/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('cancel');
     Route::delete('/{invoice}', [InvoiceController::class, 'destroy'])->name('destroy');
-
-    // Создание счетов из заказов и УПД
     Route::post('/orders/{order}/create', [InvoiceController::class, 'createForOrder'])->name('create-for-order');
     Route::post('/upds/{upd}/create', [InvoiceController::class, 'createForUpd'])->name('create-for-upd');
 });
 
-// Документы (общий раздел)
 Route::prefix('documents')->name('admin.documents.')->group(function () {
     Route::get('/', [DocumentController::class, 'index'])->name('index');
     Route::get('/{type}/{id}', [DocumentController::class, 'show'])->name('show');
 });
 
-// Управление наценками
 Route::prefix('markups')->name('markups.')->middleware(['auth', 'can:manage-markups'])->group(function () {
     Route::get('/', [MarkupController::class, 'index'])->name('index');
     Route::get('/create', [MarkupController::class, 'create'])->name('create');
@@ -128,53 +115,31 @@ Route::prefix('markups')->name('markups.')->middleware(['auth', 'can:manage-mark
     Route::get('/{markup}/edit', [MarkupController::class, 'edit'])->name('edit');
     Route::put('/{markup}', [MarkupController::class, 'update'])->name('update');
     Route::delete('/{markup}', [MarkupController::class, 'destroy'])->name('destroy');
-
-    // Rate limiting для тестового расчета
-    Route::post('/test-calculation', [MarkupController::class, 'testCalculation'])
-        ->name('test-calculation')
-        ->middleware('throttle:10,1');
+    Route::post('/test-calculation', [MarkupController::class, 'testCalculation'])->name('test-calculation')->middleware('throttle:10,1');
 });
 
-// Настройки
 Route::prefix('settings')->name('admin.settings.')->group(function () {
-    // Шаблоны документов
-    Route::resource('document-templates', DocumentTemplateController::class)
-        ->names([
-            'index' => 'document-templates.index',
-            'create' => 'document-templates.create',
-            'store' => 'document-templates.store',
-            'show' => 'document-templates.show',
-            'edit' => 'document-templates.edit',
-            'update' => 'document-templates.update',
-            'destroy' => 'document-templates.destroy',
-        ]);
-
-    // Дополнительные маршруты для шаблонов документов
-    Route::get('document-templates/{documentTemplate}/download', [DocumentTemplateController::class, 'download'])
-        ->name('document-templates.download');
-
-    Route::get('document-templates/{documentTemplate}/preview', [DocumentTemplateController::class, 'preview'])
-        ->name('document-templates.preview');
-
-    Route::get('/{documentTemplate}/generate', [DocumentTemplateController::class, 'generateForm'])
-        ->name('generate-form');
-
-    Route::post('/{documentTemplate}/generate', [DocumentTemplateController::class, 'generate'])
-        ->name('generate');
-
-    // Наценки
+    Route::resource('document-templates', DocumentTemplateController::class)->names([
+        'index' => 'document-templates.index',
+        'create' => 'document-templates.create',
+        'store' => 'document-templates.store',
+        'show' => 'document-templates.show',
+        'edit' => 'document-templates.edit',
+        'update' => 'document-templates.update',
+        'destroy' => 'document-templates.destroy',
+    ]);
+    Route::get('document-templates/{documentTemplate}/download', [DocumentTemplateController::class, 'download'])->name('document-templates.download');
+    Route::get('document-templates/{documentTemplate}/preview', [DocumentTemplateController::class, 'preview'])->name('document-templates.preview');
+    Route::get('/{documentTemplate}/generate', [DocumentTemplateController::class, 'generateForm'])->name('generate-form');
+    Route::post('/{documentTemplate}/generate', [DocumentTemplateController::class, 'generate'])->name('generate');
     Route::get('/markups', [MarkupController::class, 'index'])->name('markups.index');
 });
 
-// Акты выполненных работ
 Route::prefix('completion-acts')->name('admin.completion-acts.')->group(function () {
-    Route::post('/{completionAct}/generate-upd', [CompletionActController::class, 'generateUpd'])
-        ->name('generate-upd');
-    Route::post('/generate-upd-all', [CompletionActController::class, 'generateUpdForAll'])
-        ->name('generate-upd-all');
+    Route::post('/{completionAct}/generate-upd', [CompletionActController::class, 'generateUpd'])->name('generate-upd');
+    Route::post('/generate-upd-all', [CompletionActController::class, 'generateUpdForAll'])->name('generate-upd-all');
 });
 
-// Финансовый раздел
 Route::prefix('finance')->name('admin.finance.')->group(function () {
     Route::get('/', [FinanceController::class, 'dashboard'])->name('dashboard');
     Route::get('/transactions', [FinanceController::class, 'transactions'])->name('transactions');
@@ -182,23 +147,15 @@ Route::prefix('finance')->name('admin.finance.')->group(function () {
     Route::post('/transactions/{transaction}/cancel', [FinanceController::class, 'cancelTransaction'])->name('transactions.cancel');
     Route::get('/invoices', [FinanceController::class, 'invoices'])->name('invoices');
     Route::get('/invoices/{invoice}', [FinanceController::class, 'showInvoice'])->name('invoices.show');
-
-    // Долги арендаторов
     Route::get('/lessee-debts', [AdminFinanceController::class, 'lesseeDebts'])->name('lessee-debts');
-    // Долги перед арендодателями
     Route::get('/lessor-debts', [AdminFinanceController::class, 'lessorDebts'])->name('lessor-debts');
-    // Ручная корректировка баланса
     Route::get('/adjustment-create', [AdminFinanceController::class, 'adjustmentCreate'])->name('adjustment-create');
     Route::post('/adjustment-store', [AdminFinanceController::class, 'adjustmentStore'])->name('adjustment-store');
-    // История корректировок
     Route::get('/balance-adjustments', [AdminFinanceController::class, 'balanceAdjustments'])->name('balance-adjustments');
-    // Детализация по компании
     Route::get('/company/{company}', [AdminFinanceController::class, 'companyDetail'])->name('company-detail');
-    // Акт сверки
     Route::get('/reconciliation/{company}', [AdminFinanceController::class, 'reconciliationAct'])->name('reconciliation-act');
 });
 
-// Банковские выписки
 Route::prefix('bank-statements')->name('admin.bank-statements.')->group(function () {
     Route::get('/', [BankStatementController::class, 'index'])->name('index');
     Route::get('/create', [BankStatementController::class, 'create'])->name('create');
@@ -209,46 +166,36 @@ Route::prefix('bank-statements')->name('admin.bank-statements.')->group(function
     Route::delete('/{bankStatement}', [BankStatementController::class, 'destroy'])->name('destroy');
     Route::post('/pending/{pendingTransaction}/process', [BankStatementController::class, 'processPendingTransaction'])->name('process-pending');
     Route::post('/pending-payout/{pendingPayout}/cancel', [BankStatementController::class, 'cancelPendingPayout'])->name('cancel-payout');
-
-    // Ручное сопоставление транзакции с документом
     Route::put('/{transaction}/match', [BankStatementController::class, 'matchTransaction'])->name('match-transaction');
 });
 
-// Отчеты
 Route::prefix('reports')->name('admin.reports.')->group(function () {
     Route::get('/', [ReportsController::class, 'index'])->name('index');
     Route::post('/generate', [ReportsController::class, 'generate'])->name('generate');
     Route::get('/export', [ReportsController::class, 'export'])->name('export');
 });
 
-// Управление договорами
-Route::resource('contracts', ContractController::class)
-    ->names([
-        'index' => 'admin.contracts.index',
-        'create' => 'admin.contracts.create',
-        'store' => 'admin.contracts.store',
-        'show' => 'admin.contracts.show',
-        'edit' => 'admin.contracts.edit',
-        'update' => 'admin.contracts.update',
-        'destroy' => 'admin.contracts.destroy',
-    ]);
+Route::resource('contracts', ContractController::class)->names([
+    'index' => 'admin.contracts.index',
+    'create' => 'admin.contracts.create',
+    'store' => 'admin.contracts.store',
+    'show' => 'admin.contracts.show',
+    'edit' => 'admin.contracts.edit',
+    'update' => 'admin.contracts.update',
+    'destroy' => 'admin.contracts.destroy',
+]);
 
-Route::get('contracts/{contract}/download', [ContractController::class, 'download'])
-    ->name('admin.contracts.download');
+Route::get('contracts/{contract}/download', [ContractController::class, 'download'])->name('admin.contracts.download');
 
-
-// Управление заявками
-Route::resource('rental-requests', AdminRentalRequestController::class)
-    ->names([
-        'index' => 'admin.rental-requests.index',
-        'create' => 'admin.rental-requests.create',
-        'store' => 'admin.rental-requests.store',
-        'show' => 'admin.rental-requests.show',
-        'edit' => 'admin.rental-requests.edit',
-        'update' => 'admin.rental-requests.update',
-        'destroy' => 'admin.rental-requests.destroy',
-    ]);
+Route::resource('rental-requests', AdminRentalRequestController::class)->names([
+    'index' => 'admin.rental-requests.index',
+    'create' => 'admin.rental-requests.create',
+    'store' => 'admin.rental-requests.store',
+    'show' => 'admin.rental-requests.show',
+    'edit' => 'admin.rental-requests.edit',
+    'update' => 'admin.rental-requests.update',
+    'destroy' => 'admin.rental-requests.destroy',
+]);
 
 Route::get('/upds/{upd}/debug', [UpdController::class, 'debugTemplate'])->name('admin.upds.debug');
 Route::get('/upds/{upd}/debug-placeholders', [UpdController::class, 'debugPlaceholders'])->name('admin.upds.debug-placeholders');
-

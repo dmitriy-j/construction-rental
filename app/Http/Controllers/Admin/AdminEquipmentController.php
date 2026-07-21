@@ -65,7 +65,7 @@ class AdminEquipmentController extends Controller
     public function create()
     {
         $categories = Category::all();
-        $locations = Location::all();
+        $locations = Location::where('company_id', auth()->user()->company_id)->get();
         $companies = Company::all();
 
         return view('admin.equipment.create', compact('categories', 'locations', 'companies'));
@@ -170,7 +170,7 @@ class AdminEquipmentController extends Controller
     public function edit(Equipment $equipment)
     {
         $categories = Category::all();
-        $locations = Location::all();
+        $locations = Location::where('company_id', auth()->user()->company_id)->get();
         $companies = Company::all();
 
         return view('admin.equipment.edit', compact('equipment', 'categories', 'locations', 'companies'));
