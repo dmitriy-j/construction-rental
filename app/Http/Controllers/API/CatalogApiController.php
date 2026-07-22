@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Equipment;
 use App\Models\EquipmentRentalTerm;
 use App\Models\Location;
+use App\Services\CatalogCacheService;
 use App\Services\DeliveryCalculatorService;
 use App\Services\PricingService;
 use Illuminate\Http\Request;
@@ -23,81 +24,96 @@ class CatalogApiController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = Equipment::query()
-                ->with(['category', 'rentalTerms', 'images', 'location'])
-                ->where('is_approved', true)
-                ->has('rentalTerms');
-
-            if ($request->category) $query->where('category_id', $request->category);
-            if ($request->location) $query->where('location_id', $request->location);
-            if ($request->min_price) $query->whereHas('rentalTerms', fn($q) => $q->where('price_per_hour', '>=', $request->min_price));
-            if ($request->max_price) $query->whereHas('rentalTerms', fn($q) => $q->where('price_per_hour', '<=', $request->max_price));
-            if ($request->year_from) $query->where('year', '>=', $request->year_from);
-            if ($request->year_to) $query->where('year', '<=', $request->year_to);
-
-            if ($request->search) {
-                $s = $request->search;
-                $query->where(fn($q) => $q->where('title', 'like', "%{$s}%")->orWhere('brand', 'like', "%{$s}%")->orWhere('model', 'like', "%{$s}%"));
-            }
-
+            // Автокомплит не кэшируем
             if ($request->autocomplete) {
-                $results = $query->select('id', 'title', 'slug', 'brand', 'model')->limit(10)->get()
-                    ->map(fn($e) => ['id' => $e->id, 'label' => "{$e->brand} {$e->model} — {$e->title}", 'url' => route('catalog.show', $e)]);
+                $results = Equipment::query()
+                    ->where('is_approved', true)
+                    ->select('id', 'title', 'slug', 'brand', 'model')
+                    ->limit(10)
+                    ->get()
+                    ->map(fn($e) => [
+                        'id' => $e->id,
+                        'label' => "{$e->brand} {$e->model} — {$e->title}",
+                        'url' => route('catalog.show', $e)
+                    ]);
                 return response()->json($results);
             }
 
-            $sort = $request->sort ?? 'newest';
-            switch ($sort) {
-                case 'price_asc':  $query->orderBy('year', 'asc'); break;
-                case 'price_desc': $query->orderBy('year', 'desc'); break;
-                case 'popular':    $query->orderBy('views', 'desc'); break;
-                default:           $query->latest();
-            }
+            $cacheService = app(CatalogCacheService::class);
 
-            $perPage = min((int)($request->per_page ?? 12), 48);
-            $equipments = $query->paginate($perPage);
+            return $cacheService->rememberIndex($request, function () use ($request) {
+                $query = Equipment::query()
+                    ->with(['category', 'rentalTerms', 'images', 'location'])
+                    ->where('is_approved', true)
+                    ->has('rentalTerms');
 
-            $equipments->getCollection()->transform(function ($eq) {
-                try {
-                    $term = $eq->rentalTerms->first();
-                    $basePrice = $term ? (float)$term->price_per_hour : 0;
-                    $finalPrice = $basePrice;
-                    if (!$eq->isPlatformOwned() && auth()->check() && auth()->user() && auth()->user()->company) {
-                        try {
-                            $markup = $this->pricingService->getPlatformMarkup($eq, auth()->user()->company, 1);
-                            $finalPrice = $basePrice + $this->pricingService->applyMarkup($basePrice, $markup);
-                        } catch (\Exception $e) {
-                            \Log::warning("Markup error for eq {$eq->id}: " . $e->getMessage());
-                        }
-                    }
-                    $eq->final_price = round($finalPrice, 2);
-                    $eq->base_price = $basePrice;
-                    $eq->main_image_url = $eq->mainImage?->path ? asset('storage/' . $eq->mainImage->path) : null;
-                    $eq->category_name = $eq->category?->name;
-                    $eq->location_name = $eq->location?->name;
-                    $eq->dimensions = $eq->getDimensionsAttribute();
-                    $eq->owner_name = $eq->owner_name;
-                } catch (\Exception $e) {
-                    \Log::error("Transform error eq {$eq->id}: " . $e->getMessage());
-                    $eq->final_price = 0;
-                    $eq->base_price = 0;
+                if ($request->category) $query->where('category_id', $request->category);
+                if ($request->location) $query->where('location_id', $request->location);
+                if ($request->min_price) $query->whereHas('rentalTerms', fn($q) => $q->where('price_per_hour', '>=', $request->min_price));
+                if ($request->max_price) $query->whereHas('rentalTerms', fn($q) => $q->where('price_per_hour', '<=', $request->max_price));
+                if ($request->year_from) $query->where('year', '>=', $request->year_from);
+                if ($request->year_to) $query->where('year', '<=', $request->year_to);
+
+                if ($request->search) {
+                    $s = $request->search;
+                    $query->where(fn($q) => $q->where('title', 'like', "%{$s}%")
+                        ->orWhere('brand', 'like', "%{$s}%")
+                        ->orWhere('model', 'like', "%{$s}%"));
                 }
-                return $eq;
-            });
 
-            return response()->json([
-                'data' => $equipments->items(),
-                'meta' => [
-                    'current_page' => $equipments->currentPage(),
-                    'last_page' => $equipments->lastPage(),
-                    'per_page' => $equipments->perPage(),
-                    'total' => $equipments->total(),
-                ],
-                'filters' => [
-                    'categories' => Category::all(['id', 'name']),
-                    'locations' => Location::all(['id', 'name']),
-                ],
-            ]);
+                $sort = $request->sort ?? 'newest';
+                switch ($sort) {
+                    case 'price_asc':  $query->orderBy('year', 'asc'); break;
+                    case 'price_desc': $query->orderBy('year', 'desc'); break;
+                    case 'popular':    $query->orderBy('views', 'desc'); break;
+                    default:           $query->latest();
+                }
+
+                $perPage = min((int)($request->per_page ?? 12), 48);
+                $equipments = $query->paginate($perPage);
+
+                $equipments->getCollection()->transform(function ($eq) {
+                    try {
+                        $term = $eq->rentalTerms->first();
+                        $basePrice = $term ? (float)$term->price_per_hour : 0;
+                        $finalPrice = $basePrice;
+                        if (!$eq->isPlatformOwned() && auth()->check() && auth()->user() && auth()->user()->company) {
+                            try {
+                                $markup = $this->pricingService->getPlatformMarkup($eq, auth()->user()->company, 1);
+                                $finalPrice = $basePrice + $this->pricingService->applyMarkup($basePrice, $markup);
+                            } catch (\Exception $e) {
+                                \Log::warning("Markup error for eq {$eq->id}: " . $e->getMessage());
+                            }
+                        }
+                        $eq->final_price = round($finalPrice, 2);
+                        $eq->base_price = $basePrice;
+                        $eq->main_image_url = $eq->mainImage?->path ? asset('storage/' . $eq->mainImage->path) : null;
+                        $eq->category_name = $eq->category?->name;
+                        $eq->location_name = $eq->location?->name;
+                        $eq->dimensions = $eq->getDimensionsAttribute();
+                        $eq->owner_name = $eq->owner_name;
+                    } catch (\Exception $e) {
+                        \Log::error("Transform error eq {$eq->id}: " . $e->getMessage());
+                        $eq->final_price = 0;
+                        $eq->base_price = 0;
+                    }
+                    return $eq;
+                });
+
+                return response()->json([
+                    'data' => $equipments->items(),
+                    'meta' => [
+                        'current_page' => $equipments->currentPage(),
+                        'last_page' => $equipments->lastPage(),
+                        'per_page' => $equipments->perPage(),
+                        'total' => $equipments->total(),
+                    ],
+                    'filters' => [
+                        'categories' => Category::all(['id', 'name']),
+                        'locations' => Location::all(['id', 'name']),
+                    ],
+                ]);
+            });
         } catch (\Exception $e) {
             \Log::error('CatalogApiController::index error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
