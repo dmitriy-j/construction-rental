@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\Equipment;
 use App\Models\EquipmentImage;
 use App\Models\Location;
+use App\Services\CatalogCacheService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -112,6 +113,8 @@ class EquipmentController extends Controller
             }
 
             DB::commit();
+
+            CatalogCacheService::clearCatalogCache();
 
             return redirect()->route('lessor.equipment.show', $equipment);
 
@@ -239,6 +242,9 @@ class EquipmentController extends Controller
                 }
             }
 
+            CatalogCacheService::clearCatalogCache();
+            CatalogCacheService::clearEquipmentShowCache($equipment->id);
+
             return redirect()->route('lessor.equipment.show', $equipment);
 
         } catch (\Exception $e) {
@@ -304,6 +310,8 @@ class EquipmentController extends Controller
         }
 
         $equipment->delete();
+
+        CatalogCacheService::clearCatalogCache();
 
         return redirect()->route('lessor.equipment.index');
     }

@@ -9,6 +9,7 @@ use App\Models\Equipment;
 use App\Models\EquipmentRentalTerm;
 use App\Models\Location;
 use App\Models\EquipmentImage;
+use App\Services\CatalogCacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -93,6 +94,9 @@ class AdminEquipmentController extends Controller
             ]);
 
             DB::commit();
+
+            CatalogCacheService::clearCatalogCache();
+
             return redirect()->route('admin.equipment.show', $equipment)->with('success', 'Техника создана!');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -104,12 +108,14 @@ class AdminEquipmentController extends Controller
     public function approve(Equipment $equipment)
     {
         $equipment->update(['is_approved' => true]);
+        CatalogCacheService::clearCatalogCache();
         return back()->with('success', 'Техника одобрена!');
     }
 
     public function reject(Equipment $equipment)
     {
         $equipment->update(['is_approved' => false]);
+        CatalogCacheService::clearCatalogCache();
         return back()->with('success', 'Техника отклонена!');
     }
 
@@ -173,6 +179,9 @@ class AdminEquipmentController extends Controller
             ]);
         }
 
+        CatalogCacheService::clearCatalogCache();
+        CatalogCacheService::clearEquipmentShowCache($equipment->id);
+
         return redirect()->route('admin.equipment.show', $equipment)->with('success', 'Изменения сохранены!');
     }
 
@@ -183,6 +192,7 @@ class AdminEquipmentController extends Controller
             $image->delete();
         }
         $equipment->delete();
+        CatalogCacheService::clearCatalogCache();
         return redirect()->route('admin.equipment.index')->with('success', 'Техника удалена!');
     }
 }
