@@ -6,8 +6,7 @@
 {{-- ============================================================
      1. HERO-БЛОК
      ============================================================ --}}
-<section class="hero-section position-relative overflow-hidden">
-    <div class="hero-bg"></div>
+<section class="hero-section position-relative overflow-hidden" style="background:linear-gradient(135deg,#0B5ED7 0%,#002D72 50%,#001A4D 100%);min-height:75vh;display:flex;align-items:center;padding-top:var(--navbar-height,72px);">
     <div class="container position-relative z-2">
         <div class="row min-vh-75 align-items-center py-5">
             <div class="col-lg-7 text-white">
@@ -16,15 +15,15 @@
                         <i class="bi bi-star-fill me-1"></i> Федеральная платформа №1
                     </span>
                 </div>
-                <h1 class="hero-title display-4 fw-bold mb-3">
+                <h1 class="display-4 fw-bold mb-3" style="line-height:1.1;">
                     Аренда строительной техники<br>
                     <span class="text-warning">по всей России</span>
                 </h1>
-                <p class="hero-subtitle lead mb-4" style="max-width: 560px;">
+                <p class="lead mb-4 text-white-50" style="max-width:560px;">
                     Федеральная Арендная Платформа — ваш надёжный партнёр в аренде строительной
                     техники. Широкий выбор, прозрачные цены, безопасные сделки.
                 </p>
-                <div class="hero-cta d-flex flex-wrap gap-3 mb-4">
+                <div class="d-flex flex-wrap gap-3 mb-4">
                     <a href="{{ route('catalog.index') }}" class="btn btn-warning btn-lg px-5 py-3 fw-bold shadow-lg">
                         <i class="bi bi-search me-2"></i> Перейти в каталог
                     </a>
@@ -32,12 +31,12 @@
                         <i class="bi bi-plus-circle me-2"></i> Создать заявку
                     </a>
                 </div>
-                <div class="hero-stats d-flex flex-wrap gap-4">
-                    <div><div class="hero-stat-value">85+</div><div class="hero-stat-label">Регионов</div></div>
-                    <div class="hero-stat-divider"></div>
-                    <div><div class="hero-stat-value">1000+</div><div class="hero-stat-label">Ед. техники</div></div>
-                    <div class="hero-stat-divider"></div>
-                    <div><div class="hero-stat-value">24/7</div><div class="hero-stat-label">Поддержка</div></div>
+                <div class="d-flex flex-wrap gap-4">
+                    <div><div class="fs-3 fw-bold text-warning">85+</div><div class="text-white-50">Регионов</div></div>
+                    <div style="width:1px;height:40px;background:rgba(255,255,255,0.15);align-self:center;"></div>
+                    <div><div class="fs-3 fw-bold text-warning">1000+</div><div class="text-white-50">Ед. техники</div></div>
+                    <div style="width:1px;height:40px;background:rgba(255,255,255,0.15);align-self:center;"></div>
+                    <div><div class="fs-3 fw-bold text-warning">24/7</div><div class="text-white-50">Поддержка</div></div>
                 </div>
             </div>
             <div class="col-lg-5 d-none d-lg-block">
@@ -73,11 +72,11 @@
 {{-- ============================================================
      2. ПРЕИМУЩЕСТВА
      ============================================================ --}}
-<section id="advantages" class="section-padding">
+<section class="py-5" id="advantages">
     <div class="container">
         <div class="text-center mb-5">
-            <h2 class="section-title fw-bold">Почему выбирают нас</h2>
-            <p class="section-subtitle text-muted mx-auto">Четыре причины работать с Федеральной Арендной Платформой</p>
+            <h2 class="fw-bold" style="font-size:2rem;">Почему выбирают нас</h2>
+            <p class="text-muted mx-auto" style="max-width:600px;">Четыре причины работать с Федеральной Арендной Платформой</p>
         </div>
         <div class="row g-4">
             @foreach([
@@ -87,8 +86,8 @@
                 ['icon' => 'fa-headset', 'title' => 'Поддержка 24/7', 'text' => 'Круглосуточная поддержка клиентов. Поможем в любой ситуации'],
             ] as $adv)
             <div class="col-md-6 col-lg-3">
-                <div class="card border-0 h-100 p-4 text-center card-hover">
-                    <div class="mb-3 mx-auto bg-soft-primary rounded-circle d-flex align-items-center justify-content-center" style="width:64px;height:64px;">
+                <div class="card border-0 h-100 p-4 text-center" style="transition:all 0.3s ease;">
+                    <div class="mb-3 mx-auto bg-light rounded-circle d-flex align-items-center justify-content-center" style="width:64px;height:64px;">
                         <i class="fas {{ $adv['icon'] }} text-primary fs-3"></i>
                     </div>
                     <h4 class="fw-bold mb-2">{{ $adv['title'] }}</h4>
@@ -103,14 +102,14 @@
 {{-- ============================================================
      3. ПОПУЛЯРНАЯ ТЕХНИКА
      ============================================================ --}}
-<section class="section-padding bg-white">
+<section class="py-5 bg-white">
     <div class="container">
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-5">
             <div>
-                <h2 class="section-title fw-bold mb-1">Популярная техника</h2>
-                <p class="section-subtitle text-muted mb-0">Лучшие предложения от арендодателей</p>
+                <h2 class="fw-bold" style="font-size:2rem;">Популярная техника</h2>
+                <p class="text-muted mb-0">Лучшие предложения от арендодателей</p>
             </div>
-            <a href="{{ route('catalog.index') }}" class="btn btn-outline-primary d-none d-md-inline-flex shadow-hover">
+            <a href="{{ route('catalog.index') }}" class="btn btn-outline-primary d-none d-md-inline-flex">
                 Смотреть весь каталог <i class="bi bi-arrow-right ms-2"></i>
             </a>
         </div>
@@ -119,14 +118,14 @@
         <div class="row g-4">
             @foreach($popularEquipment as $equipment)
             <div class="col-md-6 col-lg-4 col-xl-3">
-                <div class="card border-0 h-100 card-hover">
-                    <div class="img-zoom position-relative" style="height:200px;">
+                <div class="card border-0 h-100" style="transition:all 0.3s ease;">
+                    <div class="position-relative" style="height:200px;overflow:hidden;background:#f8f9fa;">
                         @php $mainImage = $equipment->mainImage; @endphp
                         @if($mainImage)
                         <img src="{{ Storage::url($mainImage->path) }}" alt="{{ $equipment->title }}"
                              class="w-100 h-100" style="object-fit:cover;">
                         @else
-                        <div class="w-100 h-100 d-flex align-items-center justify-content-center bg-light">
+                        <div class="w-100 h-100 d-flex align-items-center justify-content-center">
                             <i class="fas fa-tractor text-secondary fs-1"></i>
                         </div>
                         @endif
@@ -170,21 +169,21 @@
      4. НОВОСТИ
      ============================================================ --}}
 @if($latestNews->count() > 0)
-<section class="section-padding">
+<section class="py-5">
     <div class="container">
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-5">
             <div>
-                <h2 class="section-title fw-bold mb-1">Новости и обновления</h2>
-                <p class="section-subtitle text-muted mb-0">Будьте в курсе последних событий платформы</p>
+                <h2 class="fw-bold" style="font-size:2rem;">Новости и обновления</h2>
+                <p class="text-muted mb-0">Будьте в курсе последних событий платформы</p>
             </div>
-            <a href="{{ route('news.index') }}" class="btn btn-outline-primary d-none d-md-inline-flex shadow-hover">
+            <a href="{{ route('news.index') }}" class="btn btn-outline-primary d-none d-md-inline-flex">
                 Все новости <i class="bi bi-arrow-right ms-2"></i>
             </a>
         </div>
         <div class="row g-4">
             @foreach($latestNews as $newsItem)
             <div class="col-md-6 col-lg-3">
-                <div class="card border-0 h-100 card-hover">
+                <div class="card border-0 h-100" style="transition:all 0.3s ease;">
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex align-items-center gap-2 mb-3">
                             <span class="badge bg-{{ $newsItem->category === 'all' ? 'primary' : ($newsItem->category === 'lessee' ? 'success' : 'warning') }}">
@@ -208,12 +207,12 @@
 {{-- ============================================================
      5. СТАТИСТИКА
      ============================================================ --}}
-<section class="section-padding position-relative overflow-hidden" style="background:linear-gradient(135deg,#002D72,#0B5ED7);">
-    <div class="container position-relative z-2">
+<section class="py-5" style="background:linear-gradient(135deg,#002D72,#0B5ED7);">
+    <div class="container">
         <div class="row g-4 text-center">
             @foreach([['label'=>'Арендодателей','val'=>$stats['lessors']??0],['label'=>'Арендаторов','val'=>$stats['lessees']??0],['label'=>'Заказов','val'=>$stats['orders']??0],['label'=>'Ед. техники','val'=>$stats['equipment']??0]] as $stat)
             <div class="col-6 col-lg-3">
-                <div class="stat-number text-warning fs-1 fw-bold">{{ $stat['val'] }}</div>
+                <div class="fs-1 fw-bold text-warning">{{ $stat['val'] }}</div>
                 <div class="text-white-50 fs-5">{{ $stat['label'] }}</div>
             </div>
             @endforeach
@@ -224,12 +223,12 @@
 {{-- ============================================================
      6. ФОРМА ОБРАТНОЙ СВЯЗИ
      ============================================================ --}}
-<section class="section-padding position-relative overflow-hidden" style="background:linear-gradient(135deg,#002D72,#0B5ED7);">
-    <div class="container position-relative z-2">
+<section class="py-5" style="background:linear-gradient(135deg,#002D72,#0B5ED7);">
+    <div class="container">
         <div class="row justify-content-center">
             <div class="col-lg-8">
                 <div class="text-center mb-5">
-                    <h2 class="text-white fw-bold fs-1 mb-2">Остались вопросы?</h2>
+                    <h2 class="text-white fw-bold" style="font-size:2.5rem;">Остались вопросы?</h2>
                     <p class="text-white-50">Заполните форму и мы свяжемся с вами</p>
                 </div>
                 <div class="bg-white rounded-3 shadow-lg p-4 p-lg-5">
