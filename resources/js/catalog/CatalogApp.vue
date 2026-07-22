@@ -69,7 +69,7 @@
             <div v-for="eq in equipment" :key="eq.id" class="col-xl-3 col-lg-4 col-md-6">
               <div class="card h-100 shadow-sm">
                 <div class="position-relative">
-                  <img :src="eq.main_image_url || '/images/no-image.svg'" class="card-img-top" alt="" loading="lazy" style="height:200px;object-fit:cover;">
+                  <img :src="getThumbnailUrl(eq)" class="card-img-top" alt="" loading="lazy" style="height:200px;object-fit:cover;">
                   <span v-if="eq.is_platform_owned" class="position-absolute top-0 end-0 m-2 badge bg-primary"><i class="bi bi-building-gear"></i> Платформа</span>
                 </div>
                 <div class="card-body d-flex flex-column">
@@ -257,6 +257,13 @@ export default {
     }
   },
   methods: {
+    getThumbnailUrl(eq) {
+      if (eq.images && eq.images.length > 0) {
+        const mainImg = eq.images.find(i => i.is_main) || eq.images[0];
+        return mainImg.thumbnail_url || mainImg.url || '/images/no-image.svg';
+      }
+      return eq.main_image_url || '/images/no-image.svg';
+    },
     async loadEquipment() {
       this.loading = true;
       const params = new URLSearchParams({

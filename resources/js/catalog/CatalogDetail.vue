@@ -15,11 +15,11 @@
             <div id="detailCarousel" class="carousel slide" data-bs-ride="carousel">
               <div class="carousel-inner">
                 <div v-for="(img, key) in equipment.images" :key="key" class="carousel-item" :class="{ active: key === 0 }">
-                  <img :src="img" class="d-block w-100 rounded" :alt="equipment.title" style="height:400px;object-fit:cover;">
+                  <img :src="img.medium_url || img.url || img" class="d-block w-100 rounded" :alt="equipment.title" loading="lazy" style="height:400px;object-fit:cover;">
                 </div>
-                <div v-if="!equipment.images || equipment.images.length === 0" class="carousel-item active">
+                <div v-if="!equipment.images || equipment.images.length === 0" class="carousel-item active" aria-hidden="true">
                   <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height:400px;">
-                    <i class="bi bi-image display-1 text-muted"></i>
+                    <i class="bi bi-image display-1 text-muted" loading="lazy"></i>
                   </div>
                 </div>
               </div>
