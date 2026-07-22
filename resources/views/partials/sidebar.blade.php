@@ -98,6 +98,7 @@
                         ['route'=>'admin.orders.index','icon'=>'bi-receipt','label'=>'Управление заказами','check'=>'admin/orders*'],
                         ['route'=>'admin.rental-requests.index','icon'=>'bi-clipboard-plus','label'=>'Заявки','check'=>'admin/rental-requests*'],
                         ['route'=>'admin.contacts.index','icon'=>'bi-envelope','label'=>'Обращения','check'=>'admin/contacts*'],
+                        ['route'=>'admin.news.index','icon'=>'bi-newspaper','label'=>'Новости','check'=>'admin/news*'],
                     ] as $item)
                     <li class="nav-item"><a class="nav-link py-2 px-3 rounded {{ Request::is($item['check']) ? 'active' : '' }}" href="{{ route($item['route']) }}" title="{{ $item['label'] }}"><i class="bi {{ $item['icon'] }} nav-icon"></i><span>{{ $item['label'] }}</span>@if($item['route'] === 'admin.contacts.index' && $unreadContactMessagesCount > 0)<span class="badge bg-danger rounded-pill ms-auto">{{ $unreadContactMessagesCount }}</span>@endif</a></li>
                     @endforeach

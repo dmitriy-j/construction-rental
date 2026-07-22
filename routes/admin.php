@@ -61,17 +61,6 @@ Route::post('/lessors/{lessor}/verify', [AdminLessorController::class, 'verify']
 Route::get('/lessors/{lessor}', [AdminLessorController::class, 'show'])->name('admin.lessors.show');
 Route::get('/lessors/{lessor}/orders/{order}', [AdminLessorController::class, 'showOrder'])->name('admin.lessors.orders.show');
 
-Route::resource('news', AdminNewsController::class)
-    ->except(['show'])
-    ->names([
-        'index' => 'admin.news.index',
-        'create' => 'admin.news.create',
-        'store' => 'admin.news.store',
-        'edit' => 'admin.news.edit',
-        'update' => 'admin.news.update',
-        'destroy' => 'admin.news.destroy',
-    ]);
-
 Route::resource('excel-mappings', ExcelMappingController::class)->names([
     'index' => 'admin.excel-mappings.index',
     'create' => 'admin.excel-mappings.create',
@@ -202,6 +191,17 @@ Route::resource('rental-requests', AdminRentalRequestController::class)->names([
 
 Route::get('/upds/{upd}/debug', [UpdController::class, 'debugTemplate'])->name('admin.upds.debug');
 Route::get('/upds/{upd}/debug-placeholders', [UpdController::class, 'debugPlaceholders'])->name('admin.upds.debug-placeholders');
+
+// Новости
+Route::prefix('news')->name('admin.news.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Admin\AdminNewsController::class, 'index'])->name('index');
+    Route::get('/create', [\App\Http\Controllers\Admin\AdminNewsController::class, 'create'])->name('create');
+    Route::post('/', [\App\Http\Controllers\Admin\AdminNewsController::class, 'store'])->name('store');
+    Route::get('/{news}', [\App\Http\Controllers\Admin\AdminNewsController::class, 'show'])->name('show');
+    Route::get('/{news}/edit', [\App\Http\Controllers\Admin\AdminNewsController::class, 'edit'])->name('edit');
+    Route::put('/{news}', [\App\Http\Controllers\Admin\AdminNewsController::class, 'update'])->name('update');
+    Route::delete('/{news}', [\App\Http\Controllers\Admin\AdminNewsController::class, 'destroy'])->name('destroy');
+});
 
 // Обращения с сайта
 Route::get('/contacts', [AdminContactController::class, 'index'])->name('admin.contacts.index');
