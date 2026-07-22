@@ -258,7 +258,51 @@
 </section>
 
 {{-- ============================================================
-     5. СТАТИСТИКА (цифры)
+     5. НОВОСТИ (лента последних 4 новостей)
+     ============================================================ --}}
+@if($latestNews->count() > 0)
+<section class="section-padding">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h2 class="section-title fw-bold mb-1">Новости и обновления</h2>
+                <p class="section-subtitle text-muted mb-0">Будьте в курсе последних событий платформы</p>
+            </div>
+            <a href="{{ route('news.index') }}" class="btn btn-outline-primary btn-lg d-none d-md-inline-flex">
+                Все новости <i class="bi bi-arrow-right ms-2"></i>
+            </a>
+        </div>
+        <div class="row g-4">
+            @foreach($latestNews as $newsItem)
+            <div class="col-md-6 col-lg-3">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body d-flex flex-column">
+                        <div class="small text-muted mb-2">
+                            <span class="badge bg-{{ $newsItem->category === 'all' ? 'info' : ($newsItem->category === 'lessee' ? 'success' : 'warning') }} me-1" style="font-size:0.7rem;">
+                                {{ $newsItem->category === 'all' ? 'Все' : ($newsItem->category === 'lessee' ? 'Арендаторам' : 'Арендодателям') }}
+                            </span>
+                            {{ $newsItem->published_at?->format('d.m.Y') ?? $newsItem->created_at->format('d.m.Y') }}
+                        </div>
+                        <h5 class="card-title fw-bold mb-2" style="font-size:1rem;">
+                            <a href="{{ route('news.show', $newsItem->slug) }}" class="text-decoration-none stretched-link">{{ $newsItem->title }}</a>
+                        </h5>
+                        <p class="card-text small text-muted mb-0 flex-grow-1">{{ $newsItem->excerpt ?? Str::limit(strip_tags($newsItem->content), 120) }}</p>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        <div class="text-center mt-4 d-md-none">
+            <a href="{{ route('news.index') }}" class="btn btn-outline-primary btn-lg w-100">
+                Все новости <i class="bi bi-arrow-right ms-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
+@endif
+
+{{-- ============================================================
+     6. СТАТИСТИКА (цифры)
      ============================================================ --}}
 <section class="section-padding stats-section position-relative overflow-hidden">
     <div class="stats-bg"></div>
