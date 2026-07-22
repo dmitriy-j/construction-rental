@@ -21,6 +21,8 @@ use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Admin\AdminRentalRequestController;
 use Illuminate\Support\Facades\Route;
 
+Route::middleware('platform_admin')->group(function () {
+
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 
 Route::prefix('orders')->name('admin.orders.')->group(function () {
@@ -205,3 +207,5 @@ use App\Http\Controllers\Admin\AdminContactController;
 Route::get('/contacts', [AdminContactController::class, 'index'])->name('admin.contacts.index');
 Route::patch('/contacts/{contact}', [AdminContactController::class, 'markAsRead'])->name('admin.contacts.mark-read');
 Route::delete('/contacts/{contact}', [AdminContactController::class, 'destroy'])->name('admin.contacts.destroy');
+
+}); // end of platform_admin middleware group
