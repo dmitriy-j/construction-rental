@@ -24,7 +24,7 @@ class DashboardController extends Controller
             'users_count' => User::count(),
             'total_news' => News::count(),
             'published_news' => News::published()->count(),
-            'draft_news' => News::where('is_published', false)->count(),
+            'draft_news' => News::where('is_active', false)->count(),
             'last_news' => News::latest()->take(5)->get(),
         ];
 
