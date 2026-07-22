@@ -15,14 +15,31 @@
     <div class="card">
         <div class="card-body">
             @forelse($notifications as $notification)
+            @php
+                $data = $notification->data;
+                $isAdminNotification = ($data['type'] ?? '') !== 'contact_message';
+            @endphp
             <div class="border-bottom pb-3 mb-3">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <a href="{{ $notification->data['url'] ?? '#' }}"
-                           class="{{ $notification->unread() ? 'fw-bold' : '' }}">
-                            {{ $notification->data['message'] }}
-                        </a>
-                        <div class="text-muted small">
+                        @if($isAdminNotification && !empty($data['data']))
+                            <div class="{{ $notification->unread() ? 'fw-bold' : '' }} mb-1">
+                                {{ $data['title'] ?? 'Уведомление' }}
+                            </div>
+                            <div class="small text-muted">
+                                @foreach($data['data'] as $label => $value)
+                                    @if(!in_array($label, ['url', 'type']))
+                                        <span class="me-2">{{ $label }}: {{ $value }}</span>
+                                    @endif
+                                @endforeach
+                            </div>
+                        @else
+                            <a href="{{ $data['url'] ?? ($data['action_url'] ?? '#') }}"
+                               class="{{ $notification->unread() ? 'fw-bold' : '' }}">
+                                {{ $data['message'] ?? ($data['title'] ?? 'Уведомление') }}
+                            </a>
+                        @endif
+                        <div class="text-muted small mt-1">
                             {{ $notification->created_at->diffForHumans() }}
                         </div>
                     </div>
