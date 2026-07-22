@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Mail\ContactNotification;
 use App\Models\ContactMessage;
 use App\Models\Equipment;
+use App\Models\News;
 use App\Models\RentalRequest;
 use App\Models\User;
 use App\Notifications\NewContactMessage;
@@ -37,7 +38,9 @@ class HomeController extends Controller
             'equipment' => Equipment::where('is_approved', true)->count(),
         ];
 
-        return view('home', compact('popularEquipment', 'stats'));
+        $latestNews = NewsController::getLatest(4);
+
+        return view('home', compact('popularEquipment', 'stats', 'latestNews'));
     }
 
     /**
