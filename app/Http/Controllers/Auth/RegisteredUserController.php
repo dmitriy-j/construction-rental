@@ -11,6 +11,7 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
+use App\Services\AdminNotificationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -148,6 +149,19 @@ class RegisteredUserController extends Controller
                 'company_type' => $validatedData['company_type'],
                 'legal_type' => $validatedData['legal_type']
             ]);
+
+            // Отправляем уведомление админу о новой регистрации
+            try {
+                app(AdminNotificationService::class)->newUserRegistered(
+                    $company->legal_name,
+                    $validatedData['company_type'],
+                    $validatedData['director_name'],
+                    $validatedData['phone'],
+                    $validatedData['email']
+                );
+            } catch (\Throwable $e) {
+                Log::error('Ошибка отправки уведомления о регистрации', ['error' => $e->getMessage()]);
+            }
 
             // Редирект с сообщением о успешной регистрации и отправке верификации
             return redirect(RouteServiceProvider::HOME)

@@ -208,4 +208,11 @@ Route::get('/contacts', [AdminContactController::class, 'index'])->name('admin.c
 Route::patch('/contacts/{contact}', [AdminContactController::class, 'markAsRead'])->name('admin.contacts.mark-read');
 Route::delete('/contacts/{contact}', [AdminContactController::class, 'destroy'])->name('admin.contacts.destroy');
 
+// Уведомления администратора
+Route::prefix('notifications')->name('admin.notifications.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Admin\AdminNotificationController::class, 'index'])->name('index');
+    Route::post('/mark-all-read', [\App\Http\Controllers\Admin\AdminNotificationController::class, 'markAllAsRead'])->name('mark-all-read');
+    Route::post('/{id}/mark-read', [\App\Http\Controllers\Admin\AdminNotificationController::class, 'markAsRead'])->name('mark-read');
+});
+
 }); // end of platform_admin middleware group
