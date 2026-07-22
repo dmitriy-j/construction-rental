@@ -14,6 +14,7 @@ use App\Models\Upd;
 use App\Services\BalanceService;
 use App\Services\BankStatementProcessingService;
 use App\Services\Parsers\BankStatementParser;
+use App\Services\AdminNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -182,6 +183,21 @@ class BankStatementController extends Controller
 
             // Обновляем статус выписки
             $this->updateStatementStatus($statement);
+
+            // Отправляем уведомление админу о загрузке выписки
+            try {
+                $totalAmount = collect($transactions)->sum(function ($t) {
+                    $amount = str_replace(',', '.', $t['Сумма'] ?? 0);
+                    return is_numeric($amount) ? (float)$amount : 0;
+                });
+                app(AdminNotificationService::class)->bankStatementUploaded(
+                    $statement->id,
+                    count($transactions),
+                    $totalAmount
+                );
+            } catch (\Throwable $e) {
+                \Log::error('Ошибка отправки уведомления о выписке', ['error' => $e->getMessage()]);
+            }
 
             \Log::info('Bank statement processing completed', [
                 'statement_id' => $statement->id,
