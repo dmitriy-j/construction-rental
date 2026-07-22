@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Equipment;
 use App\Services\CartService;
+use App\Services\AdminNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -87,6 +88,19 @@ class OrderApiController extends Controller
             $cart->items()->delete();
             DB::commit();
 
+            // Уведомление админу о новом заказе
+            try {
+                $lesseeName = $user->company->legal_name ?? $user->name;
+                app(AdminNotificationService::class)->newOrder(
+                    "#{$order->id}",
+                    $lesseeName,
+                    null,
+                    $order->total_amount ?? 0
+                );
+            } catch (\Throwable $e) {
+                Log::error('Ошибка уведомления о новом заказе', ['error' => $e->getMessage()]);
+            }
+
             return response()->json(['success' => true, 'order_id' => $order->id]);
 
         } catch (\Exception $e) {
@@ -146,6 +160,20 @@ class OrderApiController extends Controller
 
             $cart->items()->delete();
             DB::commit();
+
+            // Уведомление админу о новом заказе из предложения
+            try {
+                $lesseeName = $user->company->legal_name ?? $user->name;
+                $lessorName = $proposal->lessor->company->legal_name ?? null;
+                app(AdminNotificationService::class)->newOrder(
+                    "#{$order->id}",
+                    $lesseeName,
+                    $lessorName,
+                    $proposal->proposed_price ?? 0
+                );
+            } catch (\Throwable $e) {
+                Log::error('Ошибка уведомления о заказе из предложения', ['error' => $e->getMessage()]);
+            }
 
             return response()->json(['success' => true, 'message' => 'Заказы созданы']);
 
