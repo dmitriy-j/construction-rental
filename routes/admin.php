@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\AdminFinanceController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Admin\AdminRentalRequestController;
+use App\Http\Controllers\Admin\AdminContactController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('platform_admin')->group(function () {
@@ -203,7 +204,6 @@ Route::get('/upds/{upd}/debug', [UpdController::class, 'debugTemplate'])->name('
 Route::get('/upds/{upd}/debug-placeholders', [UpdController::class, 'debugPlaceholders'])->name('admin.upds.debug-placeholders');
 
 // Обращения с сайта
-use App\Http\Controllers\Admin\AdminContactController;
 Route::get('/contacts', [AdminContactController::class, 'index'])->name('admin.contacts.index');
 Route::patch('/contacts/{contact}', [AdminContactController::class, 'markAsRead'])->name('admin.contacts.mark-read');
 Route::delete('/contacts/{contact}', [AdminContactController::class, 'destroy'])->name('admin.contacts.destroy');
