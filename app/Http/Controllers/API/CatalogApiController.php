@@ -154,7 +154,14 @@ class CatalogApiController extends Controller
                 'dimensions' => $equipment->dimensions, 'category' => $equipment->category?->name,
                 'location' => $equipment->location?->name,
                 'default_start' => $defaultStart->format('Y-m-d'),
-                'images' => $equipment->images?->map(fn($img) => asset('storage/' . $img->path)) ?? [],
+                'images' => $equipment->images?->map(fn($img) => [
+                    'id' => $img->id,
+                    'url' => $img->getOriginalUrl(),
+                    'thumbnail_url' => $img->getThumbnailUrl(),
+                    'medium_url' => $img->getMediumUrl(),
+                    'large_url' => $img->getLargeUrl(),
+                    'is_main' => $img->is_main,
+                ])->values() ?? [],
                 'specifications' => $equipment->specifications?->map(fn($s) => ['key' => $s->key, 'value' => $s->value]) ?? [],
                 'availability' => $equipment->future_availability ?? [],
             ]);

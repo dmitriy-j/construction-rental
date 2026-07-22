@@ -10,6 +10,7 @@ use App\Models\Equipment;
 use App\Models\EquipmentImage;
 use App\Models\Location;
 use App\Services\CatalogCacheService;
+use App\Services\ImageOptimizerService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -101,14 +102,15 @@ class EquipmentController extends Controller
             // Создаем тарифы
             $this->createRentalTerms($equipment, $request);
 
-            // Обработка изображений
+            // Обработка изображений с оптимизацией
             if ($request->hasFile('images')) {
+                $optimizer = app(ImageOptimizerService::class);
                 foreach ($request->images as $key => $image) {
-                    $path = $image->store('public/equipment');
-                    $equipment->images()->create([
-                        'path' => str_replace('public/', '', $path),
+                    $eqImage = $equipment->images()->create([
+                        'path' => 'equipment/' . $equipment->id . '/' . $image->getClientOriginalName(),
                         'is_main' => $key === 0,
                     ]);
+                    $optimizer->optimize($eqImage, $image);
                 }
             }
 
@@ -219,15 +221,15 @@ class EquipmentController extends Controller
                 }
             }
 
-            // Добавление новых изображений
+            // Добавление новых изображений с оптимизацией
             if ($request->hasFile('images')) {
+                $optimizer = app(ImageOptimizerService::class);
                 foreach ($request->images as $image) {
-                    $path = $image->store('public/equipment');
-                    $relativePath = str_replace('public/', '', $path);
-                    $equipment->images()->create([
-                        'path' => $relativePath,
+                    $eqImage = $equipment->images()->create([
+                        'path' => 'equipment/' . $equipment->id . '/' . $image->getClientOriginalName(),
                         'is_main' => false,
                     ]);
+                    $optimizer->optimize($eqImage, $image);
                 }
             }
 
