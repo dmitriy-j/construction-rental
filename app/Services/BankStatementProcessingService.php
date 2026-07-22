@@ -33,6 +33,9 @@ class BankStatementProcessingService
     public function processTransaction(array $transactionData, int $bankStatementId): void
     {
         try {
+            // 1. Сначала безопасно извлекаем сумму из данных (до всех потенциальных исключений)
+            $rawAmount = $this->parseAmountSafe($transactionData['Сумма'] ?? 0);
+
             // Определяем тип транзакции
             $type = $this->determineTransactionType($transactionData);
             $idempotencyKey = $this->generateIdempotencyKey($transactionData);
@@ -133,7 +136,7 @@ class BankStatementProcessingService
                 BankStatementTransaction::create([
                     'bank_statement_id' => $bankStatementId,
                     'date' => $date,
-                    'amount' => 0,
+                    'amount' => $rawAmount,
                     'type' => $type ?? 'incoming',
                     'payer_name' => $transactionData['Плательщик1'] ?? 'Не указан',
                     'payer_inn' => $this->cleanInn($transactionData['ПлательщикИНН'] ?? ''),
@@ -214,6 +217,19 @@ class BankStatementProcessingService
         }
 
         return $parsedAmount;
+    }
+
+    /**
+     * Безопасный парсинг суммы без выбрасывания исключений.
+     * Используется для извлечения суммы из данных при создании записи об ошибке.
+     */
+    protected function parseAmountSafe($amount): float
+    {
+        if (is_string($amount)) {
+            $amount = str_replace(',', '.', $amount);
+        }
+
+        return is_numeric($amount) ? (float)$amount : 0.0;
     }
 
     protected function generateIdempotencyKey(array $transactionData): string
