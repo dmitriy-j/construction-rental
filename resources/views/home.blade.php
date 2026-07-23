@@ -504,10 +504,9 @@
    HOME PAGE STYLES
    ========================================================================== */
 
-/* --- Hero Section --- */
+/* Hero Section — edge-to-edge without white borders */
 .hero-section {
     min-height: 75vh;
-    padding-top: var(--navbar-height, 80px);
     display: flex;
     align-items: center;
 }
@@ -557,11 +556,6 @@
     max-width: 600px;
 }
 
-.hero-badges .badge {
-    font-size: 0.9rem;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
-}
-
 .hero-scroll-indicator {
     position: absolute;
     bottom: 30px;
@@ -585,7 +579,6 @@
     min-height: 75vh;
 }
 
-/* --- Section Padding --- */
 .section-padding {
     padding: 5rem 0;
 }
@@ -596,7 +589,6 @@
     }
     .hero-section {
         min-height: 60vh;
-        padding-top: calc(var(--navbar-height, 80px) + 1rem);
     }
     .hero-title {
         font-size: 2.2rem !important;

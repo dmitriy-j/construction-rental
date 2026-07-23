@@ -57,6 +57,10 @@
         .modal { z-index: 10050 !important; }
         .modal-backdrop { z-index: 10040 !important; }
 
+        /* Full-width sections — compensate content-container padding */
+        .content-container { padding-left: 0 !important; padding-right: 0 !important; }
+        .hero-section, .page-hero, .stats-section, .contact-section { width: 100%; }
+
         /* Footer inside content area - light for auth users */
         .content-footer { margin-top: auto; width: 100%; transition: margin-left 0.3s ease; }
         .content-footer .site-footer { background: #fff; border-top: 1px solid #e9ecef; padding: 1.5rem 0; margin: 0; }
