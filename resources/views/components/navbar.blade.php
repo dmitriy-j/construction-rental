@@ -147,7 +147,6 @@
     box-shadow: 0 2px 20px rgba(0, 45, 114, 0.25);
     padding: 0 1rem;
     min-height: var(--navbar-height, 72px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     z-index: 9999;
 }
 
