@@ -3,55 +3,53 @@
 @section('title', 'Управление заявками — Админ-панель')
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+<div class="container-fluid px-0">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 px-3">
         <div>
-            <h1 class="h3 mb-1 fw-bold">Заявки арендаторов</h1>
+            <h1 class="h4 fw-bold mb-1">Заявки арендаторов</h1>
             <p class="text-muted mb-0 small">Управление заявками на аренду техники</p>
         </div>
-        <a href="{{ route('admin.rental-requests.create') }}" class="btn btn-success"><i class="bi bi-plus-lg me-1"></i> Создать</a>
+        <a href="{{ route('admin.rental-requests.create') }}" class="btn btn-success btn-sm"><i class="bi bi-plus-lg me-1"></i> Создать</a>
     </div>
 
-    <div class="card shadow-sm mb-4 border-0">
-        <div class="card-body">
-            <form method="GET" class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label">Поиск</label>
-                    <input type="text" name="search" class="form-control" placeholder="Название, пользователь, компания" value="{{ request('search') }}">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Статус</label>
-                    <select name="status" class="form-select">
-                        <option value="all">Все статусы</option>
-                        @foreach($statuses as $s)
-                            <option value="{{ $s }}" {{ request('status') == $s ? 'selected' : '' }}>{{ \App\Models\RentalRequest::getStatusText($s) }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Видимость</label>
-                    <select name="visibility" class="form-select">
-                        <option value="">Все</option>
-                        <option value="public" {{ request('visibility') == 'public' ? 'selected' : '' }}>Публичные</option>
-                        <option value="private" {{ request('visibility') == 'private' ? 'selected' : '' }}>Приватные</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Сортировка</label>
-                    <select name="sort" class="form-select">
-                        <option value="newest" {{ request('sort') == 'newest' ? 'selected' : '' }}>Сначала новые</option>
-                        <option value="oldest" {{ request('sort') == 'oldest' ? 'selected' : '' }}>Сначала старые</option>
-                        <option value="budget" {{ request('sort') == 'budget' ? 'selected' : '' }}>По бюджету</option>
-                    </select>
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel me-1"></i> Найти</button>
-                </div>
-            </form>
-        </div>
+    <div class="px-3 mb-4">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold">Поиск</label>
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="Название, пользователь, компания" value="{{ request('search') }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Статус</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="all">Все статусы</option>
+                    @foreach($statuses as $s)
+                        <option value="{{ $s }}" {{ request('status') == $s ? 'selected' : '' }}>{{ \App\Models\RentalRequest::getStatusText($s) }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Видимость</label>
+                <select name="visibility" class="form-select form-select-sm">
+                    <option value="">Все</option>
+                    <option value="public" {{ request('visibility') == 'public' ? 'selected' : '' }}>Публичные</option>
+                    <option value="private" {{ request('visibility') == 'private' ? 'selected' : '' }}>Приватные</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold">Сортировка</label>
+                <select name="sort" class="form-select form-select-sm">
+                    <option value="newest" {{ request('sort') == 'newest' ? 'selected' : '' }}>Сначала новые</option>
+                    <option value="oldest" {{ request('sort') == 'oldest' ? 'selected' : '' }}>Сначала старые</option>
+                    <option value="budget" {{ request('sort') == 'budget' ? 'selected' : '' }}>По бюджету</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-grid">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-funnel me-1"></i> Найти</button>
+            </div>
+        </form>
     </div>
 
-    <div class="card shadow-sm border-0">
+    <div class="px-3">
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead>
@@ -63,10 +61,10 @@
                         <th>Статус</th>
                         <th>Видимость</th>
                         <th>Бюджет</th>
-                        <th>Позиций</th>
-                        <th>Предложений</th>
+                        <th>Поз.</th>
+                        <th>Предл.</th>
                         <th>Дата</th>
-                        <th style="width:120px;">Действия</th>
+                        <th style="width:110px;">Действия</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -99,7 +97,7 @@
                 </tbody>
             </table>
         </div>
-        @if($requests->hasPages())<div class="card-footer">{{ $requests->links() }}</div>@endif
+        @if($requests->hasPages())<div class="mt-3">{{ $requests->links() }}</div>@endif
     </div>
 </div>
 @endsection
