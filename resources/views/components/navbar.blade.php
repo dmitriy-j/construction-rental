@@ -40,9 +40,7 @@
 
             <ul class="navbar-nav ms-auto align-items-center">
                 <li class="nav-item me-1">
-                    <button class="btn btn-ghost-light btn-sm" id="themeToggle" title="Сменить тему">
-                        <i class="fas fa-sun"></i>
-                    </button>
+                    <button class="btn btn-ghost-light btn-sm" id="themeToggle" title="Сменить тему"><i class="fas fa-sun"></i></button>
                 </li>
                 <li class="nav-item me-1">
                     <a class="nav-link position-relative notification-bell" href="{{ route('notifications') }}" title="Уведомления">
@@ -62,9 +60,7 @@
                 <li class="nav-item dropdown profile-dropdown ms-1">
                     <a class="nav-link dropdown-toggle d-flex align-items-center profile-toggle" href="#"
                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <div class="user-avatar-circle me-2">
-                            <span>{{ mb_substr(Auth::user()->name, 0, 1) }}</span>
-                        </div>
+                        <div class="user-avatar-circle me-2"><span>{{ mb_substr(Auth::user()->name, 0, 1) }}</span></div>
                         <span class="user-name d-none d-xl-inline">{{ Auth::user()->name }}</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end profile-menu">
@@ -89,9 +85,7 @@
             <a class="nav-link position-relative me-1 notification-bell-mobile" href="{{ route('notifications') }}" title="Уведомления">
                 <i class="fas fa-bell"></i>
                 @if(auth()->user()->unreadNotifications->count() > 0)
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger notification-badge">
-                        {{ auth()->user()->unreadNotifications->count() > 99 ? '99+' : auth()->user()->unreadNotifications->count() }}
-                    </span>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger notification-badge">{{ auth()->user()->unreadNotifications->count() > 99 ? '99+' : auth()->user()->unreadNotifications->count() }}</span>
                 @endif
             </a>
             <div class="nav-item dropdown profile-dropdown me-1">
@@ -111,9 +105,7 @@
                     <li><form method="POST" action="{{ route('logout') }}">@csrf<button type="submit" class="dropdown-item"><i class="fas fa-sign-out-alt"></i> Выйти</button></form></li>
                 </ul>
             </div>
-            <button class="navbar-toggler border-0" type="button" id="sidebarToggleMobile" aria-label="Меню">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <button class="navbar-toggler border-0" type="button" id="sidebarToggleMobile" aria-label="Меню"><span class="navbar-toggler-icon"></span></button>
         </div>
 
         @else
@@ -121,55 +113,23 @@
         <div class="d-flex d-lg-none align-items-center mobile-guest-controls">
             <button class="btn btn-ghost-light btn-sm me-1" id="themeToggleMobile" title="Сменить тему"><i class="fas fa-sun"></i></button>
             <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMainContent"
-                    aria-controls="navbarMainContent" aria-expanded="false" aria-label="Меню">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+                    aria-controls="navbarMainContent" aria-expanded="false" aria-label="Меню"><span class="navbar-toggler-icon"></span></button>
         </div>
 
         <div class="collapse navbar-collapse" id="navbarMainContent">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0 nav-sections">
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('catalog.index') ? 'active' : '' }}" href="{{ route('catalog.index') }}">
-                        <i class="fas fa-th-list"></i> Каталог
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('rental-requests.index') ? 'active' : '' }}" href="{{ route('rental-requests.index') }}">
-                        <i class="fas fa-file-alt"></i> Заявки
-                    </a>
-                </li>
+                <li class="nav-item"><a class="nav-link {{ request()->routeIs('catalog.index') ? 'active' : '' }}" href="{{ route('catalog.index') }}"><i class="fas fa-th-list"></i> Каталог</a></li>
+                <li class="nav-item"><a class="nav-link {{ request()->routeIs('rental-requests.index') ? 'active' : '' }}" href="{{ route('rental-requests.index') }}"><i class="fas fa-file-alt"></i> Заявки</a></li>
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-info-circle"></i> О нас
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{{ route('about') }}">О компании</a></li>
-                        <li><a class="dropdown-item" href="{{ route('cooperation') }}">Сотрудничество</a></li>
-                        <li><a class="dropdown-item" href="{{ route('contacts') }}">Контакты</a></li>
-                        <li><a class="dropdown-item" href="{{ route('jobs') }}">Вакансии</a></li>
-                    </ul>
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"><i class="fas fa-info-circle"></i> О нас</a>
+                    <ul class="dropdown-menu"><li><a class="dropdown-item" href="{{ route('about') }}">О компании</a></li><li><a class="dropdown-item" href="{{ route('cooperation') }}">Сотрудничество</a></li><li><a class="dropdown-item" href="{{ route('contacts') }}">Контакты</a></li><li><a class="dropdown-item" href="{{ route('jobs') }}">Вакансии</a></li></ul>
                 </li>
             </ul>
-
             <ul class="navbar-nav ms-auto nav-controls-guest">
-                <li class="nav-item d-none d-lg-block">
-                    <button class="btn btn-ghost-light btn-sm me-2" id="themeToggle" title="Сменить тему"><i class="fas fa-sun"></i></button>
-                </li>
-                <li class="nav-item">
-                    <a class="btn btn-warning btn-sm fw-bold me-2 cta-btn" href="{{ route('register') }}">
-                        <i class="fas fa-plus-circle"></i> Создать заявку
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="btn btn-outline-light btn-sm me-2 login-btn" href="{{ route('login') }}">
-                        <i class="fas fa-sign-in-alt"></i> Войти
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="btn btn-light btn-sm register-btn" href="{{ route('register') }}">
-                        <i class="fas fa-user-plus"></i> Регистрация
-                    </a>
-                </li>
+                <li class="nav-item d-none d-lg-block"><button class="btn btn-ghost-light btn-sm me-2" id="themeToggle" title="Сменить тему"><i class="fas fa-sun"></i></button></li>
+                <li class="nav-item"><a class="btn btn-warning btn-sm fw-bold me-2 cta-btn" href="{{ route('register') }}"><i class="fas fa-plus-circle"></i> Создать заявку</a></li>
+                <li class="nav-item"><a class="btn btn-outline-light btn-sm me-2 login-btn" href="{{ route('login') }}"><i class="fas fa-sign-in-alt"></i> Войти</a></li>
+                <li class="nav-item"><a class="btn btn-light btn-sm register-btn" href="{{ route('register') }}"><i class="fas fa-user-plus"></i> Регистрация</a></li>
             </ul>
         </div>
         @endauth
@@ -178,13 +138,16 @@
 
 <style>
 /* ============================================================
-   СТИЛИ НАВБАРА — MODERN REDESIGN
+   NAVBAR — PREMIUM GLASSMORPHISM
    ============================================================ */
 .main-navbar {
-    background: linear-gradient(135deg, #0B5ED7 0%, #002D72 100%);
-    box-shadow: 0 2px 20px rgba(0, 45, 114, 0.2);
+    background: linear-gradient(135deg, rgba(11,94,215,0.97) 0%, rgba(0,45,114,0.97) 100%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 2px 20px rgba(0, 45, 114, 0.25);
     padding: 0 1rem;
     min-height: var(--navbar-height, 72px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     z-index: 9999;
 }
 
@@ -205,10 +168,10 @@
     transition: all 0.2s ease;
 }
 .navbar-nav .nav-link i { font-size: 0.9rem; }
-.navbar-nav .nav-link:hover { background: rgba(255,255,255,0.1); color: #fff; }
-.navbar-nav .nav-link.active { background: rgba(255,255,255,0.15); font-weight: 600; }
+.navbar-nav .nav-link:hover { background: rgba(255,255,255,0.12); color: #fff; }
+.navbar-nav .nav-link.active { background: rgba(255,255,255,0.18); font-weight: 600; }
 
-.dropdown-menu-about, .profile-menu { border: none; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); padding: 0.375rem; min-width: 220px; }
+.dropdown-menu-about, .profile-menu { border: none; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); padding: 0.375rem; min-width: 220px; border: 1px solid rgba(0,0,0,0.05); }
 .dropdown-menu-about .dropdown-item, .profile-menu .dropdown-item {
     padding: 0.5rem 0.875rem; margin: 0.125rem 0; border-radius: 8px;
     color: #1A1D21; font-weight: 500; font-size: 0.875rem; transition: all 0.2s ease;
@@ -216,8 +179,8 @@
 .dropdown-menu-about .dropdown-item:hover, .profile-menu .dropdown-item:hover { background: rgba(11,94,215,0.08); color: #0B5ED7; }
 .dropdown-menu-about .dropdown-item i, .profile-menu .dropdown-item i { width: 18px; text-align: center; margin-right: 0.5rem; color: #0B5ED7; }
 
-.btn-ghost-light { background: transparent; border: 1px solid rgba(255,255,255,0.25); color: rgba(255,255,255,0.85); width: 36px; height: 36px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; }
-.btn-ghost-light:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.4); color: #fff; transform: rotate(15deg); }
+.btn-ghost-light { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.85); width: 36px; height: 36px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; }
+.btn-ghost-light:hover { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.35); color: #fff; transform: rotate(15deg); }
 
 .cta-btn { background: linear-gradient(135deg, #FF8C00 0%, #FF6B00 100%); border: none; color: #1a1a1a; border-radius: 8px; padding: 0.5rem 1rem; font-weight: 700; font-size: 0.875rem; box-shadow: 0 2px 10px rgba(255,140,0,0.3); transition: all 0.2s ease; }
 .cta-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(255,140,0,0.4); color: #000; }
@@ -236,7 +199,7 @@
     .profile-menu-mobile { position: fixed; top: 60px; right: 10px; width: 250px; border: none; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); padding: 0.375rem; }
     .profile-menu-mobile .dropdown-item { padding: 0.5rem 0.875rem; margin: 0.125rem 0; border-radius: 8px; }
     .profile-menu-mobile .dropdown-item:hover { background: rgba(11,94,215,0.08); color: #0B5ED7; }
-    #navbarMainContent { background: #002D72; border-radius: 0 0 12px 12px; }
+    #navbarMainContent { background: rgba(0,45,114,0.98); backdrop-filter: blur(12px); border-radius: 0 0 12px 12px; }
     #navbarMainContent .nav-link { background: rgba(255,255,255,0.06); }
 }
 
