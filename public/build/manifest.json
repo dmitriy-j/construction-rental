@@ -75,7 +75,7 @@
     "name": "sweetalert2.esm.all"
   },
   "resources/js/app.js": {
-    "file": "assets/app-DVuVdJQP.js",
+    "file": "assets/app-cJ5vTgrs.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -417,7 +417,7 @@
     "isEntry": true
   },
   "resources/sass/app.scss": {
-    "file": "assets/app-WkgSTPvP.css",
+    "file": "assets/app-nst8vf6X.css",
     "src": "resources/sass/app.scss",
     "isEntry": true
   }
