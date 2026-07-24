@@ -488,13 +488,5 @@
 .content-footer .scroll-to-top:hover { background: linear-gradient(135deg, #0B5ED7, #002D72); color: #fff; border-color: transparent; }
 .content-footer .federal-badge { background: linear-gradient(135deg, #0B5ED7, #002D72); color: #fff; }
 
-/* --- Тёмная тема --- */
-[data-theme="dark"] .site-footer {
-    background: linear-gradient(135deg, #0D1B2A 0%, #1A1C23 100%);
-}
-
-[data-theme="dark"] .site-footer::after {
-    background-image: radial-gradient(rgba(255,255,255,0.02) 1px, transparent 1px);
-}
 </style>
 </write_to_file>

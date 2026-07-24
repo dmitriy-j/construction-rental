@@ -22,6 +22,7 @@
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
     @stack('styles')
 
+    <meta name="theme-color" content="#0B5ED7">
     <link rel="icon" type="image/svg+xml" href="{{ asset('images/logo/fap-logo.svg') }}">
 
     <style>
@@ -105,30 +106,6 @@
             if (n && n.classList.contains('navbar--hidden')) { n.classList.remove('navbar--hidden'); }
         }, 200);
     })();
-    </script>
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.content-container table:not(.table-responsive-custom table)').forEach(function(table) {
-            if (!table.closest('.table-responsive')) { var w = document.createElement('div'); w.className = 'table-responsive'; table.parentNode.insertBefore(w, table); w.appendChild(table); }
-        });
-        const themeToggle = document.getElementById('themeToggle');
-        if (themeToggle) {
-            themeToggle.addEventListener('click', function() {
-                const html = document.documentElement;
-                const theme = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-                html.setAttribute('data-theme', theme);
-                localStorage.setItem('theme', theme);
-                updateThemeIcon(theme);
-            });
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme) { document.documentElement.setAttribute('data-theme', savedTheme); updateThemeIcon(savedTheme); }
-        }
-        function updateThemeIcon(theme) {
-            document.querySelectorAll('[data-theme-toggle]').forEach(function(el) {
-                el.innerHTML = theme === 'dark' ? '<i class="fas fa-moon"></i>' : '<i class="fas fa-sun"></i>';
-            });
-        }
-    });
     </script>
 </body>
 </html>

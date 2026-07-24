@@ -40,9 +40,6 @@
 
             <ul class="navbar-nav ms-auto align-items-center">
                 <li class="nav-item me-1">
-                    <button class="btn btn-ghost-light btn-sm" id="themeToggle" title="Сменить тему"><i class="fas fa-sun"></i></button>
-                </li>
-                <li class="nav-item me-1">
                     <a class="nav-link position-relative notification-bell" href="{{ route('notifications') }}" title="Уведомления">
                         <i class="fas fa-bell"></i>
                         @if(auth()->user()->unreadNotifications->count() > 0)
@@ -81,7 +78,6 @@
 
         {{-- Мобильная версия для авторизованных --}}
         <div class="d-flex d-lg-none align-items-center mobile-auth-controls">
-            <button class="btn btn-ghost-light btn-sm me-1" id="themeToggleMobile" title="Сменить тему"><i class="fas fa-sun"></i></button>
             <a class="nav-link position-relative me-1 notification-bell-mobile" href="{{ route('notifications') }}" title="Уведомления">
                 <i class="fas fa-bell"></i>
                 @if(auth()->user()->unreadNotifications->count() > 0)
@@ -111,7 +107,6 @@
         @else
         {{-- ДЛЯ НЕАВТОРИЗОВАННЫХ --}}
         <div class="d-flex d-lg-none align-items-center mobile-guest-controls">
-            <button class="btn btn-ghost-light btn-sm me-1" id="themeToggleMobile" title="Сменить тему"><i class="fas fa-sun"></i></button>
             <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMainContent"
                     aria-controls="navbarMainContent" aria-expanded="false" aria-label="Меню"><span class="navbar-toggler-icon"></span></button>
         </div>
@@ -126,7 +121,6 @@
                 </li>
             </ul>
             <ul class="navbar-nav ms-auto nav-controls-guest">
-                <li class="nav-item d-none d-lg-block"><button class="btn btn-ghost-light btn-sm me-2" id="themeToggle" title="Сменить тему"><i class="fas fa-sun"></i></button></li>
                 <li class="nav-item"><a class="btn btn-warning btn-sm fw-bold me-2 cta-btn" href="{{ route('register') }}"><i class="fas fa-plus-circle"></i> Создать заявку</a></li>
                 <li class="nav-item"><a class="btn btn-outline-light btn-sm me-2 login-btn" href="{{ route('login') }}"><i class="fas fa-sign-in-alt"></i> Войти</a></li>
                 <li class="nav-item"><a class="btn btn-light btn-sm register-btn" href="{{ route('register') }}"><i class="fas fa-user-plus"></i> Регистрация</a></li>
