@@ -106,12 +106,30 @@
 
         @else
         {{-- ДЛЯ НЕАВТОРИЗОВАННЫХ --}}
-        <div class="d-flex d-lg-none align-items-center mobile-guest-controls">
-            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMainContent"
-                    aria-controls="navbarMainContent" aria-expanded="false" aria-label="Меню"><span class="navbar-toggler-icon"></span></button>
+        {{-- Десктопная навигация (lg+) --}}
+        <div class="collapse navbar-collapse d-none d-lg-flex" id="navbarMainContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 nav-sections">
+                <li class="nav-item"><a class="nav-link {{ request()->routeIs('catalog.index') ? 'active' : '' }}" href="{{ route('catalog.index') }}"><i class="fas fa-th-list"></i> Каталог</a></li>
+                <li class="nav-item"><a class="nav-link {{ request()->routeIs('rental-requests.index') ? 'active' : '' }}" href="{{ route('rental-requests.index') }}"><i class="fas fa-file-alt"></i> Заявки</a></li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"><i class="fas fa-info-circle"></i> О нас</a>
+                    <ul class="dropdown-menu"><li><a class="dropdown-item" href="{{ route('about') }}">О компании</a></li><li><a class="dropdown-item" href="{{ route('cooperation') }}">Сотрудничество</a></li><li><a class="dropdown-item" href="{{ route('contacts') }}">Контакты</a></li><li><a class="dropdown-item" href="{{ route('jobs') }}">Вакансии</a></li></ul>
+                </li>
+            </ul>
+            <ul class="navbar-nav ms-auto nav-controls-guest">
+                <li class="nav-item"><a class="btn btn-warning btn-sm fw-bold me-2 cta-btn" href="{{ route('register') }}"><i class="fas fa-plus-circle"></i> Создать заявку</a></li>
+                <li class="nav-item"><a class="btn btn-outline-light btn-sm me-2 login-btn" href="{{ route('login') }}"><i class="fas fa-sign-in-alt"></i> Войти</a></li>
+                <li class="nav-item"><a class="btn btn-light btn-sm register-btn" href="{{ route('register') }}"><i class="fas fa-user-plus"></i> Регистрация</a></li>
+            </ul>
         </div>
 
-        <div class="collapse navbar-collapse mobile-nav-overlay" id="navbarMainContent">
+        {{-- Мобильная навигация (до lg) --}}
+        <div class="d-flex d-lg-none align-items-center mobile-guest-controls">
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mobileNavContent"
+                    aria-controls="mobileNavContent" aria-expanded="false" aria-label="Меню"><span class="navbar-toggler-icon"></span></button>
+        </div>
+
+        <div class="collapse d-lg-none mobile-nav-overlay" id="mobileNavContent">
             <div class="mobile-nav-menu">
                 <div class="mobile-nav-header">
                     <div class="mobile-nav-identity">
@@ -464,7 +482,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Close mobile nav on link click
     document.querySelectorAll('.mobile-nav-link[href], .mobile-dropdown-item').forEach(function(link) {
         link.addEventListener('click', function() {
-            var navbar = document.getElementById('navbarMainContent');
+            var navbar = document.getElementById('mobileNavContent');
             if (navbar && navbar.classList.contains('show')) {
                 var collapse = bootstrap.Collapse.getInstance(navbar);
                 if (collapse) collapse.hide();
