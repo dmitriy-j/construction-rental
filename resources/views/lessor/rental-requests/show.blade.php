@@ -86,7 +86,6 @@
 @push('styles')
 <style>
 .lessor-container {
-    margin-left: 250px;
     padding: 20px;
     min-height: calc(100vh - 60px);
 }
@@ -161,5 +160,12 @@
 
 @push('scripts')
 {{-- Подключаем Vue компонент для детальной страницы заявки --}}
-@vite('resources/js/pages/lessor-rental-request-detail.js')
+{{-- Use direct asset link in production, @vite in local --}}
+@php
+    if (app()->environment('local')) {
+        echo vite('resources/js/pages/lessor-rental-request-detail.js');
+    } else {
+        echo '<script type="module" src="' . asset('build/assets/lessor-rental-request-detail-DrnszHLa.js') . '" defer></script>';
+    }
+@endphp
 @endpush
