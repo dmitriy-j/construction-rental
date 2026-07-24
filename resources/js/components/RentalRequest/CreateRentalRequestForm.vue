@@ -237,7 +237,6 @@ export default {
         isFormValid() {
             return this.formData.title &&
                    this.formData.description &&
-                   this.formData.hourly_rate > 0 &&
                    this.formData.rental_period_start &&
                    this.formData.rental_period_end &&
                    this.formData.location_id &&
