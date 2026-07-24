@@ -111,20 +111,55 @@
                     aria-controls="navbarMainContent" aria-expanded="false" aria-label="Меню"><span class="navbar-toggler-icon"></span></button>
         </div>
 
-        <div class="collapse navbar-collapse" id="navbarMainContent">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0 nav-sections">
-                <li class="nav-item"><a class="nav-link {{ request()->routeIs('catalog.index') ? 'active' : '' }}" href="{{ route('catalog.index') }}"><i class="fas fa-th-list"></i> Каталог</a></li>
-                <li class="nav-item"><a class="nav-link {{ request()->routeIs('rental-requests.index') ? 'active' : '' }}" href="{{ route('rental-requests.index') }}"><i class="fas fa-file-alt"></i> Заявки</a></li>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"><i class="fas fa-info-circle"></i> О нас</a>
-                    <ul class="dropdown-menu"><li><a class="dropdown-item" href="{{ route('about') }}">О компании</a></li><li><a class="dropdown-item" href="{{ route('cooperation') }}">Сотрудничество</a></li><li><a class="dropdown-item" href="{{ route('contacts') }}">Контакты</a></li><li><a class="dropdown-item" href="{{ route('jobs') }}">Вакансии</a></li></ul>
-                </li>
-            </ul>
-            <ul class="navbar-nav ms-auto nav-controls-guest">
-                <li class="nav-item"><a class="btn btn-warning btn-sm fw-bold me-2 cta-btn" href="{{ route('register') }}"><i class="fas fa-plus-circle"></i> Создать заявку</a></li>
-                <li class="nav-item"><a class="btn btn-outline-light btn-sm me-2 login-btn" href="{{ route('login') }}"><i class="fas fa-sign-in-alt"></i> Войти</a></li>
-                <li class="nav-item"><a class="btn btn-light btn-sm register-btn" href="{{ route('register') }}"><i class="fas fa-user-plus"></i> Регистрация</a></li>
-            </ul>
+        <div class="collapse navbar-collapse mobile-nav-overlay" id="navbarMainContent">
+            <div class="mobile-nav-menu">
+                <div class="mobile-nav-header">
+                    <div class="mobile-nav-identity">
+                        <div class="mobile-nav-icon"><i class="fas fa-hard-hat"></i></div>
+                        <span class="mobile-nav-brand">Федеральная Арендная Платформа</span>
+                    </div>
+                </div>
+                <ul class="mobile-nav-list">
+                    <li class="mobile-nav-item">
+                        <a class="mobile-nav-link {{ request()->routeIs('catalog.index') ? 'active' : '' }}" href="{{ route('catalog.index') }}">
+                            <span class="mobile-nav-link-icon"><i class="fas fa-th-list"></i></span>
+                            <span>Каталог техники</span>
+                        </a>
+                    </li>
+                    <li class="mobile-nav-item">
+                        <a class="mobile-nav-link {{ request()->routeIs('rental-requests.index') ? 'active' : '' }}" href="{{ route('rental-requests.index') }}">
+                            <span class="mobile-nav-link-icon"><i class="fas fa-file-alt"></i></span>
+                            <span>Заявки</span>
+                        </a>
+                    </li>
+                    <li class="mobile-nav-item mobile-dropdown" data-dropdown>
+                        <button class="mobile-nav-link mobile-dropdown-toggle" type="button" data-dropdown-toggle>
+                            <span class="mobile-nav-link-icon"><i class="fas fa-info-circle"></i></span>
+                            <span>О нас</span>
+                            <i class="fas fa-chevron-down mobile-dropdown-arrow"></i>
+                        </button>
+                        <div class="mobile-dropdown-menu" data-dropdown-menu>
+                            <a class="mobile-dropdown-item" href="{{ route('about') }}">О компании</a>
+                            <a class="mobile-dropdown-item" href="{{ route('cooperation') }}">Сотрудничество</a>
+                            <a class="mobile-dropdown-item" href="{{ route('contacts') }}">Контакты</a>
+                            <a class="mobile-dropdown-item" href="{{ route('jobs') }}">Вакансии</a>
+                        </div>
+                    </li>
+                </ul>
+                <div class="mobile-nav-actions">
+                    <a class="mobile-nav-btn mobile-nav-btn-primary" href="{{ route('register') }}">
+                        <i class="fas fa-plus-circle me-1"></i> Создать заявку
+                    </a>
+                    <div class="mobile-nav-auth-buttons">
+                        <a class="mobile-nav-btn mobile-nav-btn-outline" href="{{ route('login') }}">
+                            <i class="fas fa-sign-in-alt me-1"></i> Войти
+                        </a>
+                        <a class="mobile-nav-btn mobile-nav-btn-ghost" href="{{ route('register') }}">
+                            <i class="fas fa-user-plus me-1"></i> Регистрация
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
         @endauth
     </div>
@@ -192,8 +227,210 @@
     .profile-menu-mobile { position: fixed; top: 60px; right: 10px; width: 250px; border: none; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); padding: 0.375rem; }
     .profile-menu-mobile .dropdown-item { padding: 0.5rem 0.875rem; margin: 0.125rem 0; border-radius: 8px; }
     .profile-menu-mobile .dropdown-item:hover { background: rgba(11,94,215,0.08); color: #0B5ED7; }
-    #navbarMainContent { background: rgba(0,45,114,0.98); backdrop-filter: blur(12px); border-radius: 0 0 12px 12px; }
-    #navbarMainContent .nav-link { background: rgba(255,255,255,0.06); }
+
+    /* ============================================================
+        MOBILE MENU — PREMIUM DROPDOWN
+       ============================================================ */
+    .mobile-nav-overlay {
+        position: fixed !important;
+        top: var(--navbar-height, 72px) !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        background: rgba(0,0,0,0.3) !important;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 9998 !important;
+        border: none !important;
+    }
+
+    .mobile-nav-menu {
+        background: #fff;
+        border-radius: 0 0 20px 20px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+        max-height: calc(100vh - var(--navbar-height, 72px));
+        overflow-y: auto;
+        padding-bottom: 1rem;
+    }
+
+    .mobile-nav-header {
+        padding: 1.25rem 1.25rem 0.75rem;
+        border-bottom: 1px solid rgba(0,0,0,0.04);
+        margin-bottom: 0.5rem;
+    }
+
+    .mobile-nav-identity {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .mobile-nav-icon {
+        width: 36px; height: 36px;
+        background: linear-gradient(135deg, #0B5ED7, #002D72);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .mobile-nav-brand {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: #1A1D21;
+        line-height: 1.3;
+    }
+
+    .mobile-nav-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .mobile-nav-item {
+        margin: 0.125rem 0.5rem;
+    }
+
+    .mobile-nav-link {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        color: #1A1D21;
+        font-weight: 500;
+        font-size: 0.9375rem;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        width: 100%;
+        border: none;
+        background: none;
+        cursor: pointer;
+        text-align: left;
+    }
+
+    .mobile-nav-link:active,
+    .mobile-nav-link.active {
+        background: rgba(11,94,215,0.08);
+        color: #0B5ED7;
+    }
+
+    .mobile-nav-link-icon {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6c757d;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+    }
+
+    .mobile-nav-link.active .mobile-nav-link-icon {
+        color: #0B5ED7;
+    }
+
+    .mobile-dropdown-arrow {
+        margin-left: auto;
+        font-size: 0.75rem;
+        color: #6c757d;
+        transition: transform 0.3s ease;
+    }
+
+    .mobile-dropdown.open .mobile-dropdown-arrow {
+        transform: rotate(180deg);
+    }
+
+    .mobile-dropdown-menu {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.35s ease, padding 0.35s ease;
+        padding-left: 2.75rem;
+    }
+
+    .mobile-dropdown.open .mobile-dropdown-menu {
+        max-height: 300px;
+        padding-bottom: 0.5rem;
+    }
+
+    .mobile-dropdown-item {
+        display: block;
+        padding: 0.5rem 0.75rem;
+        color: #495057;
+        font-size: 0.875rem;
+        text-decoration: none;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        margin: 0.125rem 0;
+    }
+
+    .mobile-dropdown-item:active {
+        background: rgba(11,94,215,0.06);
+        color: #0B5ED7;
+    }
+
+    .mobile-nav-actions {
+        padding: 1rem 1.25rem 0.5rem;
+        border-top: 1px solid rgba(0,0,0,0.04);
+        margin-top: 0.5rem;
+    }
+
+    .mobile-nav-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        margin-bottom: 0.5rem;
+    }
+
+    .mobile-nav-btn-primary {
+        background: linear-gradient(135deg, #FF8C00, #FF6B00);
+        color: #1a1a1a;
+        box-shadow: 0 2px 10px rgba(255,140,0,0.25);
+    }
+
+    .mobile-nav-btn-primary:active {
+        transform: scale(0.98);
+    }
+
+    .mobile-nav-auth-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .mobile-nav-btn-outline {
+        flex: 1;
+        background: rgba(11,94,215,0.06);
+        color: #0B5ED7;
+        border: 1.5px solid rgba(11,94,215,0.15);
+    }
+
+    .mobile-nav-btn-outline:active {
+        background: rgba(11,94,215,0.12);
+    }
+
+    .mobile-nav-btn-ghost {
+        flex: 1;
+        background: transparent;
+        color: #6c757d;
+    }
+
+    .mobile-nav-btn-ghost:active {
+        background: rgba(0,0,0,0.04);
+    }
+
+    .collapse:not(.show) .mobile-nav-overlay {
+        display: none;
+    }
 }
 
 @media (max-width: 576px) { .main-navbar { min-height: var(--navbar-height, 60px); } }
@@ -203,6 +440,9 @@ body { padding-top: var(--navbar-height, 72px); }
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    'use strict';
+
+    // Sidebar toggle (mobile auth)
     const sidebarToggle = document.getElementById('sidebarToggleMobile');
     const sidebarOffcanvas = document.getElementById('sidebarOffcanvas');
     if (sidebarToggle && sidebarOffcanvas) {
@@ -210,6 +450,29 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!offcanvas) offcanvas = new bootstrap.Offcanvas(sidebarOffcanvas);
         sidebarToggle.addEventListener('click', function(e) { e.preventDefault(); e.stopPropagation(); offcanvas.toggle(); });
     }
+
+    // Mobile dropdown toggle (неавторизованные)
+    document.querySelectorAll('[data-dropdown-toggle]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var parent = this.closest('[data-dropdown]');
+            if (parent) { parent.classList.toggle('open'); }
+        });
+    });
+
+    // Close mobile nav on link click
+    document.querySelectorAll('.mobile-nav-link[href], .mobile-dropdown-item').forEach(function(link) {
+        link.addEventListener('click', function() {
+            var navbar = document.getElementById('navbarMainContent');
+            if (navbar && navbar.classList.contains('show')) {
+                var collapse = bootstrap.Collapse.getInstance(navbar);
+                if (collapse) collapse.hide();
+            }
+        });
+    });
+
+    // Close mobile nav on outside click
     document.addEventListener('click', function(e) {
         var navbar = document.getElementById('navbarMainContent');
         var toggler = document.querySelector('[data-bs-toggle="collapse"][data-bs-target="#navbarMainContent"]');
