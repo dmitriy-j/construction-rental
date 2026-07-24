@@ -9,7 +9,9 @@ use App\Models\News;
 use App\Models\RentalRequest;
 use App\Models\User;
 use App\Notifications\NewContactMessage;
+use App\Services\MarkupCalculationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class HomeController extends Controller
@@ -17,14 +19,31 @@ class HomeController extends Controller
     /**
      * Главная страница сайта.
      */
-    public function index()
+    public function index(MarkupCalculationService $markupService)
     {
         // Популярная техника: 6 случайных утверждённых единиц с фото
         $popularEquipment = Equipment::where('is_approved', true)
             ->with(['mainImage', 'category', 'rentalTerms', 'location'])
             ->inRandomOrder()
             ->take(6)
-            ->get();
+            ->get()
+            ->map(function ($equipment) use ($markupService) {
+                // Добавляем цену с наценкой платформы
+                if ($equipment->rentalTerms->isNotEmpty()) {
+                    $basePrice = $equipment->rentalTerms->min('price_per_hour');
+                    $result = $markupService->calculateMarkup(
+                        $basePrice,
+                        'equipment',
+                        1,
+                        $equipment->id,
+                        $equipment->category_id
+                    );
+                    $equipment->price_with_markup = $result['final_price'];
+                } else {
+                    $equipment->price_with_markup = null;
+                }
+                return $equipment;
+            });
 
         // Статистика платформы
         $stats = [

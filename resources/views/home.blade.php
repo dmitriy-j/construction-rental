@@ -180,10 +180,7 @@
                         <div class="mt-auto d-flex justify-content-between align-items-center">
                             <div>
                                 @if($equipment->rentalTerms->isNotEmpty())
-                                    @php
-                                        $minPrice = $equipment->rentalTerms->min('price_per_hour');
-                                    @endphp
-                                    <span class="fw-bold text-primary fs-5">{{ number_format($minPrice, 0, '.', ' ') }} ₽/час</span>
+                                    <span class="fw-bold text-primary fs-5">{{ number_format($equipment->price_with_markup, 0, '.', ' ') }} ₽/час</span>
                                 @else
                                     <span class="text-muted">Цена не указана</span>
                                 @endif

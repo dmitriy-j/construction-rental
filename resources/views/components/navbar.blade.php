@@ -86,7 +86,7 @@
             </a>
             <div class="nav-item dropdown profile-dropdown me-1">
                 <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <div class="user-avatar-circle-sm"><span>{{ mb_substr(Auth::user()->name, 0, 1) }}</span></div>
+                    <div class="user-avatar-icon"><i class="fas fa-user"></i></div>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end profile-menu-mobile">
                     @if(Auth::user()->isPlatformAdmin())
@@ -242,6 +242,8 @@
     .main-navbar { min-height: var(--navbar-height, 65px); padding: 0 0.75rem; }
     .user-avatar-circle-sm { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; border: 2px solid rgba(255,255,255,0.3); }
     .user-avatar-circle-sm span { color: #fff; font-weight: 700; font-size: 0.75rem; }
+    .user-avatar-icon { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; border: 2px solid rgba(255,255,255,0.2); color: #fff; font-size: 0.85rem; }
+    .user-avatar-icon i { line-height: 1; }
     .profile-menu-mobile { position: fixed; top: 60px; right: 10px; width: 250px; border: none; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); padding: 0.375rem; }
     .profile-menu-mobile .dropdown-item { padding: 0.5rem 0.875rem; margin: 0.125rem 0; border-radius: 8px; }
     .profile-menu-mobile .dropdown-item:hover { background: rgba(11,94,215,0.08); color: #0B5ED7; }
