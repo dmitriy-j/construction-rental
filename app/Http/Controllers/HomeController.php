@@ -36,7 +36,8 @@ class HomeController extends Controller
                         'equipment',
                         1,
                         $equipment->id,
-                        $equipment->category_id
+                        $equipment->category_id,
+                        $equipment->company_id  // company арендодателя для персональной наценки
                     );
                     $equipment->price_with_markup = $result['final_price'];
                 } else {
