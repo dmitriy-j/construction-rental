@@ -94,6 +94,19 @@
     @stack('scripts')
 
     <script>
+    // Force navbar visibility — neutralize any hiding scripts
+    (function() {
+        var s = document.createElement('style');
+        s.textContent = '.navbar--hidden { transform: none !important; }';
+        document.head.appendChild(s);
+        // Periodically ensure navbar is visible
+        setInterval(function() {
+            var n = document.querySelector('.navbar');
+            if (n && n.classList.contains('navbar--hidden')) { n.classList.remove('navbar--hidden'); }
+        }, 200);
+    })();
+    </script>
+    <script>
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.content-container table:not(.table-responsive-custom table)').forEach(function(table) {
             if (!table.closest('.table-responsive')) { var w = document.createElement('div'); w.className = 'table-responsive'; table.parentNode.insertBefore(w, table); w.appendChild(table); }
