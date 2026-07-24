@@ -78,24 +78,14 @@ class RentalRequestController extends Controller
                 ->orderBy('usage_count', 'desc')
                 ->get();
 
-            // Скрываем данные арендатора от арендодателя
+            // Скрываем только личные данные арендатора (ID, компания, пользователь)
+            // ВСЕ остальные данные (бюджет, ставки, позиции) — показываем полностью
             $rentalRequest->makeHidden([
                 'user_id',
                 'company_id',
                 'user',
                 'company',
-                'hourly_rate',
-                'total_budget',
-                'calculated_budget_from',
-                'calculated_budget_to',
-                'budget_from',
-                'budget_to',
-                'max_hourly_rate',
             ]);
-
-            // Добавляем только название компании арендатора
-            $lesseeCompanyName = $rentalRequest->user?->company?->legal_name;
-            $rentalRequest->lessee_company_name = $lesseeCompanyName;
 
             return view('lessor.rental-requests.show', [
                 'request' => $rentalRequest,
