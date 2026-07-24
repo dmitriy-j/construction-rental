@@ -181,9 +181,9 @@
                             <div>
                                 @if($equipment->rentalTerms->isNotEmpty())
                                     @php
-                                        $minPrice = $equipment->rentalTerms->min('price_per_day');
+                                        $minPrice = $equipment->rentalTerms->min('price_per_hour');
                                     @endphp
-                                    <span class="fw-bold text-primary fs-5">{{ number_format($minPrice, 0, '.', ' ') }} ₽/сут</span>
+                                    <span class="fw-bold text-primary fs-5">{{ number_format($minPrice, 0, '.', ' ') }} ₽/час</span>
                                 @else
                                     <span class="text-muted">Цена не указана</span>
                                 @endif

@@ -245,6 +245,10 @@
     .profile-menu-mobile { position: fixed; top: 60px; right: 10px; width: 250px; border: none; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); padding: 0.375rem; }
     .profile-menu-mobile .dropdown-item { padding: 0.5rem 0.875rem; margin: 0.125rem 0; border-radius: 8px; }
     .profile-menu-mobile .dropdown-item:hover { background: rgba(11,94,215,0.08); color: #0B5ED7; }
+    /* Fix mobile profile button */
+    .mobile-auth-controls .profile-dropdown .dropdown-toggle::after { display: none !important; }
+    .mobile-auth-controls .profile-dropdown > a { padding: 0 !important; margin: 0 !important; background: none !important; }
+    .mobile-auth-controls .profile-dropdown { display: flex !important; align-items: center !important; }
 
     /* ============================================================
         MOBILE MENU — PREMIUM DROPDOWN
