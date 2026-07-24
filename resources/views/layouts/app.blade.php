@@ -19,7 +19,15 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    @vite(['resources/sass/app.scss', 'resources/js/app.js'])
+    @php
+        // Use Vite in dev, direct links in production
+        if (app()->environment('local')) {
+            echo vite(['resources/sass/app.scss', 'resources/js/app.js']);
+        } else {
+            echo '<link rel="stylesheet" href="' . asset('build/assets/app-nst8vf6X.css') . '">';
+            echo '<script type="module" src="' . asset('build/assets/app-cJ5vTgrs.js') . '" defer></script>';
+        }
+    @endphp
     @stack('styles')
 
     <meta name="theme-color" content="#0B5ED7">
