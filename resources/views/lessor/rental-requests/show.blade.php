@@ -68,8 +68,16 @@
             <div class="card h-100">
                 <div class="card-header bg-success text-white"><h5 class="mb-0"><i class="fas fa-ruble-sign me-2"></i>Бюджет</h5></div>
                 <div class="card-body text-center d-flex flex-column justify-content-center">
-                    @if($lessorPricing && $lessorPricing['total_lessor_budget'] ?? false)
-                        <div class="display-5 fw-bold text-success">{{ number_format($lessorPricing['total_lessor_budget'], 0, '.', ' ') }} ₽</div>
+                    @php
+                        $budget = null;
+                        if ($lessorPricing && !empty($lessorPricing['total_lessor_budget'])) {
+                            $budget = $lessorPricing['total_lessor_budget'];
+                        } elseif ($request->total_budget > 0) {
+                            $budget = $request->total_budget;
+                        }
+                    @endphp
+                    @if($budget)
+                        <div class="display-5 fw-bold text-success">{{ number_format($budget, 0, '.', ' ') }} ₽</div>
                         <small class="text-muted">С учётом наценки платформы</small>
                     @else
                         <div class="text-muted">Бюджет не указан</div>
@@ -89,11 +97,16 @@
                         <th>Категория</th>
                         <th>Количество</th>
                         <th>Цена за час (₽)</th>
-                        <th>Характеристики</th>
-                        <th>Условия</th>
+                        <th style="min-width:200px;">Характеристики</th>
+                        <th style="min-width:220px;">Условия аренды</th>
                     </tr></thead>
                     <tbody>
                         @foreach($request->items as $item)
+                        @php
+                            $cond = $item->use_individual_conditions && $item->individual_conditions
+                                ? $item->individual_conditions
+                                : $request->rental_conditions;
+                        @endphp
                         <tr>
                             <td><strong>{{ $item->category->name ?? '—' }}</strong></td>
                             <td>{{ $item->quantity }} ед.</td>
@@ -104,16 +117,21 @@
                                         <span class="badge bg-light text-dark me-1 mb-1">{{ $spec['label'] ?? $spec['key'] ?? '—' }}: {{ $spec['display_value'] ?? $spec['value'] ?? '—' }}</span>
                                     @endforeach
                                 @else
-                                    <span class="text-muted">Нет</span>
+                                    <span class="text-muted small">Нет характеристик</span>
                                 @endif
                             </td>
-                            <td>
-                                @if($item->use_individual_conditions && $item->individual_conditions)
-                                    <span class="badge bg-warning text-dark">Индивидуальные</span>
+                            <td><small>
+                                @if($cond)
+                                    {{ $cond['payment_type'] === 'hourly' ? 'Почасовая' : 'Фикс' }} |
+                                    {{ $cond['hours_per_shift'] ?? 8 }}ч × {{ $cond['shifts_per_day'] ?? 1 }}см |
+                                    Доставка: {{ $cond['transportation_organized_by'] === 'lessor' ? 'Арендодатель' : 'Арендатор' }} |
+                                    ГСМ: {{ $cond['gsm_payment'] === 'included' ? 'Вкл' : 'Отд' }}
+                                    @if($cond['operator_included'] ?? false) | +Оператор @endif
+                                    @if($cond['accommodation_payment'] ?? false) | +Проживание @endif
                                 @else
-                                    <span class="badge bg-secondary">Общие</span>
+                                    <span class="text-muted">Не указаны</span>
                                 @endif
-                            </td>
+                            </small></td>
                         </tr>
                         @endforeach
                     </tbody>
