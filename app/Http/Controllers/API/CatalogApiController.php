@@ -80,13 +80,14 @@ class CatalogApiController extends Controller
                         if (!$eq->isPlatformOwned() && auth()->check() && auth()->user() && auth()->user()->company) {
                     try {
                         $calcService = app(\App\Services\MarkupCalculationService::class);
+                        // Используем ту же логику, что и getDisplayPriceAttribute() на главной
                         $result = $calcService->calculateMarkup(
                             $basePrice,
                             'order',
                             1,
                             $eq->id,
                             $eq->category_id,
-                            $eq->company_id,
+                            null,
                             auth()->user()->company_id
                         );
                         $finalPrice = $result['final_price'];

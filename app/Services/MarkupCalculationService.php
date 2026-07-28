@@ -168,10 +168,10 @@ class MarkupCalculationService
             }
         }
 
-        // 3. Наценка на категорию оборудования
+        // 3. Наценка на категорию оборудования (ищем в обоих классах)
         if ($categoryId) {
             $categoryMarkup = (clone $query)
-                ->where('markupable_type', Category::class)
+                ->whereIn('markupable_type', [Category::class, EquipmentCategory::class])
                 ->where('markupable_id', $categoryId)
                 ->first();
 
