@@ -151,14 +151,15 @@ class RentalRequestController extends Controller
      */
     public function show($id)
     {
-        $rentalRequest = RentalRequest::with(['items.category', 'location'])
+        $rentalRequest = RentalRequest::with([
+            'items.category',
+            'location',
+            'responses.lessor.company',
+            'responses.equipment.category',
+        ])
+            ->withCount(['responses', 'items'])
             ->where('user_id', auth()->id())
             ->findOrFail($id);
-
-        // Преобразуем спецификации в унифицированный формат для фронтенда
-        $rentalRequest->items->each(function ($item) {
-            $item->unified_specifications = $item->unified_specifications;
-        });
 
         return view('lessee.rental_requests.show', compact('rentalRequest'));
     }

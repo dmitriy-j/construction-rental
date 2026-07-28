@@ -223,36 +223,53 @@ class Equipment extends Model
 
     public function getDisplayPriceAttribute()
     {
-        if (! $this->rentalTerms->isEmpty()) {
-            $term = $this->rentalTerms->first();
-            $price = $term->price_per_hour;
-
-            // Для платформенной техники показываем цену без наценки
-            if ($this->isPlatformOwned()) {
-                return number_format($price, 2).' ₽/час';
-            }
-
-            // ДОБАВЛЕНО: безопасная проверка пользователя
-            $user = auth()->user();
-            $company = $user && $user->company ? $user->company : null;
-
-            // Добавляем наценку платформы только если пользователь авторизован и имеет компанию
-            if ($company) {
-                $pricingService = app(PricingService::class);
-                $markup = $pricingService->getPlatformMarkup(
-                    $this,
-                    $company, // ← используем безопасную переменную
-                    1 // 1 час для расчета
-                );
-                $priceWithMarkup = $price + $pricingService->applyMarkup($price, $markup);
-            } else {
-                $priceWithMarkup = $price;
-            }
-
-            return number_format($priceWithMarkup, 2).' ₽/час';
+        if ($this->rentalTerms->isEmpty()) {
+            return 'Цена не указана';
         }
 
-        return 'Цена не указана';
+        $term = $this->rentalTerms->first();
+        $price = (float) $term->price_per_hour;
+
+        // Для платформенной техники — цена без наценки
+        if ($this->isPlatformOwned()) {
+            return number_format($price, 2, ',', ' ') . ' ₽/час';
+        }
+
+        // Для сторонней техники — цена с учётом наценки
+        $user = auth()->user();
+        $company = $user && $user->company ? $user->company : null;
+
+        if ($company) {
+            $pricingService = app(PricingService::class);
+            /** @var \App\Models\RentalCondition $defaultCondition */
+            $defaultCondition = \App\Models\RentalCondition::firstOrCreate(
+                ['name' => 'Стандартные условия'],
+                [
+                    'shift_hours' => 8,
+                    'shifts_per_day' => 1,
+                    'transportation' => 'lessee',
+                    'fuel_responsibility' => 'lessee',
+                    'extension_policy' => 'allowed',
+                    'payment_type' => 'hourly'
+                ]
+            );
+            try {
+                $calculation = $pricingService->calculatePrice(
+                    $term,
+                    $company,
+                    1,
+                    $defaultCondition
+                );
+                return number_format($calculation['final_price'], 2, ',', ' ') . ' ₽/час';
+            } catch (\Exception $e) {
+                \Log::warning('Ошибка расчёта цены для отображения', [
+                    'equipment_id' => $this->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        return number_format($price, 2, ',', ' ') . ' ₽/час';
     }
 
     public function mainImage()

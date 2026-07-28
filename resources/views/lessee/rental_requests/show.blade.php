@@ -4,26 +4,8 @@
 
 @section('content')
 <div class="container-fluid px-4">
-    <!-- Точка монтирования Vue приложения -->
-    <div id="rental-request-show-app"
-        data-request-id="{{ $rentalRequest->id }}"
-        data-api-url="{{ url('/api/lessee/rental-requests/' . $rentalRequest->id) }}"
-        data-pause-url="{{ url('/api/lessee/rental-requests/' . $rentalRequest->id . '/pause') }}"
-        data-cancel-url="{{ url('/api/lessee/rental-requests/' . $rentalRequest->id . '/cancel') }}"
-        data-csrf-token="{{ csrf_token() }}"
-        data-base-url="{{ url('/') }}">
-        <!-- Загрузка Vue приложения -->
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Загрузка...</span>
-            </div>
-            <p class="mt-2">Загружаем интерактивную версию заявки...</p>
-        </div>
-    </div>
-
-    <!-- Резервный вариант: полная Blade-версия (показывается если Vue не загрузился) -->
-    <div id="blade-fallback-content" style="display: none;">
-        <!-- Старое содержимое show.blade.php -->
+    <!-- Blade-версия (показывается сразу) -->
+    <div id="blade-fallback-content">
         <div class="row">
             <div class="col-12">
                 <div class="page-header d-flex justify-content-between align-items-center mb-4">
@@ -221,7 +203,7 @@
                             </ul>
                         </div>
                     </div>
-                    <div class="card-body">
+                        <div class="card-body">
                         @if($rentalRequest->responses->count() > 0)
                             <div id="proposalsList">
                                 @foreach($rentalRequest->responses->sortByDesc('created_at') as $response)
@@ -242,7 +224,15 @@
                                                             @endif
                                                         </h6>
                                                         <p class="text-muted small mb-1">
-                                                            Оборудование: {{ $response->equipment->title ?? 'Не указано' }}
+                                                            Оборудование:
+                                                            @if($response->equipment)
+                                                                <a href="{{ url('/catalog/' . $response->equipment->id) }}" target="_blank" class="text-decoration-none">
+                                                                    {{ $response->equipment->title }}
+                                                                    <i class="fas fa-external-link-alt ms-1 small"></i>
+                                                                </a>
+                                                            @else
+                                                                Не указано
+                                                            @endif
                                                         </p>
                                                         @if($response->message)
                                                         <p class="mb-2">{{ $response->message }}</p>
@@ -262,7 +252,14 @@
                                             </div>
                                             <div class="col-md-4">
                                                 <div class="text-end">
+                                                    @php
+                                                        $pb = $response->price_breakdown;
+                                                        $pricePerHour = !empty($pb['customer_price_per_unit']) ? $pb['customer_price_per_unit'] : 0;
+                                                    @endphp
                                                     <div class="proposal-price mb-2">
+                                                        @if($pricePerHour > 0)
+                                                        <div class="small text-muted">{{ number_format($pricePerHour, 0, ',', ' ') }} ₽/час</div>
+                                                        @endif
                                                         <span class="h5 text-primary">
                                                             {{ number_format($response->proposed_price, 0, ',', ' ') }} ₽
                                                         </span>
@@ -275,9 +272,14 @@
                                                             <i class="fas fa-check me-1"></i>Принять
                                                         </button>
                                                         <button class="btn btn-sm btn-outline-danger"
-                                                                onclick="rejectProposal({{ $response->id }})">
+                                                                onclick="openRejectModal({{ $response->id }})">
                                                             Отклонить
                                                         </button>
+                                                        @elseif($response->status === 'rejected')
+                                                        <span class="badge bg-secondary">Отклонено</span>
+                                                        @if($response->rejection_reason)
+                                                        <br><small class="text-muted">{{ $response->rejection_reason }}</small>
+                                                        @endif
                                                         @else
                                                         <span class="badge bg-{{ $response->status === 'accepted' ? 'success' : 'secondary' }}">
                                                             {{ $response->status === 'accepted' ? 'Принято' : 'Отклонено' }}
@@ -417,6 +419,41 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+{{-- Модалка отклонения предложения --}}
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:400px">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title">Отклонение предложения</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="rejectForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Укажите причину</label>
+                        <select name="reason" class="form-select" id="rejectReason" required onchange="toggleCustomReason()">
+                            <option value="">— выберите —</option>
+                            <option value="Не устраивает цена">Не устраивает цена</option>
+                            <option value="Старая техника">Старая техника</option>
+                            <option value="Слишком далеко, дорогая доставка">Слишком далеко, дорогая доставка</option>
+                            <option value="Не подходят условия">Не подходят условия</option>
+                            <option value="Другое">Другое</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="customReasonBlock" style="display:none;">
+                        <label class="form-label">Опишите причину</label>
+                        <textarea class="form-control" id="customReason" rows="2" placeholder="Например: данную технику уже набрали"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-danger btn-sm" id="rejectSubmitBtn">Отклонить</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -590,31 +627,69 @@ function acceptProposal(proposalId) {
     }
 }
 
-function rejectProposal(proposalId) {
-    if (confirm('Вы уверены, что хотите отклонить это предложение?')) {
-        fetch(`/lessee/rental-requests/{{ $rentalRequest->id }}/proposals/${proposalId}/reject`, {
+let currentRejectProposalId = null;
+
+function toggleCustomReason() {
+    const sel = document.getElementById('rejectReason');
+    const block = document.getElementById('customReasonBlock');
+    block.style.display = sel.value === 'Другое' ? 'block' : 'none';
+}
+
+function openRejectModal(proposalId) {
+    currentRejectProposalId = proposalId;
+    document.getElementById('rejectReason').value = '';
+    document.getElementById('customReasonBlock').style.display = 'none';
+    document.getElementById('customReason').value = '';
+    document.getElementById('rejectSubmitBtn').disabled = false;
+    document.getElementById('rejectSubmitBtn').innerHTML = 'Отклонить';
+    const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+    modal.show();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('rejectForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (!currentRejectProposalId) return;
+
+        const btn = document.getElementById('rejectSubmitBtn');
+        let reason = document.getElementById('rejectReason').value;
+        if (reason === 'Другое') {
+            reason = document.getElementById('customReason').value.trim();
+            if (!reason) { showToast('error', 'Опишите причину'); return; }
+        }
+        if (!reason) { showToast('error', 'Выберите причину'); return; }
+
+        btn.disabled = true;
+        btn.innerHTML = '...';
+
+        fetch(`/lessee/rental-requests/{{ $rentalRequest->id }}/proposals/${currentRejectProposalId}/reject`, {
             method: 'POST',
             headers: {
+                'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
                 'Accept': 'application/json'
-            }
+            },
+            body: JSON.stringify({ rejection_reason: reason })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('rejectModal')).hide();
                 showToast('success', 'Предложение отклонено');
-                setTimeout(() => {
-                    location.reload();
-                }, 2000);
+                setTimeout(() => location.reload(), 1500);
             } else {
                 showToast('error', 'Ошибка: ' + data.message);
+                btn.disabled = false;
+                btn.innerHTML = 'Отклонить';
             }
         })
         .catch(error => {
-            showToast('error', 'Произошла ошибка: ' + error.message);
+            showToast('error', 'Ошибка: ' + error.message);
+            btn.disabled = false;
+            btn.innerHTML = 'Отклонить';
         });
-    }
-}
+    });
+});
 
 function sortProposals(criteria) {
     const proposals = Array.from(document.querySelectorAll('.proposal-card'));
@@ -709,24 +784,13 @@ function showToast(type, message) {
     }, 5000);
 }
 
-// Резервный вариант: если Vue не загрузился через 3 секунды, показываем Blade-версию
+// Blade-версия уже показывается сразу (без Vue)
+// Проверяем, не остался ли старый Vue-контейнер
 document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(function() {
-        const vueApp = document.querySelector('#rental-request-show-app');
-        if (!vueApp.__vue_app__) {
-            console.log('Vue не загрузился, показываем резервный Blade-контент');
-            document.getElementById('blade-fallback-content').style.display = 'block';
-            vueApp.style.display = 'none';
-
-            // Инициализируем Bootstrap компоненты для резервной версии
-            if (typeof bootstrap !== 'undefined') {
-                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-                const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                    return new bootstrap.Tooltip(tooltipTriggerEl);
-                });
-            }
-        }
-    }, 3000);
+    const oldVueApp = document.querySelector('#rental-request-show-app');
+    if (oldVueApp) {
+        oldVueApp.style.display = 'none';
+    }
 });
 
 // Авто-обновление для Blade-версии (если Vue не загрузился)

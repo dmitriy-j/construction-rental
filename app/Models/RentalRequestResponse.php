@@ -14,7 +14,7 @@ class RentalRequestResponse extends Model
         'rental_request_id', 'lessor_id', 'equipment_id', 'proposed_price',
         'proposed_quantity', 'price_breakdown', 'message', 'availability_dates',
         'additional_terms', 'status', 'expires_at', 'is_bulk_main', 'is_bulk_item',
-        'bulk_parent_id', 'order_id', 'counter_price'
+        'bulk_parent_id', 'order_id', 'counter_price', 'rejection_reason'
     ];
 
     protected $casts = [

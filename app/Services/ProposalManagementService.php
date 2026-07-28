@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Notifications\ProposalNotification;
 
 class ProposalManagementService
 {
@@ -31,6 +32,13 @@ class ProposalManagementService
             // Обновление счетчика откликов
             $request->increment('responses_count');
 
+            // Уведомление арендатора о новом предложении
+            try {
+                $request->user->notify(new ProposalNotification($proposal, 'new_proposal'));
+            } catch (\Exception $e) {
+                Log::warning('Failed to send new proposal notification: ' . $e->getMessage());
+            }
+
             return $proposal;
         });
     }
@@ -50,6 +58,13 @@ class ProposalManagementService
             // Принимаем выбранное предложение
             $proposal->update(['status' => 'accepted']);
             $proposal->rentalRequest->update(['status' => 'processing']);
+
+            // Уведомление арендодателя о принятии предложения
+            try {
+                $proposal->lessor->notify(new ProposalNotification($proposal, 'proposal_accepted'));
+            } catch (\Exception $e) {
+                Log::warning('Failed to send accept notification: ' . $e->getMessage());
+            }
 
             // Создаем заказ с правильными ценами
             return $this->createOrderFromProposal($proposal);
@@ -124,16 +139,47 @@ class ProposalManagementService
         return $days * $shiftHours * $shiftsPerDay;
     }
 
-    public function rejectProposal(RentalRequestResponse $proposal): void
+    public function rejectProposal(RentalRequestResponse $proposal, ?string $reason = null): void
     {
-        $proposal->update(['status' => 'rejected']);
+        \Log::debug('REJECT_PROPOSAL START', [
+            'id' => $proposal->id,
+            'reason_in' => $reason,
+            'old_status' => $proposal->status,
+            'old_rejection_reason' => $proposal->rejection_reason,
+        ]);
+
+        $data = ['status' => 'rejected'];
+        if ($reason !== null) {
+            $data['rejection_reason'] = $reason;
+        }
+
+        \Log::debug('REJECT_PROPOSAL BEFORE UPDATE', ['data' => $data]);
 
         try {
-            if (class_exists('App\Events\ProposalRejected')) {
-                event(new \App\Events\ProposalRejected($proposal));
+            $affected = $proposal->update($data);
+            \Log::debug('REJECT_PROPOSAL AFTER UPDATE', [
+                'affected' => $affected,
+                'fresh_status' => $proposal->fresh()->status,
+                'fresh_reason' => $proposal->fresh()->rejection_reason,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('REJECT_PROPOSAL UPDATE FAILED', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
+
+        // Уведомление арендодателя об отклонении
+        try {
+            if ($proposal->lessor) {
+                $proposal->lessor->notify(new ProposalNotification($proposal, 'proposal_rejected'));
+                \Log::debug('REJECT_PROPOSAL NOTIFICATION SENT');
+            } else {
+                \Log::debug('REJECT_PROPOSAL no lessor attached');
             }
         } catch (\Exception $e) {
-            Log::warning('Event ProposalRejected not found: ' . $e->getMessage());
+            \Log::warning('REJECT_PROPOSAL notification failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
         }
     }
 
@@ -376,7 +422,9 @@ class ProposalManagementService
                 return [
                     'id' => $proposal->id,
                     'proposed_price' => $proposal->proposed_price,
+                    'proposed_quantity' => $proposal->proposed_quantity,
                     'status' => $proposal->status,
+                    'rejection_reason' => $proposal->rejection_reason,
                     'created_at' => $proposal->created_at->format('d.m.Y H:i'),
                     'equipment_title' => $proposal->equipment->title ?? 'Комплексное предложение',
                     'is_bulk' => $proposal->is_bulk_main,

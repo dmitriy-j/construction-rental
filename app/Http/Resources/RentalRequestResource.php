@@ -80,6 +80,37 @@ class RentalRequestResource extends JsonResource
                     'calculated_budget_to' => $this->calculated_budget_to,
                     'rental_conditions' => $this->rental_conditions,
                     'proposals_count' => $this->responses_count ?? $this->responses?->count(),
+                    'responses' => $this->relationLoaded('responses') && $this->responses
+                        ? $this->responses->map(fn($r) => [
+                            'id' => $r->id,
+                            'proposed_price' => $r->proposed_price,
+                            'proposed_quantity' => $r->proposed_quantity,
+                            'message' => $r->message,
+                            'status' => $r->status,
+                            'is_comment' => $r->isComment(),
+                            'created_at' => $r->created_at,
+                            'lessor' => $r->lessor ? [
+                                'id' => $r->lessor->id,
+                                'name' => $r->lessor->name,
+                                'company' => $r->lessor->company ? [
+                                    'id' => $r->lessor->company->id,
+                                    'legal_name' => $r->lessor->company->legal_name,
+                                    'average_rating' => $r->lessor->company->average_rating ?? null,
+                                ] : null,
+                            ] : null,
+                            'equipment' => $r->equipment ? [
+                                'id' => $r->equipment->id,
+                                'title' => $r->equipment->title,
+                                'brand' => $r->equipment->brand,
+                                'model' => $r->equipment->model,
+                                'category' => $r->equipment->category ? [
+                                    'name' => $r->equipment->category->name,
+                                ] : null,
+                            ] : null,
+                            'price_breakdown' => $r->price_breakdown,
+                            'can_be_accepted' => $r->canBeAccepted(),
+                        ])->values()->toArray()
+                        : [],
                 ]);
             } elseif ($isLessor) {
                 $data = array_merge($data, [
