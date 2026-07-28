@@ -77,10 +77,10 @@ class CatalogApiController extends Controller
                         $term = $eq->rentalTerms->first();
                         $basePrice = $term ? (float)$term->price_per_hour : 0;
                         $finalPrice = $basePrice;
-                        if (!$eq->isPlatformOwned() && auth()->check() && auth()->user() && auth()->user()->company) {
+                        if (!$eq->isPlatformOwned()) {
                     try {
                         $calcService = app(\App\Services\MarkupCalculationService::class);
-                        // Используем ту же логику, что и getDisplayPriceAttribute() на главной
+                        $lesseeCompanyId = auth()->check() && auth()->user() ? auth()->user()->company_id : null;
                         $result = $calcService->calculateMarkup(
                             $basePrice,
                             'order',
@@ -88,7 +88,7 @@ class CatalogApiController extends Controller
                             $eq->id,
                             $eq->category_id,
                             null,
-                            auth()->user()->company_id
+                            $lesseeCompanyId
                         );
                         $finalPrice = $result['final_price'];
                     } catch (\Exception $e) {
