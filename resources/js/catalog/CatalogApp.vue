@@ -86,7 +86,12 @@
                     </div>
                     <div class="d-grid gap-1 mt-2">
                       <a :href="'/catalog/' + eq.id" class="btn btn-outline-primary btn-sm">Подробнее</a>
-                      <button class="btn btn-primary btn-sm" @click="openAddModal(eq)"><i class="bi bi-cart-plus"></i> В корзину</button>
+                      <template v-if="isAuthenticated">
+                        <button class="btn btn-primary btn-sm" @click="openAddModal(eq)"><i class="bi bi-cart-plus"></i> В корзину</button>
+                      </template>
+                      <template v-else>
+                        <a href="/login" class="btn btn-outline-primary btn-sm"><i class="bi bi-box-arrow-in-right me-1"></i> Войти</a>
+                      </template>
                     </div>
                   </div>
                 </div>
@@ -243,6 +248,7 @@ export default {
     };
   },
   computed: {
+    isAuthenticated() { return !!window.isAuthenticated; },
     total() { return this.meta.total; },
     minDate() {
       const d = new Date();
