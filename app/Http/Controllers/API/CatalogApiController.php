@@ -78,12 +78,21 @@ class CatalogApiController extends Controller
                         $basePrice = $term ? (float)$term->price_per_hour : 0;
                         $finalPrice = $basePrice;
                         if (!$eq->isPlatformOwned() && auth()->check() && auth()->user() && auth()->user()->company) {
-                            try {
-                                $markup = $this->pricingService->getPlatformMarkup($eq, auth()->user()->company, 1);
-                                $finalPrice = $basePrice + $this->pricingService->applyMarkup($basePrice, $markup);
-                            } catch (\Exception $e) {
-                                \Log::warning("Markup error for eq {$eq->id}: " . $e->getMessage());
-                            }
+                    try {
+                        $calcService = app(\App\Services\MarkupCalculationService::class);
+                        $result = $calcService->calculateMarkup(
+                            $basePrice,
+                            'order',
+                            1,
+                            $eq->id,
+                            $eq->category_id,
+                            $eq->company_id,
+                            auth()->user()->company_id
+                        );
+                        $finalPrice = $result['final_price'];
+                    } catch (\Exception $e) {
+                        \Log::warning("Markup error for eq {$eq->id}: " . $e->getMessage());
+                    }
                         }
                         $eq->final_price = round($finalPrice, 2);
                         $eq->base_price = $basePrice;
@@ -138,8 +147,21 @@ class CatalogApiController extends Controller
             $basePrice = (float)$term->price_per_hour;
             $finalPrice = $basePrice;
             if (!$equipment->isPlatformOwned() && auth()->check() && auth()->user()->company) {
-                $markup = $this->pricingService->getPlatformMarkup($equipment, auth()->user()->company, 1);
-                $finalPrice = $basePrice + $this->pricingService->applyMarkup($basePrice, $markup);
+                try {
+                    $calcService = app(\App\Services\MarkupCalculationService::class);
+                    $result = $calcService->calculateMarkup(
+                        $basePrice,
+                        'order',
+                        1,
+                        $equipment->id,
+                        $equipment->category_id,
+                        $equipment->company_id,
+                        auth()->user()->company_id
+                    );
+                    $finalPrice = $result['final_price'];
+                } catch (\Exception $e) {
+                    \Log::warning("Show markup error: " . $e->getMessage());
+                }
             }
 
             $nextAvailable = $equipment->next_available_date;
