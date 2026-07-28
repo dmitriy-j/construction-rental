@@ -9,7 +9,7 @@ use App\Models\News;
 use App\Models\RentalRequest;
 use App\Models\User;
 use App\Notifications\NewContactMessage;
-use App\Services\MarkupCalculationService;
+use App\Services\PricingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -19,7 +19,7 @@ class HomeController extends Controller
     /**
      * Главная страница сайта.
      */
-    public function index(MarkupCalculationService $markupService)
+    public function index(PricingService $pricingService)
     {
         // Популярная техника: 6 случайных утверждённых единиц с фото
         $popularEquipment = Equipment::where('is_approved', true)
@@ -27,19 +27,17 @@ class HomeController extends Controller
             ->inRandomOrder()
             ->take(6)
             ->get()
-            ->map(function ($equipment) use ($markupService) {
-                // Добавляем цену с наценкой платформы
+            ->map(function ($equipment) use ($pricingService) {
+                // Цена как в каталоге — первый тариф + наценка
                 if ($equipment->rentalTerms->isNotEmpty()) {
-                    $basePrice = $equipment->rentalTerms->min('price_per_hour');
-                    $result = $markupService->calculateMarkup(
-                        $basePrice,
-                        'equipment',
-                        1,
-                        $equipment->id,
-                        $equipment->category_id,
-                        $equipment->company_id  // company арендодателя для персональной наценки
-                    );
-                    $equipment->price_with_markup = $result['final_price'];
+                    $term = $equipment->rentalTerms->first();
+                    $basePrice = (float)$term->price_per_hour;
+                    $finalPrice = $basePrice;
+                    if (!$equipment->isPlatformOwned()) {
+                        $markup = $pricingService->getPlatformMarkup($equipment, null, 1);
+                        $finalPrice = $basePrice + $pricingService->applyMarkup($basePrice, $markup);
+                    }
+                    $equipment->price_with_markup = round($finalPrice, 2);
                 } else {
                     $equipment->price_with_markup = null;
                 }
