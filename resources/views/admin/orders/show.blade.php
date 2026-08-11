@@ -27,9 +27,9 @@
                     </div>
                     <div class="col-md-4">
                         <div class="float-end">
-                            <a href="{{ route('admin.orders.edit-dates', $order) }}" class="btn btn-warning btn-sm me-2">
+                            <button type="button" class="btn btn-warning btn-sm me-2" data-bs-toggle="modal" data-bs-target="#editDatesModal">
                                 <i class="bi bi-calendar-range"></i> Изменить даты
-                            </a>
+                            </button>
                             <a href="{{ route('admin.orders.index') }}" class="btn btn-secondary btn-sm">
                                 <i class="bi bi-arrow-left"></i> К списку
                             </a>
@@ -121,6 +121,63 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                         <button type="submit" class="btn btn-danger">Отклонить заказ</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно изменения дат (центрированное) -->
+    <div class="modal fade" id="editDatesModal" tabindex="-1" aria-labelledby="editDatesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <form action="{{ route('admin.orders.update-dates', $order) }}" method="POST" id="editDatesForm">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editDatesModalLabel">
+                            <i class="bi bi-calendar-range me-2 text-warning"></i>
+                            Изменение дат заказа #{{ $order->id }}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="edit_start_date" class="form-label fw-semibold">Дата начала аренды *</label>
+                                <input type="date"
+                                       class="form-control @error('start_date') is-invalid @enderror"
+                                       id="edit_start_date"
+                                       name="start_date"
+                                       value="{{ old('start_date', $order->start_date ? $order->start_date->format('Y-m-d') : '') }}"
+                                       required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="edit_end_date" class="form-label fw-semibold">Дата окончания аренды *</label>
+                                <input type="date"
+                                       class="form-control @error('end_date') is-invalid @enderror"
+                                       id="edit_end_date"
+                                       name="end_date"
+                                       value="{{ old('end_date', $order->end_date ? $order->end_date->format('Y-m-d') : '') }}"
+                                       required>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info mt-3 mb-0">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Будут пересчитаны рабочие часы и суммы аренды для всех позиций заказа на основе новых дат.
+                        </div>
+
+                        @if($order->platform_fee > 0)
+                        <div class="small text-muted mt-2">
+                            Текущая наценка платформы: <strong>{{ number_format($order->platform_fee, 2) }} ₽</strong>
+                        </div>
+                        @endif
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-calculator me-1"></i> Пересчитать заказ
+                        </button>
                     </div>
                 </form>
             </div>
