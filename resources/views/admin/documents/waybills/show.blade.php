@@ -7,6 +7,9 @@
             <h1>Путевой лист #{{ $document->number }}</h1>
         </div>
         <div class="col-md-6 text-right">
+            <a href="{{ route('admin.waybills.show', $document) }}" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Заполнить путевой лист
+            </a>
             <a href="{{ route('admin.documents.index', ['type' => 'waybills']) }}" class="btn btn-secondary">← Назад к списку</a>
         </div>
     </div>
