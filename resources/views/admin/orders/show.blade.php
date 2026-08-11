@@ -129,7 +129,7 @@
 
     <!-- Модальное окно изменения дат (центрированное) -->
     <div class="modal fade" id="editDatesModal" tabindex="-1" aria-labelledby="editDatesModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 640px !important;">
             <div class="modal-content">
                 <form action="{{ route('admin.orders.update-dates', $order) }}" method="POST" id="editDatesForm">
                     @csrf
@@ -166,6 +166,8 @@
                             <i class="bi bi-info-circle me-2"></i>
                             Будут пересчитаны рабочие часы и суммы аренды для всех позиций заказа на основе новых дат.
                         </div>
+
+                        <div id="editDatesAlert" class="alert alert-danger mt-3 mb-0 d-none"></div>
 
                         @if($order->platform_fee > 0)
                         <div class="small text-muted mt-2">
@@ -618,4 +620,67 @@
     font-size: 0.8em;
 }
 </style>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var form = document.getElementById('editDatesForm');
+    if (!form) return;
+
+    var alertBox = document.getElementById('editDatesAlert');
+    var submitBtn = form.querySelector('button[type="submit"]');
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        if (alertBox) {
+            alertBox.classList.add('d-none');
+            alertBox.textContent = '';
+        }
+
+        var originalHtml = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Пересчёт...';
+
+        var formData = new FormData(form);
+        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: formData
+        })
+        .then(function (res) {
+            return res.json().catch(function () {
+                return { success: false, error: 'Неожиданный ответ сервера (' + res.status + ')' };
+            });
+        })
+        .then(function (data) {
+            if (data && data.success) {
+                window.location.reload();
+                return;
+            }
+            var message = (data && data.error) ? data.error : 'Не удалось изменить даты заказа';
+            if (alertBox) {
+                alertBox.textContent = message;
+                alertBox.classList.remove('d-none');
+            }
+        })
+        .catch(function () {
+            if (alertBox) {
+                alertBox.textContent = 'Ошибка соединения с сервером';
+                alertBox.classList.remove('d-none');
+            }
+        })
+        .finally(function () {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalHtml;
+        });
+    });
+});
+</script>
+@endpush
 @endsection

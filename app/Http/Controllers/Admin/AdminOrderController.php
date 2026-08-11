@@ -215,6 +215,18 @@ class AdminOrderController extends Controller
             Carbon::parse($request->end_date)
         );
 
+        if ($request->expectsJson()) {
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Даты заказа успешно изменены. Суммы пересчитаны.',
+                    'redirect' => route('admin.orders.show', $order),
+                ]);
+            }
+
+            return response()->json(['success' => false, 'error' => $result['message']], 422);
+        }
+
         if ($result['success']) {
             return redirect()
                 ->route('admin.orders.show', $order)
@@ -241,6 +253,18 @@ class AdminOrderController extends Controller
             Carbon::parse($request->start_date),
             Carbon::parse($request->end_date)
         );
+
+        if ($request->expectsJson()) {
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Даты заказа принудительно изменены. Суммы пересчитаны.',
+                    'redirect' => route('admin.orders.show', $order),
+                ]);
+            }
+
+            return response()->json(['success' => false, 'error' => $result['message']], 422);
+        }
 
         if ($result['success']) {
             return redirect()
