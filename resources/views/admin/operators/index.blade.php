@@ -31,7 +31,7 @@
 </div>
 </div>
 
-<div class="modal fade" id="operatorModal"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form method="POST" id="operatorForm">
+<div class="modal fade" id="operatorModal"><div class="modal-dialog modal-dialog-centered" style="max-width: 640px !important;"><div class="modal-content"><form method="POST" id="operatorForm">
 @csrf
 <div class="modal-header"><h5 class="modal-title">Добавить оператора платформы</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
 <div class="modal-body">

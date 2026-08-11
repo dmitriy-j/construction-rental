@@ -29,7 +29,7 @@
 </div>
 </div>
 
-<div class="modal fade" id="staffModal"><div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+<div class="modal fade" id="staffModal"><div class="modal-dialog modal-dialog-centered" style="max-width: 640px !important;"><div class="modal-content">
 <form method="POST" action="{{ route('admin.staff.store') }}">@csrf
 <div class="modal-header"><h5 class="modal-title">Добавить сотрудника</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
 <div class="modal-body">
