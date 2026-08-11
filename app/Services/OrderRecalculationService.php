@@ -130,17 +130,16 @@ class OrderRecalculationService
         // Если условия аренды не заданы — используем стандартные
         if (!$rentalCondition) {
             Log::warning('Rental condition missing for order item, using default', ['item_id' => $item->id]);
-            $rentalCondition = \App\Models\RentalCondition::firstOrCreate(
-                ['name' => 'Стандартные условия'],
-                [
+            $rentalCondition = \App\Models\RentalCondition::where('is_default', true)->first()
+                ?? \App\Models\RentalCondition::create([
                     'shift_hours' => 8,
                     'shifts_per_day' => 1,
                     'transportation' => 'lessee',
                     'fuel_responsibility' => 'lessee',
                     'extension_policy' => 'allowed',
                     'payment_type' => 'hourly',
-                ]
-            );
+                    'is_default' => true,
+                ]);
         }
 
         // Рассчитываем новые рабочие часы
