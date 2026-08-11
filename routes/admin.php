@@ -44,6 +44,12 @@ Route::prefix('staff')->name('admin.staff.')->group(function () {
     Route::delete('/{staff}', [\App\Http\Controllers\Admin\AdminStaffController::class, 'destroy'])->name('destroy');
 });
 
+Route::prefix('waybills')->name('admin.waybills.')->group(function () {
+    Route::get('/{waybill}', [\App\Http\Controllers\Admin\AdminWaybillController::class, 'show'])->name('show');
+    Route::put('/{waybill}', [\App\Http\Controllers\Admin\AdminWaybillController::class, 'update'])->name('update');
+    Route::post('/{waybill}/close', [\App\Http\Controllers\Admin\AdminWaybillController::class, 'close'])->name('close');
+});
+
 Route::prefix('orders')->name('admin.orders.')->group(function () {
     Route::get('/', [AdminOrderController::class, 'index'])->name('index');
     Route::get('/{order}', [AdminOrderController::class, 'show'])->name('show');

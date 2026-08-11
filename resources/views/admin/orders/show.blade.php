@@ -568,11 +568,17 @@
                             <div class="list-group-item d-flex justify-content-between align-items-center">
                                 <div>
                                     <i class="bi bi-file-text text-primary me-2"></i>
-                                    <span>Транспортная накладная #{{ $waybill->id }}</span>
+                                    <span>Путевой лист #{{ $waybill->id }}</span>
+                                    <span class="badge bg-info ms-1">{{ $waybill->perspective === 'platform' ? 'Платформа' : $waybill->perspective }}</span>
                                 </div>
-                                <a href="#" class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-download"></i>
-                                </a>
+                                <div>
+                                    <a href="{{ route('admin.waybills.show', $waybill) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-pencil"></i> Заполнить
+                                    </a>
+                                    <a href="#" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                </div>
                             </div>
                             @endforeach
                         </div>
