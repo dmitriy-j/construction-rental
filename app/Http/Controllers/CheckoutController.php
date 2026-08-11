@@ -63,8 +63,9 @@ class CheckoutController extends Controller
                 $groupedItems = $cartItems->groupBy(fn($item) => $item->rentalTerm->equipment->company_id);
 
                 foreach ($groupedItems as $companyId => $items) {
-                    $lessorOrderNumber = $this->getNextCompanyOrderNumber(null, $companyId);
-                    $childOrder = $this->createRegularChildOrder($parentOrder->id, $items, $companyId, $lessorOrderNumber);
+                    $lessorCompanyId = (int) $companyId;
+                    $lessorOrderNumber = $this->getNextCompanyOrderNumber(null, $lessorCompanyId);
+                    $childOrder = $this->createRegularChildOrder($parentOrder->id, $items, $lessorCompanyId, $lessorOrderNumber);
                     $parentOrder->childOrders()->save($childOrder);
 
                     foreach ($items as $item) {
