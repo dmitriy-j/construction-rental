@@ -35,6 +35,15 @@ Route::prefix('operators')->name('admin.operators.')->group(function () {
     Route::delete('/{operator}', [\App\Http\Controllers\Admin\AdminOperatorController::class, 'destroy'])->name('destroy');
 });
 
+Route::prefix('staff')->name('admin.staff.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Admin\AdminStaffController::class, 'index'])->name('index');
+    Route::get('/create', [\App\Http\Controllers\Admin\AdminStaffController::class, 'create'])->name('create');
+    Route::post('/', [\App\Http\Controllers\Admin\AdminStaffController::class, 'store'])->name('store');
+    Route::get('/{staff}/edit', [\App\Http\Controllers\Admin\AdminStaffController::class, 'edit'])->name('edit');
+    Route::put('/{staff}', [\App\Http\Controllers\Admin\AdminStaffController::class, 'update'])->name('update');
+    Route::delete('/{staff}', [\App\Http\Controllers\Admin\AdminStaffController::class, 'destroy'])->name('destroy');
+});
+
 Route::prefix('orders')->name('admin.orders.')->group(function () {
     Route::get('/', [AdminOrderController::class, 'index'])->name('index');
     Route::get('/{order}', [AdminOrderController::class, 'show'])->name('show');
