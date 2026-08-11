@@ -391,9 +391,25 @@ class AdminOrderController extends Controller
                 $order->save();
             }
 
-            // Уведомляем арендатора об изменении статуса
-            if ($order->user) {
-                $order->user->notify(new \App\Notifications\OrderStatusChanged($order));
+            // При активации заказа — активируем все позиции
+            if ($status === Order::STATUS_ACTIVE) {
+                $targetOrders = $order->isParent() ? $order->childOrders : collect([$order]);
+                foreach ($targetOrders as $targetOrder) {
+                    foreach ($targetOrder->items as $item) {
+                        if ($item->status !== \App\Models\OrderItem::STATUS_ACTIVE) {
+                            $item->update(['status' => \App\Models\OrderItem::STATUS_ACTIVE]);
+                        }
+                    }
+                }
+            }
+
+            // Уведомляем арендатора об изменении статуса (не должно ломать транзакцию)
+            try {
+                if ($order->user) {
+                    $order->user->notify(new \App\Notifications\OrderStatusChanged($order));
+                }
+            } catch (\Throwable $notifyError) {
+                \Log::warning('Order status notification failed: ' . $notifyError->getMessage());
             }
 
             \DB::commit();

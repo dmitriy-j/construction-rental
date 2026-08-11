@@ -24,7 +24,7 @@ class OrderStatusChanged extends Notification
             'order_id' => $this->order->id,
             'status' => $this->order->status,
             'message' => "Статус заказа #{$this->order->id} изменен: ".$this->order->status_text,
-            'url' => route('orders.show', $this->order),
+            'url' => route('lessee.orders.show', $this->order),
         ];
     }
 
