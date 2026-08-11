@@ -80,6 +80,15 @@
                             </form>
                         @endif
 
+                        @if(in_array($order->status, [\App\Models\Order::STATUS_ACTIVE, \App\Models\Order::STATUS_CONFIRMED]))
+                            <form action="{{ route('admin.orders.create-waybills', $order) }}" method="POST" class="d-inline">
+                                @csrf
+                                <button type="submit" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-file-earmark-text"></i> Создать путевые листы
+                                </button>
+                            </form>
+                        @endif
+
                         @if(in_array($order->status, [\App\Models\Order::STATUS_PENDING, \App\Models\Order::STATUS_PENDING_APPROVAL, \App\Models\Order::STATUS_AGGREGATED, \App\Models\Order::STATUS_CONFIRMED]))
                             <form action="{{ route('admin.orders.status', $order) }}" method="POST" class="d-inline">
                                 @csrf

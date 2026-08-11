@@ -37,6 +37,7 @@ Route::prefix('orders')->name('admin.orders.')->group(function () {
     Route::post('/{order}/confirm', [AdminOrderController::class, 'confirm'])->name('confirm');
     Route::post('/{order}/reject', [AdminOrderController::class, 'reject'])->name('reject');
     Route::post('/{order}/status', [AdminOrderController::class, 'setStatus'])->name('status');
+    Route::post('/{order}/create-waybills', [AdminOrderController::class, 'createWaybills'])->name('create-waybills');
 });
 
 Route::post('/locations', [\App\Http\Controllers\Admin\AdminLocationController::class, 'store'])->name('admin.locations.store');

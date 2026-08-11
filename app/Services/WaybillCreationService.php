@@ -109,14 +109,14 @@ class WaybillCreationService
         return null;
     }
 
-    protected function getOperatorForShift(Equipment $equipment, string $shiftType): Operator
+    protected function getOperatorForShift(Equipment $equipment, string $shiftType): ?Operator
     {
         $operator = $equipment->operators()
             ->where('shift_type', $shiftType)
             ->where('is_active', true)
             ->first();
 
-        if (! $operator) {
+        if (! $operator && ! $equipment->isPlatformOwned()) {
             $error = "Отсутствует активный оператор для смены: $shiftType";
             Log::error($error, ['equipment_id' => $equipment->id]);
             throw new \Exception($error);
@@ -138,7 +138,7 @@ class WaybillCreationService
         Carbon $startDate,
         Carbon $endDate,
         string $shiftType,
-        Operator $operator
+        ?Operator $operator = null
     ): Waybill {
         // Дополнительная проверка периода
         if ($endDate < $startDate) {
@@ -166,20 +166,24 @@ class WaybillCreationService
             ? Waybill::STATUS_ACTIVE
             : Waybill::STATUS_FUTURE;
 
+        $isPlatformOwned = $item->equipment->isPlatformOwned();
+
         $waybill = Waybill::create([
             'order_id' => $item->order_id,
             'parent_order_id' => $item->order->parent_order_id, // Добавляем привязку к родительскому заказу
             'order_item_id' => $item->id,
             'equipment_id' => $item->equipment_id,
-            'operator_id' => $operator->id,
+            'operator_id' => $operator?->id,
             'shift_type' => $shiftType,
             'start_date' => $startDate,
             'end_date' => $endDate,
             'status' => $status,
             'hourly_rate' => $item->rentalTerm->price_per_hour,
-            'lessor_hourly_rate' => $item->fixed_lessor_price ?? $item->rentalTerm->lessor_price,
-            'notes' => 'Автоматически создан при активации заказа',
-            'perspective' => 'lessor', // По умолчанию создаем для арендодателя
+            'lessor_hourly_rate' => $item->fixed_lessor_price ?? $item->rentalTerm->price_per_hour,
+            'notes' => $isPlatformOwned
+                ? 'Автоматически создан для техники платформы'
+                : 'Автоматически создан при активации заказа',
+            'perspective' => $isPlatformOwned ? 'platform' : 'lessor',
         ]);
 
         $this->createShifts($waybill, $startDate, $endDate);

@@ -401,6 +401,20 @@ class AdminOrderController extends Controller
                         }
                     }
                 }
+
+                // Автосоздание путевых листов для платформенной техники
+                try {
+                    foreach ($targetOrders as $targetOrder) {
+                        $hasPlatformEquipment = $targetOrder->items->contains(
+                            fn($i) => $i->equipment && $i->equipment->isPlatformOwned()
+                        );
+                        if ($hasPlatformEquipment) {
+                            app(\App\Services\WaybillCreationService::class)->createForOrder($targetOrder);
+                        }
+                    }
+                } catch (\Throwable $wbError) {
+                    \Log::warning('Waybill auto-creation failed on activation: ' . $wbError->getMessage());
+                }
             }
 
             // Уведомляем арендатора об изменении статуса (не должно ломать транзакцию)
@@ -426,6 +440,44 @@ class AdminOrderController extends Controller
     /**
      * Запись в историю статусов заказа
      */
+    /**
+     * Создание путевых листов для заказа (например, для техники платформы)
+     */
+    public function createWaybills(Request $request, Order $order)
+    {
+        \DB::beginTransaction();
+        try {
+            $targetOrders = $order->isParent() ? $order->childOrders : collect([$order]);
+
+            $created = 0;
+            foreach ($targetOrders as $targetOrder) {
+                $hasPlatformEquipment = $targetOrder->items->contains(function ($i) {
+                    return $i->equipment && $i->equipment->isPlatformOwned();
+                });
+                if ($hasPlatformEquipment) {
+                    app(\App\Services\WaybillCreationService::class)->createForOrder($targetOrder);
+                    $created++;
+                }
+            }
+
+            if ($created === 0) {
+                return redirect()->back()->with('error', 'Платформенная техника в заказе не найдена');
+            }
+
+            \DB::commit();
+
+            return redirect()->route('admin.orders.show', $order)
+                ->with('success', 'Путевые листы для техники платформы созданы.');
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Waybill creation error: ' . $e->getMessage(), [
+                'order_id' => $order->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return redirect()->back()->with('error', 'Ошибка создания путевых листов: ' . $e->getMessage());
+        }
+    }
+
     protected function setOrderStatus(Order $order, string $status, string $notes = ''): void
     {
         $oldStatus = $order->status;
