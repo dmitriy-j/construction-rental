@@ -109,6 +109,7 @@
                                 <li><a class="nav-link py-1 px-3 small" href="{{ route('admin.equipment.index') }}">Вся техника</a></li>
                                 <li><a class="nav-link py-1 px-3 small" href="{{ route('admin.equipment.index',['owner_type'=>'platform']) }}">Техника платформы</a></li>
                                 <li><a class="nav-link py-1 px-3 small" href="{{ route('admin.equipment.index',['owner_type'=>'lessor']) }}">Техника арендодателей</a></li>
+                                <li><a class="nav-link py-1 px-3 small {{ request()->is('admin/operators*') ? 'active' : '' }}" href="{{ route('admin.operators.index') }}">Операторы</a></li>
                             </ul>
                         </div>
                     </li>

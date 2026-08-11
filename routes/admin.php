@@ -26,6 +26,15 @@ Route::middleware('platform_admin')->group(function () {
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 
+Route::prefix('operators')->name('admin.operators.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Admin\AdminOperatorController::class, 'index'])->name('index');
+    Route::get('/create', [\App\Http\Controllers\Admin\AdminOperatorController::class, 'create'])->name('create');
+    Route::post('/', [\App\Http\Controllers\Admin\AdminOperatorController::class, 'store'])->name('store');
+    Route::get('/{operator}/edit', [\App\Http\Controllers\Admin\AdminOperatorController::class, 'edit'])->name('edit');
+    Route::put('/{operator}', [\App\Http\Controllers\Admin\AdminOperatorController::class, 'update'])->name('update');
+    Route::delete('/{operator}', [\App\Http\Controllers\Admin\AdminOperatorController::class, 'destroy'])->name('destroy');
+});
+
 Route::prefix('orders')->name('admin.orders.')->group(function () {
     Route::get('/', [AdminOrderController::class, 'index'])->name('index');
     Route::get('/{order}', [AdminOrderController::class, 'show'])->name('show');
