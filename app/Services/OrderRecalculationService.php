@@ -134,22 +134,35 @@ class OrderRecalculationService
         // Получаем базовую цену арендодателя
         $lessorPricePerHour = $item->fixed_lessor_price ?? $rentalTerm->price_per_hour;
 
-        // Пересчитываем через PricingService
-        $priceCalculation = $this->pricingService->calculatePrice(
-            $rentalTerm,
-            $item->order->lesseeCompany,
-            $workingHours,
-            $rentalCondition
-        );
+        // Для платформенной техники или при отсутствии компании арендатора считаем без наценки
+        $isPlatformOwned = $equipment->isPlatformOwned() || is_null($item->order->lesseeCompany);
+
+        if ($isPlatformOwned) {
+            $finalPricePerHour = $lessorPricePerHour;
+            $platformFeePerHour = 0;
+            $customerPricePerHour = $lessorPricePerHour;
+        } else {
+            // Пересчитываем через PricingService
+            $priceCalculation = $this->pricingService->calculatePrice(
+                $rentalTerm,
+                $item->order->lesseeCompany,
+                $workingHours,
+                $rentalCondition
+            );
+
+            $finalPricePerHour = $priceCalculation['base_price_per_unit'];
+            $platformFeePerHour = $priceCalculation['platform_fee'];
+            $customerPricePerHour = $priceCalculation['base_price_per_unit'];
+        }
 
         // Обновляем позицию
         $item->update([
             'period_count' => $workingHours,
-            'base_price' => $priceCalculation['base_price_per_unit'],
-            'price_per_unit' => $priceCalculation['base_price_per_unit'],
-            'platform_fee' => $priceCalculation['platform_fee'],
-            'total_price' => $priceCalculation['final_price'],
-            'fixed_customer_price' => $priceCalculation['base_price_per_unit'],
+            'base_price' => $customerPricePerHour,
+            'price_per_unit' => $customerPricePerHour,
+            'platform_fee' => $platformFeePerHour,
+            'total_price' => $finalPricePerHour * max(1, $workingHours),
+            'fixed_customer_price' => $customerPricePerHour,
             'fixed_lessor_price' => $lessorPricePerHour,
         ]);
 
@@ -157,8 +170,8 @@ class OrderRecalculationService
             'item_id' => $item->id,
             'equipment' => $equipment->title,
             'working_hours' => $workingHours,
-            'new_price' => $priceCalculation['final_price'],
-            'platform_fee' => $priceCalculation['platform_fee']
+            'new_price' => $finalPricePerHour * max(1, $workingHours),
+            'platform_fee' => $platformFeePerHour
         ];
     }
 
@@ -188,7 +201,7 @@ class OrderRecalculationService
         $order->platform_fee = $order->items->sum('platform_fee');
         $order->delivery_cost = $order->items->sum('delivery_cost');
         $order->lessor_base_amount = $order->items->sum(function ($item) {
-            return $item->fixed_lessor_price * $item->period_count;
+            return ($item->fixed_lessor_price ?? $item->base_price) * $item->period_count;
         });
 
         $order->total_amount = $order->base_amount + $order->delivery_cost;
@@ -226,14 +239,28 @@ class OrderRecalculationService
             : $order->items;
 
         foreach ($items as $item) {
-            $isAvailable = $this->availabilityService->isAvailable(
-                $item->equipment,
-                $newStartDate,
-                $newEndDate,
-                $order->id // Исключаем текущий заказ из проверки
-            );
+            // Проверяем доступность, исключая собственную бронь текущего заказа
+            $conflicting = \App\Models\EquipmentAvailability::where('equipment_id', $item->equipment_id)
+                ->whereBetween('date', [
+                    $newStartDate->format('Y-m-d'),
+                    $newEndDate->format('Y-m-d'),
+                ])
+                ->where(function ($query) use ($order) {
+                    $query->where('status', 'booked')
+                        ->orWhere('status', 'maintenance')
+                        ->orWhere(function ($q) {
+                            $q->where('status', 'temp_reserve')
+                                ->where('expires_at', '>', now());
+                        });
+                })
+                ->where(function ($query) use ($order) {
+                    // Исключаем брони, принадлежащие этому же заказу (позволяет перенести даты своей техники)
+                    $query->whereNull('order_id')
+                        ->orWhere('order_id', '!=', $order->id);
+                })
+                ->exists();
 
-            if (!$isAvailable) {
+            if ($conflicting) {
                 $unavailableEquipment[] = [
                     'equipment' => $item->equipment->title,
                     'item_id' => $item->id

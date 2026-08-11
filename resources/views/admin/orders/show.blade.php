@@ -40,6 +40,93 @@
         </div>
     </div>
 
+    <!-- Панель действий со статусом -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body py-3">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span class="me-2"><strong>Действия:</strong></span>
+
+                        @if(in_array($order->status, [\App\Models\Order::STATUS_PENDING, \App\Models\Order::STATUS_PENDING_APPROVAL, \App\Models\Order::STATUS_AGGREGATED]))
+                            <form action="{{ route('admin.orders.confirm', $order) }}" method="POST" class="d-inline">
+                                @csrf
+                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Подтвердить заказ #{{ $order->id }}?')">
+                                    <i class="bi bi-check-circle"></i> Подтвердить заказ
+                                </button>
+                            </form>
+                            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectOrderModal">
+                                <i class="bi bi-x-circle"></i> Отклонить
+                            </button>
+                        @endif
+
+                        @if($order->status === \App\Models\Order::STATUS_CONFIRMED)
+                            <form action="{{ route('admin.orders.status', $order) }}" method="POST" class="d-inline">
+                                @csrf
+                                <input type="hidden" name="status" value="active">
+                                <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('Начать аренду по заказу #{{ $order->id }}?')">
+                                    <i class="bi bi-play-circle"></i> Начать аренду
+                                </button>
+                            </form>
+                        @endif
+
+                        @if(in_array($order->status, [\App\Models\Order::STATUS_ACTIVE, \App\Models\Order::STATUS_CONFIRMED, \App\Models\Order::STATUS_IN_DELIVERY]))
+                            <form action="{{ route('admin.orders.status', $order) }}" method="POST" class="d-inline">
+                                @csrf
+                                <input type="hidden" name="status" value="completed">
+                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Завершить заказ #{{ $order->id }}?')">
+                                    <i class="bi bi-check2-square"></i> Завершить заказ
+                                </button>
+                            </form>
+                        @endif
+
+                        @if(in_array($order->status, [\App\Models\Order::STATUS_PENDING, \App\Models\Order::STATUS_PENDING_APPROVAL, \App\Models\Order::STATUS_AGGREGATED, \App\Models\Order::STATUS_CONFIRMED]))
+                            <form action="{{ route('admin.orders.status', $order) }}" method="POST" class="d-inline">
+                                @csrf
+                                <input type="hidden" name="status" value="cancelled">
+                                <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Отменить заказ #{{ $order->id }}?')">
+                                    <i class="bi bi-trash"></i> Отменить
+                                </button>
+                            </form>
+                        @endif
+
+                        @if($order->rejection_reason)
+                            <span class="badge bg-danger ms-2" title="Причина отклонения">
+                                <i class="bi bi-info-circle"></i> {{ $order->rejection_reason }}
+                            </span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно отклонения заказа -->
+    <div class="modal fade" id="rejectOrderModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="{{ route('admin.orders.reject', $order) }}" method="POST">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title">Отклонить заказ #{{ $order->id }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="rejection_reason" class="form-label">Причина отклонения *</label>
+                            <textarea class="form-control" id="rejection_reason" name="rejection_reason" rows="3" required
+                                      placeholder="Укажите причину отклонения заказа"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-danger">Отклонить заказ</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Основная информация -->
     <div class="row">
         <div class="col-md-12">

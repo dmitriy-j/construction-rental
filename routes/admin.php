@@ -33,6 +33,10 @@ Route::prefix('orders')->name('admin.orders.')->group(function () {
     Route::post('/{order}/check-dates-availability', [AdminOrderController::class, 'checkDatesAvailability'])->name('check-dates-availability');
     Route::post('/{order}/update-dates', [AdminOrderController::class, 'updateDates'])->name('update-dates');
     Route::post('/{order}/force-update-dates', [AdminOrderController::class, 'forceUpdateDates'])->name('force-update-dates');
+    // Подтверждение/отклонение/смена статуса
+    Route::post('/{order}/confirm', [AdminOrderController::class, 'confirm'])->name('confirm');
+    Route::post('/{order}/reject', [AdminOrderController::class, 'reject'])->name('reject');
+    Route::post('/{order}/status', [AdminOrderController::class, 'setStatus'])->name('status');
 });
 
 Route::post('/locations', [\App\Http\Controllers\Admin\AdminLocationController::class, 'store'])->name('admin.locations.store');

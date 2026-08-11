@@ -252,4 +252,149 @@ class AdminOrderController extends Controller
             ->withInput()
             ->with('error', $result['message']);
     }
+
+    /**
+     * Подтверждение заказа (для платформенной техники — платформа подтверждает сама)
+     */
+    public function confirm(Order $order)
+    {
+        $allowed = [Order::STATUS_PENDING, Order::STATUS_PENDING_APPROVAL, Order::STATUS_AGGREGATED];
+        if (!in_array($order->status, $allowed)) {
+            return redirect()->back()->with('error', 'Заказ нельзя подтвердить в текущем статусе');
+        }
+
+        \DB::beginTransaction();
+        try {
+            $this->setOrderStatus($order, Order::STATUS_CONFIRMED, 'Подтвержден администратором');
+
+            // Для родительского заказа подтверждаем всех детей
+            if ($order->isParent()) {
+                foreach ($order->childOrders as $childOrder) {
+                    $this->setOrderStatus($childOrder, Order::STATUS_CONFIRMED, 'Подтвержден администратором');
+                }
+            }
+
+            $order->confirmed_at = now();
+            $order->save();
+
+            // Уведомляем арендатора
+            if ($order->user) {
+                $order->user->notify(new \App\Notifications\OrderApproved($order));
+            }
+
+            \DB::commit();
+
+            return redirect()->route('admin.orders.show', $order)
+                ->with('success', 'Заказ #' . $order->id . ' подтвержден');
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Order confirm error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Ошибка подтверждения заказа: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Отклонение заказа с указанием причины
+     */
+    public function reject(Request $request, Order $order)
+    {
+        $request->validate([
+            'rejection_reason' => 'required|string|max:1000',
+        ]);
+
+        \DB::beginTransaction();
+        try {
+            $this->setOrderStatus($order, Order::STATUS_REJECTED, 'Отклонен администратором: ' . $request->rejection_reason);
+
+            // Для родительского заказа отклоняем всех детей
+            if ($order->isParent()) {
+                foreach ($order->childOrders as $childOrder) {
+                    $this->setOrderStatus($childOrder, Order::STATUS_REJECTED, 'Отклонен администратором: ' . $request->rejection_reason);
+                }
+            }
+
+            $order->rejection_reason = $request->rejection_reason;
+            $order->rejected_at = now();
+            $order->save();
+
+            // Уведомляем арендатора
+            if ($order->user) {
+                $order->user->notify(new \App\Notifications\OrderRejected($order, $request->rejection_reason));
+            }
+
+            \DB::commit();
+
+            return redirect()->route('admin.orders.show', $order)
+                ->with('success', 'Заказ #' . $order->id . ' отклонен');
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Order reject error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Ошибка отклонения заказа: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Универсальная смена статуса заказа (active/completed/cancelled)
+     */
+    public function setStatus(Request $request, Order $order)
+    {
+        $request->validate([
+            'status' => 'required|in:active,completed,cancelled',
+        ]);
+
+        $status = $request->status;
+        $notes = $request->input('notes', '');
+
+        \DB::beginTransaction();
+        try {
+            $this->setOrderStatus($order, $status, $notes ?: 'Статус изменен администратором');
+
+            // Для родительского заказа — меняем и детей
+            if ($order->isParent()) {
+                foreach ($order->childOrders as $childOrder) {
+                    $this->setOrderStatus($childOrder, $status, $notes ?: 'Статус изменен администратором');
+                }
+            }
+
+            // Если завершаем заказ — записываем дату завершения
+            if ($status === Order::STATUS_COMPLETED && method_exists($order, 'complete')) {
+                $order->complete();
+            } else {
+                $order->save();
+            }
+
+            // Уведомляем арендатора об изменении статуса
+            if ($order->user) {
+                $order->user->notify(new \App\Notifications\OrderStatusChanged($order));
+            }
+
+            \DB::commit();
+
+            return redirect()->route('admin.orders.show', $order)
+                ->with('success', 'Статус заказа #' . $order->id . ' изменен на ' . Order::statusText($status));
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Order setStatus error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Ошибка изменения статуса: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Запись в историю статусов заказа
+     */
+    protected function setOrderStatus(Order $order, string $status, string $notes = ''): void
+    {
+        $oldStatus = $order->status;
+        $order->status = $status;
+        $order->save();
+
+        \DB::table('order_status_histories')->insert([
+            'order_id' => $order->id,
+            'status' => $status,
+            'changed_by' => auth()->id(),
+            'notes' => $notes ?: ($oldStatus . ' -> ' . $status),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
 }

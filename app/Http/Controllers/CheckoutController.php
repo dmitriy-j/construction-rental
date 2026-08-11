@@ -78,6 +78,20 @@ class CheckoutController extends Controller
                 DB::commit();
 
                 Log::info('[CHECKOUT] Order created', ['parent_order_id' => $parentOrder->id]);
+
+                // Уведомление администратору о новом заказе
+                try {
+                    $lesseeName = auth()->user()->company->legal_name ?? auth()->user()->name;
+                    app(\App\Services\AdminNotificationService::class)->newOrder(
+                        '#' . $parentOrder->id,
+                        $lesseeName,
+                        null,
+                        $parentOrder->total_amount ?? 0
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('Ошибка уведомления админа о новом заказе: ' . $e->getMessage());
+                }
+
                 return redirect()->route('lessee.orders.show', ['order' => $parentOrder->id])
                     ->with('success', 'Заказ #' . $parentOrder->company_order_number . ' успешно оформлен!');
             } catch (Exception $e) {
