@@ -86,7 +86,7 @@
         .content-footer .site-footer a:hover { color: #0b5ed7; }
     </style>
 </head>
-<body class="@auth sidebar-open @endauth @yield('body-class')">
+<body class="@auth sidebar-open sidebar-layout @endauth @yield('body-class')">
     <div id="app" class="d-flex flex-column">
         @include('components.navbar')
         <div class="d-flex flex-grow-1">
