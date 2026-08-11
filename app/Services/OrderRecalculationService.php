@@ -123,8 +123,24 @@ class OrderRecalculationService
         $rentalTerm = $item->rentalTerm;
         $equipment = $item->equipment;
 
-        if (!$rentalCondition || !$rentalTerm || !$equipment) {
+        if (!$rentalTerm || !$equipment) {
             throw new \Exception("Недостаточно данных для пересчета позиции #{$item->id}");
+        }
+
+        // Если условия аренды не заданы — используем стандартные
+        if (!$rentalCondition) {
+            Log::warning('Rental condition missing for order item, using default', ['item_id' => $item->id]);
+            $rentalCondition = \App\Models\RentalCondition::firstOrCreate(
+                ['name' => 'Стандартные условия'],
+                [
+                    'shift_hours' => 8,
+                    'shifts_per_day' => 1,
+                    'transportation' => 'lessee',
+                    'fuel_responsibility' => 'lessee',
+                    'extension_policy' => 'allowed',
+                    'payment_type' => 'hourly',
+                ]
+            );
         }
 
         // Рассчитываем новые рабочие часы
