@@ -6,6 +6,7 @@ namespace App\Services;
 use App\Models\PlatformMarkup;
 use App\Models\Equipment;
 use App\Models\EquipmentCategory;
+use App\Models\Category;
 use App\Models\Company;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
