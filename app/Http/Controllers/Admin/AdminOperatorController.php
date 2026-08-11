@@ -12,7 +12,8 @@ class AdminOperatorController extends Controller
     public function index()
     {
         $operators = Operator::with('equipment')->orderBy('full_name')->paginate(25);
-        return view('admin.operators.index', compact('operators'));
+        $equipment = Equipment::where('is_platform_owned', true)->where('is_approved', true)->get();
+        return view('admin.operators.index', compact('operators', 'equipment'));
     }
 
     public function create()

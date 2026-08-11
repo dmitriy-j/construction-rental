@@ -12,7 +12,8 @@ class AdminStaffController extends Controller
     public function index()
     {
         $staff = User::with('roles')->orderBy('name')->paginate(25);
-        return view('admin.staff.index', compact('staff'));
+        $roles = \Spatie\Permission\Models\Role::whereIn('name', ['platform_super', 'platform_admin', 'company_admin'])->pluck('name', 'name');
+        return view('admin.staff.index', compact('staff', 'roles'));
     }
 
     public function create()
