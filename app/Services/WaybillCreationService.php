@@ -16,6 +16,8 @@ class WaybillCreationService
     public function createForOrder(Order $order)
     {
         try {
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
             $rentalCondition = $order->rentalCondition;
             $shiftsPerDay = $rentalCondition->shifts_per_day ?? 1;
 
@@ -32,9 +34,11 @@ class WaybillCreationService
                 $this->createFirstWaybillForItem($item, $shiftsPerDay);
             }
 
+            \Illuminate\Support\Facades\DB::commit();
             return true;
 
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
             Log::error("Ошибка создания путевых листов для заказа #{$order->id}: ".$e->getMessage(), [
                 'order_id' => $order->id,
                 'exception' => $e,
@@ -65,6 +69,20 @@ class WaybillCreationService
             }
 
             foreach ($shiftTypes as $shiftType) {
+                // Идемпотентность: не создаём ПЛ, если для позиции и смены уже есть активный
+                $existing = Waybill::where('order_item_id', $item->id)
+                    ->where('shift_type', $shiftType)
+                    ->whereIn('status', [Waybill::STATUS_ACTIVE, Waybill::STATUS_FUTURE])
+                    ->exists();
+
+                if ($existing) {
+                    Log::info('Waybill already exists for item/shift, skipping', [
+                        'item_id' => $item->id,
+                        'shift_type' => $shiftType,
+                    ]);
+                    continue;
+                }
+
                 $operator = $this->getOperatorForShift($equipment, $shiftType);
                 $this->createWaybill(
                     $item,
