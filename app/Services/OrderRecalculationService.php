@@ -52,6 +52,9 @@ class OrderRecalculationService
                 $results[] = $this->recalculateChildOrder($order, $newStartDate, $newEndDate);
             }
 
+            // Пересоздаём брони оборудования на новый период
+            $this->rebuildAvailability($order, $newStartDate, $newEndDate);
+
             DB::commit();
 
             Log::info('Order recalculation completed successfully', [
@@ -238,14 +241,23 @@ class OrderRecalculationService
             ? $order->childOrders->flatMap->items
             : $order->items;
 
+        // Собираем id всех заказов кластера (родительский + дочерние),
+        // чтобы исключить брони собственной техники из проверки.
+        $orderIds = [$order->id];
+        if ($order->isParent()) {
+            $orderIds = array_merge($orderIds, $order->childOrders->pluck('id')->all());
+        } elseif ($order->parent_order_id) {
+            $orderIds[] = $order->parent_order_id;
+        }
+
         foreach ($items as $item) {
-            // Проверяем доступность, исключая собственную бронь текущего заказа
+            // Проверяем доступность, исключая брони собственного кластера заказов
             $conflicting = \App\Models\EquipmentAvailability::where('equipment_id', $item->equipment_id)
                 ->whereBetween('date', [
                     $newStartDate->format('Y-m-d'),
                     $newEndDate->format('Y-m-d'),
                 ])
-                ->where(function ($query) use ($order) {
+                ->where(function ($query) {
                     $query->where('status', 'booked')
                         ->orWhere('status', 'maintenance')
                         ->orWhere(function ($q) {
@@ -253,10 +265,10 @@ class OrderRecalculationService
                                 ->where('expires_at', '>', now());
                         });
                 })
-                ->where(function ($query) use ($order) {
-                    // Исключаем брони, принадлежащие этому же заказу (позволяет перенести даты своей техники)
+                ->where(function ($query) use ($orderIds) {
+                    // Исключаем брони, принадлежащие своему кластеру заказов
                     $query->whereNull('order_id')
-                        ->orWhere('order_id', '!=', $order->id);
+                        ->orWhereNotIn('order_id', $orderIds);
                 })
                 ->exists();
 
@@ -272,5 +284,42 @@ class OrderRecalculationService
             'available' => empty($unavailableEquipment),
             'unavailable_equipment' => $unavailableEquipment
         ];
+    }
+
+    /**
+     * Пересоздание броней оборудования на новый период.
+     * Удаляет старые брони кластера заказов и создаёт новые на новые даты.
+     */
+    protected function rebuildAvailability(Order $order, Carbon $newStartDate, Carbon $newEndDate): void
+    {
+        // Собираем id всех заказов кластера (родительский + дочерние)
+        $orderIds = [$order->id];
+        if ($order->isParent()) {
+            $orderIds = array_merge($orderIds, $order->childOrders->pluck('id')->all());
+        } elseif ($order->parent_order_id) {
+            $orderIds[] = $order->parent_order_id;
+        }
+
+        // Удаляем старые брони по всему кластеру заказов
+        \App\Models\EquipmentAvailability::whereIn('order_id', $orderIds)->delete();
+
+        // Собираем все позиции заказа
+        $items = $order->isParent()
+            ? $order->childOrders->flatMap->items
+            : $order->items;
+
+        // Бронируем каждую позицию на новый период
+        foreach ($items as $item) {
+            if (!$item->equipment) {
+                continue;
+            }
+            $this->availabilityService->bookEquipment(
+                $item->equipment,
+                $newStartDate->format('Y-m-d'),
+                $newEndDate->format('Y-m-d'),
+                $item->order_id ?? $order->id,
+                'booked'
+            );
+        }
     }
 }

@@ -131,7 +131,8 @@
     <div class="modal fade" id="editDatesModal" tabindex="-1" aria-labelledby="editDatesModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" style="max-width: 640px !important;">
             <div class="modal-content">
-                <form action="{{ route('admin.orders.update-dates', $order) }}" method="POST" id="editDatesForm">
+                <form action="{{ route('admin.orders.update-dates', $order) }}" method="POST" id="editDatesForm"
+                      data-force-url="{{ route('admin.orders.force-update-dates', $order) }}">
                     @csrf
                     <div class="modal-header">
                         <h5 class="modal-title" id="editDatesModalLabel">
@@ -177,6 +178,9 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" name="force" class="btn btn-warning">
+                            <i class="bi bi-exclamation-triangle me-1"></i> Принудительно изменить даты
+                        </button>
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-calculator me-1"></i> Пересчитать заказ
                         </button>
@@ -628,24 +632,38 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!form) return;
 
     var alertBox = document.getElementById('editDatesAlert');
-    var submitBtn = form.querySelector('button[type="submit"]');
+    var defaultSubmitBtn = form.querySelector('button[type="submit"]:not([name="force"])');
 
     form.addEventListener('submit', function (e) {
         e.preventDefault();
+
+        // Определяем, какой кнопкой отправлена форма
+        var submitter = e.submitter;
+        var forceUrl = form.getAttribute('data-force-url') || '';
+        var isForce = submitter && submitter.name === 'force';
+
+        // При принудительном изменении — подтверждение
+        if (isForce) {
+            if (!window.confirm('Принудительно изменить даты без проверки доступности? Это может создать конфликт броней.')) {
+                return;
+            }
+        }
 
         if (alertBox) {
             alertBox.classList.add('d-none');
             alertBox.textContent = '';
         }
 
+        var submitBtn = submitter || defaultSubmitBtn || form.querySelector('button[type="submit"]');
         var originalHtml = submitBtn.innerHTML;
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Пересчёт...';
 
         var formData = new FormData(form);
         var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        var targetUrl = isForce && forceUrl ? forceUrl : form.action;
 
-        fetch(form.action, {
+        fetch(targetUrl, {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': csrfToken,
