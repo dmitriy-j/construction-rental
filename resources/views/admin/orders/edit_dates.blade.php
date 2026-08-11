@@ -3,6 +3,24 @@
 
 @section('title', 'Изменение дат заказа #' . $order->company_order_number)
 
+@push('styles')
+<style>
+    /* Страховка: гарантируем отступ контента от фиксированного сайдбара */
+    body.sidebar-layout .content-area,
+    body.sidebar-layout .content-area .content-container,
+    body.sidebar-layout .content-area .container-fluid {
+        padding-left: var(--sidebar-width, 260px) !important;
+    }
+    @media (max-width: 991.98px) {
+        body.sidebar-layout .content-area,
+        body.sidebar-layout .content-area .content-container,
+        body.sidebar-layout .content-area .container-fluid {
+            padding-left: 0 !important;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="container-fluid">
     <div class="row">
