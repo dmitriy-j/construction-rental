@@ -33,7 +33,9 @@ class AdminOperatorController extends Controller
             'shift_type' => 'required|in:day,night',
             'is_active' => 'nullable|boolean',
         ]);
-        $data['company_id'] = null; // платформенный оператор
+        // Платформенный оператор — привязываем к компании платформы (is_platform)
+        $platformCompany = \App\Models\Company::where('is_platform', true)->first();
+        $data['company_id'] = $platformCompany ? $platformCompany->id : null;
         $data['is_active'] = $request->boolean('is_active', true);
         Operator::create($data);
 
