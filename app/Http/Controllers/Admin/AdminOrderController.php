@@ -197,14 +197,18 @@ class AdminOrderController extends Controller
             );
 
             if (!$availability['available']) {
+                $unavailableMessage = 'Оборудование недоступно на выбранные даты: ' .
+                    collect($availability['unavailable_equipment'])
+                        ->pluck('equipment')
+                        ->implode(', ');
+
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'error' => $unavailableMessage], 422);
+                }
+
                 return redirect()->back()
                     ->withInput()
-                    ->withErrors([
-                        'dates' => 'Оборудование недоступно на выбранные даты: ' .
-                            collect($availability['unavailable_equipment'])
-                                ->pluck('equipment')
-                                ->implode(', ')
-                    ])
+                    ->withErrors(['dates' => $unavailableMessage])
                     ->with('availability_check', $availability);
             }
         }

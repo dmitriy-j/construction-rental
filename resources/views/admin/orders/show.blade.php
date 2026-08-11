@@ -651,11 +651,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 'X-CSRF-TOKEN': csrfToken,
                 'Accept': 'application/json'
             },
-            body: formData
+            body: formData,
+            redirect: 'manual'
         })
         .then(function (res) {
+            // Если ответ не JSON (сессия истекла, редирект на логин и т.п.)
+            var contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                return { success: false, error: 'Неожиданный ответ сервера (' + res.status + '). Возможно, сессия истекла. Обновите страницу и повторите.' };
+            }
             return res.json().catch(function () {
-                return { success: false, error: 'Неожиданный ответ сервера (' + res.status + ')' };
+                return { success: false, error: 'Ошибка чтения ответа сервера (' + res.status + ')' };
             });
         })
         .then(function (data) {
