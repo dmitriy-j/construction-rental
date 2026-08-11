@@ -19,6 +19,12 @@ class AdminWaybillController extends Controller
             'shifts.operator',
         ]);
 
+        // Если у ПЛ нет смен — создаём их на период
+        if ($waybill->shifts->isEmpty()) {
+            app(\App\Services\WaybillCreationService::class)->createShiftsForWaybill($waybill);
+            $waybill->load('shifts.operator');
+        }
+
         $operators = Operator::with('equipment')->where('is_active', true)->orderBy('full_name')->get();
 
         // Выбор текущей смены
