@@ -91,7 +91,8 @@ class DocumentController extends Controller
 
             case 'upds':
                 $document = Upd::with(['order', 'lessorCompany', 'lesseeCompany', 'items'])->findOrFail($id);
-                return view('admin.documents.upds.show', compact('document'));
+                $upd = $document; // шаблон upds/show.blade.php ожидает переменную $upd
+                return view('admin.documents.upds.show', compact('document', 'upd'));
 
             case 'invoices':
                 $document = Invoice::with(['order', 'company'])->findOrFail($id);
