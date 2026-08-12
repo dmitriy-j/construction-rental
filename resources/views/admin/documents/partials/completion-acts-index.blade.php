@@ -93,7 +93,7 @@
                                     <i class="fas fa-external-link-alt"></i> УПД
                                 </a>
                             @endif
-                        @elseif($act->perspective == 'lessee')
+                        @elseif(in_array($act->perspective, ['lessee', 'platform']))
                             <form action="{{ route('admin.completion-acts.generate-upd', $act) }}" method="POST" class="d-inline mt-1">
                                 @csrf
                                 <button type="submit" class="btn btn-sm btn-primary" title="Сформировать УПД">
