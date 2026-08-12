@@ -90,9 +90,25 @@ class DocumentController extends Controller
                 return view('admin.documents.completion_acts.show', compact('document'));
 
             case 'upds':
-                $document = Upd::with(['order', 'lessorCompany', 'lesseeCompany', 'items'])->findOrFail($id);
-                $upd = $document; // шаблон upds/show.blade.php ожидает переменную $upd
-                return view('admin.documents.upds.show', compact('document', 'upd'));
+                $upd = Upd::with([
+                    'order.items.equipment',
+                    'waybill.equipment',
+                    'lessorCompany',
+                    'lesseeCompany',
+                    'items',
+                    'completionAct',
+                ])->findOrFail($id);
+                $document = $upd;
+
+                $documentDataService = app(\App\Services\DocumentDataService::class);
+                $equipmentData = $documentDataService->getEquipmentDataForDisplay($upd);
+
+                $preparedItems = $upd->items->map(function ($item, $index) use ($documentDataService, $equipmentData, $upd) {
+                    $item->full_name = $documentDataService->generateItemNameForDisplay($item, $upd, $equipmentData, $index);
+                    return $item;
+                });
+
+                return view('admin.documents.upds.show', compact('document', 'upd', 'preparedItems', 'equipmentData'));
 
             case 'invoices':
                 $document = Invoice::with(['order', 'company'])->findOrFail($id);
