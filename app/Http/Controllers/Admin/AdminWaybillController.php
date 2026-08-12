@@ -96,11 +96,26 @@ class AdminWaybillController extends Controller
             $shift->shift_date = $request->shift_date;
         }
         $shift->fill($request->only([
-            'object_name', 'object_address', 'departure_time', 'return_time',
-            'odometer_start', 'odometer_end', 'fuel_start', 'fuel_end',
-            'fuel_refilled_liters', 'fuel_refilled_type', 'hours_worked',
-            'downtime_hours', 'downtime_cause', 'work_description',
+            'object_name', 'object_address', 'odometer_start', 'odometer_end',
+            'fuel_start', 'fuel_end', 'fuel_refilled_liters', 'fuel_refilled_type',
+            'hours_worked', 'downtime_hours', 'downtime_cause', 'work_description',
         ]));
+
+        // Нормализуем время: "HH:MM" → "HH:MM:SS" (колонка datetime)
+        if ($request->departure_time) {
+            $shift->departure_time = preg_match('/^\d{2}:\d{2}$/', $request->departure_time)
+                ? $request->departure_time . ':00'
+                : $request->departure_time;
+        } else {
+            $shift->departure_time = null;
+        }
+        if ($request->return_time) {
+            $shift->return_time = preg_match('/^\d{2}:\d{2}$/', $request->return_time)
+                ? $request->return_time . ':00'
+                : $request->return_time;
+        } else {
+            $shift->return_time = null;
+        }
 
         // Авто-расчёт часов из времени работы, если часы не заданы вручную
         if (! $shift->hours_worked && $request->departure_time && $request->return_time) {
@@ -116,13 +131,16 @@ class AdminWaybillController extends Controller
         $shift->total_amount = round(($shift->hours_worked ?? 0) * $rate, 2);
         // saveQuietly — обходим observer арендодателя (обязательные поля), топливо/одометр опциональны
         $shift->saveQuietly();
+        $shift->refresh();
 
-        // Автоперенос данных в следующую незаполненную смену
-        $nextShift = $waybill->shifts
-            ->where('id', '>', $shift->id)
-            ->where(fn($s) => empty($s->hours_worked) || $s->hours_worked == 0)
-            ->first() ?? $waybill->shifts->where('id', '>', $shift->id)->first();
+        // Автоперенос данных в следующую по дате смену (прямой запрос в БД)
+        $nextShift = \App\Models\WaybillShift::where('waybill_id', $waybill->id)
+            ->whereDate('shift_date', '>', $shift->shift_date ? $shift->shift_date->toDateString() : date('Y-m-d'))
+            ->orderBy('shift_date', 'asc')
+            ->first();
 
+        // После сохранения переходим на следующую смену (заполняем по цепочке 13→14→15...)
+        $nextShiftId = $shift->id;
         if ($nextShift) {
             $nextShift->operator_id = $shift->operator_id ?? $waybill->operator_id;
             $nextShift->object_name = $shift->object_name;
@@ -132,9 +150,10 @@ class AdminWaybillController extends Controller
             $nextShift->odometer_start = $shift->odometer_end;
             $nextShift->fuel_start = $shift->fuel_end;
             $nextShift->saveQuietly();
+            $nextShiftId = $nextShift->id;
         }
 
-        return redirect()->route('admin.waybills.show', ['waybill' => $waybill, 'shift_id' => $shift->id])
+        return redirect()->route('admin.waybills.show', ['waybill' => $waybill, 'shift_id' => $nextShiftId])
             ->with('success', 'Смена сохранена. Данные перенесены в следующую смену.');
     }
 
