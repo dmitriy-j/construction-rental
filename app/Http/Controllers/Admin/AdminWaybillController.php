@@ -197,11 +197,65 @@ class AdminWaybillController extends Controller
             return redirect()->back()->with('error', 'Путевой лист уже закрыт');
         }
 
-        $waybill->status = Waybill::STATUS_COMPLETED;
-        $waybill->save();
+        try {
+            \Illuminate\Support\Facades\DB::beginTransaction();
 
-        app(\App\Services\WaybillCreationService::class)->createNextWaybill($waybill);
+            // 1. Удаляем незаполненные смены
+            $waybill->shifts()
+                ->where(function ($q) {
+                    $q->whereNull('hours_worked')->orWhere('hours_worked', '<=', 0);
+                })
+                ->delete();
 
-        return redirect()->route('admin.waybills.show', $waybill)->with('success', 'Путевой лист закрыт, следующий период создан');
+            // 2. Обрезаем end_date до последней заполненной смены
+            $lastFilled = $waybill->shifts()
+                ->where('hours_worked', '>', 0)
+                ->orderBy('shift_date', 'desc')
+                ->first();
+
+            if ($lastFilled) {
+                $waybill->end_date = $lastFilled->shift_date;
+            }
+
+            $waybill->status = Waybill::STATUS_COMPLETED;
+            $waybill->save();
+
+            // 3. Создаём Акт выполненных работ Платформа → Арендатор (perspective=platform)
+            $totalHours = $waybill->shifts()->sum('hours_worked');
+            $totalDowntime = $waybill->shifts()->sum('downtime_hours');
+            $rate = $waybill->lessor_hourly_rate ?: ($waybill->orderItem?->rentalTerm?->price_per_hour ?: 0);
+            $totalAmount = $totalHours * $rate;
+
+            \App\Models\CompletionAct::create([
+                'order_id' => $waybill->order_id,
+                'parent_order_id' => $waybill->parent_order_id,
+                'waybill_id' => $waybill->id,
+                'act_date' => now(),
+                'service_start_date' => $waybill->start_date,
+                'service_end_date' => $waybill->end_date,
+                'total_hours' => $totalHours,
+                'total_downtime' => $totalDowntime,
+                'hourly_rate' => $rate,
+                'total_amount' => $totalAmount,
+                'final_amount' => $totalAmount,
+                'status' => 'generated',
+                'perspective' => 'platform',
+            ]);
+
+            // 4. Создаём следующий ПЛ на след. период (срок документооборота)
+            app(\App\Services\WaybillCreationService::class)->createNextWaybill($waybill);
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            return redirect()->route('admin.waybills.show', $waybill)
+                ->with('success', 'Путевой лист закрыт. Созданы Акт выполненных работ (Платформа→Арендатор) и следующий путевой лист.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Admin waybill close error: ' . $e->getMessage(), [
+                'waybill_id' => $waybill->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return redirect()->back()->with('error', 'Ошибка закрытия путевого листа: ' . $e->getMessage());
+        }
     }
 }
