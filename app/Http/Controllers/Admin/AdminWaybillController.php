@@ -114,10 +114,62 @@ class AdminWaybillController extends Controller
         $rate = $waybill->lessor_hourly_rate ?: ($waybill->orderItem?->rentalTerm?->price_per_hour ?: 0);
         $shift->hourly_rate = $rate;
         $shift->total_amount = round(($shift->hours_worked ?? 0) * $rate, 2);
-        $shift->save();
+        // saveQuietly — обходим observer арендодателя (обязательные поля), топливо/одометр опциональны
+        $shift->saveQuietly();
+
+        // Автоперенос данных в следующую незаполненную смену
+        $nextShift = $waybill->shifts
+            ->where('id', '>', $shift->id)
+            ->where(fn($s) => empty($s->hours_worked) || $s->hours_worked == 0)
+            ->first() ?? $waybill->shifts->where('id', '>', $shift->id)->first();
+
+        if ($nextShift) {
+            $nextShift->operator_id = $shift->operator_id ?? $waybill->operator_id;
+            $nextShift->object_name = $shift->object_name;
+            $nextShift->object_address = $shift->object_address;
+            $nextShift->departure_time = $shift->departure_time;
+            $nextShift->return_time = $shift->return_time;
+            $nextShift->odometer_start = $shift->odometer_end;
+            $nextShift->fuel_start = $shift->fuel_end;
+            $nextShift->saveQuietly();
+        }
 
         return redirect()->route('admin.waybills.show', ['waybill' => $waybill, 'shift_id' => $shift->id])
-            ->with('success', 'Смена сохранена');
+            ->with('success', 'Смена сохранена. Данные перенесены в следующую смену.');
+    }
+
+    public function storeShift(Request $request, Waybill $waybill)
+    {
+        $request->validate(['shift_date' => 'required|date']);
+
+        $exists = WaybillShift::where('waybill_id', $waybill->id)
+            ->whereDate('shift_date', $request->shift_date)
+            ->exists();
+
+        if ($exists) {
+            return redirect()->back()->with('error', 'Смена на эту дату уже существует');
+        }
+
+        $shift = new WaybillShift([
+            'waybill_id' => $waybill->id,
+            'shift_date' => $request->shift_date,
+            'operator_id' => $waybill->operator_id,
+            'hourly_rate' => $waybill->lessor_hourly_rate,
+        ]);
+        $shift->saveQuietly();
+
+        return redirect()->route('admin.waybills.show', ['waybill' => $waybill, 'shift_id' => $shift->id])
+            ->with('success', 'Смена добавлена');
+    }
+
+    public function destroyShift(Request $request, Waybill $waybill, WaybillShift $shift)
+    {
+        if ($shift->waybill_id !== $waybill->id) {
+            abort(404);
+        }
+        $shift->deleteQuietly();
+
+        return redirect()->route('admin.waybills.show', $waybill)->with('success', 'Смена удалена');
     }
 
     public function close(Waybill $waybill)
