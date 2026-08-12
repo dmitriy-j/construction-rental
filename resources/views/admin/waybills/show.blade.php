@@ -101,10 +101,17 @@
   </div>
 
   <div class="card shadow-sm">
-    <div class="card-header"><h5 class="mb-0">Смены путевого листа</h5></div>
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Смены путевого листа</h5>
+      <form action="{{ route('admin.waybills.store-shift', $waybill) }}" method="POST" class="d-inline-flex align-items-center gap-2">
+        @csrf
+        <input type="date" name="shift_date" class="form-control form-control-sm" required value="{{ ($waybill->shifts->last()?->shift_date?->copy()->addDay() ?? now())->format('Y-m-d') }}">
+        <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-plus-lg"></i> Добавить смену</button>
+      </form>
+    </div>
     <div class="card-body table-responsive">
       <table class="table table-sm table-striped align-middle">
-        <thead><tr><th>Дата</th><th>Объект</th><th>Выезд</th><th>Возвр.</th><th>Часы</th><th>Простой</th><th>Одометр</th><th>Топливо</th><th>Сумма</th></tr></thead>
+        <thead><tr><th>Дата</th><th>Объект</th><th>Выезд</th><th>Возвр.</th><th>Часы</th><th>Простой</th><th>Одометр</th><th>Топливо</th><th>Сумма</th><th></th></tr></thead>
         <tbody>
         @foreach($waybill->shifts as $shift)
           <tr class="{{ $shift->id === $selectedShift->id ? 'table-primary' : '' }}">
@@ -117,6 +124,14 @@
             <td>{{ $shift->odometer_start }} - {{ $shift->odometer_end }}</td>
             <td>{{ $shift->fuel_start }} - {{ $shift->fuel_end }}</td>
             <td>{{ number_format($shift->total_amount ?? 0, 2) }} ₽</td>
+            <td>
+              @if($waybill->shifts->count() > 1)
+              <form action="{{ route('admin.waybills.destroy-shift', ['waybill' => $waybill, 'shift' => $shift]) }}" method="POST" class="d-inline">
+                @csrf @method('DELETE')
+                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Удалить смену?')"><i class="bi bi-trash"></i></button>
+              </form>
+              @endif
+            </td>
           </tr>
         @endforeach
         </tbody>
