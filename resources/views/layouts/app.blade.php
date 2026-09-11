@@ -7,7 +7,7 @@
     <title>@yield('title', 'ФАП — Федеральная Арендная Платформа')</title>
     <meta name="description" content="@yield('meta-description', 'Аренда строительной техники по всей России. Экскаваторы, бульдозеры, краны и другая спецтехника от проверенных арендодателей. Прозрачные цены, без посредников.')">
     <meta name="robots" content="@yield('meta-robots', 'index, follow')">
-    <link rel="canonical" href="@yield('canonical', url()->current())">
+    <link rel="canonical" href="@yield('canonical', url()->current() === rtrim(config('app.url'), '/') ? config('app.url') . '/' : url()->current())">
 
     {{-- Open Graph / Social preview --}}
     <meta property="og:title" content="@yield('og-title', 'ФАП — Федеральная Арендная Платформа')">
