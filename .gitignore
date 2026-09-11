@@ -54,3 +54,6 @@ debug_*.php
 fix_*.php
 clear_*.php
 _trash/
+
+# sitemap генерируется командой artisan sitemap:generate
+public/sitemap.xml
