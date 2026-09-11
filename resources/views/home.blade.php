@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('body-class', 'page-home')
+
 @section('title', config('app.name') . ' — Федеральная Арендная Платформа')
 
 @section('content')
@@ -506,6 +508,8 @@
     min-height: 75vh;
     display: flex;
     align-items: center;
+    padding-top: var(--navbar-height, 72px);
+    margin-top: 0;
 }
 
 .hero-bg {
@@ -514,7 +518,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, #0b5ed7 0%, #002d72 50%, #001a4d 100%);
+    background: linear-gradient(180deg, #0b5ed7 0%, #002d72 50%, #001a4d 100%);
     z-index: 0;
 }
 

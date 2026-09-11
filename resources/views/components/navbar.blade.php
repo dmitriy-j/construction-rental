@@ -188,10 +188,12 @@
    NAVBAR — PREMIUM GLASSMORPHISM
    ============================================================ */
 .main-navbar {
-    background: linear-gradient(135deg, rgba(11,94,215,0.97) 0%, rgba(0,45,114,0.97) 100%);
+    background: linear-gradient(180deg, #0b5ed7 0%, #002d72 50%, #001a4d 100%);
+    background-size: 100% 75vh;
+    background-repeat: no-repeat;
+    background-attachment: scroll;
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0 2px 20px rgba(0, 45, 114, 0.25);
     padding: 0 1rem;
     min-height: var(--navbar-height, 72px);
     z-index: 9999;
@@ -460,6 +462,22 @@
 @media (max-width: 576px) { .main-navbar { min-height: var(--navbar-height, 60px); } }
 
 body { padding-top: var(--navbar-height, 72px); }
+body.page-home { padding-top: 0 !important; }
+body.page-home .main-navbar {
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+body.page-home .main-navbar::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.18) 25%, rgba(255,255,255,0.38) 50%, rgba(255,255,255,0.18) 75%, transparent 100%);
+    pointer-events: none;
+}
 </style>
 
 <script>
