@@ -489,4 +489,3 @@
 .content-footer .federal-badge { background: linear-gradient(135deg, #0B5ED7, #002D72); color: #fff; }
 
 </style>
-</write_to_file>

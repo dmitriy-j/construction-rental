@@ -525,4 +525,3 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-</write_to_file>
