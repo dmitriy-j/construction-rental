@@ -1,2 +1,11 @@
 User-agent: *
-Disallow:
+Disallow: /api/
+Disallow: /profile/
+Disallow: /company/
+Disallow: /lessor/
+Disallow: /lessee/
+Disallow: /admin/
+Disallow: /public/
+Disallow: /*?sort=
+Allow: /
+Sitemap: https://fap24.ru/sitemap.xml

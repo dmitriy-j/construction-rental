@@ -6,14 +6,29 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'ФАП — Федеральная Арендная Платформа')</title>
     <meta name="description" content="@yield('meta-description', 'Аренда строительной техники по всей России. Экскаваторы, бульдозеры, краны и другая спецтехника от проверенных арендодателей. Прозрачные цены, без посредников.')">
+    <meta name="robots" content="@yield('meta-robots', 'index, follow')">
+    <link rel="canonical" href="@yield('canonical', url()->current())">
+
     {{-- Open Graph / Social preview --}}
     <meta property="og:title" content="@yield('og-title', 'ФАП — Федеральная Арендная Платформа')">
     <meta property="og:description" content="@yield('og-description', 'Аренда строительной техники по всей России. Экскаваторы, бульдозеры, краны и другая спецтехника от проверенных арендодателей. Прозрачные цены, без посредников.')">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url()->current() }}">
-    <meta property="og:image" content="@yield('og-image', asset('images/logo/fap-logo.svg'))">
+    <meta property="og:site_name" content="ФАП24">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:image" content="@yield('og-image', asset('images/og-default.jpg'))">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
+
+    {{-- Twitter Card --}}
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="@yield('title', 'ФАП — Федеральная Арендная Платформа')">
+    <meta name="twitter:description" content="@yield('meta-description', 'Аренда строительной техники по всей России. Экскаваторы, бульдозеры, краны и другая спецтехника от проверенных арендодателей. Прозрачные цены, без посредников.')">
+    <meta name="twitter:image" content="@yield('og-image', asset('images/og-default.jpg'))">
+
+    {{-- JSON-LD (Schema.org) --}}
+    @yield('schema-org')
+    @include('partials.schema-organization')
 
     {{-- Fonts --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
