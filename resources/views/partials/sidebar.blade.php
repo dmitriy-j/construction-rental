@@ -109,6 +109,7 @@
                                 <li><a class="nav-link py-1 px-3 small" href="{{ route('admin.equipment.index') }}">Вся техника</a></li>
                                 <li><a class="nav-link py-1 px-3 small" href="{{ route('admin.equipment.index',['owner_type'=>'platform']) }}">Техника платформы</a></li>
                                 <li><a class="nav-link py-1 px-3 small" href="{{ route('admin.equipment.index',['owner_type'=>'lessor']) }}">Техника арендодателей</a></li>
+                                <li><a class="nav-link py-1 px-3 small {{ request()->is('admin/operators*') ? 'active' : '' }}" href="{{ route('admin.operators.index') }}">Операторы</a></li>
                             </ul>
                         </div>
                     </li>
@@ -131,6 +132,7 @@
                     <li class="nav-item"><a class="nav-link py-2 px-3 rounded {{ Request::is('admin/documents*') ? 'active' : '' }}" href="{{ route('admin.documents.index') }}" title="Документы"><i class="bi bi-files nav-icon"></i><span>Документы</span></a></li>
                     <li class="nav-item"><a class="nav-link py-2 px-3 rounded {{ request()->is('admin/lessees*') ? 'active' : '' }}" href="{{ route('admin.lessees.index') }}" title="Арендаторы"><i class="bi bi-people nav-icon"></i><span>Арендаторы</span></a></li>
                     <li class="nav-item"><a class="nav-link py-2 px-3 rounded {{ request()->is('admin/lessors*') ? 'active' : '' }}" href="{{ route('admin.lessors.index') }}" title="Арендодатели"><i class="bi bi-people nav-icon"></i><span>Арендодатели</span></a></li>
+                    <li class="nav-item"><a class="nav-link py-2 px-3 rounded {{ request()->is('admin/staff*') ? 'active' : '' }}" href="{{ route('admin.staff.index') }}" title="Сотрудники"><i class="bi bi-person-gear nav-icon"></i><span>Сотрудники</span></a></li>
                     <div class="section-header px-2 py-2 mt-3 mb-2 rounded"><i class="bi bi-gear me-2 text-primary"></i><span class="fw-bold text-primary text-uppercase small">Настройки</span></div>
                     <li class="nav-item"><a class="nav-link py-2 px-3 rounded" href="{{ route('admin.settings.document-templates.index') }}" title="Шаблоны"><i class="bi bi-file-earmark-spreadsheet nav-icon"></i><span>Шаблоны документов</span></a></li>
                     <li class="nav-item"><a class="nav-link py-2 px-3 rounded" href="{{ route('markups.index') }}" title="Наценки"><i class="bi bi-percent nav-icon"></i><span>Наценки платформы</span></a></li>

@@ -85,9 +85,18 @@ class CartApiController extends Controller
         $platformFeePerHour = 0;
 
         if (!$equipment->isPlatformOwned() && auth()->check() && auth()->user()->company) {
-            $markup = $this->pricingService->getPlatformMarkup($equipment, auth()->user()->company, 1);
-            $platformFeePerHour = $this->pricingService->applyMarkup($basePricePerHour, $markup);
-            $finalPricePerHour = $basePricePerHour + $platformFeePerHour;
+            try {
+                $markup = $this->pricingService->getPlatformMarkup($equipment, auth()->user()->company, 1);
+                $platformFeePerHour = $this->pricingService->applyMarkup($basePricePerHour, $markup);
+                $finalPricePerHour = $basePricePerHour + $platformFeePerHour;
+            } catch (\Exception $e) {
+                \Log::warning('Markup calculation error in cart store: ' . $e->getMessage(), [
+                    'equipment_id' => $equipment->id,
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                $platformFeePerHour = 0;
+                $finalPricePerHour = $basePricePerHour;
+            }
         }
 
         $totalPrice = $finalPricePerHour * $totalHours * $quantity;

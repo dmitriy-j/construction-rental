@@ -77,13 +77,23 @@ class CatalogApiController extends Controller
                         $term = $eq->rentalTerms->first();
                         $basePrice = $term ? (float)$term->price_per_hour : 0;
                         $finalPrice = $basePrice;
-                        if (!$eq->isPlatformOwned() && auth()->check() && auth()->user() && auth()->user()->company) {
-                            try {
-                                $markup = $this->pricingService->getPlatformMarkup($eq, auth()->user()->company, 1);
-                                $finalPrice = $basePrice + $this->pricingService->applyMarkup($basePrice, $markup);
-                            } catch (\Exception $e) {
-                                \Log::warning("Markup error for eq {$eq->id}: " . $e->getMessage());
-                            }
+                        if (!$eq->isPlatformOwned()) {
+                    try {
+                        $calcService = app(\App\Services\MarkupCalculationService::class);
+                        $lesseeCompanyId = auth()->check() && auth()->user() ? auth()->user()->company_id : null;
+                        $result = $calcService->calculateMarkup(
+                            $basePrice,
+                            'order',
+                            1,
+                            $eq->id,
+                            $eq->category_id,
+                            null,
+                            $lesseeCompanyId
+                        );
+                        $finalPrice = $result['final_price'];
+                    } catch (\Exception $e) {
+                        \Log::warning("Markup error for eq {$eq->id}: " . $e->getMessage());
+                    }
                         }
                         $eq->final_price = round($finalPrice, 2);
                         $eq->base_price = $basePrice;
@@ -137,9 +147,23 @@ class CatalogApiController extends Controller
             $term = $equipment->rentalTerms->first();
             $basePrice = (float)$term->price_per_hour;
             $finalPrice = $basePrice;
-            if (!$equipment->isPlatformOwned() && auth()->check() && auth()->user()->company) {
-                $markup = $this->pricingService->getPlatformMarkup($equipment, auth()->user()->company, 1);
-                $finalPrice = $basePrice + $this->pricingService->applyMarkup($basePrice, $markup);
+            if (!$equipment->isPlatformOwned()) {
+                try {
+                    $calcService = app(\App\Services\MarkupCalculationService::class);
+                    $lesseeCompanyId = auth()->check() && auth()->user() ? auth()->user()->company_id : null;
+                    $result = $calcService->calculateMarkup(
+                        $basePrice,
+                        'order',
+                        1,
+                        $equipment->id,
+                        $equipment->category_id,
+                        null,
+                        $lesseeCompanyId
+                    );
+                    $finalPrice = $result['final_price'];
+                } catch (\Exception $e) {
+                    \Log::warning("Show markup error: " . $e->getMessage());
+                }
             }
 
             $nextAvailable = $equipment->next_available_date;
@@ -193,9 +217,23 @@ class CatalogApiController extends Controller
             $totalHours = $days * $hoursPerShift * $shiftsPerDay;
 
             $platformFeePerHour = 0;
-            if (!$equipment->isPlatformOwned() && auth()->check() && auth()->user()->company) {
-                $markup = $this->pricingService->getPlatformMarkup($equipment, auth()->user()->company, 1);
-                $platformFeePerHour = $this->pricingService->applyMarkup($basePricePerHour, $markup);
+            if (!$equipment->isPlatformOwned()) {
+                try {
+                    $calcService = app(\App\Services\MarkupCalculationService::class);
+                    $lesseeCompanyId = auth()->check() && auth()->user() ? auth()->user()->company_id : null;
+                    $result = $calcService->calculateMarkup(
+                        $basePricePerHour,
+                        'order',
+                        1,
+                        $equipment->id,
+                        $equipment->category_id,
+                        null,
+                        $lesseeCompanyId
+                    );
+                    $platformFeePerHour = $result['final_price'] - $basePricePerHour;
+                } catch (\Exception $e) {
+                    \Log::warning("Price markup error: " . $e->getMessage());
+                }
             }
 
             $finalPricePerHour = $basePricePerHour + $platformFeePerHour;

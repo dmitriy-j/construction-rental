@@ -170,7 +170,10 @@
             <div v-if="error" class="alert alert-danger py-2 small">{{ error }}</div>
 
             <div class="d-grid gap-2">
-              <button class="btn btn-primary btn-lg" @click="addToCart" :disabled="adding || !priceData?.is_available">
+              <a v-if="!isAuthenticated" :href="'/login'" class="btn btn-primary btn-lg">
+                <i class="bi bi-box-arrow-in-right me-1"></i> Войти, чтобы добавить в корзину
+              </a>
+              <button v-else class="btn btn-primary btn-lg" @click="addToCart" :disabled="adding || !priceData?.is_available">
                 <span v-if="adding" class="spinner-border spinner-border-sm me-1"></span>
                 <i v-else class="bi bi-cart-plus me-1"></i>
                 {{ adding ? 'Добавление...' : 'Добавить в корзину' }}
@@ -244,6 +247,9 @@ export default {
       const d = new Date();
       d.setDate(d.getDate() + 1);
       return d.toISOString().split('T')[0];
+    },
+    isAuthenticated() {
+      return !!window.isAuthenticated;
     },
     currentMonthName() {
       return MONTHS[this.currentMonth] || '';

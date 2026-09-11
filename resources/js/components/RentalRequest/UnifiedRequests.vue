@@ -235,17 +235,24 @@ export default {
                 if (!response.ok) throw new Error('HTTP ' + response.status);
                 const json = await response.json();
 
-                // API может возвращать {success, data: пагинатор} или пагинатор напрямую
-                if (json.success && json.data) {
-                    this.requests = json.data;
-                } else if (json.data) {
-                    this.requests = json;
+                // Разбираем ответ API
+                if (json.success) {
+                    const payload = json.data;
+                    // Если data — это прямой массив (Public API)
+                    if (Array.isArray(payload)) {
+                        this.requests = {
+                            data: payload,
+                            meta: { current_page: 1, last_page: 1, total: payload.length }
+                        };
+                    }
+                    // Если data — это пагинатор {data: [...], meta: {...}}
+                    else if (payload && payload.data) {
+                        this.requests = payload;
+                    } else {
+                        this.requests = { data: [], meta: { current_page: 1, last_page: 1, total: 0 } };
+                    }
                 } else {
-                    this.requests = json;
-                }
-                // Убедимся, что data - массив
-                if (!Array.isArray(this.requests.data)) {
-                    this.requests.data = [];
+                    this.requests = { data: [], meta: { current_page: 1, last_page: 1, total: 0 } };
                 }
             } catch (e) {
                 console.error('Ошибка загрузки:', e);

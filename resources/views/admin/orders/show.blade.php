@@ -27,15 +27,174 @@
                     </div>
                     <div class="col-md-4">
                         <div class="float-end">
-                            <a href="{{ route('admin.orders.edit-dates', $order) }}" class="btn btn-warning btn-sm me-2">
+                            <button type="button" class="btn btn-warning btn-sm me-2" data-bs-toggle="modal" data-bs-target="#editDatesModal">
                                 <i class="bi bi-calendar-range"></i> Изменить даты
-                            </a>
+                            </button>
                             <a href="{{ route('admin.orders.index') }}" class="btn btn-secondary btn-sm">
                                 <i class="bi bi-arrow-left"></i> К списку
                             </a>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Панель действий со статусом -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body py-3">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span class="me-2"><strong>Действия:</strong></span>
+
+                        @if(in_array($order->status, [\App\Models\Order::STATUS_PENDING, \App\Models\Order::STATUS_PENDING_APPROVAL, \App\Models\Order::STATUS_AGGREGATED]))
+                            <form action="{{ route('admin.orders.confirm', $order) }}" method="POST" class="d-inline">
+                                @csrf
+                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Подтвердить заказ #{{ $order->id }}?')">
+                                    <i class="bi bi-check-circle"></i> Подтвердить заказ
+                                </button>
+                            </form>
+                            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectOrderModal">
+                                <i class="bi bi-x-circle"></i> Отклонить
+                            </button>
+                        @endif
+
+                        @if($order->status === \App\Models\Order::STATUS_CONFIRMED)
+                            <form action="{{ route('admin.orders.status', $order) }}" method="POST" class="d-inline">
+                                @csrf
+                                <input type="hidden" name="status" value="active">
+                                <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('Начать аренду по заказу #{{ $order->id }}?')">
+                                    <i class="bi bi-play-circle"></i> Начать аренду
+                                </button>
+                            </form>
+                        @endif
+
+                        @if(in_array($order->status, [\App\Models\Order::STATUS_ACTIVE, \App\Models\Order::STATUS_CONFIRMED, \App\Models\Order::STATUS_IN_DELIVERY]))
+                            <form action="{{ route('admin.orders.status', $order) }}" method="POST" class="d-inline">
+                                @csrf
+                                <input type="hidden" name="status" value="completed">
+                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Завершить заказ #{{ $order->id }}?')">
+                                    <i class="bi bi-check2-square"></i> Завершить заказ
+                                </button>
+                            </form>
+                        @endif
+
+                        @if(in_array($order->status, [\App\Models\Order::STATUS_ACTIVE, \App\Models\Order::STATUS_CONFIRMED]))
+                            <form action="{{ route('admin.orders.create-waybills', $order) }}" method="POST" class="d-inline">
+                                @csrf
+                                <button type="submit" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-file-earmark-text"></i> Создать путевые листы
+                                </button>
+                            </form>
+                        @endif
+
+                        @if(in_array($order->status, [\App\Models\Order::STATUS_PENDING, \App\Models\Order::STATUS_PENDING_APPROVAL, \App\Models\Order::STATUS_AGGREGATED, \App\Models\Order::STATUS_CONFIRMED]))
+                            <form action="{{ route('admin.orders.status', $order) }}" method="POST" class="d-inline">
+                                @csrf
+                                <input type="hidden" name="status" value="cancelled">
+                                <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Отменить заказ #{{ $order->id }}?')">
+                                    <i class="bi bi-trash"></i> Отменить
+                                </button>
+                            </form>
+                        @endif
+
+                        @if($order->rejection_reason)
+                            <span class="badge bg-danger ms-2" title="Причина отклонения">
+                                <i class="bi bi-info-circle"></i> {{ $order->rejection_reason }}
+                            </span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно отклонения заказа -->
+    <div class="modal fade" id="rejectOrderModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="{{ route('admin.orders.reject', $order) }}" method="POST">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title">Отклонить заказ #{{ $order->id }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="rejection_reason" class="form-label">Причина отклонения *</label>
+                            <textarea class="form-control" id="rejection_reason" name="rejection_reason" rows="3" required
+                                      placeholder="Укажите причину отклонения заказа"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-danger">Отклонить заказ</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно изменения дат (центрированное) -->
+    <div class="modal fade" id="editDatesModal" tabindex="-1" aria-labelledby="editDatesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 640px !important;">
+            <div class="modal-content">
+                <form action="{{ route('admin.orders.update-dates', $order) }}" method="POST" id="editDatesForm"
+                      data-force-url="{{ route('admin.orders.force-update-dates', $order) }}">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editDatesModalLabel">
+                            <i class="bi bi-calendar-range me-2 text-warning"></i>
+                            Изменение дат заказа #{{ $order->id }}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="edit_start_date" class="form-label fw-semibold">Дата начала аренды *</label>
+                                <input type="date"
+                                       class="form-control @error('start_date') is-invalid @enderror"
+                                       id="edit_start_date"
+                                       name="start_date"
+                                       value="{{ old('start_date', $order->start_date ? $order->start_date->format('Y-m-d') : '') }}"
+                                       required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="edit_end_date" class="form-label fw-semibold">Дата окончания аренды *</label>
+                                <input type="date"
+                                       class="form-control @error('end_date') is-invalid @enderror"
+                                       id="edit_end_date"
+                                       name="end_date"
+                                       value="{{ old('end_date', $order->end_date ? $order->end_date->format('Y-m-d') : '') }}"
+                                       required>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info mt-3 mb-0">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Будут пересчитаны рабочие часы и суммы аренды для всех позиций заказа на основе новых дат.
+                        </div>
+
+                        <div id="editDatesAlert" class="alert alert-danger mt-3 mb-0 d-none"></div>
+
+                        @if($order->platform_fee > 0)
+                        <div class="small text-muted mt-2">
+                            Текущая наценка платформы: <strong>{{ number_format($order->platform_fee, 2) }} ₽</strong>
+                        </div>
+                        @endif
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" name="force" class="btn btn-warning">
+                            <i class="bi bi-exclamation-triangle me-1"></i> Принудительно изменить даты
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-calculator me-1"></i> Пересчитать заказ
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -409,11 +568,17 @@
                             <div class="list-group-item d-flex justify-content-between align-items-center">
                                 <div>
                                     <i class="bi bi-file-text text-primary me-2"></i>
-                                    <span>Транспортная накладная #{{ $waybill->id }}</span>
+                                    <span>Путевой лист #{{ $waybill->id }}</span>
+                                    <span class="badge bg-info ms-1">{{ $waybill->perspective === 'platform' ? 'Платформа' : $waybill->perspective }}</span>
                                 </div>
-                                <a href="#" class="btn btn-sm btn-outline-primary">
-                                    <i class="bi bi-download"></i>
-                                </a>
+                                <div>
+                                    <a href="{{ route('admin.waybills.show', $waybill) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-pencil"></i> Заполнить
+                                    </a>
+                                    <a href="#" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                </div>
                             </div>
                             @endforeach
                         </div>
@@ -474,4 +639,87 @@
     font-size: 0.8em;
 }
 </style>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var form = document.getElementById('editDatesForm');
+    if (!form) return;
+
+    var alertBox = document.getElementById('editDatesAlert');
+    var defaultSubmitBtn = form.querySelector('button[type="submit"]:not([name="force"])');
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        // Определяем, какой кнопкой отправлена форма
+        var submitter = e.submitter;
+        var forceUrl = form.getAttribute('data-force-url') || '';
+        var isForce = submitter && submitter.name === 'force';
+
+        // При принудительном изменении — подтверждение
+        if (isForce) {
+            if (!window.confirm('Принудительно изменить даты без проверки доступности? Это может создать конфликт броней.')) {
+                return;
+            }
+        }
+
+        if (alertBox) {
+            alertBox.classList.add('d-none');
+            alertBox.textContent = '';
+        }
+
+        var submitBtn = submitter || defaultSubmitBtn || form.querySelector('button[type="submit"]');
+        var originalHtml = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Пересчёт...';
+
+        var formData = new FormData(form);
+        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        var targetUrl = isForce && forceUrl ? forceUrl : form.action;
+
+        fetch(targetUrl, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: formData,
+            redirect: 'manual'
+        })
+        .then(function (res) {
+            // Если ответ не JSON (сессия истекла, редирект на логин и т.п.)
+            var contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                return { success: false, error: 'Неожиданный ответ сервера (' + res.status + '). Возможно, сессия истекла. Обновите страницу и повторите.' };
+            }
+            return res.json().catch(function () {
+                return { success: false, error: 'Ошибка чтения ответа сервера (' + res.status + ')' };
+            });
+        })
+        .then(function (data) {
+            if (data && data.success) {
+                window.location.reload();
+                return;
+            }
+            var message = (data && data.error) ? data.error : 'Не удалось изменить даты заказа';
+            if (alertBox) {
+                alertBox.textContent = message;
+                alertBox.classList.remove('d-none');
+            }
+        })
+        .catch(function () {
+            if (alertBox) {
+                alertBox.textContent = 'Ошибка соединения с сервером';
+                alertBox.classList.remove('d-none');
+            }
+        })
+        .finally(function () {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalHtml;
+        });
+    });
+});
+</script>
+@endpush
 @endsection

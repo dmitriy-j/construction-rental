@@ -21,5 +21,11 @@
 @endsection
 
 @push('scripts')
-    @vite('resources/js/pages/unified-requests.js')
+    @php
+        if (app()->environment('local')) {
+            echo vite('resources/js/pages/unified-requests.js');
+        } else {
+            echo '<script type="module" src="' . asset('build/assets/unified-requests-mCphJY3E.js') . '" defer></script>';
+        }
+    @endphp
 @endpush

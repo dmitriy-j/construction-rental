@@ -247,7 +247,7 @@ class PublicPricingService
         return $finalPrice;
     }
 
-    public function getPlatformMarkupForRentalRequest(?int $categoryId, ?Company $lesseeCompany): array
+    public function getPlatformMarkupForRentalRequest(?int $categoryId, ?Company $lesseeCompany, ?int $rentalRequestId = null): array
     {
         // Временная базовая цена для расчета
         $basePrice = 1000;
@@ -259,10 +259,11 @@ class PublicPricingService
             null, // equipment_id
             $categoryId,
             null, // company_id арендодателя
-            $lesseeCompany?->id
+            $lesseeCompany?->id,
+            $rentalRequestId
         );
 
-        Log::debug('Platform markup for rental request with new system', [
+        \Log::debug('Platform markup for rental request with new system', [
             'category_id' => $categoryId,
             'lessee_company_id' => $lesseeCompany?->id,
             'markup_type' => $markupResult['markup_type'],

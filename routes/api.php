@@ -100,6 +100,8 @@ Route::middleware(['auth:sanctum', 'company.verified'])->group(function () {
 
 // 🔥 ОСНОВНЫЕ МАРШРУТЫ ДЛЯ АРЕНДОДАТЕЛЕЙ
 Route::middleware(['auth:sanctum', 'company.lessor'])->prefix('lessor')->group(function () {
+    // Техника по категориям
+    Route::get('/equipment/categories', [\App\Http\Controllers\API\LessorEquipmentController::class, 'getByCategories']);
     // Заявки на аренду
     Route::get('/rental-requests', [\App\Http\Controllers\API\LessorRentalRequestController::class, 'index']);
     Route::get('/rental-requests/{id}', [\App\Http\Controllers\API\LessorRentalRequestController::class, 'show']);
@@ -185,22 +187,5 @@ Route::get('/debug/edit-test/{id}', function ($id) {
     ]);
 })->middleware('auth:sanctum');
 
-// В routes/api.php добавить:
-Route::get('/categories/{category}/specifications', function (Category $category) {
-    $standardSpecs = $category->specifications()->where('type', 'standard')->get()->map(function($spec) {
-        return [
-            'key' => $spec->key,
-            'label' => $spec->name,
-            'dataType' => $spec->data_type,
-            'unit' => $spec->unit,
-            'required' => $spec->is_required
-        ];
-    });
-
-    return response()->json([
-        'success' => true,
-        'data' => [
-            'standard_specifications' => $standardSpecs
-        ]
-    ]);
-});
+// Спецификации для категории
+Route::get('/categories/{category}/specifications', [\App\Http\Controllers\API\SpecificationController::class, 'getTemplateByCategory']);

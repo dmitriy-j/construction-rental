@@ -47,7 +47,7 @@ class CompletionActController extends Controller
 
         try {
             // Получаем ID актов без блокировки для первоначального отбора
-            $completionActIds = CompletionAct::where('perspective', 'lessee')
+            $completionActIds = CompletionAct::whereIn('perspective', ['lessee', 'platform'])
                 ->whereNull('upd_id')
                 ->pluck('id');
 
@@ -143,7 +143,7 @@ class CompletionActController extends Controller
             $completionAct->refresh();
 
             // Проверки
-            if ($completionAct->perspective !== 'lessee') {
+            if (!in_array($completionAct->perspective, ['lessee', 'platform'])) {
                 throw new \Exception('УПД можно генерировать только для актов, предназначенных арендаторам');
             }
 

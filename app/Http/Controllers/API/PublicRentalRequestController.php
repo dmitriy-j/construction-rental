@@ -66,7 +66,7 @@ class PublicRentalRequestController extends Controller
 
             $requests = $query->paginate($request->get('per_page', 15));
 
-            // 🔥 ДОБАВЛЕНО: Преобразование цен для арендодателей
+            // Преобразование цен для арендодателей
             $user = auth()->user();
             $isLessor = $user && $user->company && $user->company->is_lessor;
 

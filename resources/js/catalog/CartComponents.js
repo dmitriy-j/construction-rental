@@ -125,7 +125,7 @@ export const CartIcon = {
                             <button class="btn btn-outline-danger btn-sm w-100 mt-2" @click="cleanupBrokenItems">
                                 <i class="bi bi-trash3 me-1"></i>Очистить корзину полностью
                             </button>
-                            <a href="/checkout" class="btn btn-primary w-100 mt-2">Перейти к оформлению</a>
+                            <a href="/lessee/cart" class="btn btn-primary w-100 mt-2">Перейти к оформлению</a>
                         </div>
                     </div>
                     <div class="tab-pane fade" id="proposalItems">
@@ -141,7 +141,7 @@ export const CartIcon = {
                             </div>
                         </div>
                         <div v-if="proposalItems.length === 0" class="text-muted small text-center py-3">Нет предложений</div>
-                        <a v-if="proposalItems.length > 0" href="/checkout" class="btn btn-primary w-100 mt-3">Перейти к оформлению</a>
+                        <a v-if="proposalItems.length > 0" href="/lessee/cart" class="btn btn-primary w-100 mt-3">Перейти к оформлению</a>
                     </div>
                 </div>
             </div>

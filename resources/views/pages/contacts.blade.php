@@ -262,7 +262,7 @@
                 }, { suppressMapOpenBlock: true });
                 var pm = new ymaps.Placemark([55.863631, 37.652714], {
                     hintContent: 'Федеральная Арендная Платформа',
-                    balloonContentBody: '<strong>Адрес:</strong> {{ $platform->physical_address }}<br><strong>Телефон:</strong> {{ $platform->phone ?? '+7 (929) 533-32-06' }}'
+                    balloonContentBody: '<strong>Адрес:</strong> {{ $platform->physical_address }}<br><strong>Телефон:</strong> {{ $platform->phone ?? '+7 (495) 790-90-34' }}'
                 }, { preset: 'islands#blueBusinessIcon' });
                 map.geoObjects.add(pm);
                 setTimeout(function() {

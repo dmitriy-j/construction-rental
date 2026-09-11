@@ -191,6 +191,14 @@ class PlatformMarkup extends Model
                 });
             }
 
+            // Компания арендодателя (владелец техники)
+            if ($companyId) {
+                $q->orWhere(function($subQ) use ($companyId) {
+                    $subQ->where('markupable_type', Company::class)
+                         ->where('markupable_id', $companyId);
+                });
+            }
+
             // Компания арендатора
             if ($lesseeCompanyId) {
                 $q->orWhere(function($subQ) use ($lesseeCompanyId) {

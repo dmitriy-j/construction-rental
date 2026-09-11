@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@section('body-class', 'page-home')
+
 @section('title', config('app.name') . ' — Федеральная Арендная Платформа')
 
 @section('content')
@@ -180,10 +182,7 @@
                         <div class="mt-auto d-flex justify-content-between align-items-center">
                             <div>
                                 @if($equipment->rentalTerms->isNotEmpty())
-                                    @php
-                                        $minPrice = $equipment->rentalTerms->min('price_per_day');
-                                    @endphp
-                                    <span class="fw-bold text-primary fs-5">{{ number_format($minPrice, 0, '.', ' ') }} ₽/сут</span>
+                                    <span class="fw-bold text-primary fs-5">{{ number_format($equipment->price_with_markup, 0, '.', ' ') }} ₽/час</span>
                                 @else
                                     <span class="text-muted">Цена не указана</span>
                                 @endif
@@ -504,12 +503,13 @@
    HOME PAGE STYLES
    ========================================================================== */
 
-/* --- Hero Section --- */
+/* Hero Section — edge-to-edge without white borders */
 .hero-section {
     min-height: 75vh;
-    padding-top: var(--navbar-height, 80px);
     display: flex;
     align-items: center;
+    padding-top: var(--navbar-height, 72px);
+    margin-top: 0;
 }
 
 .hero-bg {
@@ -518,7 +518,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, #0b5ed7 0%, #002d72 50%, #001a4d 100%);
+    background: linear-gradient(180deg, #0b5ed7 0%, #002d72 50%, #001a4d 100%);
     z-index: 0;
 }
 
@@ -557,11 +557,6 @@
     max-width: 600px;
 }
 
-.hero-badges .badge {
-    font-size: 0.9rem;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
-}
-
 .hero-scroll-indicator {
     position: absolute;
     bottom: 30px;
@@ -585,7 +580,6 @@
     min-height: 75vh;
 }
 
-/* --- Section Padding --- */
 .section-padding {
     padding: 5rem 0;
 }
@@ -596,7 +590,6 @@
     }
     .hero-section {
         min-height: 60vh;
-        padding-top: calc(var(--navbar-height, 80px) + 1rem);
     }
     .hero-title {
         font-size: 2.2rem !important;

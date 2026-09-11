@@ -6,21 +6,23 @@
         <div class="col-md-6">
             <h1>Акт выполненных работ #{{ $document->number }}</h1>
             <p class="text-muted">
-                @if($document->perspective == 'lessor')
-                    <span class="badge badge-info">Арендодатель → Платформа</span>
-                @else
-                    <span class="badge badge-warning">Платформа → Арендатор</span>
-                @endif
+        @if($document->perspective == 'lessor')
+            <span class="badge badge-info">Арендодатель → Платформа</span>
+        @elseif($document->perspective == 'platform')
+            <span class="badge badge-primary">Платформа → Арендатор</span>
+        @else
+            <span class="badge badge-warning">Платформа → Арендатор</span>
+        @endif
             </p>
         </div>
        <div class="col-md-6 text-right">
             <a href="{{ route('admin.documents.index', ['type' => 'completion_acts']) }}" class="btn btn-secondary">← Назад к списку</a>
 
-            @if($document->perspective == 'lessee' && !$document->upd)
+            @if(in_array($document->perspective, ['lessee', 'platform']) && !$document->upd)
                 <form action="{{ route('admin.completion-acts.generate-upd', $document) }}" method="POST" class="d-inline">
                     @csrf
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-file-invoice"></i> Сформировать УПД для арендатора
+                        <i class="fas fa-file-invoice"></i> Сформировать УПД
                     </button>
                 </form>
             @endif

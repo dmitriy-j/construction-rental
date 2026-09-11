@@ -197,14 +197,18 @@ class AdminOrderController extends Controller
             );
 
             if (!$availability['available']) {
+                $unavailableMessage = 'Оборудование недоступно на выбранные даты: ' .
+                    collect($availability['unavailable_equipment'])
+                        ->pluck('equipment')
+                        ->implode(', ');
+
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'error' => $unavailableMessage], 422);
+                }
+
                 return redirect()->back()
                     ->withInput()
-                    ->withErrors([
-                        'dates' => 'Оборудование недоступно на выбранные даты: ' .
-                            collect($availability['unavailable_equipment'])
-                                ->pluck('equipment')
-                                ->implode(', ')
-                    ])
+                    ->withErrors(['dates' => $unavailableMessage])
                     ->with('availability_check', $availability);
             }
         }
@@ -214,6 +218,18 @@ class AdminOrderController extends Controller
             Carbon::parse($request->start_date),
             Carbon::parse($request->end_date)
         );
+
+        if ($request->expectsJson()) {
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Даты заказа успешно изменены. Суммы пересчитаны.',
+                    'redirect' => route('admin.orders.show', $order),
+                ]);
+            }
+
+            return response()->json(['success' => false, 'error' => $result['message']], 422);
+        }
 
         if ($result['success']) {
             return redirect()
@@ -242,6 +258,18 @@ class AdminOrderController extends Controller
             Carbon::parse($request->end_date)
         );
 
+        if ($request->expectsJson()) {
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Даты заказа принудительно изменены. Суммы пересчитаны.',
+                    'redirect' => route('admin.orders.show', $order),
+                ]);
+            }
+
+            return response()->json(['success' => false, 'error' => $result['message']], 422);
+        }
+
         if ($result['success']) {
             return redirect()
                 ->route('admin.orders.show', $order)
@@ -251,5 +279,218 @@ class AdminOrderController extends Controller
         return redirect()->back()
             ->withInput()
             ->with('error', $result['message']);
+    }
+
+    /**
+     * Подтверждение заказа (для платформенной техники — платформа подтверждает сама)
+     */
+    public function confirm(Order $order)
+    {
+        $allowed = [Order::STATUS_PENDING, Order::STATUS_PENDING_APPROVAL, Order::STATUS_AGGREGATED];
+        if (!in_array($order->status, $allowed)) {
+            return redirect()->back()->with('error', 'Заказ нельзя подтвердить в текущем статусе');
+        }
+
+        \DB::beginTransaction();
+        try {
+            $this->setOrderStatus($order, Order::STATUS_CONFIRMED, 'Подтвержден администратором');
+
+            // Для родительского заказа подтверждаем всех детей
+            if ($order->isParent()) {
+                foreach ($order->childOrders as $childOrder) {
+                    $this->setOrderStatus($childOrder, Order::STATUS_CONFIRMED, 'Подтвержден администратором');
+                }
+            }
+
+            $order->confirmed_at = now();
+            $order->save();
+
+            // Уведомляем арендатора
+            if ($order->user) {
+                $order->user->notify(new \App\Notifications\OrderApproved($order));
+            }
+
+            \DB::commit();
+
+            return redirect()->route('admin.orders.show', $order)
+                ->with('success', 'Заказ #' . $order->id . ' подтвержден');
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Order confirm error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Ошибка подтверждения заказа: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Отклонение заказа с указанием причины
+     */
+    public function reject(Request $request, Order $order)
+    {
+        $request->validate([
+            'rejection_reason' => 'required|string|max:1000',
+        ]);
+
+        \DB::beginTransaction();
+        try {
+            $this->setOrderStatus($order, Order::STATUS_REJECTED, 'Отклонен администратором: ' . $request->rejection_reason);
+
+            // Для родительского заказа отклоняем всех детей
+            if ($order->isParent()) {
+                foreach ($order->childOrders as $childOrder) {
+                    $this->setOrderStatus($childOrder, Order::STATUS_REJECTED, 'Отклонен администратором: ' . $request->rejection_reason);
+                }
+            }
+
+            $order->rejection_reason = $request->rejection_reason;
+            $order->rejected_at = now();
+            $order->save();
+
+            // Уведомляем арендатора
+            if ($order->user) {
+                $order->user->notify(new \App\Notifications\OrderRejected($order, $request->rejection_reason));
+            }
+
+            \DB::commit();
+
+            return redirect()->route('admin.orders.show', $order)
+                ->with('success', 'Заказ #' . $order->id . ' отклонен');
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Order reject error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Ошибка отклонения заказа: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Универсальная смена статуса заказа (active/completed/cancelled)
+     */
+    public function setStatus(Request $request, Order $order)
+    {
+        $request->validate([
+            'status' => 'required|in:active,completed,cancelled',
+        ]);
+
+        $status = $request->status;
+        $notes = $request->input('notes', '');
+
+        \DB::beginTransaction();
+        try {
+            $this->setOrderStatus($order, $status, $notes ?: 'Статус изменен администратором');
+
+            // Для родительского заказа — меняем и детей
+            if ($order->isParent()) {
+                foreach ($order->childOrders as $childOrder) {
+                    $this->setOrderStatus($childOrder, $status, $notes ?: 'Статус изменен администратором');
+                }
+            }
+
+            // Если завершаем заказ — записываем дату завершения
+            if ($status === Order::STATUS_COMPLETED && method_exists($order, 'complete')) {
+                $order->complete();
+            } else {
+                $order->save();
+            }
+
+            // При активации заказа — активируем все позиции
+            if ($status === Order::STATUS_ACTIVE) {
+                $targetOrders = $order->isParent() ? $order->childOrders : collect([$order]);
+                foreach ($targetOrders as $targetOrder) {
+                    foreach ($targetOrder->items as $item) {
+                        if ($item->status !== \App\Models\OrderItem::STATUS_ACTIVE) {
+                            $item->update(['status' => \App\Models\OrderItem::STATUS_ACTIVE]);
+                        }
+                    }
+                }
+
+                // Автосоздание путевых листов для платформенной техники
+                try {
+                    foreach ($targetOrders as $targetOrder) {
+                        $hasPlatformEquipment = $targetOrder->items->contains(
+                            fn($i) => $i->equipment && $i->equipment->isPlatformOwned()
+                        );
+                        if ($hasPlatformEquipment) {
+                            app(\App\Services\WaybillCreationService::class)->createForOrder($targetOrder);
+                        }
+                    }
+                } catch (\Throwable $wbError) {
+                    \Log::warning('Waybill auto-creation failed on activation: ' . $wbError->getMessage());
+                }
+            }
+
+            // Уведомляем арендатора об изменении статуса (не должно ломать транзакцию)
+            try {
+                if ($order->user) {
+                    $order->user->notify(new \App\Notifications\OrderStatusChanged($order));
+                }
+            } catch (\Throwable $notifyError) {
+                \Log::warning('Order status notification failed: ' . $notifyError->getMessage());
+            }
+
+            \DB::commit();
+
+            return redirect()->route('admin.orders.show', $order)
+                ->with('success', 'Статус заказа #' . $order->id . ' изменен на ' . Order::statusText($status));
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Order setStatus error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Ошибка изменения статуса: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Запись в историю статусов заказа
+     */
+    /**
+     * Создание путевых листов для заказа (например, для техники платформы)
+     */
+    public function createWaybills(Request $request, Order $order)
+    {
+        \DB::beginTransaction();
+        try {
+            $targetOrders = $order->isParent() ? $order->childOrders : collect([$order]);
+
+            $created = 0;
+            foreach ($targetOrders as $targetOrder) {
+                $hasPlatformEquipment = $targetOrder->items->contains(function ($i) {
+                    return $i->equipment && $i->equipment->isPlatformOwned();
+                });
+                if ($hasPlatformEquipment) {
+                    app(\App\Services\WaybillCreationService::class)->createForOrder($targetOrder);
+                    $created++;
+                }
+            }
+
+            if ($created === 0) {
+                return redirect()->back()->with('error', 'Платформенная техника в заказе не найдена');
+            }
+
+            \DB::commit();
+
+            return redirect()->route('admin.orders.show', $order)
+                ->with('success', 'Путевые листы для техники платформы созданы.');
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Waybill creation error: ' . $e->getMessage(), [
+                'order_id' => $order->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return redirect()->back()->with('error', 'Ошибка создания путевых листов: ' . $e->getMessage());
+        }
+    }
+
+    protected function setOrderStatus(Order $order, string $status, string $notes = ''): void
+    {
+        $oldStatus = $order->status;
+        $order->status = $status;
+        $order->save();
+
+        \DB::table('order_status_histories')->insert([
+            'order_id' => $order->id,
+            'status' => $status,
+            'changed_by' => auth()->id(),
+            'notes' => $notes ?: ($oldStatus . ' -> ' . $status),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 }

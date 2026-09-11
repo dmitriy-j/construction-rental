@@ -13,8 +13,7 @@ class RequestResponseController extends Controller
      public function __construct(private ProposalManagementService $proposalService)
     {
         $this->middleware('auth');
-        $this->middleware('check.company.verified');
-        $this->middleware('check.user.type:lessee');
+        $this->middleware('company.verified');
     }
 
     /**
@@ -74,20 +73,27 @@ class RequestResponseController extends Controller
     /**
      * Отклонение предложения
      */
-    public function reject($id): JsonResponse
+    public function reject($requestId, $proposalId): JsonResponse
     {
         try {
-            $proposal = RentalRequestResponse::findOrFail($id);
+            $proposal = RentalRequestResponse::with('rentalRequest')->findOrFail($proposalId);
 
             // Проверка прав
             if ($proposal->rentalRequest->user_id !== auth()->id()) {
                 throw new \Exception('Недостаточно прав для выполнения операции');
             }
 
-            $proposal->update(['status' => 'rejected']);
+            $reason = request()->input('rejection_reason') ?? request()->json('rejection_reason');
+            \Log::debug('Reject with reason', ['proposal_id' => $proposalId, 'reason' => $reason]);
 
-            // Отправка уведомления арендодателю
-            event(new \App\Events\ProposalRejected($proposal));
+            // Уведомление через сервис (сохраняет статус + причину)
+            try {
+                $this->proposalService->rejectProposal($proposal, $reason);
+            } catch (\Exception $e) {
+                \Log::warning('Proposal reject notification failed: ' . $e->getMessage());
+                // Fallback: обновляем напрямую
+                $proposal->update(['status' => 'rejected', 'rejection_reason' => $reason]);
+            }
 
             return response()->json([
                 'success' => true,

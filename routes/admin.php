@@ -26,6 +26,32 @@ Route::middleware('platform_admin')->group(function () {
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 
+Route::prefix('operators')->name('admin.operators.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Admin\AdminOperatorController::class, 'index'])->name('index');
+    Route::get('/create', [\App\Http\Controllers\Admin\AdminOperatorController::class, 'create'])->name('create');
+    Route::post('/', [\App\Http\Controllers\Admin\AdminOperatorController::class, 'store'])->name('store');
+    Route::get('/{operator}/edit', [\App\Http\Controllers\Admin\AdminOperatorController::class, 'edit'])->name('edit');
+    Route::put('/{operator}', [\App\Http\Controllers\Admin\AdminOperatorController::class, 'update'])->name('update');
+    Route::delete('/{operator}', [\App\Http\Controllers\Admin\AdminOperatorController::class, 'destroy'])->name('destroy');
+});
+
+Route::prefix('staff')->name('admin.staff.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Admin\AdminStaffController::class, 'index'])->name('index');
+    Route::get('/create', [\App\Http\Controllers\Admin\AdminStaffController::class, 'create'])->name('create');
+    Route::post('/', [\App\Http\Controllers\Admin\AdminStaffController::class, 'store'])->name('store');
+    Route::get('/{staff}/edit', [\App\Http\Controllers\Admin\AdminStaffController::class, 'edit'])->name('edit');
+    Route::put('/{staff}', [\App\Http\Controllers\Admin\AdminStaffController::class, 'update'])->name('update');
+    Route::delete('/{staff}', [\App\Http\Controllers\Admin\AdminStaffController::class, 'destroy'])->name('destroy');
+});
+
+Route::prefix('waybills')->name('admin.waybills.')->group(function () {
+    Route::get('/{waybill}', [\App\Http\Controllers\Admin\AdminWaybillController::class, 'show'])->name('show');
+    Route::put('/{waybill}', [\App\Http\Controllers\Admin\AdminWaybillController::class, 'update'])->name('update');
+    Route::post('/{waybill}/close', [\App\Http\Controllers\Admin\AdminWaybillController::class, 'close'])->name('close');
+    Route::post('/{waybill}/store-shift', [\App\Http\Controllers\Admin\AdminWaybillController::class, 'storeShift'])->name('store-shift');
+    Route::delete('/{waybill}/shift/{shift}', [\App\Http\Controllers\Admin\AdminWaybillController::class, 'destroyShift'])->name('destroy-shift');
+});
+
 Route::prefix('orders')->name('admin.orders.')->group(function () {
     Route::get('/', [AdminOrderController::class, 'index'])->name('index');
     Route::get('/{order}', [AdminOrderController::class, 'show'])->name('show');
@@ -33,6 +59,11 @@ Route::prefix('orders')->name('admin.orders.')->group(function () {
     Route::post('/{order}/check-dates-availability', [AdminOrderController::class, 'checkDatesAvailability'])->name('check-dates-availability');
     Route::post('/{order}/update-dates', [AdminOrderController::class, 'updateDates'])->name('update-dates');
     Route::post('/{order}/force-update-dates', [AdminOrderController::class, 'forceUpdateDates'])->name('force-update-dates');
+    // Подтверждение/отклонение/смена статуса
+    Route::post('/{order}/confirm', [AdminOrderController::class, 'confirm'])->name('confirm');
+    Route::post('/{order}/reject', [AdminOrderController::class, 'reject'])->name('reject');
+    Route::post('/{order}/status', [AdminOrderController::class, 'setStatus'])->name('status');
+    Route::post('/{order}/create-waybills', [AdminOrderController::class, 'createWaybills'])->name('create-waybills');
 });
 
 Route::post('/locations', [\App\Http\Controllers\Admin\AdminLocationController::class, 'store'])->name('admin.locations.store');

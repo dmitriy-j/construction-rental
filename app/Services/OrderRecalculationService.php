@@ -52,6 +52,9 @@ class OrderRecalculationService
                 $results[] = $this->recalculateChildOrder($order, $newStartDate, $newEndDate);
             }
 
+            // Пересоздаём брони оборудования на новый период
+            $this->rebuildAvailability($order, $newStartDate, $newEndDate);
+
             DB::commit();
 
             Log::info('Order recalculation completed successfully', [
@@ -120,8 +123,23 @@ class OrderRecalculationService
         $rentalTerm = $item->rentalTerm;
         $equipment = $item->equipment;
 
-        if (!$rentalCondition || !$rentalTerm || !$equipment) {
+        if (!$rentalTerm || !$equipment) {
             throw new \Exception("Недостаточно данных для пересчета позиции #{$item->id}");
+        }
+
+        // Если условия аренды не заданы — используем стандартные
+        if (!$rentalCondition) {
+            Log::warning('Rental condition missing for order item, using default', ['item_id' => $item->id]);
+            $rentalCondition = \App\Models\RentalCondition::where('is_default', true)->first()
+                ?? \App\Models\RentalCondition::create([
+                    'shift_hours' => 8,
+                    'shifts_per_day' => 1,
+                    'transportation' => 'lessee',
+                    'fuel_responsibility' => 'lessee',
+                    'extension_policy' => 'allowed',
+                    'payment_type' => 'hourly',
+                    'is_default' => true,
+                ]);
         }
 
         // Рассчитываем новые рабочие часы
@@ -134,22 +152,35 @@ class OrderRecalculationService
         // Получаем базовую цену арендодателя
         $lessorPricePerHour = $item->fixed_lessor_price ?? $rentalTerm->price_per_hour;
 
-        // Пересчитываем через PricingService
-        $priceCalculation = $this->pricingService->calculatePrice(
-            $rentalTerm,
-            $item->order->lesseeCompany,
-            $workingHours,
-            $rentalCondition
-        );
+        // Для платформенной техники или при отсутствии компании арендатора считаем без наценки
+        $isPlatformOwned = $equipment->isPlatformOwned() || is_null($item->order->lesseeCompany);
+
+        if ($isPlatformOwned) {
+            $finalPricePerHour = $lessorPricePerHour;
+            $platformFeePerHour = 0;
+            $customerPricePerHour = $lessorPricePerHour;
+        } else {
+            // Пересчитываем через PricingService
+            $priceCalculation = $this->pricingService->calculatePrice(
+                $rentalTerm,
+                $item->order->lesseeCompany,
+                $workingHours,
+                $rentalCondition
+            );
+
+            $finalPricePerHour = $priceCalculation['base_price_per_unit'];
+            $platformFeePerHour = $priceCalculation['platform_fee'];
+            $customerPricePerHour = $priceCalculation['base_price_per_unit'];
+        }
 
         // Обновляем позицию
         $item->update([
             'period_count' => $workingHours,
-            'base_price' => $priceCalculation['base_price_per_unit'],
-            'price_per_unit' => $priceCalculation['base_price_per_unit'],
-            'platform_fee' => $priceCalculation['platform_fee'],
-            'total_price' => $priceCalculation['final_price'],
-            'fixed_customer_price' => $priceCalculation['base_price_per_unit'],
+            'base_price' => $customerPricePerHour,
+            'price_per_unit' => $customerPricePerHour,
+            'platform_fee' => $platformFeePerHour,
+            'total_price' => $finalPricePerHour * max(1, $workingHours),
+            'fixed_customer_price' => $customerPricePerHour,
             'fixed_lessor_price' => $lessorPricePerHour,
         ]);
 
@@ -157,8 +188,8 @@ class OrderRecalculationService
             'item_id' => $item->id,
             'equipment' => $equipment->title,
             'working_hours' => $workingHours,
-            'new_price' => $priceCalculation['final_price'],
-            'platform_fee' => $priceCalculation['platform_fee']
+            'new_price' => $finalPricePerHour * max(1, $workingHours),
+            'platform_fee' => $platformFeePerHour
         ];
     }
 
@@ -188,7 +219,7 @@ class OrderRecalculationService
         $order->platform_fee = $order->items->sum('platform_fee');
         $order->delivery_cost = $order->items->sum('delivery_cost');
         $order->lessor_base_amount = $order->items->sum(function ($item) {
-            return $item->fixed_lessor_price * $item->period_count;
+            return ($item->fixed_lessor_price ?? $item->base_price) * $item->period_count;
         });
 
         $order->total_amount = $order->base_amount + $order->delivery_cost;
@@ -225,15 +256,38 @@ class OrderRecalculationService
             ? $order->childOrders->flatMap->items
             : $order->items;
 
-        foreach ($items as $item) {
-            $isAvailable = $this->availabilityService->isAvailable(
-                $item->equipment,
-                $newStartDate,
-                $newEndDate,
-                $order->id // Исключаем текущий заказ из проверки
-            );
+        // Собираем id всех заказов кластера (родительский + дочерние),
+        // чтобы исключить брони собственной техники из проверки.
+        $orderIds = [$order->id];
+        if ($order->isParent()) {
+            $orderIds = array_merge($orderIds, $order->childOrders->pluck('id')->all());
+        } elseif ($order->parent_order_id) {
+            $orderIds[] = $order->parent_order_id;
+        }
 
-            if (!$isAvailable) {
+        foreach ($items as $item) {
+            // Проверяем доступность, исключая брони собственного кластера заказов
+            $conflicting = \App\Models\EquipmentAvailability::where('equipment_id', $item->equipment_id)
+                ->whereBetween('date', [
+                    $newStartDate->format('Y-m-d'),
+                    $newEndDate->format('Y-m-d'),
+                ])
+                ->where(function ($query) {
+                    $query->where('status', 'booked')
+                        ->orWhere('status', 'maintenance')
+                        ->orWhere(function ($q) {
+                            $q->where('status', 'temp_reserve')
+                                ->where('expires_at', '>', now());
+                        });
+                })
+                ->where(function ($query) use ($orderIds) {
+                    // Исключаем брони, принадлежащие своему кластеру заказов
+                    $query->whereNull('order_id')
+                        ->orWhereNotIn('order_id', $orderIds);
+                })
+                ->exists();
+
+            if ($conflicting) {
                 $unavailableEquipment[] = [
                     'equipment' => $item->equipment->title,
                     'item_id' => $item->id
@@ -245,5 +299,42 @@ class OrderRecalculationService
             'available' => empty($unavailableEquipment),
             'unavailable_equipment' => $unavailableEquipment
         ];
+    }
+
+    /**
+     * Пересоздание броней оборудования на новый период.
+     * Удаляет старые брони кластера заказов и создаёт новые на новые даты.
+     */
+    protected function rebuildAvailability(Order $order, Carbon $newStartDate, Carbon $newEndDate): void
+    {
+        // Собираем id всех заказов кластера (родительский + дочерние)
+        $orderIds = [$order->id];
+        if ($order->isParent()) {
+            $orderIds = array_merge($orderIds, $order->childOrders->pluck('id')->all());
+        } elseif ($order->parent_order_id) {
+            $orderIds[] = $order->parent_order_id;
+        }
+
+        // Удаляем старые брони по всему кластеру заказов
+        \App\Models\EquipmentAvailability::whereIn('order_id', $orderIds)->delete();
+
+        // Собираем все позиции заказа
+        $items = $order->isParent()
+            ? $order->childOrders->flatMap->items
+            : $order->items;
+
+        // Бронируем каждую позицию на новый период
+        foreach ($items as $item) {
+            if (!$item->equipment) {
+                continue;
+            }
+            $this->availabilityService->bookEquipment(
+                $item->equipment,
+                $newStartDate->format('Y-m-d'),
+                $newEndDate->format('Y-m-d'),
+                $item->order_id ?? $order->id,
+                'booked'
+            );
+        }
     }
 }

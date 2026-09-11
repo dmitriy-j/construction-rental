@@ -4,9 +4,11 @@ namespace App\Services;
 
 use App\Models\PlatformMarkup;
 use App\Models\RentalRequest;
+use App\Models\RentalRequestItem;
 use App\Models\EquipmentCategory;
 use App\Models\Company;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class RentalRequestPricingService
 {
@@ -20,177 +22,117 @@ class RentalRequestPricingService
 
     /**
      * Преобразует цены заявки для отображения арендодателям
+     * (с обратным применением наценки — коммерческая тайна)
+     *
+     * Для каждой позиции учитываются индивидуальные условия аренды (часы/смены).
      */
     public function calculateLessorPrices(RentalRequest $request): array
     {
-        $workingHours = $this->calculateWorkingHours($request);
+        $rentalDays = $this->calculateRentalDays($request);
         $lessorPrices = [];
         $totalLessorBudget = 0;
+        $totalWorkingHours = 0;
 
         foreach ($request->items as $item) {
-            $customerPrice = $item->hourly_rate;
+            // Цена арендатора за час (с наценкой)
+            $customerHourlyRate = (float) ($item->hourly_rate ?? 0);
 
-            Log::debug("📊 Processing request item with new markup system", [
-                'item_id' => $item->id,
-                'category_id' => $item->category_id,
-                'customer_price' => $customerPrice,
-                'quantity' => $item->quantity
-            ]);
-
-            // НОВЫЙ РАСЧЕТ: Используем унифицированный сервис для обратного применения наценки
+            // Получаем применимую наценку для этой заявки/категории
             $lesseeCompanyId = $request->user?->company_id;
             $markup = $this->markupCalculationService->findApplicableMarkup(
                 'rental_request',
-                null, // equipment_id - пока не известен
+                null,
                 $item->category_id,
-                null, // company_id арендодателя
-                $lesseeCompanyId // компания арендатора
+                null,
+                $lesseeCompanyId,
+                $request->id // rentalRequestId — наценка на конкретную заявку
             );
 
-            // Обратное применение наценки - из цены арендатора получаем цену для арендодателя
-            $lessorPrice = $this->markupCalculationService->reverseApplyMarkup(
-                $customerPrice,
-                $markup,
-                $workingHours
-            );
+            // Обратное применение наценки к часовой ставке (за 1 час)
+            $lessorHourlyRate = $this->reverseApplyHourlyMarkup($customerHourlyRate, $markup);
 
-            $itemTotal = $lessorPrice * $item->quantity * $workingHours;
+            // Расчёт рабочих часов для этой позиции (с учётом её индивидуальных условий)
+            $itemWorkingHours = $this->calculateWorkingHoursForItem($item, $request);
+            $totalWorkingHours += $itemWorkingHours;
+
+            // Общая сумма для арендодателя за весь период
+            // lessorHourlyRate — уже с вычетом наценки, за 1 час
+            $itemTotal = $lessorHourlyRate * $item->quantity * $itemWorkingHours;
 
             $lessorPrices[] = [
                 'item_id' => $item->id,
                 'category_id' => $item->category_id,
-                'category_name' => $item->category->name,
+                'category_name' => $item->category->name ?? '',
                 'quantity' => $item->quantity,
-                'specifications' => $item->specifications,
-                'customer_price' => $customerPrice,
-                'lessor_price' => $lessorPrice,
+                'customer_hourly_rate' => $customerHourlyRate,
+                'lessor_hourly_rate' => $lessorHourlyRate,
                 'item_total' => $itemTotal,
-                'markup_type' => $markup['type'],
-                'markup_value' => $markup['value'],
-                'markup_source' => $markup['source'],
-                'working_hours' => $workingHours
+                'working_hours' => $itemWorkingHours,
             ];
 
             $totalLessorBudget += $itemTotal;
         }
 
-        Log::info("💰 Final lessor prices calculation with new system", [
-            'request_id' => $request->id,
-            'items_count' => count($lessorPrices),
-            'total_lessor_budget' => $totalLessorBudget
-        ]);
-
         return [
             'items' => $lessorPrices,
             'total_lessor_budget' => $totalLessorBudget,
-            'working_hours' => $workingHours,
-            'rental_days' => $this->calculateRentalDays($request)
+            'working_hours' => $totalWorkingHours,
+            'rental_days' => $rentalDays,
         ];
     }
-    /**
-     * Обратное применение наценки - из цены арендатора получаем цену для арендодателя
-     */
-    private function reverseApplyMarkup(float $customerPrice, array $markup, int $workingHours): float
-    {
-        if ($markup['type'] === 'fixed') {
-            // Фиксированная наценка за час: price_lessor = price_customer - markup
-            $markupValue = $markup['value'];
-            $result = max(0, $customerPrice - $markupValue);
-
-            \Log::debug('Fixed markup reversed', [
-                'customer_price' => $customerPrice,
-                'markup_value' => $markupValue,
-                'lessor_price' => $result,
-                'type' => 'fixed'
-            ]);
-
-            return $result;
-        } else {
-            // Процентная наценка: price_lessor = price_customer / (1 + markup/100)
-            $markupPercent = $markup['value'] / 100;
-            $result = $customerPrice / (1 + $markupPercent);
-
-            \Log::debug('Percentage markup reversed', [
-                'customer_price' => $customerPrice,
-                'markup_percent' => $markupPercent,
-                'lessor_price' => $result,
-                'type' => 'percent'
-            ]);
-
-            return $result;
-        }
-    }
 
     /**
-     * Получаем наценку для заявки
+     * Расчёт рабочих часов для конкретной позиции заявки
+     * с учётом её индивидуальных условий (или общих).
      */
-    private function getPlatformMarkupForRentalRequest(?int $categoryId, ?Company $lesseeCompany): array
+    private function calculateWorkingHoursForItem(RentalRequestItem $item, RentalRequest $request): int
     {
-        \Log::debug("🔍 Getting platform markup", [
-            'category_id' => $categoryId,
-            'lessee_company_id' => $lesseeCompany?->id
-        ]);
-
-        // Сначала ищем наценку для категории оборудования
-        if ($categoryId) {
-            $markup = $this->findMarkupForRentalRequest(EquipmentCategory::class, $categoryId);
-            if ($markup) {
-                \Log::debug('Found markup for category', ['category_id' => $categoryId, 'markup' => $markup]);
-                return $markup;
-            }
-        }
-
-        // Затем для компании арендатора
-        if ($lesseeCompany && $lesseeCompany->is_lessee) {
-            $markup = $this->findMarkupForRentalRequest(Company::class, $lesseeCompany->id);
-            if ($markup) {
-                \Log::debug('Found markup for company', ['company_id' => $lesseeCompany->id, 'markup' => $markup]);
-                return $markup;
-            }
-        }
-
-        // Ищем общую наценку для заявок
-        $markup = PlatformMarkup::where('entity_type', 'rental_request')
-            ->whereNull('markupable_type')
-            ->whereNull('markupable_id')
-            ->first();
-
-        if ($markup) {
-            \Log::debug('Found general rental request markup', ['markup' => $markup]);
-            return ['type' => $markup->type, 'value' => $markup->value];
-        }
-
-        // Дефолтная наценка: фиксированная 100₽
-        \Log::debug('Using default markup: fixed 100');
-        return ['type' => 'fixed', 'value' => 100];
-    }
-
-    private function findMarkupForRentalRequest(string $markupableType, int $markupableId): ?array
-    {
-        $markup = PlatformMarkup::where('entity_type', 'rental_request')
-            ->where('markupable_type', $markupableType)
-            ->where('markupable_id', $markupableId)
-            ->first();
-
-        return $markup ? ['type' => $markup->type, 'value' => $markup->value] : null;
-    }
-
-    private function calculateWorkingHours(RentalRequest $request): int
-    {
-        $start = \Carbon\Carbon::parse($request->rental_period_start);
-        $end = \Carbon\Carbon::parse($request->rental_period_end);
+        $start = Carbon::parse($request->rental_period_start);
+        $end = Carbon::parse($request->rental_period_end);
         $days = $start->diffInDays($end) + 1;
 
-        $shiftHours = $request->rental_conditions['hours_per_shift'] ?? 8;
-        $shiftsPerDay = $request->rental_conditions['shifts_per_day'] ?? 1;
+        // Берём effective_conditions из модели — там уже логика:
+        // если use_individual_conditions и individual_conditions не пусты — берёт их,
+        // иначе — берёт общие rental_conditions из заявки
+        $conditions = $item->effective_conditions;
+
+        $shiftHours = (int) ($conditions['hours_per_shift'] ?? 8);
+        $shiftsPerDay = (int) ($conditions['shifts_per_day'] ?? 1);
 
         return $days * $shiftHours * $shiftsPerDay;
     }
 
+    /**
+     * Обратное применение наценки к часовой ставке.
+     * Наценка и цена — за 1 час, поэтому не умножаем на workingHours.
+     */
+    private function reverseApplyHourlyMarkup(float $customerHourlyRate, array $markup): float
+    {
+        switch ($markup['type'] ?? 'fixed') {
+            case 'fixed':
+                // customer = lessor + markup → lessor = customer - markup
+                return max(0, $customerHourlyRate - (float) ($markup['value'] ?? 0));
+
+            case 'percent':
+                // customer = lessor * (1 + markup%) → lessor = customer / (1 + markup%)
+                $percent = (float) ($markup['value'] ?? 0);
+                return $customerHourlyRate / (1 + $percent / 100);
+
+            case 'combined':
+                $fixedPart = (float) ($markup['rules']['fixed_value'] ?? 0);
+                $percentValue = (float) ($markup['rules']['percent_value'] ?? 0);
+                $afterFixed = max(0, $customerHourlyRate - $fixedPart);
+                return $afterFixed / (1 + $percentValue / 100);
+
+            default:
+                return $customerHourlyRate;
+        }
+    }
+
     private function calculateRentalDays(RentalRequest $request): int
     {
-        $start = \Carbon\Carbon::parse($request->rental_period_start);
-        $end = \Carbon\Carbon::parse($request->rental_period_end);
+        $start = Carbon::parse($request->rental_period_start);
+        $end = Carbon::parse($request->rental_period_end);
         return $start->diffInDays($end) + 1;
     }
 
@@ -199,20 +141,12 @@ class RentalRequestPricingService
      */
     public function calculateProposalPrice(float $lessorProposedPrice, array $markup, int $workingHours): float
     {
-        // Для предложений используем прямой расчет через новый сервис
         $markupResult = $this->markupCalculationService->calculateMarkup(
             $lessorProposedPrice,
-            'proposal', // специальный контекст для предложений
+            'proposal',
             $workingHours,
-            null, null, null, null // параметры будут определены в сервисе
+            null, null, null, null
         );
-
-        Log::debug('Proposal price calculation with new system', [
-            'lessor_price' => $lessorProposedPrice,
-            'customer_price' => $markupResult['final_price'],
-            'markup_amount' => $markupResult['markup_amount'],
-            'working_hours' => $workingHours
-        ]);
 
         return $markupResult['final_price'];
     }
@@ -222,13 +156,12 @@ class RentalRequestPricingService
      */
     public function getMarkupForEquipment($equipment, $lesseeCompany): array
     {
-        // Временно используем базовую цену оборудования для расчета
         $basePrice = $equipment->rentalTerms->first()?->price_per_hour ?? 0;
 
         $markupResult = $this->markupCalculationService->calculateMarkup(
             $basePrice,
             'rental_request',
-            1, // базовый расчет на 1 час
+            1,
             $equipment->id,
             $equipment->category_id,
             null,

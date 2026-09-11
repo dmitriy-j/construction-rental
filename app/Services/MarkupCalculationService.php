@@ -6,6 +6,7 @@ namespace App\Services;
 use App\Models\PlatformMarkup;
 use App\Models\Equipment;
 use App\Models\EquipmentCategory;
+use App\Models\Category;
 use App\Models\Company;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -22,7 +23,8 @@ class MarkupCalculationService
         ?int $equipmentId = null,
         ?int $categoryId = null,
         ?int $companyId = null,
-        ?int $lesseeCompanyId = null
+        ?int $lesseeCompanyId = null,
+        ?int $rentalRequestId = null
     ): array {
         // Проверка: если техника принадлежит платформе — наценка = 0
         if ($equipmentId) {
@@ -54,7 +56,8 @@ class MarkupCalculationService
             $equipmentId,
             $categoryId,
             $companyId,
-            $lesseeCompanyId
+            $lesseeCompanyId,
+            $rentalRequestId ?? null
         );
 
         return $this->applyMarkup($basePrice, $markup, $workingHours, $entityType);
@@ -68,20 +71,23 @@ class MarkupCalculationService
         ?int $equipmentId,
         ?int $categoryId,
         ?int $companyId,
-        ?int $lesseeCompanyId
+        ?int $lesseeCompanyId,
+        ?int $rentalRequestId = null
     ): array {
         $cacheKey = $this->buildCacheKey($entityType, $equipmentId, $categoryId, $companyId, $lesseeCompanyId);
 
-        // 🔥 ОБЫЧНОЕ КЕШИРОВАНИЕ: Без тегов для совместимости
-        return Cache::remember($cacheKey, 300, function () use ( // 5 минут для частых изменений
-            $entityType, $equipmentId, $categoryId, $companyId, $lesseeCompanyId
+        return Cache::remember($cacheKey, 300, function () use (
+            $entityType, $equipmentId, $categoryId, $companyId, $lesseeCompanyId, $rentalRequestId
         ) {
-            $markup = PlatformMarkup::forEntityType($entityType)
-                ->active()
-                ->forContext($equipmentId, $categoryId, $companyId, $lesseeCompanyId)
-                ->orderBy('priority', 'DESC')
-                ->orderBy('created_at', 'DESC')
-                ->first();
+            // Используем метод с учётом приоритетов
+            $markup = $this->findHighestPriorityMarkup(
+                $entityType,
+                $equipmentId,
+                $categoryId,
+                $companyId,
+                $lesseeCompanyId,
+                $rentalRequestId
+            );
 
             if ($markup) {
                 Log::debug("Found applicable markup", [
@@ -94,7 +100,6 @@ class MarkupCalculationService
                 return $this->formatMarkupResult($markup);
             }
 
-            // Наценка по умолчанию
             Log::debug("Using default markup", ['entity_type' => $entityType]);
             return $this->getDefaultMarkup($entityType);
         });
@@ -119,24 +124,40 @@ class MarkupCalculationService
 
     /**
      * Поиск наценки с наивысшим приоритетом
+     *
+     * Приоритет (от высшего к низшему):
+     * 1. Наценка на конкретную заявку (RentalRequest)
+     * 2. Наценка на конкретное оборудование
+     * 3. Наценка на категорию оборудования
+     * 4. Наценка на компанию арендатора
+     * 5. Общая наценка платформы
      */
     private function findHighestPriorityMarkup(
         string $entityType,
         ?int $equipmentId,
         ?int $categoryId,
         ?int $companyId,
-        ?int $lesseeCompanyId
+        ?int $lesseeCompanyId,
+        ?int $rentalRequestId = null
     ): ?PlatformMarkup {
-        // Базовый запрос с учетом активности и временных рамок
         $query = PlatformMarkup::where('entity_type', $entityType)
-            ->active() // Используем scope из модели вместо дублирования логики
+            ->active()
             ->orderBy('priority', 'DESC')
             ->orderBy('created_at', 'DESC');
 
-        // Создаем подзапросы для каждого уровня приоритета
-        $markups = [];
+        // 1. Наценка на конкретную заявку (самый высокий приоритет)
+        if ($rentalRequestId) {
+            $requestMarkup = (clone $query)
+                ->where('markupable_type', \App\Models\RentalRequest::class)
+                ->where('markupable_id', $rentalRequestId)
+                ->first();
 
-        // 1. Наценка на конкретное оборудование (самый высокий приоритет)
+            if ($requestMarkup) {
+                return $requestMarkup;
+            }
+        }
+
+        // 2. Наценка на конкретное оборудование
         if ($equipmentId) {
             $equipmentMarkup = (clone $query)
                 ->where('markupable_type', Equipment::class)
@@ -148,10 +169,10 @@ class MarkupCalculationService
             }
         }
 
-        // 2. Наценка на категорию оборудования
+        // 3. Наценка на категорию оборудования (ищем в обоих классах)
         if ($categoryId) {
             $categoryMarkup = (clone $query)
-                ->where('markupable_type', EquipmentCategory::class)
+                ->whereIn('markupable_type', [Category::class, EquipmentCategory::class])
                 ->where('markupable_id', $categoryId)
                 ->first();
 
@@ -160,7 +181,19 @@ class MarkupCalculationService
             }
         }
 
-        // 3. Наценка на компанию арендатора
+        // 4. Наценка на компанию арендодателя (владелец техники)
+        if ($companyId) {
+            $ownerMarkup = (clone $query)
+                ->where('markupable_type', Company::class)
+                ->where('markupable_id', $companyId)
+                ->first();
+
+            if ($ownerMarkup) {
+                return $ownerMarkup;
+            }
+        }
+
+        // 5. Наценка на компанию арендатора
         if ($lesseeCompanyId) {
             $companyMarkup = (clone $query)
                 ->where('markupable_type', Company::class)
@@ -172,7 +205,7 @@ class MarkupCalculationService
             }
         }
 
-        // 4. Общая наценка платформы (самый низкий приоритет)
+        // 5. Общая наценка платформы (самый низкий приоритет)
         return $query->whereNull('markupable_type')
             ->whereNull('markupable_id')
             ->first();

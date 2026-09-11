@@ -18,6 +18,11 @@
 @endsection
 
 @push('scripts')
-    {{-- 🔥 ПОДКЛЮЧАЕМ ТОЛЬКО ЭТОТ СКРИПТ --}}
-    @vite(['resources/js/pages/public-rental-request-show.js'])
+    @php
+        if (app()->environment('local')) {
+            echo vite('resources/js/pages/public-rental-request-show.js');
+        } else {
+            echo '<script type="module" src="' . asset('build/assets/public-rental-request-show-_j8K36bk.js') . '" defer></script>';
+        }
+    @endphp
 @endpush
